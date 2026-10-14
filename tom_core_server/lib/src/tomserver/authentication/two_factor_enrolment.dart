@@ -559,31 +559,30 @@ abstract class Tom2FAEnrolmentStore {
     return installed is Tom2FAEnrolmentStore ? installed : null;
   }
 
-  /// The storage key for the principal in [context] — the principal id, and
-  /// nothing else.
+  /// The storage key for the principal in [context] — its tenant-qualified id
+  /// ([TomPrincipal.qualifiedId]), and nothing else.
   ///
   /// One place, so the memory store and the persistent store agree on what
   /// "this user" means and a test written against one is meaningful for the
   /// other.
   ///
-  /// **Neither the organization nor the tenant is part of it.** [TomPrincipal.id]
-  /// is unique across the deployment rather than within a tenant, so it already
-  /// names one person; adding the organization would split that person's
-  /// factors across the organizations they log in for, so the same
-  /// authenticator would have to be enrolled once per organization. Every framework table that
-  /// files rows per principal rests on the same premise and carries no tenant
-  /// column — `tom_principal_resource_grant`, `tom_external_identity`, and this
-  /// module's own `tom_user_two_factor_enrolment`, keyed
-  /// `(principal_id, enrolment_id)`.
+  /// **The tenant is part of it; the organization is not.** [TomPrincipal.id]
+  /// is unique within a tenant only — another tenant's `u1` is a different
+  /// person — so the key names the tenant, and under `shared` isolation, where
+  /// every tenant's enrolments sit in this module's one
+  /// `tom_user_two_factor_enrolment` table, two tenants' `u1` keep two sets of
+  /// factors. Under `schema` and `database` isolation the table is the
+  /// tenant's own and the key is the same, so a tenant's rows move between
+  /// models unchanged. Adding the organization would split one person's
+  /// factors across the organizations they sign in for, so the same
+  /// authenticator would have to be enrolled once per organization.
   ///
-  /// A deployment that allocates principal ids *per tenant* has broken that
-  /// premise framework-wide and not merely here; its answer is its own
-  /// [Tom2FAEnrolmentStore], which is handed the whole context and may key rows
-  /// however it needs. That is also why this being `static` costs nothing: it
-  /// is the key the two shipped stores share, not a hook the contract imposes
-  /// on an implementation.
+  /// That is also why this being `static` costs nothing: it is the key the two
+  /// shipped stores share, not a hook the contract imposes on an
+  /// implementation, which is handed the whole context and may key rows however
+  /// it needs.
   static String principalKeyOf(Tom2FAContext context) =>
-      context.principal.id.toString();
+      context.principal.qualifiedId;
 }
 
 /// What a mechanism implements when a user can *set it up* — the third
@@ -760,11 +759,10 @@ class TomUserTwoFactorEnrolment {
   /// row to find, and a duplicate would make which secret answers a login
   /// depend on row order.
   ///
-  /// There is no tenant column, and that is a decision rather than an
-  /// omission: a principal id names one person across the whole deployment, so
-  /// a user's second factors are theirs in every organization they log into.
-  /// See [Tom2FAEnrolmentStore.principalKeyOf] for what that premise costs a
-  /// deployment that does not share it.
+  /// There is no tenant column: `principal_id` holds the tenant-qualified
+  /// principal id, which already names the tenant, and carries no organization,
+  /// so a user's second factors are theirs in every organization they sign in
+  /// for. See [Tom2FAEnrolmentStore.principalKeyOf].
   ///
   /// `enrolled_at` is `DATETIME(6)`, the width the instant convention writes
   /// (`datasources/sql_instant.dart`); a plain `DATETIME` rounds off the

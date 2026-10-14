@@ -50,7 +50,7 @@ TomPrincipal _principalWithId(int userId) => TomPrincipal(
   clientLanguage: 'en',
   clientTimezone: 'UTC',
   user: TomUser(
-    id: userId,
+    id: '$userId',
     username: 'user$userId',
     firstname: 'Test',
     lastname: 'User',

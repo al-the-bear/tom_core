@@ -360,7 +360,7 @@ CREATE TABLE IF NOT EXISTS fixture_document (
   static const String _fixtureScopedDocumentDdl = '''
 CREATE TABLE IF NOT EXISTS fixture_scoped_document (
   id         BIGINT       NOT NULL AUTO_INCREMENT,
-  owner_id   BIGINT       NULL,
+  owner_id   VARCHAR(255) NULL,
   title      VARCHAR(255) NULL,
   attachment VARCHAR(512) NULL,
   PRIMARY KEY (id)

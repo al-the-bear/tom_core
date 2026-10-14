@@ -28,7 +28,7 @@ TomPrincipal _principal() => TomPrincipal(
   clientLanguage: 'en',
   clientTimezone: 'UTC',
   user: TomUser(
-    id: 1,
+    id: '1',
     username: 'alice',
     firstname: 'Alice',
     lastname: 'Smith',

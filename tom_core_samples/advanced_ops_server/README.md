@@ -398,7 +398,7 @@ const String itemReassignEntitlement
 const List<String> opsDeploymentEntitlements
 const List<String> opsServiceAccountEntitlements
 const String opsServiceUsername
-const int opsServiceUserId
+const String opsServiceUserId
 final TomPrincipal opsServiceAccount
 final TomPrincipal opsDeploymentPrincipal
 class OpsCapabilities

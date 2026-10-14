@@ -57,8 +57,11 @@ class TomPrincipalResourceGrant {
   @TomDbColumn(columnName: 'id', isReadOnly: true)
   int id;
 
-  /// The principal the grant applies to (the principal's stable identifier,
-  /// stringified — e.g. a user id).
+  /// The principal the grant applies to, by its tenant-qualified id
+  /// ([TomPrincipal.qualifiedId]; for another principal than the caller,
+  /// `TomTenantContext.qualifyCurrent(id)`) — what the `resource` scope looks
+  /// grants up by. A principal id is unique within its tenant only, and under
+  /// `shared` isolation every tenant's grants sit in this one table.
   @TomDbColumn(columnName: 'principal_id')
   String principalId;
 

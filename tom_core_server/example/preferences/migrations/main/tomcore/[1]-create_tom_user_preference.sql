@@ -18,10 +18,12 @@
 -- would make `device.Theme` and `device.theme` one row, and ORDER BY would not
 -- be the code-unit order the contract promises.
 --
--- `principal_id` is BIGINT, matching TomPrincipal.id, because the entity's
--- `@TomDbScope(field: 'principal_id', scope: 'owner')` binds that id straight
--- into every statement. A VARCHAR column would compare a stringified id against
--- an integer bind value and match nothing — a scope that denies everything.
+-- `principal_id` holds TomPrincipal.qualifiedId — the principal id qualified by
+-- its tenant (`tenant:<id>/<principal id>`, the bare id without tenancy) —
+-- because the entity's `@TomDbScope(field: 'principal_id', scope: 'owner')`
+-- binds that key into every statement. A principal id is unique within its
+-- tenant only; the qualified key keeps two tenants' rows apart when they share
+-- this table.
 --
 -- This file is the canonical DDL and reproduces
 -- `TomUserPreference.createTableSql` verbatim;
@@ -33,7 +35,7 @@
 -- in some environments makes the code above it conditional on the deployment.
 CREATE TABLE IF NOT EXISTS tom_user_preference (
   id BIGINT NOT NULL AUTO_INCREMENT,
-  principal_id BIGINT NOT NULL,
+  principal_id VARCHAR(255) NOT NULL,
   preference_key VARCHAR(191) COLLATE utf8mb4_bin NOT NULL,
   value_type VARCHAR(191) COLLATE utf8mb4_bin NOT NULL,
   value_json TEXT NULL,

@@ -67,7 +67,7 @@ void main() {
 
         expect(info.principal.authenticated, isTrue);
         expect(info.principal.username, 'ada');
-        expect(info.principal.user.id, 1);
+        expect(info.principal.user.id, '1');
         expect(info.principal.user.email, 'ada@example.com');
       },
     );

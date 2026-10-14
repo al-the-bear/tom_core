@@ -27,7 +27,7 @@ import 'support/retention_fixtures.dart';
 /// A principal holding exactly [entitlements] — the second operand under test.
 TomPrincipal _principal(String username, List<String> entitlements) =>
     TomPrincipal(
-      user: TomUser(id: 99, username: username),
+      user: TomUser(id: '99', username: username),
       aci: TomAccessControlInformation(entitlements: entitlements),
       authenticated: true,
     );

@@ -98,8 +98,9 @@ abstract class TomResourceScopeSource {
 ///
 /// Three resolvers are registered out of the box:
 ///
-///  - `'owner'` — the principal's own id (`principal.id`); a `null` principal
-///    sees nothing;
+///  - `'owner'` — the principal's own tenant-qualified id
+///    (`principal.qualifiedId`, the bare id in a deployment without tenancy);
+///    a `null` principal sees nothing;
 ///  - `'group'` — the principal's groups (`principal.aci.groups`); a `null`
 ///    principal sees nothing;
 ///  - `'resource'` ([TomDbScope.resourceScope]) — the resource keys the
@@ -130,8 +131,9 @@ class TomDataScopeRegistry {
   TomDataScopeRegistry._();
 
   static Map<String, TomDataScopeResolver> _defaults() => {
-    'owner': (principal) =>
-        principal == null ? const <Object?>[] : <Object?>[principal.id],
+    'owner': (principal) => principal == null
+        ? const <Object?>[]
+        : <Object?>[principal.qualifiedId],
     'group': (principal) =>
         principal == null ? const <Object?>[] : principal.aci.groups,
   };
@@ -435,13 +437,24 @@ class TomDataScope {
   /// single `?`, is what makes `IN (…)` work over the prepared-statement
   /// protocol: the MySQL driver does not expand a bound list, and no value is
   /// concatenated into the SQL (C-7).
+  ///
+  /// Values are bound in [col]'s type. On an `int` column a value given as
+  /// text — the `owner` scope's principal id is a string — is bound as the
+  /// number it spells, and one that spells no number, such as a
+  /// tenant-qualified id, is left out: an integer column cannot hold it, so it
+  /// matches no row.
   static TomDataScopePredicate inList(
     TomQueryBuilder builder,
     TomColumnInformation col,
     Iterable<Object?> values, {
     String prefix = parameterPrefix,
   }) {
-    final list = values.toList();
+    final list = col.declaredType == int
+        ? [
+            for (final value in values)
+              if (value is String) ?int.tryParse(value) else value,
+          ]
+        : values.toList();
     if (list.isEmpty) {
       return TomDataScopePredicate(builder.boolOp(false), const {});
     }
@@ -513,8 +526,15 @@ class TomDataScope {
   /// must be one of the allowed values. This is the pure counterpart of the
   /// read-side `<col> IN (…)` predicate: a write whose scope-field value is not
   /// permitted targets a row the principal could not read, and is rejected.
+  ///
+  /// Values are compared by their text, as the read side binds them: the
+  /// `owner` scope yields the principal id as a string, and an `int` owner
+  /// column holding `7` is the row of the principal whose id is `'7'`.
   static bool permits(List<Object?>? allowed, Object? value) =>
-      allowed == null || allowed.contains(value);
+      allowed == null ||
+      allowed.any(
+        (a) => a == value || (a != null && value != null && '$a' == '$value'),
+      );
 
   /// Builds `<col> IN (:name0, :name1, …)` referencing [col] against one bound
   /// parameter per name in [parameterNames], dispatching the column/parameter

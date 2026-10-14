@@ -95,6 +95,13 @@ abstract final class TomTenantContext {
   /// uses (cache entries, revocations), so two tenants' `alice` never meet.
   static String qualify(String name, [String? tenantId]) =>
       tenantId == null ? name : 'tenant:$tenantId/$name';
+
+  /// [name] qualified by the tenant in context — [qualify] with [currentId].
+  ///
+  /// The key a store files a per-tenant name under when the rows of several
+  /// tenants can share one table: a principal id is unique within its tenant
+  /// only, so two tenants' `u1` are two keys here.
+  static String qualifyCurrent(String name) => qualify(name, currentId);
 }
 
 class _TenantBox {

@@ -35,7 +35,7 @@ import '../bin/app_server_start.reflection.dart' show initializeReflection;
 class _Builder with TomQueryBuilder {}
 
 TomPrincipal _principal(int id) => TomPrincipal(
-  user: TomUser(id: id, username: 'user$id'),
+  user: TomUser(id: '$id', username: 'user$id'),
   aci: TomAccessControlInformation(),
   authenticated: true,
 );

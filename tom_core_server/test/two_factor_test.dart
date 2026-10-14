@@ -71,7 +71,7 @@ TomPrincipal _principal(
   clientLanguage: a.language,
   clientTimezone: a.timezone,
   user: TomUser(
-    id: 1,
+    id: '1',
     username: a.username,
     firstname: 'Test',
     lastname: 'User',
@@ -103,7 +103,7 @@ TomPrincipal _principalWithId(int userId, {String organization = 'acme'}) =>
       clientLanguage: 'en',
       clientTimezone: 'UTC',
       user: TomUser(
-        id: userId,
+        id: '$userId',
         username: 'user$userId',
         firstname: 'Test',
         lastname: 'User',
@@ -768,14 +768,12 @@ void main() {
       expect(await store.enrolmentsFor(contextFor(2)), isEmpty);
     });
 
-    // The storage key is the principal id and nothing else, and the shipped
-    // table has no tenant column to hold anything else. That is only sound
-    // because a principal id names one person across the whole deployment
-    // rather than within a tenant -- the premise every framework table that
-    // files rows per principal already rests on. These two tests exist so the
-    // premise is asserted somewhere rather than merely believed: read the
-    // opposite way, they are what fails if someone gives the key a tenant.
-    test('the storage key is the principal id, whatever the tenant', () {
+    // The storage key is the principal's tenant-qualified id: the tenant is
+    // part of it, because a principal id is unique within its tenant only, and
+    // the organization is not, because a user's factors are theirs in every
+    // organization they sign in for. These tests assert both halves; the
+    // tenant half against a database is principal_per_tenant_db_test.dart.
+    test('the storage key is the principal id, whatever the organization', () {
       expect(
         Tom2FAEnrolmentStore.principalKeyOf(contextFor(7)),
         Tom2FAEnrolmentStore.principalKeyOf(
@@ -783,6 +781,24 @@ void main() {
         ),
       );
       expect(Tom2FAEnrolmentStore.principalKeyOf(contextFor(7)), '7');
+    });
+
+    test('the storage key names the principal\'s tenant', () {
+      Tom2FAContext inTenant(String tenant) => Tom2FAContext(
+        principal: TomPrincipal(
+          authenticated: true,
+          tenant: tenant,
+          user: TomUser(id: '7', username: 'user7'),
+        ),
+      );
+      expect(
+        Tom2FAEnrolmentStore.principalKeyOf(inTenant('acme')),
+        'tenant:acme/7',
+      );
+      expect(
+        Tom2FAEnrolmentStore.principalKeyOf(inTenant('globex')),
+        'tenant:globex/7',
+      );
     });
 
     test('a user reaches their factors from every organization', () async {

@@ -85,12 +85,13 @@ FixtureDocumentRecord _document(String title) =>
 FixtureScopedDocumentRecord _scopedDocument(String title, int ownerId) =>
     FixtureScopedDocumentRecord()
       ..title = title
-      ..ownerId = ownerId;
+      ..ownerId = '$ownerId';
 
-/// The principal the `owner` data-scope resolver reads: its `id` is the value
-/// matched against the row's `owner_id`.
+/// The principal the `owner` data-scope resolver reads: its `qualifiedId` —
+/// here, with no tenant, its id — is the value matched against the row's
+/// `owner_id`.
 TomPrincipal _principal(int id) => TomPrincipal(
-  user: TomUser(id: id, username: 'user$id'),
+  user: TomUser(id: '$id', username: 'user$id'),
   aci: TomAccessControlInformation(),
   authenticated: true,
 );

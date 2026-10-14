@@ -295,7 +295,7 @@ TomPrincipal _principal() => TomPrincipal(
   clientLanguage: 'en',
   clientTimezone: 'UTC',
   user: TomUser(
-    id: 7,
+    id: '7',
     username: 'user7',
     firstname: 'Test',
     lastname: 'User',

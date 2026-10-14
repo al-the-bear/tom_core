@@ -471,7 +471,7 @@ class TomApiKeys {
               if (account.roles.contains(role)) role,
           ];
     final principal = TomPrincipal(
-      user: TomUser(id: -1, username: 'service:${account.id}'),
+      user: TomUser(username: 'service:${account.id}'),
       aci: TomAccessControlInformation(roles: roles),
       authenticated: true,
       tenant: account.tenant,

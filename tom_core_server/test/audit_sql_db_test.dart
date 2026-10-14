@@ -35,7 +35,7 @@ TomAuditRecord _record(int index, {DateTime? at, String target = 'Invoice'}) =>
     TomAuditRecord(
       id: 'entry-$index',
       timestamp: at ?? DateTime.utc(2026, 3, 1, 12, 0, index),
-      actor: const TomAuditActor(username: 'ada', userId: 42),
+      actor: const TomAuditActor(username: 'ada', userId: '42'),
       action: TomAuditAction.update,
       target: target,
       targetKey: '$index',

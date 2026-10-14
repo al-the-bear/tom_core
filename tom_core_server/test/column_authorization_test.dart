@@ -156,7 +156,7 @@ void main() {
     });
 
     TomPrincipal principal(List<String> keys) => TomPrincipal(
-      user: TomUser(id: 3, username: 'grace'),
+      user: TomUser(id: '3', username: 'grace'),
       authenticated: true,
       aci: TomAccessControlInformation(resourceKeys: keys),
     );

@@ -531,7 +531,7 @@ TomPrincipalResourceGrant({
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `id` | `int` | Surrogate primary key (`-1` until persisted). |
-| `principalId` | `String` | The principal the grant applies to (stringified stable id). |
+| `principalId` | `String` | The principal the grant applies to, by its tenant-qualified id (`TomPrincipal.qualifiedId`). |
 | `resourceKey` | `String` | The resource the role is scoped to (a resource key / `tomId`). |
 | `role` | `String` | The role the principal holds on the resource. |
 
@@ -665,7 +665,7 @@ TomResourceDataScope(
 | -------- | ---- | ----------- |
 | `delegationResolver` | `TomDelegationResolver` | Resolves the principal's effective per-resource roles — direct grants folded with the delegations active at `now`. |
 | `now` | `DateTime Function()` | The clock delegation validity is evaluated against; injectable for tests. Defaults to `DateTime.now`. |
-| `principalId` | `String Function(TomPrincipal)` | Maps the request's principal to the id the grant rows are keyed by. Defaults to the numeric `id` rendered as a string; a deployment keying grants by username or by an external subject claim overrides it. |
+| `principalId` | `String Function(TomPrincipal)` | Maps the request's principal to the id the grant rows are keyed by. Defaults to `TomPrincipal.qualifiedId`, the principal id qualified by its tenant; a deployment keying grants by username or by an external subject claim overrides it. |
 
 #### Static Methods
 

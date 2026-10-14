@@ -147,7 +147,7 @@ class AdvancedAuthenticationService implements TomAuthenticationService {
       clientCountry: authData.country,
       clientTimezone: authData.timezone,
       user: TomUser(
-        id: record.id!,
+        id: '${record.id!}',
         username: record.username ?? '',
         firstname: record.displayName,
         email: record.email,

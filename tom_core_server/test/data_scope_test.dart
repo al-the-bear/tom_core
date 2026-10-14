@@ -31,7 +31,7 @@ TomColumnInformation _column(String table, String column, Type declaredType) {
 
 TomPrincipal _principal(int id, {List<String> groups = const []}) {
   return TomPrincipal(
-    user: TomUser(id: id, username: 'user$id'),
+    user: TomUser(id: '$id', username: 'user$id'),
     aci: TomAccessControlInformation(groups: groups),
     authenticated: true,
   );
@@ -56,7 +56,7 @@ void main() {
       () {
         final owner = TomDataScopeRegistry.resolverFor('owner')!;
         final group = TomDataScopeRegistry.resolverFor('group')!;
-        expect(owner(_principal(7)), [7]);
+        expect(owner(_principal(7)), ['7']);
         expect(group(_principal(7, groups: ['a', 'b'])), ['a', 'b']);
       },
     );
@@ -103,6 +103,19 @@ void main() {
       final sql = alice.predicate.generate(dialect);
       expect(sql, isNot(contains('1')));
       expect(alice.predicate.getParameters(dialect), ['__tomscope_0']);
+    });
+
+    test('a tenant-qualified id on an int column matches no row', () {
+      // An integer column cannot hold `tenant:acme/1`; the value is left out
+      // rather than bound, and the scope denies every row.
+      final inAcme = TomPrincipal(
+        user: TomUser(id: '1', username: 'user1'),
+        authenticated: true,
+        tenant: 'acme',
+      );
+      final p = TomDataScope.build(b, scope, col, inAcme)!;
+      expect(p.parameters, isEmpty);
+      expect(p.predicate.generate(dialect), isNot(contains('IN')));
     });
   });
 
@@ -309,7 +322,7 @@ void main() {
     });
 
     test('allowedValues resolves the owner scope to the principal id', () {
-      expect(TomDataScope.allowedValues(scope, _principal(7)), [7]);
+      expect(TomDataScope.allowedValues(scope, _principal(7)), ['7']);
     });
 
     test('allowedValues denies a null (unauthenticated) principal', () {
@@ -320,8 +333,20 @@ void main() {
 
     test('a principal may write its own row but not another principal\'s', () {
       final aliceAllowed = TomDataScope.allowedValues(scope, _principal(1));
-      expect(TomDataScope.permits(aliceAllowed, 1), isTrue); // Alice's own row
-      expect(TomDataScope.permits(aliceAllowed, 2), isFalse); // Bob's row
+      expect(
+        TomDataScope.permits(aliceAllowed, '1'),
+        isTrue,
+      ); // Alice's own row
+      expect(TomDataScope.permits(aliceAllowed, '2'), isFalse); // Bob's row
+    });
+
+    test('values compare by their text, so an int owner column matches', () {
+      // The owner scope yields the principal id as a string; a deployment
+      // whose owner column is an integer stores the same id as a number.
+      final aliceAllowed = TomDataScope.allowedValues(scope, _principal(1));
+      expect(TomDataScope.permits(aliceAllowed, 1), isTrue);
+      expect(TomDataScope.permits(aliceAllowed, 2), isFalse);
+      expect(TomDataScope.permits(const ['tenant:acme/1'], 1), isFalse);
     });
 
     test('allowedValues throws on an unregistered scope kind', () {

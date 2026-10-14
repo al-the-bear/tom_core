@@ -85,7 +85,7 @@ TomPrincipal _principal({
   clientLanguage: 'en',
   clientTimezone: 'UTC',
   user: TomUser(
-    id: id,
+    id: '$id',
     username: 'alice',
     firstname: 'Alice',
     lastname: 'Smith',

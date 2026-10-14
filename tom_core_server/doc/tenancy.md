@@ -27,6 +27,7 @@ This guide is the server half.
   - [Rejections](#rejections)
   - [A login binds the token to its tenant](#a-login-binds-the-token-to-its-tenant)
 - [Tenant-Owned Entities](#tenant-owned-entities)
+- [Principals per Tenant](#principals-per-tenant)
 - [What Is Tenant-Scoped](#what-is-tenant-scoped)
 - [What Stays Deployment-Wide](#what-stays-deployment-wide)
 - [Working in a Tenant Outside a Request](#working-in-a-tenant-outside-a-request)
@@ -359,6 +360,46 @@ tenant's to do it. See
 [object_persistence.md](object_persistence.md#tenant-owned-rows) for the
 repository side.
 
+## Principals per Tenant
+
+**A principal id is unique within its tenant, and only there.**
+`TomPrincipal.id` is a string — a deployment uses whatever identifies its
+accounts, a UUID, a directory's object id, a database key rendered as text — and
+another tenant may hold a principal with the same id, or the same username. That
+is a different person: the same rule revocation states for usernames.
+
+Every framework table that files rows per principal keys them by the
+**tenant-qualified id**, `TomPrincipal.qualifiedId` — `tenant:<tenant>/<id>`,
+spelled by `TomTenantContext.qualify` like every other tenant-scoped key, and
+the bare id in a deployment without tenancy:
+
+| Table | Column | Written by |
+| ----- | ------ | ---------- |
+| `tom_user_two_factor_enrolment` | `principal_id` | `Tom2FAEnrolmentStore.principalKeyOf` — the two shipped 2FA stores, and the grace store |
+| `tom_user_preference` | `principal_id` | `TomUserPreferences`, through the `owner` data scope |
+| `tom_principal_resource_grant` | `principal_id` | the deployment; read through `TomResourceDataScope`, whose default key is `qualifiedId` |
+| `tom_principal_delegation` | `delegator_id`, `delegate_id` | the deployment, in the same key as the grants |
+
+The `owner` data scope resolves to `qualifiedId` as well, so a deployment's own
+owner-scoped entity stores its owner the same way, in a string column. A
+deployment without tenancy may keep an integer owner column — the bare id is
+bound as the number it spells — but with tenancy an integer column cannot hold
+`tenant:<tenant>/<id>`, and the scope then matches no row. A row naming another principal
+than the caller — a grant for a colleague — qualifies that principal's id by the
+tenant in context: `TomTenantContext.qualifyCurrent(id)`.
+
+These tables lie on the routed data source `main`, so they follow the tenant's
+isolation model, and the key is what makes all three models agree:
+
+- under `shared` every tenant's rows sit in one table, and the qualified key is
+  what keeps two tenants' `u1` apart;
+- under `schema` and `database` each tenant's table is its own, and the key is
+  the same — so moving a tenant between models stays a copy of its rows, and a
+  tenant restored on its own brings back exactly its own rows.
+
+The organization is not part of the key: a user's second factors, preferences
+and grants are theirs in every organization of the tenant they sign in for.
+
 ## What Is Tenant-Scoped
 
 | Concern | How it is kept per tenant | Guide |
@@ -366,6 +407,7 @@ repository side.
 | Repositories | data source routed per tenant; `@TomTenantOwned` predicate on every read and write | [object_persistence](object_persistence.md#tenant-owned-rows), [datasources](datasources.md#routing-per-tenant) |
 | Caches | `TomCache`'s static API qualifies every key by the tenant in context — two tenants caching `plan` hold two entries | [cache](cache.md#tenant-scoped-entries) |
 | Principal revocation | `revokePrincipal('alice')` in a tenant revokes that tenant's `alice` only; another tenant's `alice` is a different person | [authorization](authorization.md#revocation-per-tenant) |
+| Per-principal rows | 2FA enrolments, preferences, resource grants and delegations are keyed by the tenant-qualified principal id; another tenant's `u1` is a different person | [Principals per Tenant](#principals-per-tenant) |
 | Jobs | a run records its tenant; its body runs inside it, across a worker isolate too; its window and its overlap protection are per tenant | [scheduling](scheduling.md#runs-per-tenant) |
 | Messaging outbox | a message is queued for the tenant in context and delivered inside it; its receipt and its delivery correlation name the tenant | [messaging](messaging.md#messages-per-tenant) |
 | Delivery reports | `tom_delivery_report.tenant` attributes a carrier's report, which arrives carrying nothing but the carrier's id, to its tenant | [messaging](messaging.md#messages-per-tenant) |
@@ -511,6 +553,15 @@ raised as the kernel's `TomTenantException`.
 
 ## Not Yet Implemented
 
+- **External identities are linked per table, not per tenant key.**
+  `tom_external_identity` and `tom_external_identity_token` key a link by the
+  provider's `(issuer, subject)` and name the local account by username. Under
+  `schema` and `database` isolation each tenant has its own tables, so the same
+  provider account can be linked in two tenants; under `shared` the pair is
+  unique across the deployment, so one provider account can be linked to one
+  tenant's account only.
+  <!-- unpinned: absence — external identity is not keyed per tenant under shared isolation -->
+
 - **The framework's own stores are not tenant-scoped beyond their columns.** The
   audit trail, the blob store, the SCIM store and the OAuth state store serve the
   whole deployment from the data source they were built over, and their rows
@@ -544,6 +595,13 @@ of one seam — and checks where the rows land: in the shared table under
 `shared`, in each tenant's schema under `schema`, in each tenant's database under
 `database`. It covers repositories, caches, revocations, jobs and the outbox.
 `tool/run_db_tests.sh` starts a database for it.
+
+`test/principal_per_tenant_db_test.dart`, tagged `db`, runs `alice` with id `u1`
+in two tenants under each model: each keeps her own 2FA enrolments and her own
+preferences, and the stored key is `tenant:<tenant>/u1` in every model.
+`test/tenancy_test.dart`'s group "one principal id in two tenants" covers the
+same rule without a database for the in-memory 2FA and grace stores, the `owner`
+scope and the resource-grant lookup.
 
 The kernel half is covered by `tom_core_kernel/test/tenant_context_test.dart`
 and the tenant case of the kernel's job-store contract.

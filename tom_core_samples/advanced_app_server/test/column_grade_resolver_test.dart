@@ -107,7 +107,7 @@ ItemAttachmentGradeResolver _buildResolver({List<TomResourceGrant>? grants}) {
 /// An authenticated principal for auth user [userId].
 TomPrincipal _principal(int userId) => TomPrincipal(
   authenticated: true,
-  user: TomUser(id: userId, username: 'user-$userId'),
+  user: TomUser(id: '$userId', username: 'user-$userId'),
 );
 
 void main() {

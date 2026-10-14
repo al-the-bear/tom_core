@@ -23,7 +23,7 @@ TomPrincipal _principal({
   Map<String, String> resourceRoles = const {},
 }) => TomPrincipal(
   authenticated: true,
-  user: TomUser(id: 7, username: 'ada'),
+  user: TomUser(id: '7', username: 'ada'),
   aci: TomAccessControlInformation(
     resourceKeys: resourceKeys,
     resourceRoles: resourceRoles,

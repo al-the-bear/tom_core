@@ -82,14 +82,14 @@ void main() {
 
     test('a principal is carried across in full', () {
       final principal = TomPrincipal(
-        user: TomUser(id: 42, username: 'ada'),
+        user: TomUser(id: '42', username: 'ada'),
         authenticated: true,
         organizationId: 7,
         applicationId: 3,
       );
       final actor = TomAuditActor.fromPrincipal(principal);
       expect(actor.username, 'ada');
-      expect(actor.userId, 42);
+      expect(actor.userId, '42');
       expect(actor.authenticated, isTrue);
       expect(actor.organizationId, 7);
       expect(actor.applicationId, 3);
@@ -107,7 +107,7 @@ void main() {
 
     test('the zone principal is picked up without being passed in', () async {
       final principal = TomPrincipal(
-        user: TomUser(id: 5, username: 'grace'),
+        user: TomUser(id: '5', username: 'grace'),
         authenticated: true,
       );
       final actor = await runZoned(
@@ -115,7 +115,7 @@ void main() {
         zoneValues: {TomPrincipal: principal},
       );
       expect(actor.username, 'grace');
-      expect(actor.userId, 5);
+      expect(actor.userId, '5');
     });
 
     test('outside a zone the actor falls back to SYSTEM', () {
@@ -128,7 +128,7 @@ void main() {
     test('round-trips through JSON', () {
       const actor = TomAuditActor(
         username: 'ada',
-        userId: 1,
+        userId: '1',
         authenticated: true,
         organizationId: 2,
         applicationId: 3,
@@ -218,7 +218,7 @@ void main() {
         action: TomAuditAction.delete,
         targetKey: '7',
         outcome: TomAuditOutcome.denied,
-        actor: const TomAuditActor(username: 'ada', userId: 1),
+        actor: const TomAuditActor(username: 'ada', userId: '1'),
         before: {'title': 'old'},
         after: {'title': 'new'},
         requestId: 'req-1',
@@ -1564,7 +1564,7 @@ void main() {
       final sink = TomMemoryAuditSink();
       TomAuditTrail.install(sink);
       final principal = TomPrincipal(
-        user: TomUser(id: 9, username: 'ada'),
+        user: TomUser(id: '9', username: 'ada'),
         authenticated: true,
       );
       await runZoned(
@@ -1578,7 +1578,7 @@ void main() {
       );
       final record = sink.records.single;
       expect(record.actor.username, 'ada');
-      expect(record.actor.userId, 9);
+      expect(record.actor.userId, '9');
       expect(record.action, TomAuditAction.execute);
       expect(record.target, 'PayrollService.export');
       expect(record.outcome, TomAuditOutcome.denied);

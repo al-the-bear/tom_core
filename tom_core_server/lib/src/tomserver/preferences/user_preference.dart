@@ -18,12 +18,11 @@
 /// second copy of a rule that already exists, and the copy that is forgotten on
 /// the fourth endpoint is the one that leaks (C-3).
 ///
-/// [principalId] is an `int` rather than the stringified id
-/// [TomUserTwoFactorEnrolment.principalId] carries, because the built-in
-/// `'owner'` resolver yields `TomPrincipal.id` — an `int`. A `String` column
-/// would compare a stringified id against an integer bind value and match
-/// nothing, which is a scope that denies everything: secure, and silently
-/// useless.
+/// [principalId] holds [TomPrincipal.qualifiedId] — the principal's id
+/// qualified by its tenant — because that is what the built-in `'owner'`
+/// resolver yields. A principal id is unique within its tenant only, so under
+/// `shared` isolation, where every tenant's preferences sit in this one table,
+/// the qualified key is what keeps two tenants' `u1` apart.
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
@@ -45,10 +44,10 @@ class TomUserPreference {
   @TomDbColumn(columnName: 'id', isReadOnly: true)
   int id;
 
-  /// The principal the preference belongs to ([TomPrincipal.id]) — the scope
-  /// column.
+  /// The principal the preference belongs to ([TomPrincipal.qualifiedId]) —
+  /// the scope column.
   @TomDbColumn(columnName: 'principal_id')
-  int principalId;
+  String principalId;
 
   /// The preference key (see [TomUserPreferenceKeys] for the framework's own).
   @TomDbColumn(columnName: 'preference_key')
@@ -71,7 +70,7 @@ class TomUserPreference {
   /// blank entity and fills it column by column when mapping a result.
   TomUserPreference({
     this.id = -1,
-    this.principalId = -1,
+    this.principalId = '',
     this.preferenceKey = '',
     this.valueType = '',
     this.valueJson = '',
@@ -118,7 +117,7 @@ class TomUserPreference {
   static const String createTableSql = '''
 CREATE TABLE IF NOT EXISTS tom_user_preference (
   id BIGINT NOT NULL AUTO_INCREMENT,
-  principal_id BIGINT NOT NULL,
+  principal_id VARCHAR(255) NOT NULL,
   preference_key VARCHAR(191) COLLATE utf8mb4_bin NOT NULL,
   value_type VARCHAR(191) COLLATE utf8mb4_bin NOT NULL,
   value_json TEXT NULL,

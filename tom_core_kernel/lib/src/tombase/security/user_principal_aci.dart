@@ -38,6 +38,8 @@
 /// - [TomBearerAuthentication] for token management
 library;
 
+import '../context/tenant_context.dart';
+
 // =============================================================================
 // CLIENT CONTEXT DEFAULTS
 // =============================================================================
@@ -810,7 +812,7 @@ class TomEntitlement {
 ///
 /// ```dart
 /// var user = TomUser(
-///   id: 123,
+///   id: 'u-123',
 ///   username: 'jdoe',
 ///   firstname: 'John',
 ///   lastname: 'Doe',
@@ -827,10 +829,21 @@ class TomUser {
   /// The username value for unauthenticated/anonymous users.
   static const String guestUsername = "GUEST";
 
-  late int _id;
+  /// The [id] of a user the deployment has not identified — a guest, or a
+  /// principal built before its user was known.
+  static const String noId = '';
 
-  /// The user's unique identifier.
-  int get id => _id;
+  late String _id;
+
+  /// The user's identifier, unique within the tenant the user belongs to.
+  ///
+  /// A string, so a deployment can use whatever identifies its accounts — a
+  /// UUID, a directory's object id, a database key rendered as text. It is
+  /// **not** unique across tenants: another tenant may hold a user with the
+  /// same id, and that is a different person. Whatever stores rows per user
+  /// beside other tenants' rows keys them by the tenant-qualified id
+  /// (`TomTenantContext.qualifyCurrent(id)`); see the tenancy guide.
+  String get id => _id;
 
   late String _username;
 
@@ -906,7 +919,7 @@ class TomUser {
   /// All fields are optional except that [username] defaults to
   /// [guestUsername] for unauthenticated users.
   TomUser({
-    int id = -1,
+    String id = noId,
     String username = guestUsername,
     String? firstname,
     String? lastname,
@@ -997,8 +1010,26 @@ class TomPrincipal {
   /// Whether the user has been authenticated.
   bool get authenticated => _authenticated;
 
-  /// The user's unique identifier (from [user]).
-  int get id => _user.id;
+  /// The user's identifier, unique within the principal's tenant (from
+  /// [user]; see [TomUser.id]).
+  String get id => _user.id;
+
+  /// [id] qualified by the principal's [tenant] — `tenant:<tenant>/<id>`, or
+  /// [id] itself for a principal of no tenant.
+  ///
+  /// The key under which the framework files rows per principal: the 2FA
+  /// enrolments, the preferences, the `owner` data scope and the resource
+  /// grants and delegations the `resource` scope reads. [id] is unique within
+  /// a tenant only, so two tenants' `u1` are two people; under `shared`
+  /// isolation their rows sit in one table, and this key keeps them apart.
+  /// Under `schema` and `database` isolation the tables are per tenant anyway
+  /// and the key is the same, so moving a tenant between models stays a copy
+  /// of its rows. A deployment without tenancy files rows under the bare id.
+  ///
+  /// The principal's tenant is the one its login bound it to; within a request
+  /// it is the tenant in context, since a request naming another tenant than
+  /// its token is refused.
+  String get qualifiedId => TomTenantContext.qualify(id, tenant);
 
   /// The user's login name (from [user]).
   String get username => _user.username;

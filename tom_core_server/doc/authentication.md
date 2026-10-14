@@ -1009,17 +1009,22 @@ is not there is a no-op, so a double-delete is not an error.
 store derives its key from, so a store keying rows differently only has one
 method to disagree with.
 
-**That key is the principal id and nothing else — the organization is not part
-of it.** A `TomPrincipal.id` names one person across the whole deployment rather
-than within a tenant, so a user's second factors are theirs in every
-organization they log into: enrolling an authenticator once is enough, and
-`tom_user_two_factor_enrolment` accordingly has no tenant column and a unique
-key of `(principal_id, enrolment_id)`. This is the premise every framework table
-that files rows per principal already rests on — `tom_principal_resource_grant`
-and `tom_external_identity` carry no tenant column either. A deployment that
-allocates principal ids *per tenant* has broken it framework-wide and not only
-here; the methods take the whole `Tom2FAContext` precisely so such a deployment
-can supply a store that keys rows its own way.
+**That key is the principal's tenant-qualified id — the tenant is part of it,
+the organization is not.** A `TomPrincipal.id` is unique within its tenant only:
+another tenant's `u1` is a different person. The key is
+`TomPrincipal.qualifiedId` — `tenant:<tenant>/<id>`, or the bare id in a
+deployment without tenancy — so under `shared` isolation, where every tenant's
+enrolments sit in one `tom_user_two_factor_enrolment`, two tenants' `u1` keep two
+sets of factors; under `schema` and `database` isolation the table is the
+tenant's own and the key is the same, so a tenant's rows move between models
+unchanged. The organization is left out, so a user's second factors are theirs in
+every organization they sign in for: enrolling an authenticator once is enough.
+The table has no tenant column and a unique key of
+`(principal_id, enrolment_id)`. Every framework table that files rows per
+principal keys them the same way — see
+[tenancy.md](tenancy.md#principals-per-tenant). The methods take the whole
+`Tom2FAContext`, so a deployment can supply a store that keys rows its own
+way.
 
 Two implementations ship: `TomMemory2FAEnrolmentStore` (plus a `clear()` for
 tests) and `TomPersistent2FAEnrolmentStore`, which stores rows in

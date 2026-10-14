@@ -463,7 +463,7 @@ class TomBearerAuthentication {
       clientLanguage: str("clientLanguage"),
       clientTimezone: str("clientTimezone"),
       user: TomUser(
-        id: intOr("userId", -1),
+        id: str("userId") ?? TomUser.noId,
         username: str("username") ?? TomUser.guestUsername,
         firstname: secretStr("firstname"),
         lastname: secretStr("lastname"),

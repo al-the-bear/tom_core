@@ -53,10 +53,13 @@ class TomResourceDataScope implements TomResourceScopeSource {
 
   /// Maps the request's principal to the id the grant rows are keyed by.
   ///
-  /// Defaults to the principal's numeric id rendered as a string, matching what
-  /// `TomPrincipalResourceGrant.principalId` holds in the reference
-  /// deployments; a deployment keying grants by username (or by an external
-  /// subject claim) overrides it.
+  /// Defaults to the principal's tenant-qualified id
+  /// ([TomPrincipal.qualifiedId]), which is what
+  /// `TomPrincipalResourceGrant.principalId` and the delegation table's
+  /// delegator and delegate hold: a principal id is unique within its tenant
+  /// only, and under `shared` isolation every tenant's grants sit in one table.
+  /// A deployment keying grants by username (or by an external subject claim)
+  /// overrides it.
   final String Function(TomPrincipal) principalId;
 
   /// Creates the scope source over [delegationResolver].
@@ -68,7 +71,7 @@ class TomResourceDataScope implements TomResourceScopeSource {
        principalId = principalId ?? _defaultPrincipalId;
 
   static String _defaultPrincipalId(TomPrincipal principal) =>
-      '${principal.id}';
+      principal.qualifiedId;
 
   /// Installs the grant-driven `resource` scope over [delegationResolver].
   ///

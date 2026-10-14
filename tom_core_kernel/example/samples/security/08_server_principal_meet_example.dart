@@ -49,7 +49,7 @@ TomPrincipal _principal(
   List<String> roles = const [],
 }) => TomPrincipal(
   authenticated: true,
-  user: TomUser(id: username.hashCode.abs() % 1000, username: username),
+  user: TomUser(id: 'u-${username.hashCode.abs() % 1000}', username: username),
   aci: TomAccessControlInformation(entitlements: entitlements, roles: roles),
 );
 

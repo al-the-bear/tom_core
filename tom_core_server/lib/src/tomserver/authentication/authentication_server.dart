@@ -92,7 +92,7 @@ class TomAuthenticationData {
 /// ## The implementation is the source of what the principal asserts
 ///
 /// Everything the returned [TomPrincipal] carries is the implementation's
-/// answer: the identity and its numeric ids, the locale, the access-control
+/// answer: the identity and its ids, the locale, the access-control
 /// information, and the client limits — [TomPrincipal.cli], the enabled modules
 /// and quotas the client's subscription grants. [TomAuthenticationServer]
 /// reads no subscription store and consults no environment; it encodes what it
@@ -167,7 +167,7 @@ class TomDummyAuthenticationService implements TomAuthenticationService {
       clientLanguage: authData.language,
       clientTimezone: authData.timezone,
       user: TomUser(
-        id: 0,
+        id: '0',
         username: authData.username,
         firstname: "guest",
         lastname: "guest",

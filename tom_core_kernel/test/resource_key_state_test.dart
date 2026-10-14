@@ -16,7 +16,7 @@ TomPrincipal _principal({
 }) => TomPrincipal(
   authenticated: true,
   user: TomUser(
-    id: 1,
+    id: '1',
     username: 'ada',
     firstname: 'Ada',
     lastname: 'Lovelace',

@@ -1090,7 +1090,7 @@ the **scope kind** that resolves the principal into a set of allowed values:
 @TomDbScope(field: 'ownerId')          // scope defaults to 'owner'
 class Note {
   @TomEntityId() @TomDbColumn(columnName: 'id') int? id;
-  @TomDbColumn(columnName: 'owner_id') int ownerId = 0;
+  @TomDbColumn(columnName: 'owner_id') String ownerId = '';
 }
 ```
 
@@ -1098,7 +1098,7 @@ Three kinds are registered out of the box:
 
 | Kind | Allowed values | Resolution |
 | ---- | -------------- | ---------- |
-| `owner` | `principal.id` | synchronous |
+| `owner` | `principal.qualifiedId` — the principal id qualified by its tenant (the bare id without tenancy; see [tenancy.md](tenancy.md#principals-per-tenant)). On an `int` column the bare id is bound as a number; a qualified id matches no row there | synchronous |
 | `group` | `principal.aci.groups` | synchronous |
 | `resource` (`TomDbScope.resourceScope`) | the resource keys the principal holds a grant on | **asynchronous**, through the installed `TomResourceScopeSource` |
 

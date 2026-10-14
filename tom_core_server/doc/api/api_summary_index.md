@@ -1381,8 +1381,8 @@ surface documented here.
 | `TomTenantHeaderResolver` | Tenancy |
 | `TomTenantHostResolver` | Tenancy |
 | `TomTenantIsolation` | Tenancy |
-| `TomTenantPathResolver` | Tenancy |
 | `TomTenantOwned` | Object Persistence |
+| `TomTenantPathResolver` | Tenancy |
 | `TomTenantResolution` | Tenancy |
 | `TomTenantResolver` | Tenancy |
 | `TomTextLocale` | Resources |

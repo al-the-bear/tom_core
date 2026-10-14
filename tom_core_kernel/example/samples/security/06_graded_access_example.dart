@@ -40,19 +40,19 @@ void run() {
 
   final payrollAdmin = TomPrincipal(
     authenticated: true,
-    user: TomUser(id: 1, username: 'payroll_admin'),
+    user: TomUser(id: '1', username: 'payroll_admin'),
     aci: TomAccessControlInformation(roles: ['payroll.admin']),
   );
 
   final manager = TomPrincipal(
     authenticated: true,
-    user: TomUser(id: 2, username: 'manager'),
+    user: TomUser(id: '2', username: 'manager'),
     aci: TomAccessControlInformation(roles: ['manager']),
   );
 
   final staff = TomPrincipal(
     authenticated: true,
-    user: TomUser(id: 3, username: 'staff'),
+    user: TomUser(id: '3', username: 'staff'),
     aci: TomAccessControlInformation(roles: ['user']),
   );
 

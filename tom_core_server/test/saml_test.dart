@@ -1076,7 +1076,7 @@ class _ProvisioningDirectory extends TomExternalIdentityDirectory {
           clientLanguage: data.language,
           clientTimezone: data.timezone,
           user: TomUser(
-            id: 1,
+            id: '1',
             username: username,
             firstname: '',
             lastname: '',

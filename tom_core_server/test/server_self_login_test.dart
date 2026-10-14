@@ -753,7 +753,7 @@ void main() {
         );
         final user = TomPrincipal(
           authenticated: true,
-          user: TomUser(id: 1, username: 'alice'),
+          user: TomUser(id: '1', username: 'alice'),
           aci: TomAccessControlInformation(
             entitlements: ['feature.tasks.write', 'feature.tasks.read'],
           ),
@@ -775,7 +775,7 @@ void main() {
       );
       final user = TomPrincipal(
         authenticated: true,
-        user: TomUser(id: 1, username: 'alice'),
+        user: TomUser(id: '1', username: 'alice'),
         aci: TomAccessControlInformation(
           entitlements: ['feature.tasks.write', 'feature.tasks.read'],
         ),

@@ -217,7 +217,7 @@ void main() async {
 
     test('the zone principal attributes the write, with no plumbing', () async {
       final principal = TomPrincipal(
-        user: TomUser(id: 42, username: 'ada'),
+        user: TomUser(id: '42', username: 'ada'),
         authenticated: true,
         organizationId: 7,
       );
@@ -230,7 +230,7 @@ void main() async {
 
       final record = sink.records.single;
       expect(record.actor.username, 'ada');
-      expect(record.actor.userId, 42);
+      expect(record.actor.userId, '42');
       expect(record.actor.authenticated, isTrue);
       expect(record.actor.organizationId, 7);
       // The request id stitches this write to the rest of the same request.

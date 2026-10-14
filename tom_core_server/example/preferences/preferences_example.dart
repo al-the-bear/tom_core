@@ -291,7 +291,7 @@ TomPrincipal _principal(int userId) => TomPrincipal(
   clientLanguage: 'en',
   clientTimezone: 'UTC',
   user: TomUser(
-    id: userId,
+    id: '$userId',
     username: 'user$userId',
     firstname: 'Example',
     lastname: 'User',
@@ -341,7 +341,7 @@ class _InMemoryPreferenceTable
     TomPageRequest? page,
   ]) async {
     statements++;
-    final principalId = parameters['principalId'] as int?;
+    final principalId = parameters['principalId'] as String?;
     final key = parameters['key'] as String?;
     // Insertion order, deliberately — see this class's note on ordering.
     return _rows.values
@@ -356,7 +356,7 @@ class _InMemoryPreferenceTable
     Map<String, Object?> parameters,
   ) async {
     statements++;
-    final principalId = parameters['principalId'] as int?;
+    final principalId = parameters['principalId'] as String?;
     return TomDbInt(
       _rows.values.where((row) => row.principalId == principalId).length,
     );

@@ -444,7 +444,7 @@ separate from authorization data. Unauthenticated users use the special
 
 ```dart
 TomUser({
-  int id = -1,
+  String id = noId,
   String username = guestUsername,
   String? firstname,
   String? lastname,
@@ -466,12 +466,13 @@ TomUser({
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `guestUsername` | `static const String` | The username value for unauthenticated/anonymous users (`"GUEST"`). |
+| `noId` | `static const String` | The `id` of a user the deployment has not identified — a guest, or a principal built before its user was known (`''`). |
 
 #### Properties
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `id` | `int` | The user's unique identifier. |
+| `id` | `String` | The user's identifier, unique within the tenant the user belongs to — not across tenants: another tenant's user with the same id is a different person. A string, so a deployment can use a UUID, a directory's object id or a database key rendered as text. Travels in the token as the `userId` claim, a string; a claim of any other shape reads as `noId`. |
 | `username` | `String` | The user's login username. |
 | `firstname` | `String?` | The user's first name. |
 | `lastname` | `String?` | The user's last name. |
@@ -548,7 +549,8 @@ TomPrincipal({
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `authenticated` | `bool` | Whether the user has been authenticated. |
-| `id` | `int` | The user's unique identifier (from [user]). |
+| `id` | `String` | The user's identifier, unique within the principal's tenant (from [user]). |
+| `qualifiedId` | `String` | *(getter)* `id` qualified by `tenant` — `tenant:<tenant>/<id>`, or `id` itself for a principal of no tenant. The key the framework files per-principal rows under: 2FA enrolments, preferences, the `owner` data scope, and the resource grants and delegations the `resource` scope reads. Keeps two tenants' rows apart where they share a table (`shared` isolation), and is the same key in every isolation model. |
 | `username` | `String` | The user's login name (from [user]). |
 | `user` | `TomUser` | The user's identity information. |
 | `tenant` | `String?` | The tenant this principal belongs to — the isolation boundary its data, caches and jobs live behind — or `null` in a deployment without tenancy. Not the `organization`: a tenant is whose data this is, an organization a business unit inside it (see `TomTenantContext`). Carried in the token as the `tenant` claim, which the server treats as authoritative. |

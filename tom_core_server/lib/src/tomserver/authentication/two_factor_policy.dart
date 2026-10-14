@@ -249,8 +249,11 @@ abstract class Tom2FAGraceStore {
   /// obligation rather than about any one way of meeting it. Keying by
   /// mechanism would hand a user a fresh allowance for every mechanism the
   /// deployment offers.
+  ///
+  /// The principal's tenant-qualified id ([TomPrincipal.qualifiedId]), for the
+  /// reason [Tom2FAEnrolmentStore.principalKeyOf] gives.
   static String principalKeyOf(Tom2FAContext context) =>
-      context.principal.id.toString();
+      context.principal.qualifiedId;
 }
 
 /// The default [Tom2FAGraceStore]: a map in this process.

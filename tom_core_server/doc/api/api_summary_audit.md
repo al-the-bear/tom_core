@@ -204,7 +204,7 @@ cannot look alike.
 ```dart
 const TomAuditActor({
   required String username,
-  int? userId,
+  String? userId,
   bool authenticated = false,
   int? organizationId,
   int? applicationId,
@@ -238,7 +238,7 @@ threading it through their signatures.
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `username` | `String` | The username the action is attributed to, or `systemUsername` (final). |
-| `userId` | `int?` | The principal's user id; `null` for the system actor or an unset id (final). |
+| `userId` | `String?` | The principal's user id, unique within its tenant; `null` for the system actor or an unset id (final). |
 | `authenticated` | `bool` | Whether the principal had authenticated — recorded rather than assumed, since an unauthenticated principal can still reach an endpoint (final). |
 | `organizationId` | `int?` | The principal's organization id, or `null` (final). |
 | `applicationId` | `int?` | The principal's application id, or `null` (final). |

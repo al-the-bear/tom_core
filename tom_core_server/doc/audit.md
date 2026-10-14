@@ -298,9 +298,11 @@ avoid:
   written during one request together.
 
 A write outside a request — a background job, a migration — is attributed to
-`TomAuditActor.system` (username `SYSTEM`), never to a blank or null actor. The
-`-1` sentinel `TomPrincipal` uses for its unset ids is normalised to `null` and
-then omitted, so the trail never claims a user id that does not exist.
+`TomAuditActor.system` (username `SYSTEM`), never to a blank or null actor. An
+unset id — the empty user id (`TomUser.noId`), the `-1` of an unset
+organization or application — is normalised to `null` and then omitted, so the
+trail never claims an id that does not exist. The user id is a string, unique
+within the principal's tenant.
 
 ## Sinks, Persistence and Retention
 

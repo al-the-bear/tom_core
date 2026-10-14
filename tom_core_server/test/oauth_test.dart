@@ -387,7 +387,7 @@ TomPrincipal _principal(
   clientLanguage: a.language,
   clientTimezone: a.timezone,
   user: TomUser(
-    id: 7,
+    id: '7',
     username: username,
     firstname: 'Alice',
     lastname: 'Example',

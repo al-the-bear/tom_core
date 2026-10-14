@@ -43,6 +43,15 @@
 
 ### Changed
 
+- **The principal id is a string, unique within its tenant.** `TomUser.id` and
+  `TomPrincipal.id` are `String` (default `TomUser.noId`, `''`), so a deployment
+  can use a UUID, a directory's object id or a database key rendered as text;
+  the token's `userId` claim is a string, and a claim of another shape reads as
+  `noId`. Another tenant may hold the same id — a different person.
+  `TomPrincipal.qualifiedId` is the id qualified by the principal's tenant, the
+  key per-principal rows are filed under, and `TomTenantContext.qualifyCurrent`
+  qualifies a name by the tenant in context.
+
 - **`TomJobStore.findWindow(jobName, scheduledFor, {String? tenant})`** — every
   store implementation takes the named `tenant` and matches a window of that
   tenant only (`null` matching runs of no tenant). `TomMemoryJobStore` and

@@ -240,7 +240,7 @@ void main() {
       TomServerPrincipal.clear();
       TomServerPrincipal.install(
         TomPrincipal(
-          user: TomUser(id: 7, username: 'unlicensed-deployment'),
+          user: TomUser(id: '7', username: 'unlicensed-deployment'),
           aci: TomAccessControlInformation(entitlements: const []),
           authenticated: true,
         ),

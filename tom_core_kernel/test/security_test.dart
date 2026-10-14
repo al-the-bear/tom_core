@@ -29,7 +29,7 @@ TomPrincipal createTestPrincipal({
   return TomPrincipal(
     authenticated: authenticated,
     user: TomUser(
-      id: 1,
+      id: '1',
       username: username,
       firstname: 'Test',
       lastname: 'User',
@@ -67,7 +67,7 @@ TomPrincipal createTestPrincipalWithGroups({
   return TomPrincipal(
     authenticated: authenticated,
     user: TomUser(
-      id: 1,
+      id: '1',
       username: username,
       firstname: 'Test',
       lastname: 'User',
@@ -102,7 +102,7 @@ void main() {
     TomClientJwtToken issued(Duration expiresIn) => TomClientJwtToken(
       TomServerJwtToken({
         'username': 'ada',
-        'userId': 7,
+        'userId': '7',
       }, expiresIn: expiresIn).getJWT('tom'),
       decrypt: false,
     );
@@ -144,7 +144,7 @@ void main() {
       TomBearerAuthentication.clearTokens();
       String raw(Duration expiresIn) => TomServerJwtToken({
         'username': 'ada',
-        'userId': 7,
+        'userId': '7',
       }, expiresIn: expiresIn).getJWT('tom');
       expect(
         () => TomBearerAuthentication.setTokens(
@@ -259,7 +259,7 @@ void main() {
         var user = TomUser();
 
         // Assert
-        expect(user.id, equals(-1));
+        expect(user.id, equals(TomUser.noId));
         expect(user.username, equals(TomUser.guestUsername));
         expect(user.firstname, isNull);
         expect(user.lastname, isNull);
@@ -281,7 +281,7 @@ void main() {
 
         // Act
         var user = TomUser(
-          id: 123,
+          id: '123',
           username: 'jdoe',
           firstname: 'John',
           lastname: 'Doe',
@@ -298,7 +298,7 @@ void main() {
         );
 
         // Assert
-        expect(user.id, equals(123));
+        expect(user.id, equals('123'));
         expect(user.username, equals('jdoe'));
         expect(user.firstname, equals('John'));
         expect(user.lastname, equals('Doe'));
@@ -379,7 +379,7 @@ void main() {
       test('should return formatted string representation', () {
         // Arrange
         var user = TomUser(
-          id: 123,
+          id: '123',
           username: 'jdoe',
           firstname: 'John',
           lastname: 'Doe',
@@ -648,7 +648,7 @@ void main() {
         expect(principal.requires2FA, isFalse);
         expect(principal.twoFactorType, isNull);
         expect(principal.username, equals(TomUser.guestUsername));
-        expect(principal.id, equals(-1));
+        expect(principal.id, equals(TomUser.noId));
         expect(principal.organization, isNull);
         expect(principal.application, isNull);
         expect(principal.process, isNull);
@@ -661,7 +661,7 @@ void main() {
 
       test('should create with provided values', () {
         // Arrange
-        var user = TomUser(id: 42, username: 'jdoe');
+        var user = TomUser(id: '42', username: 'jdoe');
         var aci = TomAccessControlInformation(roles: ['admin']);
         var cli = TomClientLimitsInformation(enabledModules: ['core']);
 
@@ -691,7 +691,7 @@ void main() {
 
         // Assert
         expect(principal.authenticated, isTrue);
-        expect(principal.id, equals(42));
+        expect(principal.id, equals('42'));
         expect(principal.username, equals('jdoe'));
         expect(principal.aci.roles, contains('admin'));
         expect(principal.cli.enabledModules, contains('core'));
@@ -743,13 +743,15 @@ void main() {
     group('user accessors', () {
       test('should return user id', () {
         var principal = TomPrincipal(
-          user: TomUser(id: 999, username: 'testuser'),
+          user: TomUser(id: '999', username: 'testuser'),
         );
-        expect(principal.id, equals(999));
+        expect(principal.id, equals('999'));
       });
 
       test('should return username', () {
-        var principal = TomPrincipal(user: TomUser(id: 1, username: 'myuser'));
+        var principal = TomPrincipal(
+          user: TomUser(id: '1', username: 'myuser'),
+        );
         expect(principal.username, equals('myuser'));
       });
     });
@@ -759,7 +761,7 @@ void main() {
         // Arrange
         var principal = TomPrincipal(
           authenticated: true,
-          user: TomUser(id: 1, username: 'testuser'),
+          user: TomUser(id: '1', username: 'testuser'),
           organization: 'TestOrg',
         );
 
@@ -2925,7 +2927,7 @@ void main() {
           TomPrincipal(
             authenticated: true,
             user: TomUser(
-              id: 7,
+              id: '7',
               username: 'alice',
               firstname: 'Alice',
               lastname: 'Anders',
@@ -3011,7 +3013,7 @@ void main() {
         );
 
         expect(publicInfo['username'], equals('alice'));
-        expect(publicInfo['userId'], equals(7));
+        expect(publicInfo['userId'], equals('7'));
         expect(publicInfo['userTimezone'], equals('America/Chicago'));
       });
 
@@ -3078,7 +3080,7 @@ void main() {
       TomPrincipal subject() => TomPrincipal(
         authenticated: true,
         user: TomUser(
-          id: 7,
+          id: '7',
           username: 'alice',
           firstname: 'Alice',
           lastname: 'Anders',
@@ -3109,7 +3111,7 @@ void main() {
           expect(publicInfo.containsKey(field), isFalse, reason: field);
         }
         expect(publicInfo['username'], 'alice');
-        expect(publicInfo['userId'], 7);
+        expect(publicInfo['userId'], '7');
       });
 
       test('all of them are in the private half', () {
@@ -3168,7 +3170,7 @@ void main() {
           _FakeClientJwtToken(payload: publicInfo),
         );
         expect(seen.username, 'alice');
-        expect(seen.user.id, 7);
+        expect(seen.user.id, '7');
         expect(seen.user.email, isNull);
         expect(seen.user.firstname, isNull);
         expect(seen.user.attributes, isEmpty);
@@ -3198,7 +3200,7 @@ void main() {
         expect(restored.authenticated, isTrue);
         expect(restored.organizationId, equals(-1));
         expect(restored.applicationId, equals(-1));
-        expect(restored.user.id, equals(-1));
+        expect(restored.user.id, equals(TomUser.noId));
         expect(restored.user.attributes, isEmpty);
         expect(restored.aci.roles, isEmpty);
         expect(restored.aci.groups, isEmpty);
@@ -3208,14 +3210,15 @@ void main() {
 
       test('tolerates wrong-shaped collection fields', () {
         // attributes is a String instead of a Map; subscription fields are the
-        // wrong shape; ACI lists are absent. None of this should crash.
+        // wrong shape; userId is a number instead of a string; ACI lists are
+        // absent. None of this should crash.
         final token = _FakeClientJwtToken(
           payload: {
             'username': 'carol',
             'attributes': 'not-a-map',
             'subscription_enabledModules': 'not-a-list',
             'subscription_quotas': 'not-a-map',
-            'userId': 'not-an-int',
+            'userId': 42,
           },
         );
 
@@ -3225,7 +3228,7 @@ void main() {
 
         expect(restored.username, equals('carol'));
         expect(restored.user.attributes, isEmpty);
-        expect(restored.user.id, equals(-1));
+        expect(restored.user.id, equals(TomUser.noId));
         expect(restored.cli.enabledModules, isEmpty);
         expect(restored.cli.quotas, isEmpty);
       });
@@ -3379,7 +3382,7 @@ void main() {
       test('setTokens parses the token and exposes a principal', () {
         final jwt = _makeJwt({
           'username': 'dave',
-          'userId': 7,
+          'userId': '7',
           'firstname': 'Dave',
         });
 
@@ -3387,13 +3390,13 @@ void main() {
 
         final principal = TomBearerAuthentication.getPrincipal();
         expect(principal.username, equals('dave'));
-        expect(principal.user.id, equals(7));
+        expect(principal.user.id, equals('7'));
         expect(TomBearerAuthentication.token, equals(jwt));
         expect(TomBearerAuthentication.authorizationToken, equals(jwt));
       });
 
       test('replacePrincipalAci replaces the ACI on the current principal', () {
-        final jwt = _makeJwt({'username': 'erin', 'userId': 8});
+        final jwt = _makeJwt({'username': 'erin', 'userId': '8'});
         TomBearerAuthentication.setTokens(jwt, jwt, false);
 
         TomBearerAuthentication.replacePrincipalAci(
@@ -3422,7 +3425,7 @@ void main() {
         // symptom was UI thinning out rather than an error. That call no
         // longer compiles, so what is left to check is that the deliberate
         // spelling still does what it says.
-        final jwt = _makeJwt({'username': 'erin', 'userId': 8});
+        final jwt = _makeJwt({'username': 'erin', 'userId': '8'});
         TomBearerAuthentication.setTokens(jwt, jwt, false);
 
         TomBearerAuthentication.replacePrincipalAci(

@@ -266,7 +266,7 @@ void main() {
           body,
           zoneValues: {
             TomPrincipal: TomPrincipal(
-              user: TomUser(id: 1, username: 'role-holder'),
+              user: TomUser(id: '1', username: 'role-holder'),
               authenticated: true,
               aci: TomAccessControlInformation(roles: roles),
             ),
@@ -1277,7 +1277,7 @@ void main() {
       body,
       zoneValues: {
         TomPrincipal: TomPrincipal(
-          user: TomUser(id: 1, username: 'keyholder'),
+          user: TomUser(id: '1', username: 'keyholder'),
           authenticated: true,
           aci: TomAccessControlInformation(resourceKeys: keys),
         ),
@@ -1312,7 +1312,7 @@ void main() {
         expect(
           _routeInfo('/fixture/ticker').handler.checkAccess(
             TomPrincipal(
-              user: TomUser(id: 1, username: 'keyholder'),
+              user: TomUser(id: '1', username: 'keyholder'),
               authenticated: true,
               aci: TomAccessControlInformation(resourceKeys: ['ticker']),
             ),
@@ -1328,7 +1328,7 @@ void main() {
         expect(
           _routeInfo('/fixture/ticker').handler.checkAccess(
             TomPrincipal(
-              user: TomUser(id: 1, username: 'nobody'),
+              user: TomUser(id: '1', username: 'nobody'),
               authenticated: true,
               aci: TomAccessControlInformation(resourceKeys: ['other']),
             ),
@@ -1760,7 +1760,7 @@ void main() {
           () => handler.checkAutomaticAccess(false),
           zoneValues: {
             TomPrincipal: TomPrincipal(
-              user: TomUser(id: 1, username: 'keyholder'),
+              user: TomUser(id: '1', username: 'keyholder'),
               authenticated: true,
               aci: TomAccessControlInformation(resourceKeys: keys),
             ),
@@ -1962,7 +1962,7 @@ void main() {
       handler.enforceAccess,
       zoneValues: {
         TomPrincipal: TomPrincipal(
-          user: TomUser(id: 1, username: 'keyholder'),
+          user: TomUser(id: '1', username: 'keyholder'),
           authenticated: true,
           aci: TomAccessControlInformation(resourceKeys: keys, roles: roles),
         ),

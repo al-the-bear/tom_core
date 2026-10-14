@@ -1933,7 +1933,7 @@ class FixtureDocumentRepository
 /// scope is declared at all.
 ///
 /// The scope is `owner` on [ownerId], the simplest resolver that discriminates:
-/// `principal.id` must equal the row's `owner_id`. A file slot is addressed as
+/// `principal.qualifiedId` must equal the row's `owner_id`. A file slot is addressed as
 /// `<table>/<id>/<column>` with the id supplied by the caller, so this scope is
 /// the only thing between a guessed id and another principal's document.
 @tomReflector
@@ -1949,9 +1949,10 @@ class FixtureScopedDocumentRecord {
   @TomDbColumn(columnName: 'id', isReadOnly: true)
   int? id;
 
-  /// The scope field: the principal id that may see this row.
+  /// The scope field: the tenant-qualified id of the principal that may see
+  /// this row.
   @TomDbColumn(columnName: 'owner_id')
-  int? ownerId;
+  String? ownerId;
 
   /// An ordinary column, so a scoped row is more than its file.
   @TomDbColumn(columnName: 'title')

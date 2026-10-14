@@ -39,7 +39,7 @@ import 'fixtures/test_database.dart';
 /// are keyed by (`principalId: '<id>'`).
 TomPrincipal _principalWithId(int userId) => TomPrincipal(
   authenticated: true,
-  user: TomUser(id: userId, username: 'user$userId'),
+  user: TomUser(id: '$userId', username: 'user$userId'),
   aci: TomAccessControlInformation(roles: const ['user']),
 );
 

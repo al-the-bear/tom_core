@@ -661,6 +661,75 @@ void main() {
       expect(result.authenticationToken, isEmpty);
     });
   });
+
+  group('one principal id in two tenants', () {
+    // `alice`, id `u1`, in acme and in globex: two people. A principal id is
+    // unique within its tenant only; the per-principal stores key by the
+    // tenant-qualified id, so under `shared` isolation, where both tenants'
+    // rows share a table, they stay apart. The database half is
+    // principal_per_tenant_db_test.dart.
+    TomPrincipal alice(String tenant) => TomPrincipal(
+      authenticated: true,
+      tenant: tenant,
+      user: TomUser(id: 'u1', username: 'alice'),
+    );
+    Tom2FAContext context(String tenant) =>
+        Tom2FAContext(principal: alice(tenant));
+
+    test('2FA enrolments are kept per tenant', () async {
+      final store = TomMemory2FAEnrolmentStore();
+      await store.store(
+        context('acme'),
+        Tom2FAEnrolment(type: 'totp', enrolmentId: 'acme-phone'),
+      );
+      expect(
+        [
+          for (final e in await store.enrolmentsFor(context('acme')))
+            e.enrolmentId,
+        ],
+        ['acme-phone'],
+      );
+      expect(await store.enrolmentsFor(context('globex')), isEmpty);
+    });
+
+    test('2FA grace is spent per tenant', () async {
+      final store = TomMemory2FAGraceStore();
+      await store.recordConsumed(context('acme'));
+      expect(await store.consumedBy(context('acme')), 1);
+      expect(await store.consumedBy(context('globex')), 0);
+    });
+
+    test('the owner scope admits only the tenant\'s own rows', () {
+      final owner = TomDataScopeRegistry.resolverFor('owner')!;
+      expect(owner(alice('acme')), ['tenant:acme/u1']);
+      expect(owner(alice('globex')), ['tenant:globex/u1']);
+    });
+
+    test('resource grants are looked up by the qualified id', () async {
+      final grants = InMemoryPrincipalResourceGrantStore([
+        TomPrincipalResourceGrant(
+          principalId: TomTenantContext.qualify('u1', 'acme'),
+          resourceKey: 'doc-1',
+          role: 'owner',
+        ),
+      ]);
+      final resolver = TomPrincipalResourceRoleResolver(grants);
+      final scope = TomResourceDataScope(
+        TomDelegationResolver(
+          InMemoryPrincipalDelegationStore(const []),
+          resolver,
+        ),
+      );
+      expect(
+        await resolver.resolveResourceRoles(scope.principalId(alice('acme'))),
+        {'doc-1': 'owner'},
+      );
+      expect(
+        await resolver.resolveResourceRoles(scope.principalId(alice('globex'))),
+        isEmpty,
+      );
+    });
+  });
 }
 
 /// A directory whose accounts all belong to `globex`.

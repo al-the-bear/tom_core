@@ -43,7 +43,7 @@ FixtureTaskRecord _task(String title, int priority) => FixtureTaskRecord()
 /// are keyed by.
 TomPrincipal _principalWithId(int userId) => TomPrincipal(
   authenticated: true,
-  user: TomUser(id: userId, username: 'user$userId'),
+  user: TomUser(id: '$userId', username: 'user$userId'),
   aci: TomAccessControlInformation(roles: const ['user']),
 );
 

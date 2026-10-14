@@ -77,8 +77,9 @@ class TomAuditActor {
   /// The username the action is attributed to, or [systemUsername].
   final String username;
 
-  /// The principal's user id, or `null` for the system actor.
-  final int? userId;
+  /// The principal's user id, or `null` for the system actor and for a
+  /// principal whose user has no id.
+  final String? userId;
 
   /// Whether the principal had authenticated.
   ///
@@ -121,7 +122,7 @@ class TomAuditActor {
     int? set(int value) => value < 0 ? null : value;
     return TomAuditActor(
       username: principal.username,
-      userId: set(principal.id),
+      userId: principal.id.isEmpty ? null : principal.id,
       authenticated: principal.authenticated,
       organizationId: set(principal.organizationId),
       applicationId: set(principal.applicationId),
@@ -150,7 +151,7 @@ class TomAuditActor {
   /// Rebuilds an actor from [json] as written by [toJson].
   factory TomAuditActor.fromJson(Map<String, Object?> json) => TomAuditActor(
     username: json['username'] as String? ?? systemUsername,
-    userId: json['userId'] as int?,
+    userId: json['userId'] as String?,
     authenticated: json['authenticated'] as bool? ?? false,
     organizationId: json['organizationId'] as int?,
     applicationId: json['applicationId'] as int?,

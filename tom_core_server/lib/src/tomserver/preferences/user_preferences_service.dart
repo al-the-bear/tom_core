@@ -141,7 +141,7 @@ class TomUserPreferences {
   Future<List<TomUserPreferenceDto>> all([TomPageRequest? page]) async {
     final rows = await repository.findByQuerySentence(
       'FIND BY principal_id = :principalId ORDER BY preference_key',
-      {'principalId': _requirePrincipal().id},
+      {'principalId': _requirePrincipal().qualifiedId},
       null,
       page,
     );
@@ -237,7 +237,7 @@ class TomUserPreferences {
     // over is what makes this an upsert — and the table's unique key on
     // (principal_id, preference_key) would reject the alternative anyway.
     final row = existing ?? TomUserPreference();
-    row.principalId = principal.id;
+    row.principalId = principal.qualifiedId;
     row.preferenceKey = key;
     row.valueType = valueType;
     row.valueJson = valueJson;
@@ -280,7 +280,7 @@ class TomUserPreferences {
   Future<int> clear() async {
     return repository.deleteByQuerySentence(
       'DELETE BY principal_id = :principalId',
-      {'principalId': _requirePrincipal().id},
+      {'principalId': _requirePrincipal().qualifiedId},
     );
   }
 
@@ -308,7 +308,7 @@ class TomUserPreferences {
   Future<void> _requireRoomFor(TomPrincipal principal, String key) async {
     final held = await repository.countByQuerySentence(
       'COUNT BY principal_id = :principalId',
-      {'principalId': principal.id},
+      {'principalId': principal.qualifiedId},
     );
     if ((held.get() ?? 0) < tomUserPreferencesMaxPerPrincipal) return;
     throw TomUserPreferenceException(
@@ -331,7 +331,7 @@ class TomUserPreferences {
   Future<TomUserPreference?> _rowFor(TomPrincipal principal, String key) async {
     final matches = await repository.findByQuerySentence(
       'FIND BY principal_id = :principalId AND preference_key = :key',
-      {'principalId': principal.id, 'key': key},
+      {'principalId': principal.qualifiedId, 'key': key},
     );
     return matches.isEmpty ? null : matches.first;
   }

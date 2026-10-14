@@ -38,7 +38,7 @@ import 'package:tom_core_server/tom_core_server.dart';
 /// visible.
 TomUserPreference _row(DateTime? updatedAt) => TomUserPreference(
   id: 4,
-  principalId: 7,
+  principalId: '7',
   preferenceKey: 'tom.theme',
   valueType: 'String',
   valueJson: '"dark"',

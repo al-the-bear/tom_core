@@ -1346,7 +1346,7 @@ one.
 #### TomDataScopeRegistry
 
 Registry of the named row-scope resolvers a `@TomDbScope` can reference. Three
-resolvers ship out of the box: `'owner'` (the principal's own id), `'group'` (the
+resolvers ship out of the box: `'owner'` (the principal's own tenant-qualified id, `principal.qualifiedId`), `'group'` (the
 principal's groups) — both synchronous, and both showing a `null` principal
 nothing — and `'resource'` (`TomDbScope.resourceScope`), which resolves
 asynchronously through the installed `resourceScopeSource` and denies every row
@@ -1420,10 +1420,10 @@ static.
 | `build` | `static TomDataScopePredicate? build(TomQueryBuilder builder, TomDbScope scope, TomColumnInformation col, TomPrincipal? principal)` | Builds the scope predicate for a synchronous scope; `null` when the resolver opts out. |
 | `buildAsync` | `static Future<TomDataScopePredicate?> buildAsync(TomQueryBuilder builder, TomDbScope scope, TomColumnInformation col, TomPrincipal? principal)` | Builds the union scope predicate for an async scope. |
 | `anyOf` | `static TomDataScopePredicate anyOf(TomQueryBuilder builder, TomColumnInformation col, List<List<Object?>> groups)` | The union predicate over id-set groups: an OR of one `IN` list per group. |
-| `inList` | `static TomDataScopePredicate inList(TomQueryBuilder builder, TomColumnInformation col, Iterable<Object?> values, {String prefix = parameterPrefix})` | Builds `<col> IN (…)` binding one parameter per value. |
+| `inList` | `static TomDataScopePredicate inList(TomQueryBuilder builder, TomColumnInformation col, Iterable<Object?> values, {String prefix = parameterPrefix})` | Builds `<col> IN (…)` binding one parameter per value, in `col`'s type: on an `int` column a value given as text is bound as the number it spells, and one that spells no number (a tenant-qualified id) is left out — it matches no row. |
 | `allowedValues` | `static List<Object?>? allowedValues(TomDbScope scope, TomPrincipal? principal)` | Resolves the scope-field values `principal` is allowed for a **synchronous** `scope`. |
 | `allowedValuesAsync` | `static Future<List<Object?>?> allowedValuesAsync(TomDbScope scope, TomPrincipal? principal, {bool forWrite = false})` | The same for an **async** scope, flattening the resolver's OR-groups into one membership set. The read path keeps the groups apart because each renders its own `IN` list; a membership check only asks whether the value is in *any* group. `null` (the resolver opted out) passes through, so the result feeds `permits` exactly as `allowedValues` does. |
-| `permits` | `static bool permits(List<Object?>? allowed, Object? value)` | Whether `value` falls within the `allowed` scope values (C-3 write membership). |
+| `permits` | `static bool permits(List<Object?>? allowed, Object? value)` | Whether `value` falls within the `allowed` scope values (C-3 write membership). Values compare by their text, as the read side binds them: an `int` owner column holding `7` belongs to the principal whose id is `'7'`. |
 | `inColumn` | `static TomOperator<TomDbBool> inColumn(TomQueryBuilder builder, TomColumnInformation col, List<String> parameterNames)` | Builds `<col> IN (:name0, …)` against one bound parameter per name. |
 | `columnEqualsParam` | `static TomOperator<TomDbBool> columnEqualsParam(TomQueryBuilder builder, TomColumnInformation col, String parameterName)` | Builds `<col> = :parameterName`, typed on the column's declared Dart type. |
 

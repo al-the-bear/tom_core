@@ -37,7 +37,7 @@ TomColumnInformation _resourceKeyColumn(String table) {
 }
 
 TomPrincipal _principal(int id) => TomPrincipal(
-  user: TomUser(id: id, username: 'user$id'),
+  user: TomUser(id: '$id', username: 'user$id'),
   aci: TomAccessControlInformation(),
   authenticated: true,
 );

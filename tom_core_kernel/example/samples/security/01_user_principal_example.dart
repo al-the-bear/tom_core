@@ -15,7 +15,7 @@ import '../../sample_preamble.dart';
 // =============================================================================
 
 class BasicUserExample {
-  static int? userId;
+  static String? userId;
   static String? userUsername;
   static String? userEmail;
   static String? userTimezone;
@@ -23,7 +23,7 @@ class BasicUserExample {
 
   static void example1BasicUser() {
     final user = TomUser(
-      id: 12345,
+      id: '12345',
       username: 'jdoe',
       firstname: 'John',
       lastname: 'Doe',
@@ -41,7 +41,7 @@ class BasicUserExample {
     userTimezone = user.timezone;
     userDepartment = user.attributes['department'] as String?;
 
-    assert(userId == 12345, 'User ID should match');
+    assert(userId == '12345', 'User ID should match');
     assert(userUsername == 'jdoe', 'Username should match');
     assert(userEmail == 'john.doe@example.com', 'Email should match');
     assert(userTimezone == 'America/Los_Angeles', 'Timezone should match');
@@ -154,11 +154,11 @@ class ClientLimitsInfoExample {
 class TomPrincipalExample {
   static bool? authenticated;
   static String? principalUsername;
-  static int? principalId;
+  static String? principalId;
   static String? organization;
 
   static void example5TomPrincipal() {
-    final user = TomUser(id: 12345, username: 'jdoe');
+    final user = TomUser(id: '12345', username: 'jdoe');
     final aci = TomAccessControlInformation(
       roles: ['admin'],
       groups: ['engineering'],
@@ -187,7 +187,7 @@ class TomPrincipalExample {
 
     assert(authenticated == true, 'Should be authenticated');
     assert(principalUsername == 'jdoe', 'Username should match');
-    assert(principalId == 12345, 'ID should match');
+    assert(principalId == '12345', 'ID should match');
     assert(organization == 'acme-corp', 'Organization should match');
   }
 }
@@ -204,7 +204,7 @@ class PrincipalContextExample {
   static void example6PrincipalContext() {
     final principal = TomPrincipal(
       authenticated: true,
-      user: TomUser(id: 1, username: 'testuser'),
+      user: TomUser(id: '1', username: 'testuser'),
     );
 
     principal.addToContext({
@@ -239,7 +239,7 @@ class TwoFactorPrincipalExample {
       authenticated: true,
       requires2FA: true,
       twoFactorType: 'totp',
-      user: TomUser(id: 99, username: 'secure_user'),
+      user: TomUser(id: '99', username: 'secure_user'),
     );
 
     requires2FA = principal.requires2FA;

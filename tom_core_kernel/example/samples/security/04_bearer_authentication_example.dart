@@ -59,7 +59,7 @@ class BearerAuthenticationExample {
   }) => TomPrincipal(
     authenticated: true,
     user: TomUser(
-      id: 123,
+      id: '123',
       username: 'john.doe',
       firstname: 'John',
       lastname: 'Doe',

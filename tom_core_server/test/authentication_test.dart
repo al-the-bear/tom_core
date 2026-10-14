@@ -76,7 +76,7 @@ TomPrincipal _principal(
   clientLanguage: a.language,
   clientTimezone: a.timezone,
   user: TomUser(
-    id: 1,
+    id: '1',
     username: a.username,
     firstname: 'Test',
     lastname: 'User',

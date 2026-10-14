@@ -16,7 +16,7 @@ import '../../sample_preamble.dart';
 
 final adminPrincipal = TomPrincipal(
   authenticated: true,
-  user: TomUser(id: 1, username: 'admin_user'),
+  user: TomUser(id: '1', username: 'admin_user'),
   aci: TomAccessControlInformation(
     roles: ['admin', 'user'],
     groups: ['administrators', 'all-employees'],
@@ -27,7 +27,7 @@ final adminPrincipal = TomPrincipal(
 
 final regularPrincipal = TomPrincipal(
   authenticated: true,
-  user: TomUser(id: 2, username: 'regular_user'),
+  user: TomUser(id: '2', username: 'regular_user'),
   aci: TomAccessControlInformation(
     roles: ['user'],
     groups: ['developers', 'all-employees'],
@@ -303,7 +303,7 @@ class GuestAccessExample {
     authenticatedGuestResult = guestAccess.checkAccessibility(
       TomPrincipal(
         authenticated: false,
-        user: TomUser(id: 3, username: 'half_logged_in'),
+        user: TomUser(id: '3', username: 'half_logged_in'),
       ),
     );
 

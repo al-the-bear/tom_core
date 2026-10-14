@@ -315,7 +315,7 @@ Future<void> run() async {
   final principal = TomPrincipal(
     authenticated: true,
     user: TomUser(
-      id: 7,
+      id: '7',
       username: 'bea',
       firstname: 'Bea',
       lastname: 'Muster',

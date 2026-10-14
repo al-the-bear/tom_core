@@ -885,7 +885,7 @@ typedef TomAccessControlHandler =
 /// ```dart
 /// TomCustomAccess.registerHandler('canEditDocument', (principal, docId) {
 ///   if (principal == null) return false;
-///   return DocumentService.isOwner(principal.id, int.parse(docId));
+///   return DocumentService.isOwner(principal.id, docId);
 /// });
 /// ```
 ///

@@ -319,6 +319,26 @@
 
 ### Changed
 
+- **Per-principal rows are keyed by the tenant-qualified principal id**
+  (`TomPrincipal.qualifiedId`, `tenant:<tenant>/<id>`; the bare id without
+  tenancy). A principal id is unique within its tenant only: another tenant's
+  `u1` is a different person. `Tom2FAEnrolmentStore.principalKeyOf` and
+  `Tom2FAGraceStore.principalKeyOf`, the `owner` data scope, `TomUserPreferences`
+  and `TomResourceDataScope`'s default key all use it, so under `shared`
+  isolation two tenants' rows stay apart in one table, and under `schema` and
+  `database` the stored key is the same. `TomUserPreference.principalId` is a
+  `String` and `tom_user_preference.principal_id` a `VARCHAR(255)`; a deployment
+  that applied the earlier reference migration runs
+  `ALTER TABLE tom_user_preference MODIFY principal_id VARCHAR(255) NOT NULL` —
+  its rows, written without tenancy, keep their keys. `TomAuditActor.userId` is
+  a `String?`. Scope values bind in the column's type and compare by their
+  text (`TomDataScope.inList`, `TomDataScope.permits`): an `int` owner column
+  of a deployment without tenancy keeps matching the bare id, and a
+  tenant-qualified id matches no row there. `doc/tenancy.md` § Principals per
+  Tenant; tests in
+  `test/principal_per_tenant_db_test.dart` (all three isolation models) and
+  `test/tenancy_test.dart`.
+
 - **`tom_job_run.job_name` is `VARCHAR(150)`**, so the window key
   `(job_name, tenant, scheduled_for)` stays inside the 767-byte index limit of
   older InnoDB row formats; the reference migration

@@ -68,7 +68,7 @@ Future<void> run() async {
 
   sink.clear();
   final principal = TomPrincipal(
-    user: TomUser(id: 42, username: 'ada'),
+    user: TomUser(id: '42', username: 'ada'),
     authenticated: true,
   );
   await runZoned(
@@ -85,7 +85,7 @@ Future<void> run() async {
     '(id ${attributed.actor.userId}, request ${attributed.requestId})',
   );
   check(
-    attributed.actor.userId == 42,
+    attributed.actor.userId == '42',
     'inside a request the actor is taken from the ambient zone, unthreaded',
   );
 

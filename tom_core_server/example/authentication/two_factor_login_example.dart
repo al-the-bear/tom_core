@@ -90,7 +90,7 @@ class _DirectoryService implements TomAuthenticationService {
         clientLanguage: a.language,
         clientTimezone: a.timezone,
         user: TomUser(
-          id: 1,
+          id: '1',
           username: a.username,
           firstname: 'Alice',
           lastname: 'Example',

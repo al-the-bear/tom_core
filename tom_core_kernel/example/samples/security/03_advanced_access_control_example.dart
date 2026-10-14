@@ -23,7 +23,7 @@ import '../../sample_preamble.dart';
 
 final premiumPrincipal = TomPrincipal(
   authenticated: true,
-  user: TomUser(id: 1, username: 'premium_user'),
+  user: TomUser(id: '1', username: 'premium_user'),
   aci: TomAccessControlInformation(
     roles: ['user'],
     groups: ['premium-subscribers'],
@@ -39,7 +39,7 @@ final premiumPrincipal = TomPrincipal(
 
 final basicPrincipal = TomPrincipal(
   authenticated: true,
-  user: TomUser(id: 2, username: 'basic_user'),
+  user: TomUser(id: '2', username: 'basic_user'),
   aci: TomAccessControlInformation(
     roles: ['user'],
     groups: ['basic-plan'],
@@ -280,7 +280,7 @@ class ResourceKeyProtectionExample {
     // key, and a per-resource role that holds `user.salary` read-only.
     final hrPrincipal = TomPrincipal(
       authenticated: true,
-      user: TomUser(id: 4, username: 'hr_user'),
+      user: TomUser(id: '4', username: 'hr_user'),
       aci: TomAccessControlInformation(
         resourceKeys: ['profile.*'],
         resourceRoles: {'user.salary': 'viewer'},

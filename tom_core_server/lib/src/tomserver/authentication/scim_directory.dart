@@ -88,7 +88,7 @@ class TomScimIdentityDirectory extends TomExternalIdentityDirectory {
         clientCountry: authData.country,
         clientTimezone: authData.timezone,
         user: TomUser(
-          id: int.tryParse(user.id) ?? -1,
+          id: user.id,
           username: user.name,
           firstname: name is Map
               ? '${scimLookup(name.cast(), 'givenName') ?? ''}'

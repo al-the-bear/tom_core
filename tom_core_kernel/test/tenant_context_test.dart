@@ -106,6 +106,13 @@ void main() {
       expect(TomTenantContext.qualify('alice'), 'alice');
     });
 
+    test('qualifies a name by the tenant in context', () {
+      expect(TomTenantContext.qualifyCurrent('u1'), 'u1');
+      TomTenantContext.run('acme', () {
+        expect(TomTenantContext.qualifyCurrent('u1'), 'tenant:acme/u1');
+      });
+    });
+
     test(
       'a tenant-scoped command runs inside its tenant wherever it runs',
       () async {
@@ -116,10 +123,48 @@ void main() {
     );
   });
 
+  group('the principal id', () {
+    TomPrincipal alice(String? tenant) => TomPrincipal(
+      user: TomUser(id: 'u1', username: 'alice'),
+      authenticated: true,
+      tenant: tenant,
+    );
+
+    test('one id in two tenants is two qualified ids', () {
+      expect(alice('acme').id, alice('globex').id);
+      expect(alice('acme').qualifiedId, 'tenant:acme/u1');
+      expect(alice('globex').qualifiedId, 'tenant:globex/u1');
+    });
+
+    test('a principal of no tenant keeps its bare id', () {
+      expect(alice(null).qualifiedId, 'u1');
+    });
+
+    test('the id survives the token round trip as a string', () {
+      final (
+        publicInfo,
+        _,
+      ) = TomBearerAuthentication.convertPrincipalToTokenPayload(
+        TomPrincipal(
+          user: TomUser(
+            id: '0b1f6c1e-7a39-4c55-9f0e-2d4b8a1c3e57',
+            username: 'alice',
+          ),
+          authenticated: true,
+          tenant: 'acme',
+        ),
+        null,
+        null,
+        null,
+      );
+      expect(publicInfo['userId'], '0b1f6c1e-7a39-4c55-9f0e-2d4b8a1c3e57');
+    });
+  });
+
   group('the token claim', () {
     test('a principal\'s tenant survives the token round trip', () {
       final principal = TomPrincipal(
-        user: TomUser(id: 1, username: 'alice'),
+        user: TomUser(id: '1', username: 'alice'),
         authenticated: true,
         tenant: 'acme',
         organization: 'sales',

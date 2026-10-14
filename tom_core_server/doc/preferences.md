@@ -145,10 +145,12 @@ query never selects the row. A hand-written `if (principal.id != row.principalId
 in the service would be a second copy of a rule that already exists, and the copy
 that is forgotten on the fourth endpoint is the one that leaks.
 
-`principalId` is an `int` rather than a stringified id because the built-in
-`owner` resolver yields `TomPrincipal.id` — an `int`. A `String` column would
-compare a stringified id against an integer bind value and match nothing, which
-is a scope that denies everything: secure, and silently useless.
+`principalId` holds `TomPrincipal.qualifiedId` — the principal id qualified by
+its tenant, `tenant:<tenant>/<id>`, or the bare id in a deployment without
+tenancy — because that is what the built-in `owner` resolver yields. A principal
+id is unique within its tenant only; under `shared` isolation every tenant's
+preferences sit in this one table, and the qualified key keeps two tenants' `u1`
+apart. See [tenancy.md](tenancy.md#principals-per-tenant).
 
 ### Why the lookups name the principal anyway
 
@@ -170,7 +172,7 @@ attempt to write elsewhere.
 ```sql
 CREATE TABLE IF NOT EXISTS tom_user_preference (
   id BIGINT NOT NULL AUTO_INCREMENT,
-  principal_id BIGINT NOT NULL,
+  principal_id VARCHAR(255) NOT NULL,
   preference_key VARCHAR(191) COLLATE utf8mb4_bin NOT NULL,
   value_type VARCHAR(191) COLLATE utf8mb4_bin NOT NULL,
   value_json TEXT NULL,

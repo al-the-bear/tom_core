@@ -101,12 +101,11 @@ const List<String> opsServiceAccountEntitlements = [
 /// the distinction the actor field exists to preserve.
 const String opsServiceUsername = 'ops-service';
 
-/// The surrogate id of the ops service account.
+/// The id of the ops service account: none.
 ///
-/// Negative so it cannot collide with an `auth_users.id`: the account is not a
-/// row in the auth database, and giving it a plausible positive id would invite
-/// a join that silently matched a real person.
-const int opsServiceUserId = -1;
+/// The account is not a row in the auth database, and giving it a plausible id
+/// would invite a join that silently matched a real person.
+const String opsServiceUserId = TomUser.noId;
 
 /// The actor every job runs as — see [runAsOpsService].
 final TomPrincipal opsServiceAccount = TomPrincipal(

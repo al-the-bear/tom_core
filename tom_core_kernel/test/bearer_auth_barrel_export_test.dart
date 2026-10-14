@@ -106,7 +106,7 @@ void main() {
           TomBearerAuthentication.convertTokenPayloadToPrincipal(parsed);
       final TomUser user = principal.user;
       expect(user.username, equals('Ada'));
-      expect(user.id, equals(42));
+      expect(user.id, equals('42'));
     });
   });
 }
@@ -118,7 +118,7 @@ void main() {
 /// with `decrypt: false` so no key material is needed.
 final String _token = _encode(
   '{"alg":"none","typ":"JWT"}',
-  '{"userId":42,"username":"Ada","exp":4102444800}',
+  '{"userId":"42","username":"Ada","exp":4102444800}',
 );
 
 String _encode(String header, String payload) {

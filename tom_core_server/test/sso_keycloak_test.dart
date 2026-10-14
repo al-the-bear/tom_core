@@ -343,7 +343,7 @@ class _Directory extends TomExternalIdentityDirectory {
       clientLanguage: 'en',
       clientTimezone: 'utc',
       user: TomUser(
-        id: accounts.length,
+        id: '${accounts.length}',
         username: username,
         firstname: '',
         lastname: '',

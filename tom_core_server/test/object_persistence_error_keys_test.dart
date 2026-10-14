@@ -269,7 +269,7 @@ void main() {
               )
               as TomGroupedSelect;
       final principal = TomPrincipal(
-        user: TomUser(id: 3, username: 'grace'),
+        user: TomUser(id: '3', username: 'grace'),
         authenticated: true,
         aci: TomAccessControlInformation(resourceKeys: ['fixture.other']),
       );

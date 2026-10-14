@@ -334,7 +334,7 @@ takes the principal that carries it and never the user directly.
 
 ```dart
 var user = TomUser(
-  id: 123,
+  id: '0b1f6c1e-7a39-4c55-9f0e-2d4b8a1c3e57',
   username: 'jdoe',
   firstname: 'John',
   lastname: 'Doe',
@@ -344,8 +344,17 @@ var user = TomUser(
 );
 ```
 
-Only `id` and `username` always have a value — `id` defaults to `-1` and
-`username` to `TomUser.guestUsername` (`'GUEST'`). The eleven name, contact and
+Only `id` and `username` always have a value — `id` defaults to
+`TomUser.noId` (`''`) and `username` to `TomUser.guestUsername` (`'GUEST'`).
+
+**The id is a string, unique within the user's tenant.** A deployment uses
+whatever identifies its accounts — a UUID, a directory's object id, a database
+key rendered as text. It is not unique across tenants: another tenant's user
+with the same id is a different person, exactly as another tenant's `alice` is.
+Where rows of several tenants can share a table, the framework files them under
+`principal.qualifiedId` — `tenant:<tenant>/<id>`, or the bare id without
+tenancy — and so should a deployment's own per-user tables that are not
+tenant-owned. The eleven name, contact and
 locale fields are all nullable, so an identity from a provider that supplied
 nothing but a login name is a normal `TomUser`, not a broken one. `attributes`
 is never null either, merely empty by default; it carries whatever the
@@ -360,6 +369,7 @@ var principal = TomBearerAuthentication.getPrincipal();
 principal.user.email;    // the full identity
 principal.username;      // == principal.user.username
 principal.id;            // == principal.user.id
+principal.qualifiedId;   // 'tenant:acme/<id>' — the id qualified by its tenant
 ```
 
 Guests are not a separate type. An unauthenticated session carries a real
@@ -1385,7 +1395,7 @@ Register one under a name, then refer to it by that name:
 // Register a custom handler
 TomCustomAccess.registerHandler('canEditDocument', (principal, docId) {
   if (principal == null) return false;
-  return DocumentService.isOwner(principal.id, int.parse(docId));
+  return DocumentService.isOwner(principal.id, docId);
 });
 
 // Use the custom handler
@@ -1743,6 +1753,7 @@ disappears a few seconds after login, with nothing in the logs.
 | `crypto` | package | `two_factor.dart` | `Hmac`/`sha1`, the TOTP primitive |
 | `meta` | package | `access_controls.dart` | `@nonVirtual` only; no runtime behaviour |
 | `tom_crypto` | package | `bearer_authentication.dart` | `TomClientJwtToken`, the parsed form of both bearer tokens |
+| [context](../context/context.md) | module | `user_principal_aci.dart` | `TomTenantContext.qualify` — `TomPrincipal.qualifiedId`, the principal id qualified by its tenant |
 | [http_connection](../http_connection/http_connection.md) | module | `oauth_contract.dart` | `TomApi` / `TomApiEndpoint` and `TomHttpMethod`, for the external-identity contract |
 | [little_things](../little_things/little_things.md) | module | `access_controls.dart`, `bearer_authentication.dart`, `two_factor.dart` | `getFromCurrentZone<TomPrincipal>()` — how resource protection finds the ambient principal without being passed one; and `TomException`, which `TomTokenLifetimeException` and `TomProtectionSettingException` extend |
 | [reflection](../reflection/reflection.md) | module | `authentication_authorization.dart`, `oauth_contract.dart`, `two_factor.dart` | `@tomReflector` — the annotation on every DTO in this module, and hence the JSON round trip that carries them over the wire |

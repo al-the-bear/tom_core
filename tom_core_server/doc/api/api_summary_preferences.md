@@ -70,7 +70,7 @@ One preference of one principal — a row of `tom_user_preference`.
 ```dart
 TomUserPreference({
   int id = -1,
-  int principalId = -1,
+  String principalId = '',
   String preferenceKey = '',
   String valueType = '',
   String valueJson = '',
@@ -86,7 +86,7 @@ fills it column by column when mapping a result.
 | Property | Type | Column | Description |
 | -------- | ---- | ------ | ----------- |
 | `id` | `int` | `id` (read-only) | Surrogate primary key; `-1` until persisted. |
-| `principalId` | `int` | `principal_id` | The owning `TomPrincipal.id` — the scope column. An `int`, because the built-in `owner` resolver yields an `int`. |
+| `principalId` | `String` | `principal_id` | The owning principal's `TomPrincipal.qualifiedId` — its id qualified by its tenant — the scope column, because that is what the built-in `owner` resolver yields. |
 | `preferenceKey` | `String` | `preference_key` | The preference key. |
 | `valueType` | `String` | `value_type` | The name of the type `valueJson` was written as. |
 | `valueJson` | `String` | `value_json` | The value's JSON text. |

@@ -70,11 +70,13 @@ class TomPrincipalDelegation {
   @TomDbColumn(columnName: 'id', isReadOnly: true)
   int id;
 
-  /// The principal whose roles are lent (A, the delegator).
+  /// The principal whose roles are lent (A, the delegator), by its
+  /// tenant-qualified id, like [TomPrincipalResourceGrant.principalId].
   @TomDbColumn(columnName: 'delegator_id')
   String delegatorId;
 
-  /// The principal receiving the lent roles (B, the delegate).
+  /// The principal receiving the lent roles (B, the delegate), by its
+  /// tenant-qualified id.
   @TomDbColumn(columnName: 'delegate_id')
   String delegateId;
 

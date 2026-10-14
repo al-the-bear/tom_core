@@ -26,7 +26,7 @@ TomPrincipal _principal({String? email, String? mobile, String? phone}) =>
     TomPrincipal(
       authenticated: true,
       user: TomUser(
-        id: 7,
+        id: '7',
         username: 'erin',
         firstname: 'Erin',
         lastname: 'Muster',
