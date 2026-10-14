@@ -664,6 +664,11 @@ class TomOAuthFlow {
         // tenant — and deliberately *before* the flow's own, so a typo in
         // configuration cannot replace the state handle or the redirect URI.
         ...provider.authorizationParameters,
+        // The organization the login asked for, for an identity provider that
+        // decides the sign-in organization (see TomExternalTenancyMapping).
+        if (provider.tenancyMapping.organizationParameter case final name?
+            when request.organization.isNotEmpty)
+          name: request.organization,
         'response_type': 'code',
         'client_id': provider.clientId,
         'redirect_uri': provider.redirectUri,

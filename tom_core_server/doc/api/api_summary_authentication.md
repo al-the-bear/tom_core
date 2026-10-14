@@ -104,6 +104,7 @@ API keys.
   - [TomOAuthServer](#tomoauthserver)
   - [TomExternalProvider](#tomexternalprovider)
   - [TomExternalRoleMapping](#tomexternalrolemapping)
+  - [TomExternalTenancyMapping](#tomexternaltenancymapping)
   - [TomSamlException](#tomsamlexception)
   - [TomXmlDsig](#tomxmldsig)
   - [TomExclusiveCanonicalizer](#tomexclusivecanonicalizer)
@@ -470,6 +471,7 @@ TomExternalIdentityToken   (@tomReflector, @TomDbTable entity)
 TomOAuthCredential         (standalone, immutable)
 TomOAuthServer             (@tomReflector, @TomApiImplementation)
 TomExternalRoleMapping     (standalone, immutable)
+TomExternalTenancyMapping  (standalone, immutable)
 TomSamlProviders           (standalone, immutable)
 TomSamlIdpMetadata         (standalone, immutable)
 TomSamlFlow                (standalone)
@@ -2242,6 +2244,7 @@ const TomOAuthProviderConfig({
   String displayNameClaim = 'name',
   TomOAuthProvisioning provisioning = TomOAuthProvisioning.autoProvision,
   TomExternalRoleMapping roleMapping = TomExternalRoleMapping.none,
+  TomExternalTenancyMapping tenancyMapping = TomExternalTenancyMapping.none,
   String displayNameKey = '',
   String iconKey = '',
   bool storeTokens = false,
@@ -2261,11 +2264,12 @@ missing endpoints from its discovery document — which `fromMap` does not read;
 asked for one it lacks, it throws `oauth.config.discovery_not_loaded`, naming
 `TomOAuthProviders.load`.
 
-One field exists for single sign-on:
+Two fields exist for single sign-on:
 
 | Field | Notes |
 | ----- | ----- |
 | `roleMapping` | The `TomExternalRoleMapping` read from `groupsClaim`, `roleMapping` and `defaultRoles`; `TomExternalRoleMapping.none` unless configured. The roles it grants are applied to the principal on every login. |
+| `tenancyMapping` | The `TomExternalTenancyMapping` read from `tenantClaim`, `organizationClaim` and `organizationParameter`; `TomExternalTenancyMapping.none` unless configured. With `organizationParameter`, `beginAuthorization` sends the organization the login asked for under that parameter. |
 
 Three fields exist for delegated access rather than for login:
 
@@ -3001,6 +3005,7 @@ the same over either protocol. `TomOAuthExchange.provider` is typed by it.
 | `issuer` | `String` | The identifier identities are asserted under — the OIDC `iss`, or the SAML identity provider's entity id. Links are keyed by it. |
 | `provisioning` | `TomOAuthProvisioning` | What a successful login with no local account does. |
 | `roleMapping` | `TomExternalRoleMapping` | How the provider's group claims become Tom roles. |
+| `tenancyMapping` | `TomExternalTenancyMapping` | Which claims name the tenant and the sign-in organization. |
 | `clockSkew` | `Duration` | The tolerance applied to the provider's validity instants. |
 
 #### Methods
@@ -3058,6 +3063,55 @@ setting stops the start rather than granting nothing quietly.
 | `rolesFor` | `List<String> rolesFor(Map<String, Object?> claims)` | The `defaultRoles`, then the roles of every mapped group, without duplicates and in that order. |
 | `claimAt` | `static Object? claimAt(Map<String, Object?> claims, String path)` | The claim named exactly `path` when there is one, otherwise the dotted path followed through nested maps. |
 | `toString` | `String toString()` | Names the claim, the number of mapped groups and the default roles. |
+
+### TomExternalTenancyMapping
+
+Which claims (OIDC) or attributes (SAML) of an identity provider name the tenant
+and the sign-in organization — for a provider that is itself a Tom identity
+provider. Immutable, configured per provider with `tenantClaim`,
+`organizationClaim` and `organizationParameter`. A configured claim is required.
+The claimed tenant must be the one the request resolved to, or the sign-in is
+refused (`login.error.tenant-mismatch`) before any account is linked or
+provisioned; the claimed organization is the sign-in organization, whatever the
+login asked for.
+
+#### Constructors
+
+```dart
+const TomExternalTenancyMapping({
+  String? tenantClaim,
+  String? organizationClaim,
+  String? organizationParameter,
+})
+
+factory TomExternalTenancyMapping.fromMap(Map<Object?, Object?> map)
+```
+
+`fromMap` reads the three keys from a provider's configuration map; an absent
+or empty key is `null`.
+
+#### Static Properties
+
+| Property | Value | Description |
+| -------- | ----- | ----------- |
+| `none` | `TomExternalTenancyMapping()` | A mapping that reads neither — the default of both provider types. |
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `tenantClaim` | `String?` | The claim naming the tenant — a name or a dotted path — or `null`. |
+| `organizationClaim` | `String?` | The claim naming the sign-in organization, or `null`. |
+| `organizationParameter` | `String?` | The OIDC authorization-request parameter the organization the login asked for is sent under, or `null`. |
+| `isEmpty` *(getter)* | `bool` | Whether the mapping reads nothing. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `tenantIn` | `String? tenantIn(Map<String, Object?> claims)` | The tenant `claims` name, or `null` without a `tenantClaim`. Throws `login.error.oauth.tenant-missing` when the claim is configured and absent, `login.error.oauth.tenant-invalid` when it is not a tenant id. A one-element list — a SAML attribute — is its element. |
+| `organizationIn` | `String? organizationIn(Map<String, Object?> claims)` | The organization `claims` name, or `null` without an `organizationClaim`. Throws `login.error.oauth.organization-missing` when the claim is configured and absent. |
+| `toString` | `String toString()` | *(override)* Names both claims. |
 
 ### TomSamlException
 
@@ -3213,6 +3267,7 @@ const TomSamlProviderConfig({
   String? spCertificate,
   TomOAuthProvisioning provisioning = TomOAuthProvisioning.autoProvision,
   TomExternalRoleMapping roleMapping = TomExternalRoleMapping.none,
+  TomExternalTenancyMapping tenancyMapping = TomExternalTenancyMapping.none,
   Duration clockSkew = TomOAuthProviderConfig.defaultClockSkew,
   String displayNameKey = '',
   String iconKey = '',
@@ -3254,6 +3309,7 @@ not configure it; an explicit value wins. Configuration keys: `issuer`, `ssoUrl`
 | `spCertificate` | `String?` | This server's signing certificate, base64 DER, published in its metadata; or `null`. |
 | `provisioning` | `TomOAuthProvisioning` | `autoProvision` unless configured. |
 | `roleMapping` | `TomExternalRoleMapping` | How the group attribute becomes Tom roles. |
+| `tenancyMapping` | `TomExternalTenancyMapping` | Which attributes name the tenant and the sign-in organization; its `organizationParameter` has no SAML counterpart. |
 | `clockSkew` | `Duration` | The tolerance on the assertion's validity windows. |
 | `displayNameKey` | `String` | Resource key of the provider's label; `oauth.<id>.name` from configuration. |
 | `iconKey` | `String` | Resource key of the provider's icon; `oauth.<id>.icon` from configuration. |

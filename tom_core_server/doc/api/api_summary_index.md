@@ -177,6 +177,7 @@ surface documented here.
 | `TomOAuthServer` | class | The three `/oauth/*` endpoints. |
 | `TomExternalProvider` | abstract interface class | What every external identity provider has in common: id, issuer, provisioning, role mapping, clock skew. |
 | `TomExternalRoleMapping` | class | How a provider's group claim becomes Tom roles, recomputed on every login. |
+| `TomExternalTenancyMapping` | class | Which claims of a provider name the tenant and the sign-in organization. |
 | `applyExternalRoles` | top-level function | Adds mapped roles to a principal for this session, beside its own. |
 | `TomSamlProviderConfig` | class | One SAML 2.0 identity provider and this server's side of the trust. |
 | `TomSamlProviders` | class | The configured SAML providers, read from `saml.providers`; `load` fetches their metadata. |
@@ -1099,6 +1100,7 @@ surface documented here.
 | `TomExternalIdentityTokenRepository` | Authentication |
 | `TomExternalProvider` | Authentication |
 | `TomExternalRoleMapping` | Authentication |
+| `TomExternalTenancyMapping` | Authentication |
 | `TomFcmPushProtocol` | Messaging |
 | `TomFcmServiceAccountCredential` | Messaging |
 | `TomFieldMappedDeliveryReportProtocol` | Messaging |

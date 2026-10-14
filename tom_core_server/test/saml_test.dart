@@ -32,6 +32,7 @@ TomSamlProviderConfig _provider({
   bool signRequests = false,
   List<String> certificates = const ['idp_cert.pem'],
   TomOAuthProvisioning provisioning = TomOAuthProvisioning.autoProvision,
+  bool mapTenancy = false,
 }) => TomSamlProviderConfig.fromMap('corporate', {
   'issuer': 'https://idp.example.test/saml',
   'ssoUrl': 'https://idp.example.test/saml/sso',
@@ -50,6 +51,8 @@ TomSamlProviderConfig _provider({
   'roleMapping': {
     'admins': ['tom.admin'],
   },
+  if (mapTenancy) 'tenantClaim': 'tenant',
+  if (mapTenancy) 'organizationClaim': 'organization',
 });
 
 final _idp = SamlTestIdp();
@@ -60,13 +63,22 @@ XmlDocument _signedResponse(
   bool signResponse = true,
   bool signAssertion = false,
   DateTime? now,
+  Map<String, List<String>>? attributes,
 }) {
-  final document = _idp.response(
-    requestId: requestId,
-    acsUrl: _acsUrl,
-    audience: _spEntityId,
-    now: now ?? _now,
-  );
+  final document = attributes == null
+      ? _idp.response(
+          requestId: requestId,
+          acsUrl: _acsUrl,
+          audience: _spEntityId,
+          now: now ?? _now,
+        )
+      : _idp.response(
+          requestId: requestId,
+          acsUrl: _acsUrl,
+          audience: _spEntityId,
+          now: now ?? _now,
+          attributes: attributes,
+        );
   if (signAssertion) _idp.sign(SamlTestIdp.assertionOf(document));
   if (signResponse) _idp.sign(SamlTestIdp.responseOf(document));
   return document;
@@ -650,46 +662,58 @@ void main() {
       },
     );
 
+    /// A whole SAML login through the authentication service, the response
+    /// carrying [attributes] when given.
+    Future<TomAuthenticationInfo> login({
+      TomSamlFlow? flow,
+      Map<String, List<String>>? attributes,
+      TomMemoryExternalIdentityStore? identities,
+    }) async {
+      final samlFlow = flow ?? saml;
+      final begun = await samlFlow.beginAuthorization(request());
+      final location = Uri.parse(
+        await samlFlow.acceptResponse(
+          samlResponse: SamlTestIdp.encode(
+            _signedResponse(
+              (await store.peek(begun.state))!.nonce,
+              attributes: attributes,
+            ),
+          ),
+          relayState: begun.state,
+        ),
+      );
+      return TomOAuthAuthenticationService(
+        directory: _ProvisioningDirectory(),
+        flow: TomOAuthFlow(
+          providers: TomOAuthProviders(const {}),
+          stateStore: store,
+          transport: TomHttpOAuthTokenTransport(),
+          saml: samlFlow,
+        ),
+        identityStore: identities ?? TomMemoryExternalIdentityStore(),
+      ).authenticateUser(
+        TomAuthenticationData(
+          username: TomUser.guestUsername,
+          key: TomOAuthCredential(
+            code: location.queryParameters['code']!,
+            state: begun.state,
+          ),
+          organization: '',
+          application: '',
+          process: '',
+          language: 'en',
+          country: 'XX',
+          timezone: 'utc',
+          client: '',
+        ),
+      );
+    }
+
     test(
       'logs in through the authentication service with the mapped roles',
       () async {
-        final begun = await saml.beginAuthorization(request());
-        final location = Uri.parse(
-          await saml.acceptResponse(
-            samlResponse: SamlTestIdp.encode(
-              _signedResponse((await store.peek(begun.state))!.nonce),
-            ),
-            relayState: begun.state,
-          ),
-        );
         final identities = TomMemoryExternalIdentityStore();
-        final directory = _ProvisioningDirectory();
-        final info =
-            await TomOAuthAuthenticationService(
-              directory: directory,
-              flow: TomOAuthFlow(
-                providers: TomOAuthProviders(const {}),
-                stateStore: store,
-                transport: TomHttpOAuthTokenTransport(),
-                saml: saml,
-              ),
-              identityStore: identities,
-            ).authenticateUser(
-              TomAuthenticationData(
-                username: TomUser.guestUsername,
-                key: TomOAuthCredential(
-                  code: location.queryParameters['code']!,
-                  state: begun.state,
-                ),
-                organization: '',
-                application: '',
-                process: '',
-                language: 'en',
-                country: 'XX',
-                timezone: 'utc',
-                client: '',
-              ),
-            );
+        final info = await login(identities: identities);
         expect(info.principal.user.username, 'alice@example.test');
         expect(info.principal.aci.roles, ['employee', 'tom.admin']);
         expect(
@@ -703,6 +727,72 @@ void main() {
         );
       },
     );
+
+    group('the tenant and organization attributes', () {
+      late TomSamlFlow mapped;
+      const attributes = {
+        'email': ['alice@example.test'],
+        'tenant': ['acme'],
+        'organization': ['acme-sales'],
+      };
+
+      setUp(() {
+        mapped = TomSamlFlow(
+          providers: TomSamlProviders({
+            'corporate': _provider(mapTenancy: true),
+          }),
+          stateStore: store,
+          clock: () => _now,
+        );
+      });
+
+      test('set the principal\'s tenant and organization', () async {
+        final info = await TomTenantContext.run(
+          'acme',
+          () => login(flow: mapped, attributes: attributes),
+        );
+        expect(info.principal.tenant, 'acme');
+        expect(info.principal.organization, 'acme-sales');
+      });
+
+      test('an assertion for another tenant is refused', () async {
+        await expectLater(
+          TomTenantContext.run(
+            'globex',
+            () => login(flow: mapped, attributes: attributes),
+          ),
+          throwsA(
+            isA<TomLoginException>().having(
+              (e) => e.key,
+              'key',
+              'login.error.tenant-mismatch',
+            ),
+          ),
+        );
+      });
+
+      test('an assertion without the organization is refused', () async {
+        await expectLater(
+          TomTenantContext.run(
+            'acme',
+            () => login(
+              flow: mapped,
+              attributes: {
+                'email': ['alice@example.test'],
+                'tenant': ['acme'],
+              },
+            ),
+          ),
+          throwsA(
+            isA<TomLoginException>().having(
+              (e) => e.key,
+              'key',
+              'login.error.oauth.organization-missing',
+            ),
+          ),
+        );
+      });
+    });
 
     test('publishes this server\'s metadata', () {
       final signing = TomSamlFlow(

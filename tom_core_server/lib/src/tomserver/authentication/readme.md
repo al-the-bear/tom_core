@@ -294,7 +294,7 @@ account's roles, and rotates and revokes it; `TomSqlApiKeyStore`
 | `TomOAuthTokenStore` · `TomMemoryOAuthTokenStore` | Where a grant lives, keyed `(issuer, subject)`. Unregistered means nothing is ever stored. |
 | `TomPersistentOAuthTokenStore` · `TomExternalIdentityToken` | The grant over `tom_external_identity_token`, encrypted at rest. |
 | `TomOAuthServer` | The three `/oauth/*` endpoints the handshake is driven through — list the providers, begin an authorization, complete one. |
-| `TomExternalProvider` · `TomExternalRoleMapping` · `applyExternalRoles` | What an OIDC and a SAML provider share, and the group-to-role mapping applied to every login's principal. In `external_provider.dart`. |
+| `TomExternalProvider` · `TomExternalRoleMapping` · `applyExternalRoles` · `TomExternalTenancyMapping` | What an OIDC and a SAML provider share, the group-to-role mapping applied to every login's principal, and the claims naming the tenant and sign-in organization of a Tom identity provider's tokens. In `external_provider.dart`. |
 | `TomSamlProviders` · `TomSamlProviderConfig` · `TomSamlIdpMetadata` · `TomSamlCertificates` · `TomSamlNames` | SAML 2.0 identity providers as data, read from `saml.providers`, with their metadata fetched by `load`. In `saml_provider.dart`. |
 | `TomTenantProviderSets` | Provider sets keyed by tenant: a tenant with a set of its own (`oauth.tenants.<id>.providers`, `saml.tenants.<id>.providers`, or installed at run time) offers only its providers. In `tenant_provider_sets.dart`. |
 | `TomSamlFlow` · `TomSamlResponseValidator` | The three-leg SAML login and every check a response must pass. In `saml_flow.dart`. |

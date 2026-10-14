@@ -273,6 +273,11 @@ class TomOAuthProviderConfig implements TomExternalProvider {
   @override
   final TomExternalRoleMapping roleMapping;
 
+  /// Which claims name the tenant and the organization of a sign-in, and the
+  /// authorization parameter the requested organization travels under.
+  @override
+  final TomExternalTenancyMapping tenancyMapping;
+
   /// Resource key of the provider's label, as a client renders it.
   final String displayNameKey;
 
@@ -345,6 +350,7 @@ class TomOAuthProviderConfig implements TomExternalProvider {
     this.displayNameClaim = 'name',
     this.provisioning = TomOAuthProvisioning.autoProvision,
     this.roleMapping = TomExternalRoleMapping.none,
+    this.tenancyMapping = TomExternalTenancyMapping.none,
     this.displayNameKey = '',
     this.iconKey = '',
     this.storeTokens = false,
@@ -410,6 +416,7 @@ class TomOAuthProviderConfig implements TomExternalProvider {
           ? TomOAuthProvisioning.autoProvision
           : TomOAuthProvisioning.parse('${map['provisioning']}'),
       roleMapping: TomExternalRoleMapping.fromMap(id, map),
+      tenancyMapping: TomExternalTenancyMapping.fromMap(map),
       displayNameKey:
           optional('displayNameKey') ??
           '${TomOAuthProviderDto.resourceScope}.$id.name',

@@ -2,6 +2,21 @@
 
 ### Added
 
+- **Tenant and organization from an external identity provider's token.**
+  `TomExternalTenancyMapping` (`tenancyMapping` on both provider configs, read
+  from `tenantClaim`, `organizationClaim` and `organizationParameter`) reads the
+  tenant and the sign-in organization from an OIDC token or a SAML assertion —
+  for an application signing in through a Tom identity provider such as Tom UAM.
+  `TomOAuthAuthenticationService` refuses a claimed tenant other than the
+  request's (`login.error.tenant-mismatch`) before any account is linked or
+  provisioned, places the principal in the claimed tenant, and makes the claimed
+  organization the login's and the principal's. A configured claim is required
+  (`login.error.oauth.tenant-missing`, `login.error.oauth.organization-missing`,
+  `login.error.oauth.tenant-invalid`). With `organizationParameter`, an OIDC
+  authorization request carries the organization the login asked for, so a new
+  authorization naming another organization is how a user switches.
+  `doc/authentication.md` § Claim mapping: tenant and organization; tests in
+  `test/oauth_test.dart` and `test/saml_test.dart`.
 - **Identity federation per tenant.** SCIM, the pending state of an external
   sign-in and the provider configuration follow the tenant in context.
   `TomSqlScimStore.named` resolves its data source through tenancy's routing on

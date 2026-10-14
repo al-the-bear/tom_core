@@ -102,6 +102,7 @@ class TomSamlProviderConfig implements TomExternalProvider {
     this.spCertificate,
     this.provisioning = TomOAuthProvisioning.autoProvision,
     this.roleMapping = TomExternalRoleMapping.none,
+    this.tenancyMapping = TomExternalTenancyMapping.none,
     this.clockSkew = TomOAuthProviderConfig.defaultClockSkew,
     this.displayNameKey = '',
     this.iconKey = '',
@@ -171,6 +172,11 @@ class TomSamlProviderConfig implements TomExternalProvider {
 
   @override
   final TomExternalRoleMapping roleMapping;
+
+  /// Which attributes name the tenant and the organization of a sign-in.
+  /// `organizationParameter` has no SAML counterpart and is ignored.
+  @override
+  final TomExternalTenancyMapping tenancyMapping;
 
   @override
   final Duration clockSkew;
@@ -276,6 +282,7 @@ class TomSamlProviderConfig implements TomExternalProvider {
           ? TomOAuthProvisioning.autoProvision
           : TomOAuthProvisioning.parse('${map['provisioning']}'),
       roleMapping: TomExternalRoleMapping.fromMap(id, map),
+      tenancyMapping: TomExternalTenancyMapping.fromMap(map),
       clockSkew: map['clockSkewSeconds'] == null
           ? TomOAuthProviderConfig.defaultClockSkew
           : Duration(seconds: int.tryParse('${map['clockSkewSeconds']}') ?? 60),

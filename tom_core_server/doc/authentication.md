@@ -69,6 +69,7 @@ access rules as a user.
   - [SAML 2.0 identity providers](#saml-20-identity-providers)
   - [What to register at the identity provider](#what-to-register-at-the-identity-provider)
   - [Claim mapping: groups to roles](#claim-mapping-groups-to-roles)
+  - [Claim mapping: tenant and organization](#claim-mapping-tenant-and-organization)
   - [Provisioning modes](#provisioning-modes)
   - [The SAML flow has three legs](#the-saml-flow-has-three-legs)
   - [What a SAML response must be](#what-a-saml-response-must-be)
@@ -234,6 +235,7 @@ access rules as a user.
 | `TomOAuthException` | class | A mis-configured provider set or a refused handshake |
 | `TomExternalProvider` | abstract interface class | What every external identity provider has in common, whatever its protocol: id, issuer, provisioning, role mapping, clock skew |
 | `TomExternalRoleMapping` | class | How a provider's group claim becomes Tom roles: `groupsClaim`, `roleMapping`, `defaultRoles` |
+| `TomExternalTenancyMapping` | class | Which claims name the tenant and the sign-in organization: `tenantClaim`, `organizationClaim`, `organizationParameter` |
 | `applyExternalRoles` | function | Adds the mapped roles to a principal for this session, beside the account's own |
 | `TomSamlProviderConfig` | class | One SAML 2.0 identity provider and this server's side of the trust |
 | `TomSamlProviders` | class | The configured SAML providers, read from `saml.providers`; `load` fetches their metadata |
@@ -2618,6 +2620,9 @@ A SAML provider adds two endpoints of its own, `POST /saml/acs` and
 | `login.error.oauth.provisioning-unsupported` | `autoProvision` is configured but the directory does not implement it. |
 | `login.error.oauth.no-identity-store` | No `TomExternalIdentityStore` is installed. |
 | `login.error.oauth.credential-not-supported` | A non-OAuth credential arrived and there is no `delegate`. |
+| `login.error.oauth.tenant-missing` · `login.error.oauth.organization-missing` | The provider configures `tenantClaim` or `organizationClaim` and the token or assertion does not carry it. |
+| `login.error.oauth.tenant-invalid` | The token names a tenant that is not a tenant id. |
+| `login.error.tenant-mismatch` | The token names another tenant than the one the request resolved to; refused before any account is linked or provisioned. |
 
 ## Single sign-on with enterprise identity providers
 
@@ -2839,6 +2844,34 @@ the mapped role at their next login. The framework does not write to the
 deployment's user store, which it does not own; a deployment that wants the
 mapped roles stored reads them off `TomExternalIdentity.roles` in
 `provisionFromExternalIdentity`.
+
+### Claim mapping: tenant and organization
+
+A provider that is itself a Tom identity provider — Tom UAM, for the Tom
+applications that sign their users in through it — names the user's tenant and
+sign-in organization in its tokens. Every provider of either protocol carries a
+`TomExternalTenancyMapping` that reads them:
+
+```yaml
+tenantClaim: tenant                    # a claim, attribute or dotted path
+organizationClaim: organization
+organizationParameter: organization    # OIDC only: sent with the authorization request
+```
+
+| Key | Meaning |
+| --- | ------- |
+| `tenantClaim` | The claim (OIDC) or attribute (SAML) naming the tenant. The principal is placed in that tenant. A sign-in whose request resolved to another tenant is refused with `login.error.tenant-mismatch` **before** any account is linked or provisioned — a token for one tenant is not a pass to another. |
+| `organizationClaim` | The claim or attribute naming the sign-in organization. It becomes the login's organization before the directory is asked for the account, and the principal's organization: the identity provider decides the sign-in organization from the user's memberships, whatever organization the login asked for. |
+| `organizationParameter` | The OIDC authorization-request parameter the organization the login asked for is sent under. Signing in for another organization is a new authorization naming it; a provider that still holds the user's session issues the new token without asking for credentials again. SAML has no counterpart. |
+
+A configured claim is required: a token without it is refused
+(`login.error.oauth.tenant-missing`, `login.error.oauth.organization-missing`),
+and a tenant that is not a tenant id is refused
+(`login.error.oauth.tenant-invalid`). An identity provider that is the authority
+for tenant and organization does not leave them out, and a session that fell back
+to a default would carry the rights of the wrong one. A provider configuring
+neither claim leaves the tenant to the request and the organization to the
+login. See [tenancy.md](tenancy.md#identity-federation-per-tenant).
 
 ### Provisioning modes
 
@@ -3793,6 +3826,10 @@ The protocol-neutral half of external identity. `TomExternalProvider` is what
 `groupsClaim`, `roleMapping` and `defaultRoles`, and `applyExternalRoles` adds
 the roles it grants to the session's principal on every login. See
 [Claim mapping: groups to roles](#claim-mapping-groups-to-roles).
+`TomExternalTenancyMapping` reads `tenantClaim`, `organizationClaim` and
+`organizationParameter`; `tenantIn` and `organizationIn` answer the tenant and
+organization a token names, refusing a configured claim that is missing. See
+[Claim mapping: tenant and organization](#claim-mapping-tenant-and-organization).
 
 ### `TomSamlProviders` / `TomSamlProviderConfig` / `TomSamlIdpMetadata` / `TomSamlCertificates`
 
@@ -4109,7 +4146,7 @@ store keeps them in `tom_service_account` and `tom_api_key`, declared by
 | [configuration](configuration.md) | module | `jwt_signing.dart`, `oauth_provider.dart`, `saml_provider.dart`, `scim_endpoints.dart`, `server_self_login.dart`, `sql_oauth_state_store.dart` | `TomBaseServerConfiguration` supplies the JWT fields `installJwtSigning` reads and the service-account fields `TomServiceCredential.fromConfiguration` reads; `isDevelopmentOrTestRuntime` decides whether the sample-key fallback is permitted |
 | [datasources](datasources.md) | module | `oauth_state_sql.dart`, `scim_sql.dart`, `sql_api_key_store.dart`, `sql_oauth_state_store.dart`, `sql_scim_store.dart` | `TomDataSource`, `TomDataSourceInfo`, `TomFrameworkTable` (the single declaration of `tom_oauth_state`, `tom_scim_resource`, `tom_service_account` and `tom_api_key`), `TomSchemaProvisioning` and `sqlInstant` / `parseSqlInstant` |
 | [endpoints](endpoints.md) | module | `jwks_endpoint.dart`, `oauth_endpoints.dart`, `saml_endpoints.dart`, `scim_endpoints.dart` | `TomScimApi` declares its seventeen routes with `@TomEndpoint` and `@TomPublicAccess`; `TomSamlService` binds the identity provider's form post as a `TomMultipartForm` and answers it with a `TomRedirect`; `TomOAuthServer` implements the kernel's `tomOAuthApi` through `@TomApiImplementation`, and `registerFrameworkApis()` registers the contract; `TomJwksService` declares its route with `@TomEndpoint` and `@TomPublicAccess` |
-| [little_things](little_things.md) | module | 16 of 36 files | `TomServerException`, the base of `TomLoginException`, `Tom2FAException`, `TomServerSelfLoginException`, `TomOAuthException`, `TomSamlException`, `TomScimException`, `TomSigningKeyException`, `TomJwtKeyException` and `TomApiKeyException` |
+| [little_things](little_things.md) | module | 17 of 36 files | `TomServerException`, the base of `TomLoginException`, `Tom2FAException`, `TomServerSelfLoginException`, `TomOAuthException`, `TomSamlException`, `TomScimException`, `TomSigningKeyException`, `TomJwtKeyException` and `TomApiKeyException` |
 | [messaging](messaging.md) | module | `two_factor_delivered_code.dart` | `TomEmailService` and `TomSmsService` deliver the one-time codes, through `TomTemplatedMessageService.deliverNow` rather than the outbox. A deployment that registers neither can still run TOTP |
 | [object_persistence](object_persistence.md) | module | `oauth_identity.dart`, `oauth_tokens.dart`, `sql_api_key_store.dart`, `sql_oauth_state_store.dart`, `sql_scim_store.dart`, `two_factor_enrolment.dart` | `TomExternalIdentityLink` and `TomUserTwoFactorEnrolment` are ordinary entities over `TomSqlDatasourceRepository`. Neither table is created by the framework; each entity carries its own `createTableSql` for a deployment's migration to run |
 | [preferences](preferences.md) | module | `authentication_server.dart` | `TomUserPreferences` |

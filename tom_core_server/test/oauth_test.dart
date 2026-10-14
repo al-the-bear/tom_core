@@ -42,6 +42,7 @@ TomOAuthProviderConfig _oidcProvider({
   Duration clockSkew = const Duration(seconds: 60),
   String? revocationEndpoint,
   String id = 'stub',
+  TomExternalTenancyMapping tenancyMapping = TomExternalTenancyMapping.none,
 }) => TomOAuthProviderConfig(
   id: id,
   issuer: _issuer,
@@ -57,6 +58,7 @@ TomOAuthProviderConfig _oidcProvider({
   displayNameKey: 'oauth.stub.name',
   iconKey: 'oauth.stub.icon',
   clockSkew: clockSkew,
+  tenancyMapping: tenancyMapping,
 );
 
 /// A provider that returns only an access token, which is the plain OAuth 2.0
@@ -105,6 +107,7 @@ Map<String, Object?> _claims({
   Duration expires = const Duration(minutes: 5),
   Object? notBefore,
   Object? issuedAt,
+  Map<String, Object?> extra = const {},
 }) => <String, Object?>{
   'iss': issuer ?? _issuer,
   'aud': audience ?? _clientId,
@@ -114,6 +117,7 @@ Map<String, Object?> _claims({
   'exp': _numericDate(expires),
   if (notBefore != null) 'nbf': notBefore,
   if (issuedAt != null) 'iat': issuedAt,
+  ...extra,
 };
 
 /// The stub provider: the one HTTP seam, answering from a script.
@@ -2559,6 +2563,137 @@ void main() {
   // ===========================================================================
   // THE AUTHENTICATION SERVICE
   // ===========================================================================
+
+  group('the tenant and organization a provider names', () {
+    const mapping = TomExternalTenancyMapping(
+      tenantClaim: 'tenant',
+      organizationClaim: 'organization',
+      organizationParameter: 'organization',
+    );
+
+    /// A whole external login whose `id_token` carries [extra] claims, run in
+    /// [tenant] — the tenant the request resolved to.
+    Future<TomAuthenticationInfo> loginWith(
+      Map<String, Object?> extra, {
+      String? tenant,
+      _StubDirectory? directory,
+    }) => TomTenantContext.run(tenant, () async {
+      final flow = _flow(
+        _oidcProvider(
+          tenancyMapping: mapping,
+          provisioning: TomOAuthProvisioning.autoProvision,
+        ),
+        _StubTransport(
+          tokenResponse: {
+            'access_token': 'at-1',
+            'token_type': 'Bearer',
+            'id_token': _idToken(_claims(extra: extra)),
+          },
+        ),
+      );
+      final begun = await flow.beginAuthorization(_authorizationRequest());
+      final data = _authData()
+        ..key = TomOAuthCredential(code: 'c', state: begun.state);
+      return TomOAuthAuthenticationService(
+        directory: directory ?? _StubDirectory(canProvision: true),
+        flow: flow,
+        identityStore: TomMemoryExternalIdentityStore(),
+      ).authenticateUser(data);
+    });
+
+    Matcher refusedWith(String key) =>
+        throwsA(isA<TomLoginException>().having((e) => e.key, 'key', key));
+
+    test('the principal gets the token\'s tenant and organization', () async {
+      final info = await loginWith({
+        'tenant': 'acme',
+        'organization': 'acme-sales',
+      }, tenant: 'acme');
+      expect(info.principal.tenant, 'acme');
+      // The login asked for another organization; the provider's wins.
+      expect(_authorizationRequest().organization, isNot('acme-sales'));
+      expect(info.principal.organization, 'acme-sales');
+    });
+
+    test('a token for another tenant is refused before anything is '
+        'provisioned', () async {
+      final directory = _StubDirectory(canProvision: true);
+      await expectLater(
+        loginWith(
+          {'tenant': 'globex', 'organization': 'globex-hq'},
+          tenant: 'acme',
+          directory: directory,
+        ),
+        refusedWith('login.error.tenant-mismatch'),
+      );
+      expect(directory.provisioned, isEmpty);
+    });
+
+    test('a configured claim the token lacks is refused', () async {
+      await expectLater(
+        loginWith({'organization': 'acme-sales'}, tenant: 'acme'),
+        refusedWith('login.error.oauth.tenant-missing'),
+      );
+      await expectLater(
+        loginWith({'tenant': 'acme'}, tenant: 'acme'),
+        refusedWith('login.error.oauth.organization-missing'),
+      );
+      await expectLater(
+        loginWith({'tenant': 'Not A Tenant', 'organization': 'x'}),
+        refusedWith('login.error.oauth.tenant-invalid'),
+      );
+    });
+
+    test(
+      'without tenancy the token\'s tenant is still the principal\'s',
+      () async {
+        final info = await loginWith({
+          'tenant': 'acme',
+          'organization': 'acme-sales',
+        });
+        expect(info.principal.tenant, 'acme');
+      },
+    );
+
+    test(
+      'the organization the login asks for travels to the provider',
+      () async {
+        final flow = _flow(
+          _oidcProvider(tenancyMapping: mapping),
+          _StubTransport(),
+        );
+        final begun = await flow.beginAuthorization(_authorizationRequest());
+        expect(
+          Uri.parse(begun.authorizationUri).queryParameters['organization'],
+          _authorizationRequest().organization,
+        );
+        final plain = await _flow(
+          _oidcProvider(),
+          _StubTransport(),
+        ).beginAuthorization(_authorizationRequest());
+        expect(
+          Uri.parse(plain.authorizationUri).queryParameters,
+          isNot(contains('organization')),
+        );
+      },
+    );
+
+    test('the mapping is read from the provider configuration', () {
+      final mapping = TomExternalTenancyMapping.fromMap({
+        'tenantClaim': 'tenant',
+        'organizationClaim': 'org.name',
+      });
+      expect(mapping.tenantClaim, 'tenant');
+      expect(
+        mapping.organizationIn({
+          'org': {'name': 'acme-sales'},
+        }),
+        'acme-sales',
+      );
+      expect(mapping.organizationParameter, isNull);
+      expect(TomExternalTenancyMapping.fromMap({}).isEmpty, isTrue);
+    });
+  });
 
   group('TomOAuthAuthenticationService', () {
     /// Runs a whole external login through the service and answers the

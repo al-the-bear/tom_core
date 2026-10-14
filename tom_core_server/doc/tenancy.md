@@ -453,6 +453,15 @@ TomOAuthProviders.tenants.remove('acme'); // back to the deployment's set
 A tenant's providers name redirect URIs of the tenant's own — its host or path —
 so the provider's callback resolves to the tenant that began the flow.
 
+**Tenant and organization from a Tom identity provider.** An application that
+signs its users in through a Tom identity provider (Tom UAM) reads the tenant and
+the sign-in organization from the provider's token or assertion
+(`tenantClaim`, `organizationClaim` — see
+[authentication.md](authentication.md#claim-mapping-tenant-and-organization)).
+A claimed tenant other than the request's is refused as
+`login.error.tenant-mismatch` before any account is linked or provisioned; the
+claimed organization is the session's.
+
 ## What Is Tenant-Scoped
 
 | Concern | How it is kept per tenant | Guide |

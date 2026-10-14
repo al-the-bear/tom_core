@@ -177,6 +177,33 @@ class TomOAuthAuthenticationService implements TomAuthenticationService {
     // the user actually started the login from.
     _applyPendingContext(authData, exchange.pending);
 
+    // The tenant and organization the provider's token names, read before
+    // anything is linked or provisioned: a token for another tenant must not
+    // create or reach an account here. The organization the provider names is
+    // the sign-in organization — see TomExternalTenancyMapping.
+    final mapping = exchange.provider.tenancyMapping;
+    final claimedTenant = mapping.tenantIn(identity.claims);
+    final current = TomTenantContext.currentId;
+    if (claimedTenant != null && current != null && claimedTenant != current) {
+      throw TomLoginException(
+        'login.error.tenant-mismatch',
+        "The identity provider's token is for another tenant than the one "
+            'signed in to.',
+        reason: TomLoginFailure.accountProblem,
+      );
+    }
+    final claimedOrganization = mapping.organizationIn(identity.claims);
+    if (claimedOrganization != null) {
+      authData.organization = claimedOrganization;
+    }
+    TomAuthenticationInfo mapped(TomAuthenticationInfo info) {
+      if (claimedTenant != null) info.principal.tenant = claimedTenant;
+      if (claimedOrganization != null) {
+        info.principal.organization = claimedOrganization;
+      }
+      return _withMappedRoles(info, identity);
+    }
+
     final store = identityStore ?? TomExternalIdentityStore.resolve();
     if (store == null) {
       throw TomLoginException(
@@ -210,13 +237,10 @@ class TomOAuthAuthenticationService implements TomAuthenticationService {
       }
       await store.recordLogin(identity);
       await _retainTokens(exchange);
-      return _withMappedRoles(info, identity);
+      return mapped(info);
     }
 
-    return _withMappedRoles(
-      await _firstLogin(authData, store, exchange),
-      identity,
-    );
+    return mapped(await _firstLogin(authData, store, exchange));
   }
 
   /// [info] with the roles the provider's mapping grants [identity] applied

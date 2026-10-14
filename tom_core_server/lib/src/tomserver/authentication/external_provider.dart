@@ -11,6 +11,7 @@ library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../little_things/server_exception.dart';
 import 'oauth_provider.dart';
 
 /// One configured external identity provider, protocol-neutral.
@@ -27,6 +28,9 @@ abstract interface class TomExternalProvider {
 
   /// How the provider's group claims become Tom roles.
   TomExternalRoleMapping get roleMapping;
+
+  /// Which claims name the tenant and the organization of a sign-in.
+  TomExternalTenancyMapping get tenancyMapping;
 
   /// The tolerance applied to the provider's validity instants.
   Duration get clockSkew;
@@ -198,4 +202,139 @@ void applyExternalRoles(TomPrincipal principal, List<String> roles) {
     groups: aci.groups,
     resourceRoles: aci.resourceRoles,
   );
+}
+
+/// Which claims (OIDC) or attributes (SAML) of an identity provider name the
+/// tenant and the organization a sign-in is for.
+///
+/// For an identity provider that is itself a Tom identity provider — Tom UAM
+/// for the Tom applications that sign their users in through it — whose
+/// tokens carry the user's tenant and sign-in organization:
+///
+/// ```yaml
+/// tenantClaim: tenant              # a claim, attribute or dotted path
+/// organizationClaim: organization
+/// organizationParameter: organization   # OIDC: sent with the authorization request
+/// ```
+///
+/// A provider that configures a claim is trusted to send it on every sign-in,
+/// and a sign-in without it is refused (`login.error.oauth.tenant-missing`,
+/// `login.error.oauth.organization-missing`): an identity provider that is the
+/// authority for tenant and organization does not leave them out, and a session
+/// that silently fell back to some default would carry rights for the wrong
+/// one.
+///
+/// **The tenant must be the request's.** A claimed tenant other than the one the
+/// sign-in's request resolved to is refused (`login.error.tenant-mismatch`)
+/// before any account is linked or provisioned: a token for one tenant is not a
+/// pass to another. The principal is placed in the claimed tenant.
+///
+/// **The organization is the provider's.** The claimed organization is the
+/// sign-in organization, whatever organization the login asked for: the
+/// identity provider decides it, from the user's memberships. To sign in for
+/// another organization the application starts a new authorization naming it;
+/// with [organizationParameter] set, an OIDC authorization request carries the
+/// organization the login asked for under that parameter, and a provider that
+/// still holds the user's session issues the new token without asking for
+/// credentials again.
+class TomExternalTenancyMapping {
+  /// Creates a mapping.
+  const TomExternalTenancyMapping({
+    this.tenantClaim,
+    this.organizationClaim,
+    this.organizationParameter,
+  });
+
+  /// A mapping that reads neither: the tenant comes from the request and the
+  /// organization from the login.
+  static const TomExternalTenancyMapping none = TomExternalTenancyMapping();
+
+  /// The claim naming the tenant, or `null` when the provider names none.
+  final String? tenantClaim;
+
+  /// The claim naming the sign-in organization, or `null`.
+  final String? organizationClaim;
+
+  /// The OIDC authorization-request parameter the organization the login asked
+  /// for is sent under, or `null` to send none.
+  final String? organizationParameter;
+
+  /// Whether the mapping reads anything.
+  bool get isEmpty => tenantClaim == null && organizationClaim == null;
+
+  /// Reads a mapping from a provider's configuration [map]: `tenantClaim`,
+  /// `organizationClaim` and `organizationParameter`, each optional.
+  factory TomExternalTenancyMapping.fromMap(Map<Object?, Object?> map) {
+    String? optional(String key) {
+      final value = map[key];
+      return value == null || '$value'.isEmpty ? null : '$value';
+    }
+
+    return TomExternalTenancyMapping(
+      tenantClaim: optional('tenantClaim'),
+      organizationClaim: optional('organizationClaim'),
+      organizationParameter: optional('organizationParameter'),
+    );
+  }
+
+  /// The tenant [claims] name, or `null` when [tenantClaim] is not set.
+  ///
+  /// Throws `login.error.oauth.tenant-missing` when the claim is configured and
+  /// absent or empty, and `login.error.oauth.tenant-invalid` when it is not a
+  /// tenant id (`TomTenantContext.idPattern`).
+  String? tenantIn(Map<String, Object?> claims) {
+    final path = tenantClaim;
+    if (path == null) return null;
+    final value = _valueAt(claims, path);
+    if (value == null) {
+      throw TomLoginException(
+        'login.error.oauth.tenant-missing',
+        "The identity provider's token carries no tenant in '$path'.",
+        reason: TomLoginFailure.providerError,
+      );
+    }
+    if (!TomTenantContext.idPattern.hasMatch(value)) {
+      throw TomLoginException(
+        'login.error.oauth.tenant-invalid',
+        "The identity provider's token names '$value' as its tenant, which is "
+            'not a tenant id.',
+        reason: TomLoginFailure.providerError,
+      );
+    }
+    return value;
+  }
+
+  /// The organization [claims] name, or `null` when [organizationClaim] is not
+  /// set.
+  ///
+  /// Throws `login.error.oauth.organization-missing` when the claim is
+  /// configured and absent or empty.
+  String? organizationIn(Map<String, Object?> claims) {
+    final path = organizationClaim;
+    if (path == null) return null;
+    final value = _valueAt(claims, path);
+    if (value == null) {
+      throw TomLoginException(
+        'login.error.oauth.organization-missing',
+        "The identity provider's token carries no organization in '$path'.",
+        reason: TomLoginFailure.providerError,
+      );
+    }
+    return value;
+  }
+
+  /// The single value at [path], or `null` when it is absent or empty. A
+  /// one-element list — how a SAML attribute arrives — is its element.
+  static String? _valueAt(Map<String, Object?> claims, String path) {
+    var value = TomExternalRoleMapping.claimAt(claims, path);
+    if (value is List && value.length == 1) value = value.single;
+    if (value == null || value is List || value is Map) return null;
+    final text = '$value';
+    return text.isEmpty ? null : text;
+  }
+
+  @override
+  String toString() =>
+      'TomExternalTenancyMapping(tenant: $tenantClaim, '
+      'organization: $organizationClaim)';
 }
