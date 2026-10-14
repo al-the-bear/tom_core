@@ -1,7 +1,7 @@
 # Tom Flutter UI API Reference: Custom Module
 
-Eight composites that are not form fields: authorization guards, list states,
-and loading affordances.
+Nine composites that are not form fields: authorization guards, a principal
+picker, list states, and loading affordances.
 
 ## Table of Contents
 
@@ -14,6 +14,10 @@ and loading affordances.
   - [TomAuthTreeNode](#tomauthtreenode)
   - [TomChoiceGroup\<T\>](#tomchoicegroupt)
   - [TomChoiceGroupItem\<T\>](#tomchoicegroupitemt)
+  - [TomPrincipalPicker](#tomprincipalpicker)
+  - [TomPrincipalCandidate](#tomprincipalcandidate)
+  - [TomPrincipalKind](#tomprincipalkind)
+  - [TomPrincipalSearch](#tomprincipalsearch)
 - [List and surface states](#list-and-surface-states)
   - [TomInfiniteScroll\<T\>](#tominfinitescrollt)
   - [TomInfiniteScrollState\<T\>](#tominfinitescrollstatet)
@@ -31,7 +35,7 @@ and loading affordances.
 
 ## Overview
 
-Sources: `lib/src/custom/tom_auth_guard.dart`, `lib/src/custom/tom_auth_tree.dart`, `lib/src/custom/tom_choice_group.dart`, `lib/src/custom/tom_custom_widgets.dart`, `lib/src/custom/tom_empty_state.dart`, `lib/src/custom/tom_error_boundary.dart`, `lib/src/custom/tom_infinite_scroll.dart`, `lib/src/custom/tom_loading_overlay.dart`, `lib/src/custom/tom_skeleton_loader.dart`.
+Sources: `lib/src/custom/tom_auth_guard.dart`, `lib/src/custom/tom_auth_tree.dart`, `lib/src/custom/tom_choice_group.dart`, `lib/src/custom/tom_custom_widgets.dart`, `lib/src/custom/tom_empty_state.dart`, `lib/src/custom/tom_error_boundary.dart`, `lib/src/custom/tom_infinite_scroll.dart`, `lib/src/custom/tom_loading_overlay.dart`, `lib/src/custom/tom_principal_picker.dart`, `lib/src/custom/tom_skeleton_loader.dart`.
 
 The module `lib/src/custom/` is barrelled by `tom_custom_widgets.dart`.
 
@@ -71,20 +75,24 @@ Widget
 └── StatefulWidget
     ├── TomErrorBoundary
     ├── TomInfiniteScroll<T>        (State: TomInfiniteScrollState<T>, public)
+    ├── TomPrincipalPicker
     └── TomSkeletonLoader
 
 (data models)
 ├── TomAuthTreeNode
-└── TomChoiceGroupItem<T>
+├── TomChoiceGroupItem<T>
+└── TomPrincipalCandidate
 
 (enums)
-└── TomInfiniteScrollErrorPlacement
+├── TomInfiniteScrollErrorPlacement
+└── TomPrincipalKind
 
 (typedefs)
 ├── TomPageFetcher<T>
 ├── TomInfiniteScrollItemBuilder<T>
 ├── TomInfiniteScrollErrorBuilder
-└── TomErrorBoundaryFallbackBuilder
+├── TomErrorBoundaryFallbackBuilder
+└── TomPrincipalSearch
 ```
 
 `TomAuthState`, `TomAuthorization` and `TomScope` are declared in
@@ -101,12 +109,14 @@ Widget
 | `tom_error_boundary.dart` | `TomErrorBoundary`, `TomErrorBoundaryFallbackBuilder` |
 | `tom_infinite_scroll.dart` | `TomInfiniteScroll`, `TomInfiniteScrollState`, `TomInfiniteScrollErrorPlacement`, `TomPageFetcher`, `TomInfiniteScrollItemBuilder`, `TomInfiniteScrollErrorBuilder` |
 | `tom_loading_overlay.dart` | `TomLoadingOverlay` |
+| `tom_principal_picker.dart` | `TomPrincipalPicker`, `TomPrincipalCandidate`, `TomPrincipalKind`, `TomPrincipalSearch` |
 | `tom_skeleton_loader.dart` | `TomSkeletonLoader` |
 
-Fifteen public declarations. Two public static members,
-`TomErrorBoundary.debugReleaseGlobalHook` and
-`TomErrorBoundary.debugDefaultFallback`, and one `@visibleForTesting` instance
-method, `TomAuthGuard.resolveAuthState`.
+Nineteen public declarations. Five public static members —
+`TomErrorBoundary.debugReleaseGlobalHook`,
+`TomErrorBoundary.debugDefaultFallback`, and `TomPrincipalPicker`'s
+`defaultMinimumQueryLength`, `defaultMaximumResults` and `defaultDebounce` —
+and one `@visibleForTesting` instance method, `TomAuthGuard.resolveAuthState`.
 
 ## Authorization composites
 
@@ -271,6 +281,99 @@ const TomChoiceGroupItem({
 | `value` | `T` | The value this option selects. |
 | `label` | `String` | Primary text. |
 | `description` | `String?` | Optional supporting line beneath the label. |
+
+### TomPrincipalPicker
+
+A search field that finds users and groups through an injected search and
+shows the picked ones as chips. It owns no directory: the search is whatever
+the application asks — a server's subject search, a local list, a test fake.
+
+**Kind:** `class extends StatefulWidget`
+
+```dart
+TomPrincipalPicker({
+  Key? key,
+  String? tomId,
+  TomScope? scope,
+  required TomPrincipalSearch search,
+  List<TomPrincipalCandidate> selected = const [],
+  ValueChanged<List<TomPrincipalCandidate>>? onChanged,
+  bool multiple = true,
+  int minimumQueryLength = defaultMinimumQueryLength,
+  int maximumResults = defaultMaximumResults,
+  Duration debounce = defaultDebounce,
+  String? label,
+  String? hint,
+  String? semanticsLabel,
+  double disabledOpacity = 0.4,
+  double resultsMaxHeight = 280,
+})
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `tomId` | `String?` | Key of the texts and of the authorization. `null`: fully interactive. |
+| `scope` | `TomScope?` | Explicit scope; the ambient one when null. |
+| `search` | `TomPrincipalSearch` | Finds the candidates for a query. |
+| `selected` | `List<TomPrincipalCandidate>` | The picked candidates, shown as chips; the caller owns the selection. |
+| `onChanged` | `ValueChanged<List<TomPrincipalCandidate>>?` | Receives the new selection on a pick or a removal. `null` makes the picker read-only. |
+| `multiple` | `bool` | When `false` a pick replaces the selection. |
+| `minimumQueryLength` | `int` | The shortest query asked for. |
+| `maximumResults` | `int` | The most results shown. |
+| `debounce` | `Duration` | How long a query rests before it is asked. |
+| `label` / `hint` / `semanticsLabel` | `String?` | The field's texts. |
+| `disabledOpacity` | `double` | Fade applied at `disabled`. |
+| `resultsMaxHeight` | `double` | The tallest the result list grows before it scrolls. |
+
+| Static member | Type | Description |
+|---------------|------|-------------|
+| `defaultMinimumQueryLength` | `int` | 3. |
+| `defaultMaximumResults` | `int` | 20. |
+| `defaultDebounce` | `Duration` | 300 ms. |
+
+The picker asks once the query is long enough and has rested for `debounce`,
+drops an answer a newer query has overtaken, never offers what is already
+picked, and shows a failed search with a retry instead of throwing. Auth:
+`none` hides it; `read` shows the chips without the field or their delete
+buttons; `disabled` does the same dimmed. The line under the field — searching,
+how many matched, nothing matched, the search failed — is a live region. Every
+text resolves from resources under `tomId` first (`label`, `hint`,
+`semanticsLabel`, `typeMore`, `searching`, `matches`, `noMatch`,
+`searchFailed`, `retry`, `user`, `group`, `remove`), then from the argument,
+then from an English default.
+
+### TomPrincipalCandidate
+
+One user or group a [TomPrincipalPicker](#tomprincipalpicker) offers: id,
+display name and kind, nothing else. Equal by `id` and `kind`.
+
+**Kind:** `class` (immutable)
+
+```dart
+const TomPrincipalCandidate({
+  required String id,
+  required String displayName,
+  TomPrincipalKind kind = TomPrincipalKind.user,
+})
+```
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `id` | `String` | The user's or group's id, as the directory names it. |
+| `displayName` | `String` | The name shown in the list and on the chip. |
+| `kind` | `TomPrincipalKind` | Whether this is a user or a group. |
+| `hashCode` | `int` | *(override)* Hash of `id` and `kind`. |
+
+### TomPrincipalKind
+
+**Kind:** `enum` — `user`, `group`.
+
+### TomPrincipalSearch
+
+**Kind:** `typedef` — `Future<List<TomPrincipalCandidate>> Function(String query)`.
+
+Answers the candidates whose name, username or e-mail starts with `query`;
+called only for queries of at least `minimumQueryLength` characters.
 
 ## List and surface states
 

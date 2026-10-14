@@ -1,10 +1,10 @@
-/// Runnable example for the `custom/` module of `tom_flutter_ui` — all eight
+/// Runnable example for the `custom/` module of `tom_flutter_ui` — all nine
 /// widgets, on screen, in one app.
 ///
 /// The example beside this one covers what can be shown without a widget tree:
 /// the `TomAuthState` lattice, the resource-path lookup, the data models. This
 /// one covers the rest, which for a kit of composites is most of it. Two of
-/// the eight — [TomAuthTreeView] and [TomInfiniteScroll] — were rendered by no
+/// the nine — [TomAuthTreeView] and [TomInfiniteScroll] — were rendered by no
 /// example at all, and they are the two with the most wiring.
 ///
 /// Every widget below is built by a plain function that takes no tester and no
@@ -32,7 +32,7 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 /// Grants everything except the paths it is given.
 ///
 /// A real application resolves these from its own backend; what matters here
-/// is that three of the eight widgets ask, and that they ask about paths the
+/// is that three of the nine widgets ask, and that they ask about paths the
 /// caller chose.
 class DemoPolicy implements TomAuthorizationAdapter {
   DemoPolicy(this.withheld);
@@ -52,7 +52,7 @@ DemoPolicy demoPolicy() => DemoPolicy(const {
 });
 
 // =============================================================================
-// The eight widgets, one function each.
+// The nine widgets, one function each.
 // =============================================================================
 
 /// [TomAuthGuard] over a button the policy withholds, beside one it grants.
@@ -179,6 +179,30 @@ Widget buildSkeletons() => Row(
   ],
 );
 
+/// The people and groups [buildPrincipalPicker] searches.
+const _directory = [
+  TomPrincipalCandidate(id: 'u1', displayName: 'Alice Archer'),
+  TomPrincipalCandidate(id: 'u2', displayName: 'Albert Ames'),
+  TomPrincipalCandidate(
+    id: 'g1',
+    displayName: 'Alpine Sales',
+    kind: TomPrincipalKind.group,
+  ),
+];
+
+/// [TomPrincipalPicker] over a local list, with one user and one group
+/// already picked. An application passes its own search — a server's subject
+/// search — and keeps the selection in its state.
+Widget buildPrincipalPicker() => TomPrincipalPicker(
+  search: (query) async => [
+    for (final candidate in _directory)
+      if (candidate.displayName.toLowerCase().startsWith(query.toLowerCase()))
+        candidate,
+  ],
+  selected: [_directory[0], _directory[2]],
+  onChanged: (_) {},
+);
+
 /// Throws while building, so the boundary beside it has something to catch.
 class _AlwaysThrows extends StatelessWidget {
   const _AlwaysThrows();
@@ -218,6 +242,9 @@ Widget buildGallery() => ListView(
     const Divider(),
     const Text('TomEmptyState'),
     buildEmptyState(),
+    const Divider(),
+    const Text('TomPrincipalPicker'),
+    buildPrincipalPicker(),
   ],
 );
 
@@ -252,7 +279,7 @@ Future<void> run(WidgetTester tester) async {
   await tester.pumpWidget(
     MaterialApp(
       home: Scaffold(
-        // `TickerMode(enabled: false)`, because two of the eight animate
+        // `TickerMode(enabled: false)`, because two of the nine animate
         // forever — the skeleton's shimmer and the overlay's progress
         // indicator — and a repeating animation never lets `pumpAndSettle`
         // return. Muting the tickers covers both; reduced motion would stop
@@ -369,4 +396,14 @@ Future<void> run(WidgetTester tester) async {
     'the action appears because both label and handler are '
     'given',
   );
+
+  // ---------------------------------------------------------------------------
+  // 9. TomPrincipalPicker — the picked user and group as chips, and the field.
+  // ---------------------------------------------------------------------------
+  print('\n=== TomPrincipalPicker ===');
+  final chips = find.byType(InputChip).evaluate().length;
+  final field = find.text('Share with').evaluate().length;
+  print('chips: $chips, search field: $field');
+  assert(chips == 2, 'one user and one group are picked');
+  assert(field == 1, 'the field is offered, since nothing withholds it');
 }

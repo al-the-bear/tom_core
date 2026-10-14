@@ -3,10 +3,11 @@
 > **Attribution.** The Tom Framework is developed by Peter Nicolai Alexis Kyaw.
 > These packages are BSD-3-Clause licensed and internal (`publish_to: none`).
 
-The non-form composites: eight ready-made widgets that solve recurring
+The non-form composites: nine ready-made widgets that solve recurring
 *screen-level* needs — guarding a subtree behind a permission, a tree whose
 nodes are guarded one by one, empty / loading / error placeholders, an
-infinite-scroll list, a skeleton placeholder, and a radio group.
+infinite-scroll list, a skeleton placeholder, a radio group, and a picker that
+finds users and groups.
 
 Unlike the [`widgets`](../widgets/readme.md) kit, whose wrappers extend a
 `TomFamilyBase`, these extend `StatelessWidget` / `StatefulWidget` directly and
@@ -20,16 +21,17 @@ resource systems, but only where each one genuinely needs them:
 
 | Consumes | Widgets |
 | -------- | ------- |
-| the kernel's `TomAuthorization` / `TomAuthState` | `TomAuthGuard`, `TomAuthTreeView`, `TomChoiceGroup` |
-| resources, via `TomCtr` from [`widget_base`](../widget_base/readme.md) — and only when given a `tomId` | `TomEmptyState` |
+| the kernel's `TomAuthorization` / `TomAuthState` | `TomAuthGuard`, `TomAuthTreeView`, `TomChoiceGroup`, `TomPrincipalPicker` |
+| resources, via `TomCtr` from [`widget_base`](../widget_base/readme.md) — and only when given a `tomId` | `TomEmptyState`, `TomPrincipalPicker` |
 | neither — pure presentation | `TomErrorBoundary`, `TomLoadingOverlay`, `TomSkeletonLoader`, `TomInfiniteScroll` |
 
-`tom_empty_state.dart` is this module's single import from `widget_base`, which
-makes `custom` the one module that does not rest on it.
+What this module takes from `widget_base` is resource and scope-path resolution
+only (`TomCtr`, `TomScopePath`), so `custom` does not rest on the widget
+families.
 
 ## Key types
 
-Every type `tom_custom_widgets.dart` exports, the eight widgets first and then
+Every type `tom_custom_widgets.dart` exports, the nine widgets first and then
 the models and signatures they take:
 
 | Type | Responsibility |
@@ -42,6 +44,7 @@ the models and signatures they take:
 | `TomLoadingOverlay` | A scrim + message over a `child` while `isLoading` |
 | `TomChoiceGroup` | A single-select radio group. Named apart from the forms module's `TomRadioGroupStyle`, which themes the radio-group *field* and does nothing here |
 | `TomSkeletonLoader` | Shimmer placeholder while content loads |
+| `TomPrincipalPicker` | Finds users and groups through an injected search, at least three characters and a pause in, and shows the picked ones as chips; a live-region status line, auth-gated like `TomChoiceGroup` |
 | `TomAuthTreeNode` | One node of a `TomAuthTreeView` — its own `tomId`, title, children |
 | `TomChoiceGroupItem` | One option of a `TomChoiceGroup` — value and label |
 | `TomInfiniteScrollState` | `TomInfiniteScroll`'s state, public so a `GlobalKey` can read `loadedCount` / `isPending` / `isExhausted` / `hasError` / `error` and call `refresh()` |
@@ -50,6 +53,9 @@ the models and signatures they take:
 | `TomInfiniteScrollErrorBuilder` | Signature of `TomInfiniteScroll.errorBuilder` — the error, a `retry`, and where it is being rendered |
 | `TomInfiniteScrollErrorPlacement` | Whether a page failure takes the surface or is the list's last tile |
 | `TomErrorBoundaryFallbackBuilder` | Signature of `TomErrorBoundary.fallbackBuilder` — the error details plus a `retry` closure |
+| `TomPrincipalCandidate` | One user or group a `TomPrincipalPicker` offers — id, display name, kind; equal by id and kind |
+| `TomPrincipalKind` | `user` or `group` |
+| `TomPrincipalSearch` | Signature of `TomPrincipalPicker.search` — the candidates for a query |
 
 ## Static entry points
 
@@ -57,6 +63,7 @@ the models and signatures they take:
 | ------ | ------- |
 | `TomAuthGuard.resolveAuthState` | The guard's decision without a widget tree — `@visibleForTesting` |
 | `TomErrorBoundary.debugReleaseGlobalHook` | Hands `ErrorWidget.builder` back and forgets every mounted boundary. The count that owns that slot is process-wide, so a boundary whose `dispose` never runs would otherwise hold it for the rest of the process. `@visibleForTesting`; an application never needs it |
+| `TomPrincipalPicker.defaultMinimumQueryLength` / `defaultMaximumResults` / `defaultDebounce` | The picker's defaults: three characters, twenty results, 300 ms |
 | `TomErrorBoundary.debugDefaultFallback` | Replaces the boundary's default error card, so a test can make it fail and reach the last fallback stage — the builder installed before any boundary. `@visibleForTesting`; `null` in an application |
 
 ## Quick start

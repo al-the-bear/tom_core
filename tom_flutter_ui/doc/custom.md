@@ -1,14 +1,14 @@
 # Custom Module
 
-`custom/` is the **non-form composite kit** of `tom_flutter_ui`: eight
+`custom/` is the **non-form composite kit** of `tom_flutter_ui`: nine
 ready-made widgets that solve recurring *screen-level* problems — gating a
 subtree by permission, showing an empty / loading / error placeholder, paging
-a long list. They are not form fields and they do not edit a value, but where
+a long list, picking users and groups. They are not form fields and they do not edit a value, but where
 they need one they reach for the **same authorization and resource systems**
 the fields use, so they drop into a Tom screen with no extra wiring.
 
 > **The kit is deliberately downstream-only.** Nothing in `tom_flutter_ui`
-> consumes these eight; `forms/` builds on none of them, and that is a decision
+> consumes these nine; `forms/` builds on none of them, and that is a decision
 > rather than an omission. Wiring `TomEmptyState` into the list renderers'
 > empty slot was considered and declined: it would delete no duplicate —
 > `TomInlineListForm` and its siblings resolve an empty list through
@@ -25,7 +25,7 @@ the fields use, so they drop into a Tom screen with no extra wiring.
 
 > **Looking for the widgets on screen?**
 > [`example/custom/custom_rendered_example.dart`](../example/custom/custom_rendered_example.dart)
-> assembles all eight into one runnable app — `flutter run -t` it, or run the
+> assembles all nine into one runnable app — `flutter run -t` it, or run the
 > suite that renders and checks it. `custom_example.dart` beside it covers the
 > parts that need no widget tree.
 >
@@ -35,10 +35,10 @@ the fields use, so they drop into a Tom screen with no extra wiring.
 > parameter with what it does.
 
 They reach sparingly, which decides what a host has to install:
-`TomAuthGuard`, `TomAuthTreeView` and `TomChoiceGroup` resolve authorization;
-`TomEmptyState` — and only when it is given a `tomId` — resolves strings
-through the resource provider; the remaining four read neither. **None of the
-eight resolves a colour or an icon through `TomUIColors` / `TomUIIcons`**, so a
+`TomAuthGuard`, `TomAuthTreeView`, `TomChoiceGroup` and `TomPrincipalPicker`
+resolve authorization; `TomEmptyState` and `TomPrincipalPicker` — and only when
+given a `tomId` — resolve strings through the resource provider; the remaining
+four read neither. **None of the nine resolves a colour or an icon through `TomUIColors` / `TomUIIcons`**, so a
 screen built only from this kit needs no colours adapter and takes its
 appearance from the ambient `ThemeData`.
 
@@ -53,6 +53,7 @@ lookup and the plain data models — is what the example demonstrates.
 
 - [Overview](#overview)
 - [Authorization widgets](#authorization-widgets)
+- [Picking users and groups](#picking-users-and-groups)
 - [Placeholder & state widgets](#placeholder--state-widgets)
 - [The shared auth lookup](#the-shared-auth-lookup)
 - [Dependencies](#dependencies)
@@ -71,19 +72,23 @@ lookup and the plain data models — is what the example demonstrates.
 | `TomSkeletonLoader` | class | Shimmer placeholder for async surfaces (static when `enabled: false`). |
 | `TomErrorBoundary` | class | Catches build errors in `child` and renders a fallback instead of propagating. |
 | `TomInfiniteScroll` | class | Paginated list with a `TomPageFetcher`, reusing the empty / skeleton / error widgets above. |
+| `TomPrincipalPicker` / `TomPrincipalCandidate` | classes | A search field that finds users and groups through an injected `TomPrincipalSearch` and shows the picked ones as chips. |
 
-All eight are exported from the package barrel via
+All nine are exported from the package barrel via
 `lib/src/custom/tom_custom_widgets.dart`, together with the models and callback
 signatures they take — `TomAuthTreeNode`, `TomChoiceGroupItem`,
-`TomInfiniteScrollState`, `TomPageFetcher`, `TomInfiniteScrollItemBuilder` and
-`TomErrorBoundaryFallbackBuilder`. The module readme
-([`lib/src/custom/readme.md`](../lib/src/custom/readme.md)) tables all fourteen;
-this document covers the eight widgets.
+`TomInfiniteScrollState`, `TomPageFetcher`, `TomInfiniteScrollItemBuilder`,
+`TomErrorBoundaryFallbackBuilder`, `TomPrincipalCandidate`, `TomPrincipalKind`
+and `TomPrincipalSearch`. The module readme
+([`lib/src/custom/readme.md`](../lib/src/custom/readme.md)) tables all of them;
+this document covers the nine widgets.
 
 ## Authorization widgets
 
-Three of the eight gate their content on a resolved `TomAuthState`. They all
-follow the same four-outcome contract:
+Three of the nine gate their content on a resolved `TomAuthState` and follow
+the same four-outcome contract below; the fourth that resolves one,
+`TomPrincipalPicker`, has a rule of its own, under
+[Picking users and groups](#picking-users-and-groups):
 
 | State | Treatment |
 | ----- | --------- |
@@ -170,6 +175,49 @@ expanded is a read-only tree nobody can use, and the header most likely to be
 withheld is exactly the one a user most wants to collapse. At `full` the whole
 row remains a target and both toggles and activates; at the other two only the
 chevron responds.
+
+## Picking users and groups
+
+`TomPrincipalPicker` finds users and groups and shows the picked ones as chips —
+the base of a share dialog, an assignee field, a recipient list. It owns no
+directory: the application passes a `TomPrincipalSearch`, an async function
+from a query to `TomPrincipalCandidate`s (id, display name, `TomPrincipalKind`),
+and decides what it asks — a server's subject search, a local list, a test fake.
+A candidate carries nothing beyond its name, so a directory answering the picker
+discloses no e-mail addresses or memberships.
+
+```dart
+TomPrincipalPicker(
+  search: (query) => directory.findSubjects(query),
+  selected: picked,
+  onChanged: (next) => setState(() => picked = next),
+)
+```
+
+- **When it asks.** Once the query is `minimumQueryLength` (3) characters long
+  and has rested for `debounce` (300 ms). Shorter queries say how many
+  characters are needed and ask nothing.
+- **What it shows.** At most `maximumResults` (20), in a list that scrolls past
+  `resultsMaxHeight`, never what is already picked. An answer a newer query has
+  overtaken is dropped. A failed search is shown with a retry instead of being
+  thrown, so the field stays usable.
+- **The selection is the caller's.** `selected` is shown as chips, and
+  `onChanged` receives the new list when a candidate is picked or a chip
+  removed; with `multiple: false` a pick replaces the selection. Without an
+  `onChanged` the picker is read-only.
+- **Authorization.** With a `tomId`: `none` hides it, `read` shows the chips
+  without the field and without their delete buttons, `disabled` the same
+  faded. Unlike the three composites above it does not lay a barrier over a
+  rendered field: a search field that cannot be used is left out, since an
+  inert text field reads as broken.
+- **Accessibility.** The field carries a label and a semantics label; a result
+  reads as its name and its kind; the status line under the field — searching,
+  how many matched, nothing matched, the search failed — is a live region, so a
+  screen reader announces it as it changes.
+- **Texts** resolve from resources under the `tomId` first (`label`, `hint`,
+  `semanticsLabel`, `typeMore`, `searching`, `matches`, `noMatch`,
+  `searchFailed`, `retry`, `user`, `group`, `remove`), then from the
+  constructor's arguments, then from English defaults.
 
 ## Placeholder & state widgets
 
@@ -319,9 +367,10 @@ TomAuthState.full.narrow(TomAuthState.disabled);  // disabled — the tree's cap
 
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
-| `flutter` | package | 8 of 9 files | `widgets.dart` and `material.dart` |
-| `tom_core_kernel` | package | `tom_auth_guard.dart`, `tom_auth_tree.dart`, `tom_empty_state.dart`, `tom_choice_group.dart` | `TomAuthState`, `TomAuthorization`, `TomScope`, and the resource provider used by `TomEmptyState` |
-| [widget_base](widget_base.md) | module | `tom_auth_guard.dart`, `tom_auth_tree.dart`, `tom_empty_state.dart`, `tom_choice_group.dart` | `TomCtr` resource resolvers (used by `TomEmptyState`) |
+| `dart:async` | dart | `tom_principal_picker.dart` | `Timer`, which holds a query back until it has rested |
+| `flutter` | package | 9 of 10 files | `widgets.dart` and `material.dart` |
+| `tom_core_kernel` | package | `tom_auth_guard.dart`, `tom_auth_tree.dart`, `tom_empty_state.dart`, `tom_choice_group.dart`, `tom_principal_picker.dart` | `TomAuthState`, `TomAuthorization`, `TomScope`, and the resource provider used by `TomEmptyState` and `TomPrincipalPicker` |
+| [widget_base](widget_base.md) | module | `tom_auth_guard.dart`, `tom_auth_tree.dart`, `tom_empty_state.dart`, `tom_choice_group.dart`, `tom_principal_picker.dart` | `TomScopePath` (the scope-qualified auth key) and the `TomCtr` resource resolvers (used by `TomEmptyState` and `TomPrincipalPicker`) |
 
 - the sibling custom widgets — `TomInfiniteScroll` reuses `TomEmptyState` and
   `TomSkeletonLoader`.

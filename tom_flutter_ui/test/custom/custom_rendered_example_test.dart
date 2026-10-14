@@ -30,10 +30,11 @@ void main() {
       expect(example.buildInfiniteScroll(), isA<Widget>());
       expect(example.buildLoadingOverlay(), isA<Widget>());
       expect(example.buildSkeletons(), isA<Widget>());
+      expect(example.buildPrincipalPicker(), isA<Widget>());
       expect(example.buildGallery(), isA<Widget>());
     });
 
-    test('the gallery leaves none of the eight out', () {
+    test('the gallery leaves none of the nine out', () {
       // The example's assertions each name one widget, so none of them notices
       // a section dropped from the gallery — the run would simply stop
       // asserting about it. This counts the types the gallery contains.
@@ -46,8 +47,8 @@ void main() {
       expect(labels, containsAll(<String>['TomAuthGuard', 'TomAuthTreeView']));
       expect(
         labels.where((l) => l.startsWith('Tom')).toSet(),
-        hasLength(8),
-        reason: 'eight widgets, eight sections: $labels',
+        hasLength(9),
+        reason: 'nine widgets, nine sections: $labels',
       );
     });
   });

@@ -117,6 +117,10 @@ Summary: [api_summary_custom.md](api_summary_custom.md)
 | `TomLoadingOverlay` | class | Full-surface loading indicator overlay. |
 | `TomPageFetcher` | typedef | Fetches one page of items. |
 | `TomSkeletonLoader` | class | Shimmering skeleton placeholder for async-loading surfaces. |
+| `TomPrincipalCandidate` | class | One user or group a [TomPrincipalPicker] offers: what the search answered with — an [id], a [displayName] to show, and its [kind]. |
+| `TomPrincipalKind` | enum | Whether a [TomPrincipalCandidate] is one user or a group of users. |
+| `TomPrincipalPicker` | class | A search field that finds users and groups through an injected [search] and shows the picked ones as chips. |
+| `TomPrincipalSearch` | typedef | Answers the candidates whose name, username or e-mail starts with [query]. |
 
 ### Forms (`lib/src/forms/`)
 
