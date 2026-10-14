@@ -796,7 +796,8 @@ factory TomItemType.fromJson(Map<String, Object?> json)
 ```
 
 The constructor throws `ArgumentError` for a name that is not
-`[a-z][a-z0-9_.-]*`, no levels, a repeated level or a level without a grade.
+`[a-z][a-z0-9_.-]*`, no levels, a repeated level, a level without a grade, or a
+level whose grade is below a weaker level's.
 `standard` declares `view`, `comment` (`read`), `edit` and `manage` (`full`).
 `fromJson` reads a manifest declaration
 `{"name": …, "levels": [{"name": …, "grade": <TomAuthState name>}, …]}`.
@@ -823,6 +824,7 @@ The constructor throws `ArgumentError` for a name that is not
 | `patternFor([String idPrefix = ''])` | `String` | `<name>:<idPrefix>*` — covers every item whose id starts with [idPrefix]; every item of the type without one. |
 | `rankOf(String level)` | `int` | The level's position, weakest 0, or `-1` when undeclared. |
 | `gradeOf(String level)` | `TomAuthState?` | The grade the level stands for, or `null`. |
+| `lowestLevelGranting(TomAuthState grade)` | `String?` | The weakest level whose grade is [grade] or above, or `null` when none reaches it — the minimum level of a query for every item a principal may read or write. |
 | `stronger(String a, String b)` | `String` | The stronger of two levels; an undeclared level is the weakest. |
 | `toJson()` | `Map<String, Object?>` | The manifest declaration `fromJson` reads. |
 | `toString()` | `String` | *(override)* The name and the levels in order. |

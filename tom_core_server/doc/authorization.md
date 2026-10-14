@@ -22,6 +22,7 @@ row scope.
   - [The grades are the design](#the-grades-are-the-design)
   - [Resolution is live](#resolution-is-live)
   - [Two guards worth knowing](#two-guards-worth-knowing)
+  - [When an external authority keeps the grants](#when-an-external-authority-keeps-the-grants)
 - [Not Yet Implemented](#not-yet-implemented)
 - [Verification](#verification)
 - [Core Components](#core-components)
@@ -489,6 +490,24 @@ the built-in `owner` and `group` scopes.
 `example/authorization/resource_data_scope_example.dart` walks all of this
 connection-free; `test/resource_data_scope_db_test.dart` covers it end to end
 against MariaDB.
+
+### When an external authority keeps the grants
+
+`TomResourceDataScope` reads grants the application stores itself. When another
+service keeps them — Tom UAM keeps who may see which of an application's items,
+because those authorizations reach users through groups and delegations and are
+shared by every application of a tenant — the same `resource` scope kind is fed
+from that service instead: a different `TomResourceScopeSource` is installed,
+and nothing else changes. The scoped entity still carries a resource-key column,
+holding item keys (`<type>:<id>`), and reads and writes are still graded `read`
+and `full`.
+
+The source the framework ships for this is `TomItemAuthorityScopeSource` in the
+item_authorization module. It asks the authority, page by page, for the items a
+principal reaches at each item type's weakest level granting the grade, caches
+the lists, and drops them when the authority reports a change. The pattern —
+ask, cache, drop on the authority's report, age out what no report reached — and
+its limits are in [item_authorization.md](item_authorization.md#the-external-authority-pattern).
 
 ## Not Yet Implemented
 

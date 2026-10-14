@@ -867,11 +867,15 @@ current tenant's.
 | `install(timeToLive: …, maximumEntries: …)` | registers the cache; each answer is kept for `timeToLive` (five minutes by default) when no change names it, and the cache holds `maximumEntries` (10,000 by default) |
 | `store(subject, item, level)` | caches `level` — `null` for "holds none" — as `subject`'s answer on `item` |
 | `lookup(subject, item)` | the cached `TomCachedItemLevel`, or `null` on a miss; a cached "none" is `TomCachedItemLevel(null)`, not a miss |
-| `invalidateLocally(qualifiedItem, subject)` | drops the matching answers on this node; `apply` calls it |
+| `lookupAccessible(subject, itemType, minimumLevel)` / `storeAccessible(…, itemIds)` | the cached ids of the items of a type the subject reaches at a minimum level — the input of a row scope |
+| `invalidateLocally(qualifiedItem, subject)` | drops the matching answers on this node, with the accessible-item lists of the subject — or every subject — for the item's type; `apply` calls it |
+| `generation` | counts the invalidations applied on this isolate, so a reader stores an answer only when none arrived while it asked |
 | `uninstall()` | removes the cache — test support |
 
 An item is named by its resource key, `<type>:<id>`; a subject by the id the
-authority names it by in its change reports — the user's id. Neither may
+authority names it by in its change reports — the user's id. The client that
+fills the cache is `TomItemAuthorizationClient` in the
+[item_authorization](item_authorization.md) module. Neither may
 contain a NUL character, which separates them in the stored key.
 
 `TomCache.removeWhere(test)` is what makes an invalidation by item and subject

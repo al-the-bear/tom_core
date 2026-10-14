@@ -178,6 +178,11 @@ const List<TourStop> tour = [
         'is load-bearing, and the UTC instant encoding',
   ),
   TourStop(
+    'example/item_authorization/item_authorization_example.dart',
+    'Item authorizations kept by an external authority: checks cached until a '
+        'change names them, sharing for the user, and the row scope',
+  ),
+  TourStop(
     'example/healthcheck/healthcheck_example.dart',
     'The health and readiness verdicts, and what a probe can act on',
   ),

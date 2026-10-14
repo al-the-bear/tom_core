@@ -21,6 +21,7 @@ surface documented here.
 | Export | [api_summary_export.md](api_summary_export.md) | Tabular results rendered to CSV, XLSX or PDF, and stored for later retrieval. |
 | File Storage | [api_summary_file_storage.md](api_summary_file_storage.md) | Streaming blob storage: one put/get contract over memory, directory, database and S3 backends. |
 | Health Check | [api_summary_healthcheck.md](api_summary_healthcheck.md) | Health analyzer and health-check service/server. |
+| Item Authorization | [api_summary_item_authorization.md](api_summary_item_authorization.md) | Item authorizations kept by an external authority: the port to it, a caching client for checks, accessible items and the user's sharing acts, and the row scope it feeds. |
 | Little Things | [api_summary_little_things.md](api_summary_little_things.md) | The server-side base exception `TomServerException`, the `TomLoginFailure` reason its login subclass carries, the per-request correlation id `TomRequestId` it reads, and `tomErrorEnvelope`, the wire shape every error response uses. |
 | Messaging | [api_summary_messaging.md](api_summary_messaging.md) | Channel-neutral messages, delivery transports (SMTP, HTTP SMS gateway and stand-ins), MIME encoding, the durable outbox, and resource-keyed email and SMS. |
 | Object Persistence | [api_summary_object_persistence.md](api_summary_object_persistence.md) | Persistence annotations, repositories, query builder, operators/expressions, grouped queries and their aggregates, paging and sorting, file-reference columns, data scoping, column authorization. |
@@ -516,6 +517,20 @@ surface documented here.
 | `TomHealthService` | abstract class | Health-check service (`@tomService`). |
 | `TomHealthServer` | class | Health-check server component. |
 
+### Item Authorization (`lib/src/tomserver/item_authorization/`)
+
+| Type | Kind | Description |
+| ---- | ---- | ----------- |
+| `TomItemAuthority` | abstract interface class | The port to the external authority (Tom UAM): checks, accessible items, change feed, sharing. |
+| `TomItemAuthorizationClient` | class | Checks and accessible-item lists answered from the cache, the user's sharing acts, the feed follower. |
+| `TomItemAuthorityScopeSource` | class | The `resource` row scope fed by the client. |
+| `TomItemAuthorizationRecord` | class | One authorization as the authority keeps it. |
+| `TomItemShareRequest` | class | A share as a user asks for it. |
+| `TomShareSubjectKind` | enum | `user`, `group`. |
+| `TomAccessibleItemsPage` | class | One page of the items a principal reaches. |
+| `TomSharedItemsPage` | class | One page of the authorizations shared with the user. |
+| `TomItemAuthorizationException` | class | A row scope larger than the client may gather (extends `TomServerException`). |
+
 ### Little Things (`lib/src/tomserver/little_things/`)
 
 | Type | Kind | Description |
@@ -905,6 +920,7 @@ surface documented here.
 | `Tom2FAService` | Authentication |
 | `Tom2FASubmission` | Authentication |
 | `tom2FATokenFingerprint` | Authentication |
+| `TomAccessibleItemsPage` | Item Authorization |
 | `TomAggregate` | Object Persistence |
 | `TomAggregateFunction` | Datasources |
 | `TomAnnotationAnalyzer` | Object Persistence |
@@ -1157,13 +1173,19 @@ surface documented here.
 | `TomInvalidationChannel` | Cache |
 | `TomInvalidationKind` | Cache |
 | `TomIssuedApiKey` | Authentication |
+| `TomItemAuthority` | Item Authorization |
+| `TomItemAuthorityScopeSource` | Item Authorization |
 | `TomItemAuthorizationCache` | Cache |
 | `TomItemAuthorizationChange` | Cache |
 | `TomItemAuthorizationChangePage` | Cache |
+| `TomItemAuthorizationClient` | Item Authorization |
+| `TomItemAuthorizationException` | Item Authorization |
 | `TomItemAuthorizationFeedExpiredException` | Cache |
 | `TomItemAuthorizationFeedFollower` | Cache |
+| `TomItemAuthorizationRecord` | Item Authorization |
 | `TomItemAuthorizationWebhook` | Cache |
 | `TomItemAuthorizationWebhookException` | Cache |
+| `TomItemShareRequest` | Item Authorization |
 | `TomJobRunRow` | Scheduling |
 | `TomJobRunWindowRow` | Scheduling |
 | `TomJwksServer` | Authentication |
@@ -1348,6 +1370,8 @@ surface documented here.
 | `TomServiceCredential` | Authentication |
 | `TomServiceLoginResponse` | Authentication |
 | `TomServiceLoginTransport` | Authentication |
+| `TomSharedItemsPage` | Item Authorization |
+| `TomShareSubjectKind` | Item Authorization |
 | `TomSigningKeyException` | Authentication |
 | `TomSignInOrganization` | Authentication |
 | `TomSignInOrganizationDirectory` | Authentication |

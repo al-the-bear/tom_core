@@ -2,6 +2,23 @@
 
 ### Added
 
+- **The item_authorization module: item authorizations kept by an external
+  authority.** `TomItemAuthority` is the transport-neutral port to it — Tom
+  UAM's checks (at most 100 items a call), accessible-item query (paged) and
+  change feed with the application's credentials, and share, change, revoke and
+  shared-with-me with the user's token. `TomItemAuthorizationClient` answers
+  `levelOn` / `levelsOn` / `allows` from `TomItemAuthorizationCache` and asks
+  the rest in chunks, gathers `accessibleItemIds` page by page and caches them,
+  refuses a list over `maximumScopeItems` (`error.item_authority.scope_too_large`)
+  rather than cutting it short, drops the answers each sharing act affects on
+  every node, and builds the feed follower; an answer overtaken by an
+  invalidation, or given while acting for a delegator, is not cached.
+  `TomItemAuthorityScopeSource` feeds the `resource` row scope from it.
+  `TomItemAuthorizationCache` gains accessible-item lists
+  (`lookupAccessible`, `storeAccessible`), dropped with the changes of their
+  subject and type, and `generation`. `doc/item_authorization.md`,
+  `doc/authorization.md` § When an external authority keeps the grants; tests in
+  `test/item_authorization_client_test.dart`.
 - **Item-authorization answers, dropped by item and subject from outside.**
   `TomItemAuthorizationCache` keeps the level a remote authority answered for a
   subject on an item (`TomCachedItemLevel`). The new invalidation kind

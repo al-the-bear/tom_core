@@ -1060,7 +1060,10 @@ guarantee asserted, is
 The four grades say how a resource is *shown*; they cannot say that a user may
 comment on a document but not edit it. An application declares its **item
 types** — usually from its manifest — each with **ordered levels**, weakest
-first, and the grade every level stands for:
+first, and the grade every level stands for. A stronger level never stands for
+a weaker grade, so the weakest level granting a grade
+(`TomItemType.lowestLevelGranting`) is the threshold for every level above it —
+the question a row scope asks:
 
 ```dart
 TomItemTypeRegistry.register(TomItemType.standard('document'));

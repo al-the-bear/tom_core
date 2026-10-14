@@ -74,6 +74,26 @@ void main() {
         }),
         throwsArgumentError,
       );
+      expect(
+        () => TomItemType(
+          'doc',
+          ['edit', 'view'],
+          {'edit': TomAuthState.full, 'view': TomAuthState.read},
+        ),
+        throwsArgumentError,
+        reason: 'a stronger level never grants less',
+      );
+    });
+
+    test('names the weakest level that grants a grade', () {
+      expect(document.lowestLevelGranting(TomAuthState.read), 'view');
+      expect(document.lowestLevelGranting(TomAuthState.full), 'edit');
+      final readOnly = TomItemType(
+        'report',
+        ['see'],
+        {'see': TomAuthState.read},
+      );
+      expect(readOnly.lowestLevelGranting(TomAuthState.full), isNull);
     });
   });
 

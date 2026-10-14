@@ -98,6 +98,11 @@ const _quickStarts = <_QuickStart>[
     reasonPrefix: '> **A fragment, not a program.**',
   ),
   _QuickStart.notRunnable(
+    'item_authorization',
+    _NotRunnable.fragment,
+    reasonPrefix: '> **A fragment, not a program.**',
+  ),
+  _QuickStart.notRunnable(
     'datasources',
     _NotRunnable.needsDatabase,
     reasonPrefix: '> **Needs a live database.**',

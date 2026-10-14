@@ -2,6 +2,11 @@
 
 ### Added
 
+- **`TomItemType.lowestLevelGranting(grade)`** — the weakest level whose grade
+  is at least `grade`, the minimum level of a "every item this principal may
+  read (or write)" query. A type whose stronger level stands for a weaker grade
+  is now refused at declaration, so that threshold holds for every level above
+  it. `doc/security/security.md` § Item Permission Levels.
 - **Item permission levels.** `TomItemType` (ordered levels, each mapped to a
   `TomAuthState`; `standard` is view < comment < edit < manage; `fromJson`
   reads a manifest declaration), `TomItemTypeRegistry` and

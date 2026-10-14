@@ -51,8 +51,9 @@ class TomItemType {
   /// [grades] every level maps onto.
   ///
   /// Throws [ArgumentError] for a [name] that is not a lower-case identifier
-  /// (`[a-z][a-z0-9_.-]*`), for no levels, a repeated level, or a level
-  /// [grades] does not map.
+  /// (`[a-z][a-z0-9_.-]*`), for no levels, a repeated level, a level
+  /// [grades] does not map, or a level whose grade is below the grade of a
+  /// weaker one — a stronger level never grants less.
   TomItemType(this.name, List<String> levels, Map<String, TomAuthState> grades)
     : levels = List.unmodifiable(levels),
       _grades = Map.unmodifiable(grades) {
@@ -67,10 +68,20 @@ class TomItemType {
     if (levels.toSet().length != levels.length) {
       throw ArgumentError.value(levels, 'levels', 'must not repeat a level');
     }
+    TomAuthState? previous;
     for (final level in levels) {
-      if (!grades.containsKey(level)) {
+      final grade = grades[level];
+      if (grade == null) {
         throw ArgumentError.value(level, 'grades', 'maps no grade for level');
       }
+      if (previous != null && grade.index < previous.index) {
+        throw ArgumentError.value(
+          level,
+          'grades',
+          'grants less than a weaker level',
+        );
+      }
+      previous = grade;
     }
   }
 
@@ -145,6 +156,16 @@ class TomItemType {
   /// The grade [level] stands for, or `null` when the type does not declare
   /// it.
   TomAuthState? gradeOf(String level) => _grades[level];
+
+  /// The weakest level whose grade is [grade] or above, or `null` when no
+  /// level reaches it — the minimum level a query for "every item this
+  /// principal may read" (or write) asks for.
+  String? lowestLevelGranting(TomAuthState grade) {
+    for (final level in levels) {
+      if (_grades[level]!.index >= grade.index) return level;
+    }
+    return null;
+  }
 
   /// The stronger of two levels; a level the type does not declare is the
   /// weakest.
