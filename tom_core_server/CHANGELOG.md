@@ -2,6 +2,20 @@
 
 ### Added
 
+- **The sign-in organization.** `TomSignInOrganizationDirectory`, a bean the
+  deployment installs, lists the organizations a principal may sign in for
+  (`TomSignInOrganizations`: the organizations, the default, whether a choice
+  is offered, and with `TomOrganizationFallback` what a non-member organization
+  at sign-in does) and signs a principal in for one of them (`signInFor`).
+  `TomAuthenticationServer` settles every login's organization against the list
+  before the second factor is decided — the named organization for a member,
+  the default for none, refusal or the default for a non-member
+  (`login.error.organization.not-member`, `login.error.organization.none`) — and
+  `switchOrganization` issues new tokens for another organization within a
+  session without a credential check, the second factor carried over, audited
+  as `session.organizationSwitched`; `signInOrganizations` answers the list.
+  Without a directory nothing changes. `doc/authentication.md` § The sign-in
+  organization; tests in `test/sign_in_organization_test.dart`.
 - **Tenant and organization from an external identity provider's token.**
   `TomExternalTenancyMapping` (`tenancyMapping` on both provider configs, read
   from `tenantClaim`, `organizationClaim` and `organizationParameter`) reads the

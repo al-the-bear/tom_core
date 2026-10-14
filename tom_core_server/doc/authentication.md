@@ -18,6 +18,7 @@ access rules as a user.
 - [Overview](#overview)
 - [The Login Flow](#the-login-flow)
   - [Tenancy and the token](#tenancy-and-the-token)
+  - [The sign-in organization](#the-sign-in-organization)
 - [Implementing a Service](#implementing-a-service)
   - [Your service is the source of what the principal asserts](#your-service-is-the-source-of-what-the-principal-asserts)
 - [Wiring the Server](#wiring-the-server)
@@ -151,6 +152,8 @@ access rules as a user.
 | `TomAuthenticationData` | class | The data carried into one authentication attempt; reflected (`@tomReflector`) |
 | `TomAuthenticationInfo` | class | A service's success result: principal + access-control definition |
 | `TomDummyAuthenticationService` | class | Scaffolding-only default service (accepts any non-`GUEST` user) |
+| `TomSignInOrganizationDirectory` | abstract interface class | The deployment's hook for the sign-in organization: a principal's organizations, and the principal signed in for one |
+| `TomSignInOrganizations` · `TomSignInOrganization` · `TomOrganizationFallback` | class / class / enum | A principal's organizations, the default, whether a choice is offered, and what a non-member organization at sign-in does |
 | `TomAuthenticationAdaptor` | class | The annotation that marks an adaptor and constrains it to guest/user flows; reflected (`@tomReflector`) |
 | `Tom2FAAdaptor` | class | The annotation that marks a 2FA adaptor for a mechanism `type`; reflected (`@tomReflector`) |
 | `Tom2FAService` | abstract class | The contract a second-factor mechanism implements: issue a challenge, verify a submission; reflected (`@tomReflector`) |
@@ -361,6 +364,84 @@ request; a service whose accounts are tenant-owned rows reads them through a
 `@TomTenantOwned` entity and finds only the current tenant's. With no tenant in
 context — a deployment without tenancy, or a login naming none — the token
 carries no `tenant` claim.
+
+### The sign-in organization
+
+A user can be a member of several organizations of a tenant. A session is signed
+in for one of them — `TomPrincipal.organization`, the token's `organization`
+claim — and its rights are that organization's. The deployment knows the
+memberships and tells the server through a `TomSignInOrganizationDirectory`
+bean:
+
+```dart
+/// Answers from the deployment's own memberships: username -> organization
+/// ids, the first the user's default.
+class MyOrganizations implements TomSignInOrganizationDirectory {
+  MyOrganizations(this.memberships);
+
+  final Map<String, List<String>> memberships;
+
+  @override
+  Future<TomSignInOrganizations> organizationsFor(TomPrincipal p) async {
+    final ids = memberships[p.username] ?? const <String>[];
+    return TomSignInOrganizations(
+      [for (final id in ids) TomSignInOrganization(id)],
+      defaultOrganization: ids.isEmpty ? null : ids.first,
+      choiceOffered: ids.length > 1,
+      fallback: TomOrganizationFallback.useDefault,
+    );
+  }
+
+  @override
+  Future<TomAuthenticationInfo> signInFor(TomPrincipal p, String org) async {
+    // A real directory also loads the organization's roles into p.aci.
+    p.organization = org;
+    return TomAuthenticationInfo(p, TomAccessControlDefinition());
+  }
+}
+
+TomBean.withType<TomSignInOrganizationDirectory>(
+  MyOrganizations({'alice': ['acme-hq', 'acme-sales']}),
+);
+```
+
+**At sign-in** the server settles the organization before the second factor is
+decided and the tokens are minted, on every login path (password, external
+identity, the passes that follow): the organization the authentication service
+put on the principal stands when the user is a member of it; a login that named
+none is signed in for the default; a login naming an organization the user is
+not a member of is refused, or signed in for the default when the list's
+`fallback` is `TomOrganizationFallback.useDefault`. When the settled
+organization is not the one the service resolved, `signInFor` supplies the
+principal and its rights for it. A guest is not settled, and with no directory
+installed the organization stays the service's.
+
+**Within a session** a user switches to another organization without signing in
+again. `TomAuthenticationServer.switchOrganization(message)` takes the
+organization from the message and the session's principal from the request,
+and issues new tokens for it — no credential is checked, and the session's
+second factor carries over. It refuses an organization the user is not a member
+of, a list that offers no choice, and a session that is not fully signed in;
+every switch is recorded in the audit trail under `session.organizationSwitched`
+with the previous and the new organization. `signInOrganizations()` answers the
+list for a client offering the choice (`TomSignInOrganizations.toJson`). The
+deployment exposes both through endpoints of its own, beside its login
+endpoints. Because the organization is always in the token, switching is the
+only way a session's rights stay correct when the user works for another
+organization.
+
+An application signing in through a Tom identity provider switches with a new
+authorization naming the organization (`organizationParameter`, see
+[Claim mapping: tenant and organization](#claim-mapping-tenant-and-organization)),
+which the provider answers from its session.
+
+| Key | Reason | When |
+| --- | ------ | ---- |
+| `login.error.organization.not-member` | `TomLoginFailure.accountProblem` | A login or a switch names an organization the user is not a member of (under `TomOrganizationFallback.refuse` for a login). |
+| `login.error.organization.none` | `TomLoginFailure.accountProblem` | The user is a member of no organization to sign in for. |
+| `login.error.organization.choice-not-offered` | `TomLoginFailure.accountProblem` | A switch, where the user's list offers no choice. |
+| `login.error.not-authenticated` | `TomLoginFailure.accountProblem` | A switch or a listing without a fully signed-in session. |
+| `login.error.organization.no-directory` | `TomLoginFailure.providerError` | A switch or a listing with no `TomSignInOrganizationDirectory` installed. |
 
 ## Implementing a Service
 
@@ -4131,22 +4212,23 @@ store keeps them in `tom_service_account` and `tom_api_key`, declared by
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
 | `dart:async` | dart | `server_self_login.dart`, `two_factor.dart` | `Future`, `FutureOr`, and the `Timer` the server principal's renewal is scheduled on |
-| `dart:convert` | dart | 22 of 36 files | `base64`, `base64Url`, `json`, `jsonDecode`, `jsonEncode`, `utf8` |
+| `dart:convert` | dart | 22 of 37 files | `base64`, `base64Url`, `json`, `jsonDecode`, `jsonEncode`, `utf8` |
 | `dart:io` | dart | `jwt_keys.dart`, `saml_flow.dart`, `saml_provider.dart` | `File`, reading the configured key and certificate files; `ZLibCodec`, deflating a SAML `AuthnRequest` for the redirect binding |
 | `dart:math` | dart | `api_keys.dart`, `jwt_signing.dart`, `oauth_flow.dart`, `two_factor_send_limit.dart`, `webauthn_software_authenticator.dart` | `Random`, `exp`, and `pow` / `min` for the send pace's doubling interval; `Random.secure` for the unusable signing key a verify-only server holds and for an API key's id and secret |
 | `dart:typed_data` | dart | `saml_xml_signature.dart`, `two_factor_delivered_code.dart`, `two_factor_webauthn.dart`, `webauthn_software_authenticator.dart` | `Uint8List`, `ByteData`, `BytesBuilder` |
-| `crypto` | package | 10 of 36 files | `sha256` and `sha512`, for the JWK thumbprint a key id is, the API-key secret digest, the SCIM bearer-secret digests, the PKCE code challenge, the SAML handoff-code digest and XML Signature digests, the interim-token fingerprint an attempt store keys on, the delivered-code digest, and the WebAuthn RP id hash, client-data hash and user handle |
+| `crypto` | package | 10 of 37 files | `sha256` and `sha512`, for the JWK thumbprint a key id is, the API-key secret digest, the SCIM bearer-secret digests, the PKCE code challenge, the SAML handoff-code digest and XML Signature digests, the interim-token fingerprint an attempt store keys on, the delivered-code digest, and the WebAuthn RP id hash, client-data hash and user handle |
 | `dart_jsonwebtoken` | package | `jwt_keys.dart`, `jwt_signing.dart`, `saml_provider.dart` | `jwt.JWT.verify`, `jwt.JWTAlgorithm`, `jwt.RSAPrivateKey` / `jwt.RSAPublicKey`, `jwt.ECPrivateKey` / `jwt.ECPublicKey`, `jwt.SecretKey`, and `toJWK` for the published set |
 | `http` | package | `oauth_flow.dart` | `http.dart`, `http.get`, `http.post` |
 | `pointycastle` | package | `jwt_keys.dart`, `saml_provider.dart`, `saml_xml_signature.dart`, `two_factor_webauthn.dart`, `webauthn_software_authenticator.dart` | RSA PKCS#1 v1.5 signing and verification for XML Signature, ECDSA P-256 and RSA PKCS#1 v1.5 signature verification for passkeys, and the software authenticator's key generation and signing; deriving a signing key's public half |
 | `shelf` | package | `jwks_endpoint.dart`, `saml_endpoints.dart`, `scim_endpoints.dart` | `Request` and `Response` — the SCIM endpoints read the raw request and answer in `application/scim+json`; `Response`, which the JSON Web Key Set and SAML metadata endpoints answer with directly to set their content type — and, for the key set, its cache header |
-| `tom_core_kernel` | package | 31 of 36 files | `TomPrincipal`, `TomAccessControlDefinition`, `TomBearerAuthentication`, `TomServerJwtToken`, the 2FA wire types `Tom2FAChallenge` / `Tom2FAClaims` / `Tom2FAPendingEnrolment` / `Tom2FAEnrolmentClaims`, the `Tom2FAMethodDescriptor` every adaptor describes itself with, the `TomTotp` derivation primitives, `TomServerPrincipal` (the holder server self-login installs into), and the wire types `TomAuthenticationMessage` / `TomAuthenticationResult`. The 2FA types live there and not here because the server writes them and the client reads them |
+| `tom_core_kernel` | package | 32 of 37 files | `TomPrincipal`, `TomAccessControlDefinition`, `TomBearerAuthentication`, `TomServerJwtToken`, the 2FA wire types `Tom2FAChallenge` / `Tom2FAClaims` / `Tom2FAPendingEnrolment` / `Tom2FAEnrolmentClaims`, the `Tom2FAMethodDescriptor` every adaptor describes itself with, the `TomTotp` derivation primitives, `TomServerPrincipal` (the holder server self-login installs into), and the wire types `TomAuthenticationMessage` / `TomAuthenticationResult`. The 2FA types live there and not here because the server writes them and the client reads them |
 | `xml` | package | `saml_flow.dart`, `saml_provider.dart`, `saml_xml_signature.dart` | `XmlDocument`, `XmlElement`, parsing SAML responses and metadata, and the node walk exclusive canonicalization is written over |
+| [audit](audit.md) | module | `authentication_server.dart` | `TomAuditTrail.recordAction`, `TomAuditAction` and `TomAuditOutcome` — the record of a switch of the sign-in organization (`session.organizationSwitched`) |
 | [cache](cache.md) | module | `api_keys.dart`, `scim_service.dart` | `TomCacheInvalidator.revokePrincipal`, the default revocation a SCIM deprovisioning change calls; `TomCache` and `TomCacheManager` for the node's API-key lookup cache, and `TomCacheInvalidator.invalidateCacheEntry`, which drops a revoked or rotated key from it |
 | [configuration](configuration.md) | module | `jwt_signing.dart`, `oauth_provider.dart`, `saml_provider.dart`, `scim_endpoints.dart`, `server_self_login.dart`, `sql_oauth_state_store.dart` | `TomBaseServerConfiguration` supplies the JWT fields `installJwtSigning` reads and the service-account fields `TomServiceCredential.fromConfiguration` reads; `isDevelopmentOrTestRuntime` decides whether the sample-key fallback is permitted |
 | [datasources](datasources.md) | module | `oauth_state_sql.dart`, `scim_sql.dart`, `sql_api_key_store.dart`, `sql_oauth_state_store.dart`, `sql_scim_store.dart` | `TomDataSource`, `TomDataSourceInfo`, `TomFrameworkTable` (the single declaration of `tom_oauth_state`, `tom_scim_resource`, `tom_service_account` and `tom_api_key`), `TomSchemaProvisioning` and `sqlInstant` / `parseSqlInstant` |
 | [endpoints](endpoints.md) | module | `jwks_endpoint.dart`, `oauth_endpoints.dart`, `saml_endpoints.dart`, `scim_endpoints.dart` | `TomScimApi` declares its seventeen routes with `@TomEndpoint` and `@TomPublicAccess`; `TomSamlService` binds the identity provider's form post as a `TomMultipartForm` and answers it with a `TomRedirect`; `TomOAuthServer` implements the kernel's `tomOAuthApi` through `@TomApiImplementation`, and `registerFrameworkApis()` registers the contract; `TomJwksService` declares its route with `@TomEndpoint` and `@TomPublicAccess` |
-| [little_things](little_things.md) | module | 17 of 36 files | `TomServerException`, the base of `TomLoginException`, `Tom2FAException`, `TomServerSelfLoginException`, `TomOAuthException`, `TomSamlException`, `TomScimException`, `TomSigningKeyException`, `TomJwtKeyException` and `TomApiKeyException` |
+| [little_things](little_things.md) | module | 18 of 37 files | `TomServerException`, the base of `TomLoginException`, `Tom2FAException`, `TomServerSelfLoginException`, `TomOAuthException`, `TomSamlException`, `TomScimException`, `TomSigningKeyException`, `TomJwtKeyException` and `TomApiKeyException` |
 | [messaging](messaging.md) | module | `two_factor_delivered_code.dart` | `TomEmailService` and `TomSmsService` deliver the one-time codes, through `TomTemplatedMessageService.deliverNow` rather than the outbox. A deployment that registers neither can still run TOTP |
 | [object_persistence](object_persistence.md) | module | `oauth_identity.dart`, `oauth_tokens.dart`, `sql_api_key_store.dart`, `sql_oauth_state_store.dart`, `sql_scim_store.dart`, `two_factor_enrolment.dart` | `TomExternalIdentityLink` and `TomUserTwoFactorEnrolment` are ordinary entities over `TomSqlDatasourceRepository`. Neither table is created by the framework; each entity carries its own `createTableSql` for a deployment's migration to run |
 | [preferences](preferences.md) | module | `authentication_server.dart` | `TomUserPreferences` |

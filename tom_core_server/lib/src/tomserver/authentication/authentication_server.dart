@@ -1,8 +1,11 @@
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../audit/audit_record.dart';
+import '../audit/audit_trail.dart';
 import '../little_things/server_exception.dart';
 import '../preferences/user_preferences_service.dart';
 import 'jwt_keys.dart';
+import 'sign_in_organization.dart';
 import 'two_factor.dart';
 import 'two_factor_attempts.dart';
 import 'two_factor_enrolment.dart';
@@ -514,9 +517,12 @@ class TomAuthenticationServer {
   /// in the `try` that turns a [TomLoginException] into a failed result, and a
   /// second catch here would make the failure path two places as well.
   Future<TomAuthenticationResult> _completeLogin(
-    TomAuthenticationInfo authInfo,
+    TomAuthenticationInfo resolved,
     TomAuthenticationMessage m,
   ) async {
+    // The organization first: the 2FA policy and every right below are the
+    // settled organization's.
+    final authInfo = await _settleOrganization(resolved);
     final context = _contextFor(authInfo.principal, m);
     final decision = await Tom2FAPolicy.resolve().decideFor(context);
     if (decision.isSatisfiedWithoutFactor) {
@@ -577,6 +583,124 @@ class TomAuthenticationServer {
       challenge: challenge,
       twoFactorVerification: spec.verificationData,
     );
+  }
+
+  /// [info] signed in for the organization the installed
+  /// [TomSignInOrganizationDirectory] settles: the one the authentication
+  /// service put on the principal when the user is a member of it, else per
+  /// [TomSignInOrganizations.settle]. Unchanged with no directory installed,
+  /// and for a guest.
+  Future<TomAuthenticationInfo> _settleOrganization(
+    TomAuthenticationInfo info,
+  ) async {
+    final directory = TomSignInOrganizationDirectory.resolve();
+    final principal = info.principal;
+    if (directory == null || principal.username == TomUser.guestUsername) {
+      return info;
+    }
+    final organizations = await directory.organizationsFor(principal);
+    final settled = organizations.settle(principal.organization);
+    if (settled == principal.organization) return info;
+    return directory.signInFor(principal, settled);
+  }
+
+  /// The organizations the signed-in [principal] may sign in for — the
+  /// session's principal unless given — as the installed
+  /// [TomSignInOrganizationDirectory] answers.
+  ///
+  /// Throws `login.error.organization.no-directory` when none is installed,
+  /// and `login.error.not-authenticated` for a principal that is not fully
+  /// signed in.
+  Future<TomSignInOrganizations> signInOrganizations({
+    TomPrincipal? principal,
+  }) async {
+    final current = _signedIn(principal);
+    return _requireDirectory().organizationsFor(current);
+  }
+
+  /// Issues new tokens for the signed-in session's principal — the session's
+  /// unless [principal] is given — signed in for the organization [m] names,
+  /// without a credential check.
+  ///
+  /// The organization must be one the principal may sign in for, and the list
+  /// must offer a choice (`login.error.organization.not-member`,
+  /// `login.error.organization.choice-not-offered`). The principal and its
+  /// rights for the organization come from
+  /// [TomSignInOrganizationDirectory.signInFor]; the tokens are minted where
+  /// every other token is, so they carry the same claim set as a sign-in's,
+  /// and the session's second factor carries over. The switch is audited as
+  /// `session.organizationSwitched`, with the previous and the new
+  /// organization. [m] supplies the organization and the client's locale.
+  ///
+  /// A [TomLoginException] yields a failed result carrying its `key`.
+  Future<TomAuthenticationResult> switchOrganization(
+    TomAuthenticationMessage m, {
+    TomPrincipal? principal,
+  }) async {
+    try {
+      final current = _signedIn(principal);
+      final directory = _requireDirectory();
+      final organizations = await directory.organizationsFor(current);
+      if (!organizations.contains(m.organization)) {
+        throw TomSignInOrganizations.notMember(m.organization);
+      }
+      if (!organizations.choiceOffered) {
+        throw TomLoginException(
+          'login.error.organization.choice-not-offered',
+          'This account may not choose its sign-in organization.',
+          reason: TomLoginFailure.accountProblem,
+        );
+      }
+      final previous = current.organization;
+      final info = await directory.signInFor(current, m.organization);
+      final result = await _issueTokens(
+        info.principal,
+        info.acd,
+        m,
+        twoFactorSatisfied: true,
+      );
+      await TomAuditTrail.recordAction(
+        action: TomAuditAction.execute,
+        target: switchAuditTarget,
+        targetKey: m.organization,
+        outcome: TomAuditOutcome.succeeded,
+        detail: 'from ${previous ?? ''} to ${m.organization}',
+      );
+      return result;
+    } catch (ex, s) {
+      return _failedResult(ex, s);
+    }
+  }
+
+  /// The audit target a switch of the sign-in organization is recorded under.
+  static const String switchAuditTarget = 'session.organizationSwitched';
+
+  /// [principal], or the session's, refused unless fully signed in.
+  static TomPrincipal _signedIn(TomPrincipal? principal) {
+    final current = principal ?? getFromCurrentZone<TomPrincipal>();
+    if (current == null ||
+        !current.authenticated ||
+        current.username == TomUser.guestUsername) {
+      throw TomLoginException(
+        'login.error.not-authenticated',
+        'Changing the sign-in organization needs a signed-in session.',
+        reason: TomLoginFailure.accountProblem,
+      );
+    }
+    return current;
+  }
+
+  static TomSignInOrganizationDirectory _requireDirectory() {
+    final directory = TomSignInOrganizationDirectory.resolve();
+    if (directory == null) {
+      throw TomLoginException(
+        'login.error.organization.no-directory',
+        'No TomSignInOrganizationDirectory is installed, so the organizations '
+            'of a principal are unknown.',
+        reason: TomLoginFailure.providerError,
+      );
+    }
+    return directory;
   }
 
   // ---------------------------------------------------------------------------

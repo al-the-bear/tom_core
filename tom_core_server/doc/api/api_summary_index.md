@@ -178,6 +178,10 @@ surface documented here.
 | `TomExternalProvider` | abstract interface class | What every external identity provider has in common: id, issuer, provisioning, role mapping, clock skew. |
 | `TomExternalRoleMapping` | class | How a provider's group claim becomes Tom roles, recomputed on every login. |
 | `TomExternalTenancyMapping` | class | Which claims of a provider name the tenant and the sign-in organization. |
+| `TomSignInOrganization` | class | One organization a principal may sign in for. |
+| `TomOrganizationFallback` | enum | Refuse a non-member organization at sign-in, or use the default. |
+| `TomSignInOrganizations` | class | A principal's organizations, the default, whether a choice is offered; `settle`. |
+| `TomSignInOrganizationDirectory` | abstract interface class | The deployment's hook: list a principal's organizations, sign it in for one. |
 | `applyExternalRoles` | top-level function | Adds mapped roles to a principal for this session, beside its own. |
 | `TomSamlProviderConfig` | class | One SAML 2.0 identity provider and this server's side of the trust. |
 | `TomSamlProviders` | class | The configured SAML providers, read from `saml.providers`; `load` fetches their metadata. |
@@ -1212,6 +1216,7 @@ surface documented here.
 | `TomOpenApiService` | Endpoints |
 | `TomOperator` | Datasources |
 | `TomOptimisticLockException` | Object Persistence |
+| `TomOrganizationFallback` | Authentication |
 | `tomOutboxJobName` | Messaging |
 | `TomPageRequest` | Object Persistence |
 | `TomPdfRenderer` | Export |
@@ -1328,6 +1333,9 @@ surface documented here.
 | `TomServiceLoginResponse` | Authentication |
 | `TomServiceLoginTransport` | Authentication |
 | `TomSigningKeyException` | Authentication |
+| `TomSignInOrganization` | Authentication |
+| `TomSignInOrganizationDirectory` | Authentication |
+| `TomSignInOrganizations` | Authentication |
 | `TomSmsAuthScheme` | Messaging |
 | `TomSmsBodyFormat` | Messaging |
 | `TomSmsCode2FAService` | Authentication |

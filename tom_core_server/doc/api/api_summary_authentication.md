@@ -62,6 +62,10 @@ API keys.
   - [TomAuthenticationInfo](#tomauthenticationinfo)
   - [TomDummyAuthenticationService](#tomdummyauthenticationservice)
   - [TomAuthenticationServer](#tomauthenticationserver)
+  - [TomSignInOrganization](#tomsigninorganization)
+  - [TomOrganizationFallback](#tomorganizationfallback)
+  - [TomSignInOrganizations](#tomsigninorganizations)
+  - [TomSignInOrganizationDirectory](#tomsigninorganizationdirectory)
   - [TomServiceCredential](#tomservicecredential)
   - [TomServiceLoginTransport](#tomservicelogintransport)
   - [TomServiceLoginResponse](#tomserviceloginresponse)
@@ -170,6 +174,7 @@ Sources: `lib/src/tomserver/authentication/authentication_server.dart`,
 `lib/src/tomserver/authentication/two_factor_webauthn.dart`,
 `lib/src/tomserver/authentication/webauthn_software_authenticator.dart`,
 `lib/src/tomserver/authentication/server_self_login.dart`,
+`lib/src/tomserver/authentication/sign_in_organization.dart`,
 `lib/src/tomserver/authentication/oauth_provider.dart`,
 `lib/src/tomserver/authentication/oauth_flow.dart`,
 `lib/src/tomserver/authentication/oauth_state_sql.dart`,
@@ -436,6 +441,10 @@ TomServiceLoginTransport  (abstract)
     └── TomHttpServiceLoginTransport  (extends)
 
 TomAuthenticationAdaptor   (@tomReflector, standalone)
+TomSignInOrganization      (standalone, immutable)
+TomOrganizationFallback    (enum)
+TomSignInOrganizations     (standalone, immutable)
+TomSignInOrganizationDirectory (abstract interface)
 Tom2FAAdaptor              (@tomReflector, standalone)
 Tom2FAContext              (standalone)
 Tom2FAChallengeSpec        (standalone)
@@ -1944,10 +1953,16 @@ they carry it as the `tenant` claim, and a principal the authentication service
 already placed in another tenant is refused with `login.error.tenant-mismatch`
 (`TomLoginFailure.accountProblem`).
 
+With a `TomSignInOrganizationDirectory` installed, every login settles its
+organization against the user's memberships before the second factor is decided
+(`TomSignInOrganizations.settle`); `switchOrganization` issues tokens for another
+organization within a session.
+
 #### Static Properties
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
+| `switchAuditTarget` | `static const String` | `'session.organizationSwitched'` — the audit target a switch of the sign-in organization is recorded under. |
 | `globalSettingUserAuthenticationService` | `TomAuthenticationService` | The service used for authenticated-user logins (pass 1). Defaults to `TomDummyAuthenticationService()`. |
 | `globalSettingGuestAuthenticationService` | `TomAuthenticationService` | The service used for guest logins. Defaults to `TomDummyAuthenticationService()`. |
 
@@ -1971,6 +1986,90 @@ TomAuthenticationServer()
 | `beginTwoFactorEnrolment` | `Future<TomAuthenticationResult> beginTwoFactorEnrolment(TomAuthenticationMessage m, {TomClientJwtToken? enrolmentToken})` | Enrolment pass 1: begins setting up the mechanism the user chose. The mechanism key travels in `m.password`; the offer is recovered from the interim token the client presents as its bearer (`enrolmentToken` overrides that lookup for tests running without a request zone). Returns an interim token whose public claims carry the mechanism's `Tom2FAEnrolmentOffer.clientData` — for TOTP the secret and the `otpauth://` URI to scan — and whose encrypted section carries the whole offer. Refuses a mechanism absent from the offer this token was issued with, failing on `login.error.2fa.enrolment-not-offered` or `.unsupported-mechanism`. |
 | `completeTwoFactorEnrolment` | `Future<TomAuthenticationResult> completeTwoFactorEnrolment(TomAuthenticationMessage m, {TomClientJwtToken? enrolmentToken})` | Enrolment pass 2: confirms the offer and completes the login. The typed confirmation travels in `m.password`. On success the factor is written to the `Tom2FAEnrolmentStore` and the full token pair is issued immediately, with no further challenge. A wrong code stores nothing and re-issues the same offer with one attempt spent, exactly as `authenticatePass2` does, until `Tom2FAEnrolmentOffer.attemptsAllowed` is exhausted. Fails on `login.error.2fa.enrolment-offer-invalid` / `.enrolment-expired` / `.enrolment-attempts-exhausted` / `.unsupported-mechanism` / `.enrolment-unavailable`. |
 | `skipTwoFactorEnrolment` | `Future<TomAuthenticationResult> skipTwoFactorEnrolment(TomAuthenticationMessage m, {TomClientJwtToken? enrolmentToken})` | Declines a skippable enrolment offer and completes the login with no factor. A pass of its own rather than a flag on `completeTwoFactorEnrolment`, because "I set up a factor" and "I chose not to" are different events with different consequences — only the second spends a grace login. Refuses unless the presented token, which this server signed, says the offer was skippable; fails on `login.error.2fa.enrolment-required` or `.no-enrolment`. |
+| `signInOrganizations` | `Future<TomSignInOrganizations> signInOrganizations({TomPrincipal? principal})` | The organizations the session's principal (or `principal`) may sign in for, as the installed `TomSignInOrganizationDirectory` answers. Throws `login.error.not-authenticated` without a fully signed-in principal, `login.error.organization.no-directory` without a directory. |
+| `switchOrganization` | `Future<TomAuthenticationResult> switchOrganization(TomAuthenticationMessage m, {TomPrincipal? principal})` | Issues new tokens for the session's principal (or `principal`) signed in for `m.organization`, without a credential check; the second factor carries over. Refuses a non-member organization (`login.error.organization.not-member`), a list offering no choice (`login.error.organization.choice-not-offered`), a session not fully signed in and a missing directory, as a failed result. Audits the switch under `switchAuditTarget` with the previous and the new organization. |
+
+### TomSignInOrganization
+
+One organization a principal may sign in for. Immutable. In
+`authentication/sign_in_organization.dart`.
+
+```dart
+const TomSignInOrganization(String id, {String? name})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `id` | `String` | The organization's id — what `TomPrincipal.organization` and the `organization` claim carry. |
+| `name` | `String?` | The display name, or `null`. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `toJson` | `Map<String, Object?> toJson()` | `id` and, when set, `name`. |
+| `toString` | `String toString()` | *(override)* The id, with the name. |
+
+### TomOrganizationFallback
+
+What a sign-in naming an organization the user is not a member of does.
+
+| Value | Meaning |
+| ----- | ------- |
+| `refuse` | The sign-in is refused with `login.error.organization.not-member`. |
+| `useDefault` | The sign-in is for the user's default organization instead. |
+
+### TomSignInOrganizations
+
+The organizations one principal may sign in for, the default among them, and
+whether the user may choose. Immutable.
+
+```dart
+TomSignInOrganizations(
+  List<TomSignInOrganization> organizations, {
+  String? defaultOrganization,
+  bool choiceOffered = false,
+  TomOrganizationFallback fallback = TomOrganizationFallback.refuse,
+})
+```
+
+Throws `ArgumentError` when `defaultOrganization` is not one of
+`organizations`.
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `organizations` | `List<TomSignInOrganization>` | The organizations, in the order a client lists them; unmodifiable. |
+| `defaultOrganization` | `String?` | The organization a sign-in naming none is for, or `null` when the user has none. |
+| `choiceOffered` | `bool` | Whether the user may choose — at sign-in and by switching. |
+| `fallback` | `TomOrganizationFallback` | What a sign-in naming a non-member organization does. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `contains` | `bool contains(String id)` | Whether `id` is one of `organizations`. |
+| `settle` | `String settle(String? requested)` | The organization a sign-in that named `requested` is for: `requested` for a member, the default for none, the default or `login.error.organization.not-member` for a non-member per `fallback`; `login.error.organization.none` when the user has no organization. |
+| `notMember` | `static TomLoginException notMember(String organization)` | The `login.error.organization.not-member` refusal. |
+| `toJson` | `Map<String, Object?> toJson()` | `organizations`, `defaultOrganization`, `choiceOffered`. |
+
+### TomSignInOrganizationDirectory
+
+What a deployment installs (a bean) so that the sign-in organization is checked
+and can be changed.
+
+- **Kind:** `abstract interface class`
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `organizationsFor` | `Future<TomSignInOrganizations> organizationsFor(TomPrincipal principal)` | The organizations `principal` may sign in for. |
+| `signInFor` | `Future<TomAuthenticationInfo> signInFor(TomPrincipal principal, String organization)` | The principal signed in for `organization` and the access-control definition of its rights there, without a credential check — at sign-in when the settled organization differs from the service's, and for a switch. |
+| `resolve` | `static TomSignInOrganizationDirectory? resolve()` | The installed bean, or `null`. |
 
 ### TomServiceCredential
 

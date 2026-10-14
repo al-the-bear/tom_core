@@ -53,6 +53,7 @@ export 'src/tomserver/authentication/scim_resource.dart';
 export 'src/tomserver/authentication/scim_service.dart';
 export 'src/tomserver/authentication/scim_sql.dart';
 export 'src/tomserver/authentication/server_self_login.dart';
+export 'src/tomserver/authentication/sign_in_organization.dart';
 export 'src/tomserver/authentication/sql_api_key_store.dart';
 export 'src/tomserver/authentication/sql_oauth_state_store.dart';
 export 'src/tomserver/authentication/sql_scim_store.dart';
