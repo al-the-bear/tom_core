@@ -237,6 +237,7 @@ access rules as a user.
 | `applyExternalRoles` | function | Adds the mapped roles to a principal for this session, beside the account's own |
 | `TomSamlProviderConfig` | class | One SAML 2.0 identity provider and this server's side of the trust |
 | `TomSamlProviders` | class | The configured SAML providers, read from `saml.providers`; `load` fetches their metadata |
+| `TomTenantProviderSets` | class | Provider sets keyed by tenant — `TomOAuthProviders.tenants` and `TomSamlProviders.tenants`; a tenant with a set of its own sees only its providers |
 | `TomSamlIdpMetadata` | class | What an identity provider's metadata says: entity id, single sign-on address, signing certificates |
 | `TomSamlCertificates` | abstract final class | Reads the certificates and keys a SAML configuration names |
 | `TomSamlNames` | abstract final class | SAML 2.0 namespace and binding identifiers |
@@ -2115,6 +2116,14 @@ error — it is the majority case, and yields an empty provider set.
 `TomOAuthProviders.fromConfiguration()` reads it; the endpoints resolve the
 installed bean, so a deployment that installs nothing offers nothing.
 
+**A tenant can have providers of its own.** `TomOAuthProviders.tenants` (and
+`TomSamlProviders.tenants`) hold a provider set per tenant, read from
+`oauth.tenants.<id>.providers` by `TomOAuthProviders.loadTenants()` or installed
+at run time with `tenants.install(tenantId, set)`. `resolve()` answers the set of
+the tenant in context, and the deployment's bean for a tenant without one, so a
+sign-in in a tenant with its own set offers and accepts only its providers. See
+[tenancy.md](tenancy.md#identity-federation-per-tenant).
+
 ### Two registrations against one IdP
 
 A provider is keyed by **its own id**, and the `issuer` is an ordinary field
@@ -2483,6 +2492,11 @@ the shape are worth stating outright:
   size. The sweep prunes by calling `purgeExpired` — the same entry point a
   deployment drives from a job of its own — so the predicate is written once and
   the two prunes cannot come to disagree about what "expired" means.
+* **A flow completes only in its tenant.** A record names the tenant of the
+  request that began the flow (`tenant`, `''` for none), and every read and
+  the completion carry `tenant = :tenant` with the tenant in context — the
+  memory store applies the same rule. A callback that reaches another tenant
+  finds nothing and spends nothing. The table itself stays deployment-wide.
 * **Completion is one statement.** `consume` is a single `DELETE … RETURNING`,
   so two nodes racing the same callback cannot both see the row: the database
   picks a winner and the loser is handed nothing. A read followed by a delete
@@ -2583,11 +2597,12 @@ A SAML provider adds two endpoints of its own, `POST /saml/acs` and
 | `oauth.config.missing_value` · `oauth.config.not_a_map` · `oauth.config.provider_not_a_map` · `oauth.config.unknown_provisioning` · `oauth.config.invalid_clock_skew` · `oauth.config.invalid_role_mapping` | The `oauth.providers` block is malformed. Startup-time. |
 | `oauth.config.discovery_not_loaded` · `oauth.config.discovery_failed` · `oauth.config.discovery_issuer_mismatch` | A `discovery: true` provider was read without fetching its document, the document could not be read, or it names another issuer. Startup-time. |
 | `oauth.config.duplicate_provider_id` | One id is configured as both an OAuth and a SAML provider. |
+| `oauth.config.tenants_not_a_map` · `saml.config.tenants_not_a_map` | The `oauth.tenants` or `saml.tenants` block, or one tenant's entry in it, is not a map. Startup-time. |
 | `oauth.config.parameters_not_a_map` · `oauth.config.parameter_not_a_scalar` | A provider's `authorizationParameters` is not a map, or one of its values is a map or list where a query parameter can only carry a scalar. Startup-time — stringifying `{a: b}` into the redirect would surface later as a provider error whose text says nothing about the YAML that caused it. |
 | `oauth.config.unknown_provider` | A request named a provider that is not configured. |
 | `oauth.config.state_store_not_a_map` · `oauth.config.unknown_state_store` · `oauth.config.missing_state_store_datasource` · `oauth.config.invalid_state_store_ttl` | The `oauth.stateStore` block is malformed. Startup-time, and never defaulted away. |
 | `oauth.state_store.unknown_datasource` | The SQL state store names a data source that is not registered. Startup-time. |
-| `oauth.callback.unknown_state` · `oauth.flow.unknown_state` | The state handle is unknown, expired, or already used — raised by the endpoint and by the flow respectively. |
+| `oauth.callback.unknown_state` · `oauth.flow.unknown_state` | The state handle is unknown, expired, already used, or of a flow begun in another tenant — raised by the endpoint and by the flow respectively. |
 | `oauth.callback.provider_error` | The provider itself refused (e.g. the user pressed cancel). |
 | `oauth.flow.missing_code` · `oauth.flow.token_exchange_rejected` | The redirect carried no code, or the token endpoint refused the exchange. |
 | `oauth.flow.revocation_rejected` | The provider refused to revoke a grant. Raised by `TomOAuthFlow.revokeGrant`; `unlink` catches it, logs it and deletes anyway. |
@@ -3024,7 +3039,8 @@ scim:
 
 | Key | Meaning |
 | --- | ------- |
-| `scim.bearerTokens` | The secrets an identity provider may present — a list, or a single string. At least one is required: `fromConfiguration` throws `scim.not_enabled` when none is configured, because an endpoint that admits nobody is a configuration mistake worth stopping the start for. |
+| `scim.bearerTokens` | The secrets an identity provider may present on a request outside every tenant — a list, or a single string. At least one secret, here or for a tenant, is required: `fromConfiguration` throws `scim.not_enabled` when none is configured, because an endpoint that admits nobody is a configuration mistake worth stopping the start for. |
+| `scim.tenants.<id>.bearerTokens` | The secrets of one tenant's identity provider. A request that resolves to the tenant is admitted only by these — not by another tenant's and not by the deployment's — so no single secret writes into every tenant. |
 | `scim.baseUrl` | The address resources are published under (`meta.location`, `$ref`, the `Location` header). By default, the address the request arrived at — set it when a proxy rewrites the host or path. |
 
 The secrets are held only as SHA-256 digests and a presented secret is
@@ -3032,6 +3048,13 @@ compared against every one of them in constant time, so a rotation is two
 entries for as long as the identity provider takes to switch. A request
 without a configured secret is answered `401` with
 `WWW-Authenticate: Bearer realm="scim"` and `scim.unauthorized`.
+
+In a multi-tenant deployment the resources follow the tenant too:
+`TomSqlScimStore.named` reaches the table of the tenant in context and reads only
+its rows, and `TomMemoryScimStore` keeps a partition per tenant. Two tenants'
+identity providers each see only their own users and groups, and the same
+`userName` in two tenants is two users. See
+[tenancy.md](tenancy.md#identity-federation-per-tenant).
 
 Installing also claims `/scim/v2/` in `TomEndpointCredentials` (see
 [server](server.md#endpoint-owned-credentials)). The identity provider's
@@ -3048,7 +3071,7 @@ of attribute mappings:
 | Setting | Value |
 | ------- | ----- |
 | Tenant URL (Entra ID) / SCIM connector base URL (Okta) | `https://<host>/scim/v2` |
-| Secret token (Entra ID) / API token, authentication mode *HTTP Header* (Okta) | One of the `scim.bearerTokens` |
+| Secret token (Entra ID) / API token, authentication mode *HTTP Header* (Okta) | One of the `scim.bearerTokens`, or of the tenant's `scim.tenants.<id>.bearerTokens` |
 | Unique identifier field (Okta) | `userName` |
 
 The attribute mappings the service relies on:
@@ -3281,13 +3304,14 @@ listed by `frameworkOwnedTables` (see
 | ------ | ---- | ------- |
 | `id` | `BIGINT` auto-increment, primary key | The resource's SCIM `id`, in decimal — never reused |
 | `resource_type` | `VARCHAR(16)` | `User` or `Group` |
-| `name_key` | `VARCHAR(191)` | The name attribute, lower-cased; unique per `resource_type` |
-| `external_id` | `VARCHAR(191)`, nullable | The identity provider's `externalId`; indexed with `resource_type` |
+| `name_key` | `VARCHAR(191)` | The name attribute, lower-cased; unique per `resource_type` within a tenant |
+| `external_id` | `VARCHAR(191)`, nullable | The identity provider's `externalId`; indexed with `tenant` and `resource_type` |
 | `document` | `LONGTEXT` | The resource's JSON without `id` and `meta` |
 | `created_at` · `last_modified` | `DATETIME(6)`, UTC | The lifecycle instants |
 | `version` | `BIGINT` | The change counter, published as `meta.version` |
+| `tenant` | `VARCHAR(32)` | The tenant the resource belongs to, `''` for none; every statement names the tenant in context |
 
-The unique `(resource_type, name_key)` key arbitrates the one race the store
+The unique `(tenant, resource_type, name_key)` key arbitrates the one race the store
 has: two identity-provider requests creating the same user at once both pass
 the service's uniqueness check, and only one of them writes. The reference
 migration is
@@ -3827,7 +3851,9 @@ The JSON Web Key Set at `GET /.well-known/jwks.json`, public, cacheable for
 it (held as SHA-256 digests, compared in constant time) and the published
 `baseUrl`. `install` enables SCIM and claims `pathPrefix` (`/scim/v2/`) in
 `TomEndpointCredentials`; `reset` undoes both; `current` is the installed one;
-`fromConfiguration` reads `scim.bearerTokens` and `scim.baseUrl`.
+`fromConfiguration` reads `scim.bearerTokens`, each tenant's
+`scim.tenants.<id>.bearerTokens` and `scim.baseUrl`; `tenants` names the tenants
+with secrets of their own. Inside a tenant only that tenant's secrets admit.
 `TomScimApi` declares the seventeen endpoints and `TomScimServer` answers them.
 See [Enabling SCIM](#enabling-scim) and [The SCIM endpoints](#the-scim-endpoints).
 
@@ -3849,8 +3875,10 @@ the case-insensitive `attribute` lookup. `TomScimResourceType` is `user` or
 
 ### `TomScimStore` / `TomMemoryScimStore` / `TomSqlScimStore`
 
-Where resources are kept. The memory store is per process; the SQL store keeps
-them in `tom_scim_resource`, declared by `scimResourceTable(table)` and named
+Where resources are kept. The memory store is per process, partitioned by the
+tenant in context; the SQL store keeps them in `tom_scim_resource` — over a data
+source name (`named`) routed per tenant, and with a `tenant` column every
+statement filters on — declared by `scimResourceTable(table)` and named
 by default from `defaultScimResourceTable`, with `scimResourceTableDdl(table)`
 its `CREATE TABLE`. See
 [Where provisioned resources are kept](#where-provisioned-resources-are-kept).
@@ -4066,22 +4094,22 @@ store keeps them in `tom_service_account` and `tom_api_key`, declared by
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
 | `dart:async` | dart | `server_self_login.dart`, `two_factor.dart` | `Future`, `FutureOr`, and the `Timer` the server principal's renewal is scheduled on |
-| `dart:convert` | dart | 22 of 35 files | `base64`, `base64Url`, `json`, `jsonDecode`, `jsonEncode`, `utf8` |
+| `dart:convert` | dart | 22 of 36 files | `base64`, `base64Url`, `json`, `jsonDecode`, `jsonEncode`, `utf8` |
 | `dart:io` | dart | `jwt_keys.dart`, `saml_flow.dart`, `saml_provider.dart` | `File`, reading the configured key and certificate files; `ZLibCodec`, deflating a SAML `AuthnRequest` for the redirect binding |
 | `dart:math` | dart | `api_keys.dart`, `jwt_signing.dart`, `oauth_flow.dart`, `two_factor_send_limit.dart`, `webauthn_software_authenticator.dart` | `Random`, `exp`, and `pow` / `min` for the send pace's doubling interval; `Random.secure` for the unusable signing key a verify-only server holds and for an API key's id and secret |
 | `dart:typed_data` | dart | `saml_xml_signature.dart`, `two_factor_delivered_code.dart`, `two_factor_webauthn.dart`, `webauthn_software_authenticator.dart` | `Uint8List`, `ByteData`, `BytesBuilder` |
-| `crypto` | package | 10 of 35 files | `sha256` and `sha512`, for the JWK thumbprint a key id is, the API-key secret digest, the SCIM bearer-secret digests, the PKCE code challenge, the SAML handoff-code digest and XML Signature digests, the interim-token fingerprint an attempt store keys on, the delivered-code digest, and the WebAuthn RP id hash, client-data hash and user handle |
+| `crypto` | package | 10 of 36 files | `sha256` and `sha512`, for the JWK thumbprint a key id is, the API-key secret digest, the SCIM bearer-secret digests, the PKCE code challenge, the SAML handoff-code digest and XML Signature digests, the interim-token fingerprint an attempt store keys on, the delivered-code digest, and the WebAuthn RP id hash, client-data hash and user handle |
 | `dart_jsonwebtoken` | package | `jwt_keys.dart`, `jwt_signing.dart`, `saml_provider.dart` | `jwt.JWT.verify`, `jwt.JWTAlgorithm`, `jwt.RSAPrivateKey` / `jwt.RSAPublicKey`, `jwt.ECPrivateKey` / `jwt.ECPublicKey`, `jwt.SecretKey`, and `toJWK` for the published set |
 | `http` | package | `oauth_flow.dart` | `http.dart`, `http.get`, `http.post` |
 | `pointycastle` | package | `jwt_keys.dart`, `saml_provider.dart`, `saml_xml_signature.dart`, `two_factor_webauthn.dart`, `webauthn_software_authenticator.dart` | RSA PKCS#1 v1.5 signing and verification for XML Signature, ECDSA P-256 and RSA PKCS#1 v1.5 signature verification for passkeys, and the software authenticator's key generation and signing; deriving a signing key's public half |
 | `shelf` | package | `jwks_endpoint.dart`, `saml_endpoints.dart`, `scim_endpoints.dart` | `Request` and `Response` — the SCIM endpoints read the raw request and answer in `application/scim+json`; `Response`, which the JSON Web Key Set and SAML metadata endpoints answer with directly to set their content type — and, for the key set, its cache header |
-| `tom_core_kernel` | package | 29 of 35 files | `TomPrincipal`, `TomAccessControlDefinition`, `TomBearerAuthentication`, `TomServerJwtToken`, the 2FA wire types `Tom2FAChallenge` / `Tom2FAClaims` / `Tom2FAPendingEnrolment` / `Tom2FAEnrolmentClaims`, the `Tom2FAMethodDescriptor` every adaptor describes itself with, the `TomTotp` derivation primitives, `TomServerPrincipal` (the holder server self-login installs into), and the wire types `TomAuthenticationMessage` / `TomAuthenticationResult`. The 2FA types live there and not here because the server writes them and the client reads them |
+| `tom_core_kernel` | package | 31 of 36 files | `TomPrincipal`, `TomAccessControlDefinition`, `TomBearerAuthentication`, `TomServerJwtToken`, the 2FA wire types `Tom2FAChallenge` / `Tom2FAClaims` / `Tom2FAPendingEnrolment` / `Tom2FAEnrolmentClaims`, the `Tom2FAMethodDescriptor` every adaptor describes itself with, the `TomTotp` derivation primitives, `TomServerPrincipal` (the holder server self-login installs into), and the wire types `TomAuthenticationMessage` / `TomAuthenticationResult`. The 2FA types live there and not here because the server writes them and the client reads them |
 | `xml` | package | `saml_flow.dart`, `saml_provider.dart`, `saml_xml_signature.dart` | `XmlDocument`, `XmlElement`, parsing SAML responses and metadata, and the node walk exclusive canonicalization is written over |
 | [cache](cache.md) | module | `api_keys.dart`, `scim_service.dart` | `TomCacheInvalidator.revokePrincipal`, the default revocation a SCIM deprovisioning change calls; `TomCache` and `TomCacheManager` for the node's API-key lookup cache, and `TomCacheInvalidator.invalidateCacheEntry`, which drops a revoked or rotated key from it |
 | [configuration](configuration.md) | module | `jwt_signing.dart`, `oauth_provider.dart`, `saml_provider.dart`, `scim_endpoints.dart`, `server_self_login.dart`, `sql_oauth_state_store.dart` | `TomBaseServerConfiguration` supplies the JWT fields `installJwtSigning` reads and the service-account fields `TomServiceCredential.fromConfiguration` reads; `isDevelopmentOrTestRuntime` decides whether the sample-key fallback is permitted |
 | [datasources](datasources.md) | module | `oauth_state_sql.dart`, `scim_sql.dart`, `sql_api_key_store.dart`, `sql_oauth_state_store.dart`, `sql_scim_store.dart` | `TomDataSource`, `TomDataSourceInfo`, `TomFrameworkTable` (the single declaration of `tom_oauth_state`, `tom_scim_resource`, `tom_service_account` and `tom_api_key`), `TomSchemaProvisioning` and `sqlInstant` / `parseSqlInstant` |
 | [endpoints](endpoints.md) | module | `jwks_endpoint.dart`, `oauth_endpoints.dart`, `saml_endpoints.dart`, `scim_endpoints.dart` | `TomScimApi` declares its seventeen routes with `@TomEndpoint` and `@TomPublicAccess`; `TomSamlService` binds the identity provider's form post as a `TomMultipartForm` and answers it with a `TomRedirect`; `TomOAuthServer` implements the kernel's `tomOAuthApi` through `@TomApiImplementation`, and `registerFrameworkApis()` registers the contract; `TomJwksService` declares its route with `@TomEndpoint` and `@TomPublicAccess` |
-| [little_things](little_things.md) | module | 16 of 35 files | `TomServerException`, the base of `TomLoginException`, `Tom2FAException`, `TomServerSelfLoginException`, `TomOAuthException`, `TomSamlException`, `TomScimException`, `TomSigningKeyException`, `TomJwtKeyException` and `TomApiKeyException` |
+| [little_things](little_things.md) | module | 16 of 36 files | `TomServerException`, the base of `TomLoginException`, `Tom2FAException`, `TomServerSelfLoginException`, `TomOAuthException`, `TomSamlException`, `TomScimException`, `TomSigningKeyException`, `TomJwtKeyException` and `TomApiKeyException` |
 | [messaging](messaging.md) | module | `two_factor_delivered_code.dart` | `TomEmailService` and `TomSmsService` deliver the one-time codes, through `TomTemplatedMessageService.deliverNow` rather than the outbox. A deployment that registers neither can still run TOTP |
 | [object_persistence](object_persistence.md) | module | `oauth_identity.dart`, `oauth_tokens.dart`, `sql_api_key_store.dart`, `sql_oauth_state_store.dart`, `sql_scim_store.dart`, `two_factor_enrolment.dart` | `TomExternalIdentityLink` and `TomUserTwoFactorEnrolment` are ordinary entities over `TomSqlDatasourceRepository`. Neither table is created by the framework; each entity carries its own `createTableSql` for a deployment's migration to run |
 | [preferences](preferences.md) | module | `authentication_server.dart` | `TomUserPreferences` |

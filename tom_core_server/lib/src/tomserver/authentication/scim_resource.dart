@@ -10,6 +10,8 @@
 /// reads back.
 library;
 
+import 'package:tom_core_kernel/tom_core_kernel.dart';
+
 import '../little_things/server_exception.dart';
 
 /// The SCIM schema and message identifiers this service uses.
@@ -216,9 +218,22 @@ abstract interface class TomScimStore {
 /// A [TomScimStore] in one process's memory — for a single node, a test, or a
 /// deployment that mirrors the resources into its own user table through the
 /// service's hooks.
+///
+/// Kept per tenant: the resources a request reaches are those of the tenant in
+/// context ([TomTenantContext.currentId]), each tenant with its own id
+/// sequence, so two tenants' identity providers see only their own users and
+/// groups — the same partition [TomSqlScimStore] gets from tenancy's routing.
+/// Without tenancy there is one partition.
 class TomMemoryScimStore implements TomScimStore {
-  final Map<String, TomScimResource> _resources = {};
-  int _sequence = 0;
+  final Map<String?, _TomScimPartition> _partitions = {};
+
+  /// The resources of the tenant in context.
+  _TomScimPartition get _partition => _partitions.putIfAbsent(
+    TomTenantContext.currentId,
+    _TomScimPartition.new,
+  );
+
+  Map<String, TomScimResource> get _resources => _partition.resources;
 
   DateTime _now() => DateTime.now().toUtc();
 
@@ -229,7 +244,7 @@ class TomMemoryScimStore implements TomScimStore {
   ) async {
     final now = _now();
     final resource = TomScimResource(
-      id: '${++_sequence}',
+      id: '${++_partition.sequence}',
       type: type,
       document: Map.unmodifiable(document),
       created: now,
@@ -291,4 +306,10 @@ class TomMemoryScimStore implements TomScimStore {
     _resources.remove(id);
     return true;
   }
+}
+
+/// One tenant's resources in a [TomMemoryScimStore].
+class _TomScimPartition {
+  final Map<String, TomScimResource> resources = {};
+  int sequence = 0;
 }

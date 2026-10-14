@@ -186,11 +186,25 @@ class TomOAuthAuthorizationState {
   /// application completes the login with the handoff code.
   final TomExternalIdentity? assertedIdentity;
 
+  /// The tenant the flow began in, or `''` for a flow of no tenant.
+  ///
+  /// A flow completes only in the tenant it began in: every
+  /// [TomOAuthStateStore] answers [TomOAuthStateStore.peek] and
+  /// [TomOAuthStateStore.consume] with records of the tenant in context only,
+  /// so a callback that reaches another tenant — by its host, its path or a
+  /// header — finds no pending flow (`oauth.flow.unknown_state`) and cannot
+  /// spend the one it names either.
+  final String tenant;
+
   /// Creates a pending-authorization record.
+  ///
+  /// [tenant] defaults to the tenant in context ([TomTenantContext.currentId],
+  /// `''` for none), which is the tenant of the request that begins the flow.
   TomOAuthAuthorizationState({
     required this.state,
     required this.providerId,
     required this.createdAt,
+    String? tenant,
     this.pkce,
     this.nonce = '',
     this.assertedIdentity,
@@ -201,7 +215,10 @@ class TomOAuthAuthorizationState {
     this.clientLanguage = '',
     this.clientCountry = '',
     this.clientTimezone = '',
-  });
+  }) : tenant = tenant ?? TomTenantContext.currentId ?? '';
+
+  /// The tenant in context as a record names it — `''` for none.
+  static String get currentTenant => TomTenantContext.currentId ?? '';
 
   @override
   String toString() => 'TomOAuthAuthorizationState($state -> $providerId)';
@@ -224,13 +241,15 @@ abstract class TomOAuthStateStore {
   /// Remembers [pending] under its own [TomOAuthAuthorizationState.state].
   Future<void> store(TomOAuthAuthorizationState pending);
 
-  /// The record for [state] without spending it, or `null` when it is unknown
-  /// or expired.
+  /// The record for [state] without spending it, or `null` when it is
+  /// unknown, expired, or of another tenant than the one in context
+  /// ([TomOAuthAuthorizationState.tenant]).
   Future<TomOAuthAuthorizationState?> peek(String state);
 
-  /// The record for [state], removing it, or `null` when it is unknown or
-  /// expired. A second call with the same [state] always answers `null` — that
-  /// is what makes a code replay fail.
+  /// The record for [state], removing it, or `null` when it is unknown,
+  /// expired, or of another tenant than the one in context — a record of
+  /// another tenant is left where it is. A second call with the same [state]
+  /// always answers `null` — that is what makes a code replay fail.
   Future<TomOAuthAuthorizationState?> consume(String state);
 
   /// The installed [TomOAuthStateStore] bean, or a process-wide
@@ -295,17 +314,21 @@ class TomOAuthMemoryStateStore implements TomOAuthStateStore {
   @override
   Future<TomOAuthAuthorizationState?> consume(String state) async {
     final found = _liveOrNull(state);
-    _pending.remove(state);
+    if (found != null) _pending.remove(state);
     return found;
   }
 
-  /// The record under [state] when it is still within [timeToLive].
+  /// The record under [state] when it is still within [timeToLive] and of the
+  /// tenant in context.
   ///
   /// Removes an expired record as it is found, so an expired handle behaves
-  /// identically to an unknown one on the next call too.
+  /// identically to an unknown one on the next call too. A record of another
+  /// tenant is answered as unknown and kept: a callback reaching the wrong
+  /// tenant must not be able to spend the flow either.
   TomOAuthAuthorizationState? _liveOrNull(String state) {
     final found = _pending[state];
     if (found == null) return null;
+    if (found.tenant != TomOAuthAuthorizationState.currentTenant) return null;
     if (_isExpired(found)) {
       _pending.remove(state);
       return null;
@@ -840,9 +863,7 @@ class TomOAuthFlow {
     TomOAuthTokenStore? tokenStore,
     TomOAuthTokenTransport? transport,
   }) async {
-    final installedProviders =
-        providers ??
-        (TomBean.getBeanByType(TomOAuthProviders) as TomOAuthProviders?);
+    final installedProviders = providers ?? TomOAuthProviders.resolve();
     if (installedProviders == null) return 0;
 
     final store = tokenStore ?? TomOAuthTokenStore.resolve();

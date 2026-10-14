@@ -73,6 +73,7 @@ API keys.
   - [TomOAuthProvisioning](#tomoauthprovisioning)
   - [TomOAuthProviderConfig](#tomoauthproviderconfig)
   - [TomOAuthProviders](#tomoauthproviders)
+  - [TomTenantProviderSets](#tomtenantprovidersets)
   - [TomOAuthPkce](#tomoauthpkce)
   - [TomOAuthAuthorizationState](#tomoauthauthorizationstate)
   - [TomOAuthStateStore](#tomoauthstatestore)
@@ -189,6 +190,7 @@ Sources: `lib/src/tomserver/authentication/authentication_server.dart`,
 `lib/src/tomserver/authentication/scim_service.dart`,
 `lib/src/tomserver/authentication/scim_sql.dart`,
 `lib/src/tomserver/authentication/sql_scim_store.dart`,
+`lib/src/tomserver/authentication/tenant_provider_sets.dart`,
 `lib/src/tomserver/authentication/scim_endpoints.dart`,
 `lib/src/tomserver/authentication/scim_directory.dart`,
 `lib/src/tomserver/authentication/api_keys.dart`,
@@ -453,6 +455,7 @@ TomServerSelfLogin         (standalone, statics only)
 TomOAuthProvisioning       (enum)
 TomOAuthProviderConfig     (standalone, immutable)
 TomOAuthProviders          (standalone, immutable)
+TomTenantProviderSets<T>   (standalone)
 TomOAuthPkce               (standalone, immutable)
 TomOAuthAuthorizationState (standalone, immutable)
 TomOAuthStateRow           (@tomReflector, @TomDbTable row type)
@@ -2290,6 +2293,8 @@ One field exists for the clocks:
 The configured provider set. Immutable.
 
 - **Constant:** `configurationKey = 'oauth.providers'`
+- **Constant:** `tenantsConfigurationKey = 'oauth.tenants'`
+- **Static:** `tenants` — `TomTenantProviderSets<TomOAuthProviders>`, the provider sets installed per tenant.
 
 #### Constructors
 
@@ -2309,13 +2314,38 @@ provider without explicit endpoints is refused with
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `resolve` | `static TomOAuthProviders? resolve()` | The installed bean, or `null`. `null` rather than a throw, because "this deployment offers no external login" is the majority case. |
+| `resolve` | `static TomOAuthProviders? resolve()` | The set of the tenant in context (`tenants`) or, for a tenant without one and outside every tenant, the installed bean — `null` when neither is there. `null` rather than a throw, because "this deployment offers no external login" is the majority case. |
+| `loadTenants` | `static Future<void> loadTenants({TomServerConfigResourceProvider? config, TomOAuthTokenTransport? transport})` | Reads every tenant's `oauth.tenants.<id>.providers`, fetching what `discover` fetches, and installs each in `tenants`. Nothing when the key is absent; a malformed block throws `oauth.config.tenants_not_a_map`. |
 | `load` | `static Future<TomOAuthProviders> load({TomServerConfigResourceProvider? config, TomOAuthTokenTransport? transport})` | The start-up call for a deployment with enterprise identity providers: reads `oauth.providers`, fetching the discovery document of every `discovery: true` provider. Empty when the key is absent. |
 | `discover` | `static Future<TomOAuthProviders> discover(Object? raw, {TomOAuthTokenTransport? transport})` | The provider set `raw` configures, each `discovery: true` provider's `authorizationEndpoint`, `tokenEndpoint`, `userInfoEndpoint` and `revocationEndpoint` read from `discoveryUrl`, or from `<issuer>/.well-known/openid-configuration`. An endpoint configured explicitly wins. The document's `issuer` must equal the configured one exactly (`oauth.config.discovery_issuer_mismatch`); a document that cannot be read fails with `oauth.config.discovery_failed`. |
 | `isEmpty` | `bool get isEmpty` | Whether any provider is configured. |
 | `descriptors` | `List<TomOAuthProviderDto> get descriptors` | The providers as client-facing DTOs, in configuration order. |
 | `lookup` | `TomOAuthProviderConfig? lookup(String id)` | The provider under `id`, or `null`. |
 | `operator []` | `TomOAuthProviderConfig operator [](String id)` | The provider under `id`. Throws `oauth.config.unknown_provider` — a request that named a provider must not resolve to some other provider. |
+
+### TomTenantProviderSets
+
+Values of type `T` — an external-identity provider set — keyed by tenant id: the
+sets `TomOAuthProviders.tenants` and `TomSamlProviders.tenants` hold. A sign-in
+in a tenant with a set of its own offers and accepts only those providers; a
+tenant without one uses the deployment's set. In
+`authentication/tenant_provider_sets.dart`.
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `current` *(getter)* | `T?` | The set of the tenant in context, or `null` outside every tenant and for a tenant without one. |
+| `tenants` *(getter)* | `Set<String>` | The tenants that have a set of their own. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `install` | `void install(String tenantId, T set)` | Installs `set` for `tenantId`, replacing its previous one. Throws `tenancy.id.invalid` for an id that is not a tenant id. |
+| `remove` | `T? remove(String tenantId)` | Removes the tenant's set, so it uses the deployment's again; answers the removed set. |
+| `forTenant` | `T? forTenant(String tenantId)` | The tenant's own set, or `null`. |
+| `clear` | `void clear()` | Removes every tenant's set. |
 
 ### TomOAuthPkce
 
@@ -2340,15 +2370,16 @@ factory TomOAuthPkce.generate()
 
 One pending authorization: the `state` handle, the `providerId`, the `pkce`
 pair, `createdAt`, the `nonce` the next leg must echo, the `assertedIdentity` a
-SAML response verified, and the login context the flow started in (`client`,
-`application`, `process`, `organization`, `clientLanguage`, `clientCountry`,
-`clientTimezone`).
+SAML response verified, the `tenant` the flow began in, and the login context the
+flow started in (`client`, `application`, `process`, `organization`,
+`clientLanguage`, `clientCountry`, `clientTimezone`).
 
 ```dart
 TomOAuthAuthorizationState({
   required String state,
   required String providerId,
   required DateTime createdAt,
+  String? tenant,
   TomOAuthPkce? pkce,
   String nonce = '',
   TomExternalIdentity? assertedIdentity,
@@ -2366,6 +2397,8 @@ TomOAuthAuthorizationState({
 | ----- | ---- | ----- |
 | `nonce` | `String` | For an OpenID Connect flow, the `nonce` sent in the authorization request, which the `id_token` must carry back. For a SAML flow, the `ID` of the `AuthnRequest` the response must name in `InResponseTo`, and, once the response is verified, the SHA-256 of the handoff code. `''` when the flow sent none. |
 | `assertedIdentity` | `TomExternalIdentity?` | The identity a SAML response asserted, waiting between the assertion consumer service and the application's completion; `null` on every other record. |
+| `tenant` | `String` | The tenant the flow began in, `''` for none; defaults to the tenant in context. Every store answers `peek` and `consume` with records of the tenant in context only, so a callback in another tenant finds no flow and cannot spend it. |
+| `currentTenant` *(static getter)* | `String` | The tenant in context as a record names it — `''` for none. |
 
 The context is recorded here because a provider callback is a browser
 navigation with none of its own — replaying it is what makes an external login
@@ -2381,8 +2414,8 @@ back.
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `store` | `Future<void> store(TomOAuthAuthorizationState pending)` | Records a pending authorization. |
-| `peek` | `Future<TomOAuthAuthorizationState?> peek(String state)` | Reads without spending, so the callback endpoint can build its login context before the credential is authenticated. |
-| `consume` | `Future<TomOAuthAuthorizationState?> consume(String state)` | Reads and spends. The single-use guarantee lives here. |
+| `peek` | `Future<TomOAuthAuthorizationState?> peek(String state)` | Reads without spending, so the callback endpoint can build its login context before the credential is authenticated. `null` for a record of another tenant than the one in context. |
+| `consume` | `Future<TomOAuthAuthorizationState?> consume(String state)` | Reads and spends. The single-use guarantee lives here. A record of another tenant is neither answered nor spent. |
 | `resolve` | `static TomOAuthStateStore resolve()` | The installed bean, or a shared `TomOAuthMemoryStateStore`. |
 
 ### TomOAuthMemoryStateStore
@@ -2463,7 +2496,7 @@ are the same statement rather than two copies of one.
 One `tom_oauth_state` row, as `peek` and `consume` read it back — reflected,
 `@TomDbTable`-mapped, and internal to the store.
 
-Fifteen `@TomDbColumn` fields. The two instants are typed `String` because the
+Sixteen `@TomDbColumn` fields. The two instants are typed `String` because the
 driver decodes `DATETIME` as local time; `parseSqlInstant` turns them back into
 UTC.
 
@@ -2486,6 +2519,7 @@ UTC.
 | `clientTimezone` | `String` | `client_timezone` | The client's IANA timezone name. |
 | `nonce` | `String` | `nonce` | What the flow's next leg must echo, or `''`. |
 | `assertedIdentity` | `String?` | `asserted_identity` | A verified SAML identity as JSON (`TomExternalIdentity.toJson`), or `null`. |
+| `tenant` | `String` | `tenant` | The tenant the flow began in, or `''`. |
 
 ### TomOAuthStateStoreType
 
@@ -3278,6 +3312,8 @@ The configured SAML identity providers, read from `saml.providers`. Installed as
 a bean at start-up, after `load` has fetched the metadata.
 
 - **Constant:** `configurationKey = 'saml.providers'`
+- **Constant:** `tenantsConfigurationKey = 'saml.tenants'`
+- **Static:** `tenants` — `TomTenantProviderSets<TomSamlProviders>`, the provider sets installed per tenant.
 
 #### Constructors
 
@@ -3302,7 +3338,8 @@ for a value it does not configure is refused with
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `resolve` | `static TomSamlProviders? resolve()` | The installed bean, or `null`. |
+| `resolve` | `static TomSamlProviders? resolve()` | The set of the tenant in context (`tenants`) or, for a tenant without one and outside every tenant, the installed bean — `null` when neither is there. |
+| `loadTenants` | `static Future<void> loadTenants({TomServerConfigResourceProvider? config, TomOAuthTokenTransport? transport})` | Reads every tenant's `saml.tenants.<id>.providers`, fetching each `metadataUrl`, and installs each in `tenants`. Nothing when the key is absent; a malformed block throws `saml.config.tenants_not_a_map`. |
 | `load` | `static Future<TomSamlProviders> load({TomServerConfigResourceProvider? config, TomOAuthTokenTransport? transport})` | The start-up call: reads `saml.providers`, fetching every provider's `metadataUrl`. |
 | `discover` | `static Future<TomSamlProviders> discover(Object? raw, {TomOAuthTokenTransport? transport})` | The provider set `raw` configures, each `metadataUrl` fetched and parsed. A document that cannot be fetched fails with `saml.config.metadata_failed`. The metadata is trusted because of where it came from, so name an `https` address. |
 | `lookup` | `TomSamlProviderConfig? lookup(String id)` | The provider under `id`, or `null`. |
@@ -3776,8 +3813,12 @@ on restart.
 A `TomScimStore` whose resources are rows in a `TomDataSource` — the store for
 a deployment with more than one node, or with provisioned users that must
 outlive a restart. Every resource is one row of the table `scimResourceTable`
-declares. The unique `(resource_type, name_key)` key arbitrates the one race
-the store has: two identity-provider requests creating the same user at once
+declares. Built over a data source name (`named`), the store is routed per
+tenant: every call reaches the table in the data source the tenant in context
+resolves to. Every row also names its tenant, and every statement reads and
+writes only the rows of the tenant in context — the wall under `shared`
+isolation, a second one under `schema` and `database`. The unique
+`(tenant, resource_type, name_key)` key arbitrates the one race the store has: two identity-provider requests creating the same user at once
 both pass the service's uniqueness check, and only one of them writes.
 
 - **Implements:** `TomScimStore`
@@ -3791,21 +3832,24 @@ TomSqlScimStore(
   bool createSchema = true,
 })
 
-factory TomSqlScimStore.named(
-  String datasourceName, {
+TomSqlScimStore.named(
+  String name, {
   String table = defaultScimResourceTable,
   bool createSchema = true,
 })
 ```
 
-`named` resolves a registered data source, and throws a `TomServerException`
-keyed `scim.store.unknown_datasource` when none is registered under that name.
+`named` resolves the registered data source `name` through tenancy's routing on
+every call, and throws a `TomServerException` keyed
+`scim.store.unknown_datasource` when none is registered under that name — at
+construction, and at a call whose tenant resolves to none.
 
 #### Properties
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `datasource` | `TomDataSource` | The data source the table lives in. |
+| `datasourceName` | `String?` | The registered name the store routes, or `null` for a store built over one data source. |
+| `datasource` *(getter)* | `TomDataSource` | The data source the table lives in for the tenant in context. |
 | `table` | `String` | The SCIM resource table. |
 | `createSchema` | `bool` | Whether to create the table on first use; `false` when the schema is owned by the migration module. |
 
@@ -3813,14 +3857,14 @@ keyed `scim.store.unknown_datasource` when none is registered under that name.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `ensureSchema` | `Future<void> ensureSchema()` | Creates the table if it does not exist. Idempotent; called by every operation. |
-| `create` | `Future<TomScimResource> create(TomScimResourceType type, Map<String, Object?> document)` | *(override)* One `INSERT … RETURNING`. |
+| `ensureSchema` | `Future<void> ensureSchema()` | Creates the table in the data source of the tenant in context if it does not exist. Idempotent; called by every operation. |
+| `create` | `Future<TomScimResource> create(TomScimResourceType type, Map<String, Object?> document)` | *(override)* One `INSERT … RETURNING`, stamped with the tenant in context. |
 | `read` | `Future<TomScimResource?> read(TomScimResourceType type, String id)` | *(override)* `null` for an id that is not a number. |
 | `findByName` | `Future<TomScimResource?> findByName(TomScimResourceType type, String name)` | *(override)* By the lower-cased `name_key`. |
 | `list` | `Future<List<TomScimResource>> list(TomScimResourceType type)` | *(override)* |
 | `replace` | `Future<TomScimResource?> replace(TomScimResourceType type, String id, Map<String, Object?> document)` | *(override)* Increments `version`. |
 | `delete` | `Future<bool> delete(TomScimResourceType type, String id)` | *(override)* |
-| `deleteAll` | `Future<void> deleteAll()` | Empties the table — for provisioning and tests. |
+| `deleteAll` | `Future<void> deleteAll()` | Empties the table, every tenant's rows — for provisioning and tests. |
 
 ### TomScimResourceRow
 
@@ -3841,6 +3885,7 @@ fields because the driver reads a `DATETIME` as a local `DateTime`;
 | `createdAt` | `String` | `created_at` | When the resource was created, as the stored text. |
 | `lastModified` | `String` | `last_modified` | When it last changed, as the stored text. |
 | `version` | `int` | `version` | The change counter. |
+| `tenant` | `String` | `tenant` | The tenant the resource belongs to, or `''`. |
 
 ### TomScimPath
 
@@ -4114,7 +4159,8 @@ identity provider's header to the SCIM endpoints. In
 ```dart
 TomScimProvisioning({
   required TomScimService service,
-  required List<String> bearerTokens,
+  List<String> bearerTokens = const [],
+  Map<String, List<String>> tenantBearerTokens = const {},
   String? baseUrl,
 })
 
@@ -4124,10 +4170,13 @@ factory TomScimProvisioning.fromConfiguration(
 ])
 ```
 
-The constructor holds `bearerTokens` as SHA-256 digests and throws
-`scim.not_enabled` when none is non-empty. `fromConfiguration` reads
-`scim.bearerTokens` (a list, or one string) and `scim.baseUrl` from `config`,
-or from the server configuration when none is given.
+The constructor holds `bearerTokens` and each tenant's `tenantBearerTokens` as
+SHA-256 digests and throws `scim.not_enabled` when there is no non-empty secret
+at all. Inside a tenant only that tenant's secrets admit a request; outside
+every tenant only `bearerTokens` do. `fromConfiguration` reads
+`scim.bearerTokens` (a list, or one string), each tenant's
+`scim.tenants.<id>.bearerTokens` and `scim.baseUrl` from `config`, or from the
+server configuration when none is given.
 
 #### Static Members
 
@@ -4145,13 +4194,14 @@ or from the server configuration when none is given.
 | -------- | ---- | ----------- |
 | `service` | `TomScimService` | The SCIM service. |
 | `baseUrl` | `String?` | The published base address, or `null` for the address the request arrived at. |
+| `tenants` *(getter)* | `Set<String>` | The tenants that have secrets of their own. |
 
 #### Methods
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `requireAuthorized` | `void requireAuthorized(String? header)` | Throws `scim.unauthorized` (401) unless `authorizes(header)`; what `TomScimServer` calls on every request. |
-| `authorizes` | `bool authorizes(String? header)` | Whether the `Authorization` header `header` is `Bearer <secret>` with a configured secret, compared against every digest in constant time. |
+| `authorizes` | `bool authorizes(String? header)` | Whether the `Authorization` header `header` is `Bearer <secret>` with a secret of the tenant in context — outside every tenant, of the deployment — compared against every digest in constant time. |
 
 ### TomScimApi
 

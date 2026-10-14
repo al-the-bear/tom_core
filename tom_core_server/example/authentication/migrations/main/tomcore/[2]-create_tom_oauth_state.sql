@@ -50,6 +50,9 @@
 --    `NOT NULL` and hold `''` for "not supplied", matching the Dart record
 --    whose fields default to the empty string — a nullable column would
 --    introduce a second spelling of absence that every read would collapse.
+--  * `tenant` is the tenant the flow began in, `''` for none. Every read and
+--    the completion name the tenant in context, so a callback that reaches
+--    another tenant finds no record and cannot spend it.
 --  * `ix_tom_oauth_state_expiry` is the index the sweep rides. Without it,
 --    pruning is a full scan of a table whose whole point is to be swept often.
 --
@@ -70,6 +73,7 @@ CREATE TABLE IF NOT EXISTS tom_oauth_state (
   client_timezone VARCHAR(64)  NOT NULL,
   nonce           VARCHAR(191) NOT NULL,
   asserted_identity TEXT       NULL,
+  tenant          VARCHAR(32)  NOT NULL,
   PRIMARY KEY (state),
   KEY ix_tom_oauth_state_expiry (expires_at)
 );

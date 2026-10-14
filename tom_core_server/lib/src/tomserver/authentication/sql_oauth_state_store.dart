@@ -238,6 +238,7 @@ class TomSqlOAuthStateStore implements TomOAuthStateStore {
     'client_timezone': ':clientTimezone',
     'nonce': ':nonce',
     'asserted_identity': ':assertedIdentity',
+    'tenant': ':tenant',
   };
 
   /// Creates the pending-authorization table if it does not exist.
@@ -271,8 +272,12 @@ class TomSqlOAuthStateStore implements TomOAuthStateStore {
     await ensureSchema();
     final rows = await datasource.executeQuery<TomOAuthStateRow>(
       'SELECT ${_states.columnList} FROM $table '
-      'WHERE state = :state AND expires_at > :now',
-      {'state': state, 'now': sqlInstant(_now())},
+      'WHERE state = :state AND expires_at > :now AND tenant = :tenant',
+      {
+        'state': state,
+        'now': sqlInstant(_now()),
+        'tenant': TomOAuthAuthorizationState.currentTenant,
+      },
     );
     return rows.isEmpty ? null : _stateOf(rows.first);
   }
@@ -285,9 +290,14 @@ class TomSqlOAuthStateStore implements TomOAuthStateStore {
     // documentation for why a read-then-delete is not the same thing, and for
     // why an ambiguous failure here can only resolve to a failed login.
     final rows = await datasource.executeQuery<TomOAuthStateRow>(
-      'DELETE FROM $table WHERE state = :state AND expires_at > :now '
+      'DELETE FROM $table '
+      'WHERE state = :state AND expires_at > :now AND tenant = :tenant '
       'RETURNING ${_states.columnList}',
-      {'state': state, 'now': sqlInstant(_now())},
+      {
+        'state': state,
+        'now': sqlInstant(_now()),
+        'tenant': TomOAuthAuthorizationState.currentTenant,
+      },
     );
     return rows.isEmpty ? null : _stateOf(rows.first);
   }
@@ -364,6 +374,7 @@ class TomSqlOAuthStateStore implements TomOAuthStateStore {
     'assertedIdentity': pending.assertedIdentity == null
         ? null
         : jsonEncode(pending.assertedIdentity!.toJson()),
+    'tenant': pending.tenant,
   };
 
   /// [row] as the record the contract answers with.
@@ -377,6 +388,7 @@ class TomSqlOAuthStateStore implements TomOAuthStateStore {
         state: row.state,
         providerId: row.providerId,
         createdAt: parseSqlInstant(row.createdAt),
+        tenant: row.tenant,
         // A provider configured without PKCE stored neither half, and a record
         // with only one half is a bug in this file rather than a state to model
         // — so the pair is restored only when the verifier is there.
@@ -478,6 +490,10 @@ class TomOAuthStateRow {
   /// A verified SAML identity as JSON, or `null`.
   @TomDbColumn(columnName: "asserted_identity")
   String? assertedIdentity;
+
+  /// The tenant the flow began in, or `''`.
+  @TomDbColumn(columnName: "tenant")
+  String tenant = "";
 }
 
 /// Which pending-authorization store a deployment runs.

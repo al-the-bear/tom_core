@@ -1200,6 +1200,46 @@ void main() {
       );
     });
 
+    // A flow completes only in the tenant it began in: a callback that
+    // reaches another tenant (by host, path or header) finds no pending flow
+    // and cannot spend it either.
+    test(
+      'a callback in another tenant is refused; its own still completes',
+      () async {
+        final flow = _flow(_oidcProvider(), _StubTransport());
+        final begun = await TomTenantContext.run(
+          'acme',
+          () => flow.beginAuthorization(_authorizationRequest()),
+        );
+        final unknownState = throwsA(
+          isA<TomOAuthException>().having(
+            (e) => e.key,
+            'key',
+            'oauth.flow.unknown_state',
+          ),
+        );
+
+        await expectLater(
+          TomTenantContext.run(
+            'globex',
+            () => flow.completeAuthorization(code: 'c', state: begun.state),
+          ),
+          unknownState,
+        );
+        await expectLater(
+          flow.completeAuthorization(code: 'c', state: begun.state),
+          unknownState,
+          reason: 'outside every tenant the flow is not found either',
+        );
+
+        final exchange = await TomTenantContext.run(
+          'acme',
+          () => flow.completeAuthorization(code: 'c', state: begun.state),
+        );
+        expect(exchange.pending.tenant, 'acme');
+      },
+    );
+
     test('a state the server never issued is rejected', () async {
       final flow = _flow(_oidcProvider(), _StubTransport());
       await flow.beginAuthorization(_authorizationRequest());

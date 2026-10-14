@@ -20,6 +20,11 @@
 --  * `document` is the resource's JSON without `id` and `meta`, so every
 --    attribute the identity provider maps survives whatever its schema.
 --
+-- `tenant` is the tenant a resource belongs to, `''` for none. Every
+-- statement names the tenant in context, so under `shared` isolation two
+-- tenants' resources stay apart in this one table, and a name is unique per
+-- tenant.
+--
 -- Instants are `DATETIME(6)` and are always written in UTC.
 CREATE TABLE IF NOT EXISTS tom_scim_resource (
   id            BIGINT       NOT NULL AUTO_INCREMENT,
@@ -30,7 +35,8 @@ CREATE TABLE IF NOT EXISTS tom_scim_resource (
   created_at    DATETIME(6)  NOT NULL,
   last_modified DATETIME(6)  NOT NULL,
   version       BIGINT       NOT NULL,
+  tenant        VARCHAR(32)  NOT NULL,
   PRIMARY KEY (id),
-  UNIQUE KEY uq_tom_scim_resource_name (resource_type, name_key),
-  KEY ix_tom_scim_resource_external (resource_type, external_id)
+  UNIQUE KEY uq_tom_scim_resource_name (tenant, resource_type, name_key),
+  KEY ix_tom_scim_resource_external (tenant, resource_type, external_id)
 );

@@ -19,8 +19,12 @@ const String defaultScimResourceTable = 'tom_scim_resource';
 ///
 ///  * `id` is an auto-increment key and is the resource's SCIM `id`, in
 ///    decimal. It is never reused, which is what SCIM requires of an id.
+///  * `tenant` is the tenant the resource belongs to, `''` for none; every
+///    statement names the tenant in context, so under `shared` isolation two
+///    tenants' resources stay apart in the one table.
 ///  * `name_key` is the name attribute — a user's `userName`, a group's
-///    `displayName` — lower-cased, and unique within a `resource_type`. Both
+///    `displayName` — lower-cased, and unique within a `resource_type` of one
+///    tenant. Both
 ///    are compared case-insensitively by SCIM, so the key stores the form the
 ///    comparison uses, and the database refuses a second resource of one name.
 ///  * `external_id` is indexed for the identity provider's reconciliation, and
@@ -41,11 +45,12 @@ TomFrameworkTable scimResourceTable(String table) => TomFrameworkTable(
     TomFrameworkColumn('created_at', 'DATETIME(6)'),
     TomFrameworkColumn('last_modified', 'DATETIME(6)'),
     TomFrameworkColumn('version', 'BIGINT'),
+    TomFrameworkColumn('tenant', 'VARCHAR(32)'),
   ],
   primaryKey: const ['id'],
   keys: const [
-    TomFrameworkKey.unique('name', ['resource_type', 'name_key']),
-    TomFrameworkKey('external', ['resource_type', 'external_id']),
+    TomFrameworkKey.unique('name', ['tenant', 'resource_type', 'name_key']),
+    TomFrameworkKey('external', ['tenant', 'resource_type', 'external_id']),
   ],
 );
 

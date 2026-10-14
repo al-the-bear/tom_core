@@ -206,7 +206,8 @@ surface documented here.
 | `TomScimResource` | class | One provisioned user or group: id, JSON document, lifecycle instants, change counter. |
 | `TomScimStore` | abstract interface class | Where provisioned resources are kept. |
 | `TomMemoryScimStore` | class | In-memory SCIM store, per process. |
-| `TomSqlScimStore` | class | SCIM store over `tom_scim_resource`, shared by every node. |
+| `TomSqlScimStore` | class | SCIM store over `tom_scim_resource`, shared by every node and routed per tenant. |
+| `TomTenantProviderSets` | class | External-identity provider sets keyed by tenant: `TomOAuthProviders.tenants`, `TomSamlProviders.tenants`. |
 | `TomScimResourceRow` | class | One `tom_scim_resource` row, as the SQL store reads it back. |
 | `scimResourceTable` / `scimResourceTableDdl` | top-level function | The `tom_scim_resource` declaration, and its `CREATE TABLE`. |
 | `defaultScimResourceTable` | constant | `tom_scim_resource`. |
@@ -1383,6 +1384,7 @@ surface documented here.
 | `TomTenantIsolation` | Tenancy |
 | `TomTenantOwned` | Object Persistence |
 | `TomTenantPathResolver` | Tenancy |
+| `TomTenantProviderSets` | Authentication |
 | `TomTenantResolution` | Tenancy |
 | `TomTenantResolver` | Tenancy |
 | `TomTextLocale` | Resources |

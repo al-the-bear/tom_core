@@ -296,6 +296,7 @@ account's roles, and rotates and revokes it; `TomSqlApiKeyStore`
 | `TomOAuthServer` | The three `/oauth/*` endpoints the handshake is driven through — list the providers, begin an authorization, complete one. |
 | `TomExternalProvider` · `TomExternalRoleMapping` · `applyExternalRoles` | What an OIDC and a SAML provider share, and the group-to-role mapping applied to every login's principal. In `external_provider.dart`. |
 | `TomSamlProviders` · `TomSamlProviderConfig` · `TomSamlIdpMetadata` · `TomSamlCertificates` · `TomSamlNames` | SAML 2.0 identity providers as data, read from `saml.providers`, with their metadata fetched by `load`. In `saml_provider.dart`. |
+| `TomTenantProviderSets` | Provider sets keyed by tenant: a tenant with a set of its own (`oauth.tenants.<id>.providers`, `saml.tenants.<id>.providers`, or installed at run time) offers only its providers. In `tenant_provider_sets.dart`. |
 | `TomSamlFlow` · `TomSamlResponseValidator` | The three-leg SAML login and every check a response must pass. In `saml_flow.dart`. |
 | `TomXmlSignatureVerifier` · `TomExclusiveCanonicalizer` · `TomXmlDsig` · `TomSamlException` | XML Signature verification in the identity-provider profile, its canonicalization, and the SAML exception. In `saml_xml_signature.dart`. |
 | `TomSamlService` · `TomSamlServer` | `POST /saml/acs` and `GET /saml/metadata/<providerId>`. In `saml_endpoints.dart`. |
@@ -317,7 +318,7 @@ account's roles, and rotates and revokes it; `TomSqlApiKeyStore`
 | `TomJwtKeyException` | A key or signing setting that cannot be used. `clientThrow: false`. |
 | `TomJwksService` · `TomJwksServer` | `GET /.well-known/jwks.json`: the public half of every verification key, public, cacheable for five minutes, `404` under HS256. Mounted by the endpoints pipeline like every component. In `jwks_endpoint.dart`. |
 | `TomScimService` | The SCIM 2.0 service provider over a store, independent of HTTP: users and groups created, read, queried, replaced, patched and deleted, and `revoke` called for every user a change takes access from. In `scim_service.dart`. |
-| `TomScimStore` · `TomMemoryScimStore` · `TomSqlScimStore` · `TomScimResourceRow` | Where provisioned resources are kept: per process, or rows of `tom_scim_resource` every node shares. In `scim_resource.dart` and `sql_scim_store.dart`. |
+| `TomScimStore` · `TomMemoryScimStore` · `TomSqlScimStore` · `TomScimResourceRow` | Where provisioned resources are kept: per process, or rows of `tom_scim_resource` every node shares — per tenant in both, the SQL store routed and filtered by its `tenant` column. In `scim_resource.dart` and `sql_scim_store.dart`. |
 | `TomScimResource` · `TomScimResourceType` · `TomScimSchemas` · `TomScimException` | One provisioned user or group, the two resource types, the SCIM URNs, and the exception carrying a status and `scimType`. In `scim_resource.dart`. |
 | `scimResourceTable` · `scimResourceTableDdl` · `defaultScimResourceTable` | The single declaration of `tom_scim_resource`. In `scim_sql.dart`. |
 | `TomScimFilter` · `TomScimPath` · `TomScimAnd` · `TomScimOr` · `TomScimNot` · `TomScimValuePath` · `TomScimComparison` · `scimValues` · `scimLookup` · `scimKeyOf` | The SCIM filter and PATCH-path language, and the case-insensitive JSON reads it is written over. In `scim_filter.dart`. |

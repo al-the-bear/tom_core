@@ -2,6 +2,30 @@
 
 ### Added
 
+- **Identity federation per tenant.** SCIM, the pending state of an external
+  sign-in and the provider configuration follow the tenant in context.
+  `TomSqlScimStore.named` resolves its data source through tenancy's routing on
+  every call, and `tom_scim_resource` gains a `tenant` column every statement
+  filters on, so two tenants' identity providers see only their own users and
+  groups in every isolation model (a `userName` is unique per tenant);
+  `TomMemoryScimStore` keeps a partition per tenant. `TomScimProvisioning`
+  takes secrets per tenant (`tenantBearerTokens`,
+  `scim.tenants.<id>.bearerTokens`), and inside a tenant only its own admit.
+  `TomOAuthAuthorizationState.tenant` records the tenant a flow began in, and
+  both state stores answer and spend records of the tenant in context only, so
+  a callback in another tenant fails as `oauth.flow.unknown_state`;
+  `tom_oauth_state` gains a `tenant` column. `TomOAuthProviders.tenants` and
+  `TomSamlProviders.tenants` (`TomTenantProviderSets`) hold provider sets per
+  tenant, read by `loadTenants()` from `oauth.tenants` / `saml.tenants` or
+  installed at run time; `resolve()` answers the set of the tenant in context.
+  A deployment that applied the earlier reference migrations runs
+  `ALTER TABLE tom_oauth_state ADD COLUMN tenant VARCHAR(32) NOT NULL DEFAULT ''`
+  and `ALTER TABLE tom_scim_resource ADD COLUMN tenant VARCHAR(32) NOT NULL
+  DEFAULT ''`, then re-creates `uq_tom_scim_resource_name` and
+  `ix_tom_scim_resource_external` with `tenant` first. `doc/tenancy.md`
+  § Identity Federation per Tenant; tests in `test/tenant_bound_stores_test.dart`,
+  `test/tenant_bound_stores_db_test.dart` (all three isolation models) and
+  `test/oauth_test.dart`.
 - **Removing a tenant from a running deployment** — `TomTenancy.removeTenant`,
   the counterpart of `addTenant`. The tenant leaves `tenants`, so its requests
   — by token claim, host, path or header — and its work in context are refused

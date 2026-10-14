@@ -56,6 +56,7 @@ export 'src/tomserver/authentication/server_self_login.dart';
 export 'src/tomserver/authentication/sql_api_key_store.dart';
 export 'src/tomserver/authentication/sql_oauth_state_store.dart';
 export 'src/tomserver/authentication/sql_scim_store.dart';
+export 'src/tomserver/authentication/tenant_provider_sets.dart';
 export 'src/tomserver/authentication/two_factor.dart';
 export 'src/tomserver/authentication/two_factor_attempts.dart';
 export 'src/tomserver/authentication/two_factor_send_limit.dart';

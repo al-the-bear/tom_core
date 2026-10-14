@@ -42,6 +42,12 @@ const String defaultOAuthStateTable = 'tom_oauth_state';
 ///  * `nonce` is what the flow's next leg must echo: the OpenID Connect nonce,
 ///    or a SAML `AuthnRequest` id and then the digest of the handoff code. `''`
 ///    when the flow sent none, like the context columns below.
+///  * `tenant` is the tenant the flow began in, `''` for none — the same
+///    spelling `tom_job_run.tenant` uses. Every read and the completion carry
+///    `AND tenant = :tenant` with the tenant in context, so a callback that
+///    reaches another tenant finds no record and cannot spend it. The table
+///    itself is deployment-wide: a short-lived record needs no schema of its
+///    own, only the predicate.
 ///  * `asserted_identity` holds a verified SAML identity, as JSON, between the
 ///    identity provider's form post and the application's completion. `TEXT`
 ///    because a SAML assertion's attributes have no fixed size, and `NULL` on
@@ -74,6 +80,7 @@ TomFrameworkTable oauthStateTable(String table) => TomFrameworkTable(
     TomFrameworkColumn('client_timezone', 'VARCHAR(64)'),
     TomFrameworkColumn('nonce', 'VARCHAR(191)'),
     TomFrameworkColumn('asserted_identity', 'TEXT', nullable: true),
+    TomFrameworkColumn('tenant', 'VARCHAR(32)'),
   ],
   primaryKey: const ['state'],
   keys: const [

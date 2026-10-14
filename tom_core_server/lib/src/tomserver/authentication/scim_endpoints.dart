@@ -21,6 +21,26 @@
 ///   baseUrl: https://app.example.com/scim/v2   # behind a proxy; optional
 /// ```
 ///
+/// ## One tenant's identity provider per tenant
+///
+/// In a multi-tenant deployment each tenant's identity provider gets secrets
+/// of its own, and a request is admitted only by a secret of the tenant it
+/// resolves to (host, path or header; see the tenancy guide). A deployment's
+/// own `bearerTokens` admit only requests outside every tenant, so no single
+/// secret writes into every tenant:
+///
+/// ```yaml
+/// scim:
+///   tenants:
+///     acme:
+///       bearerTokens: [${SCIM_TOKEN_ACME}]
+///     globex:
+///       bearerTokens: [${SCIM_TOKEN_GLOBEX}]
+/// ```
+///
+/// The resources follow the tenant too: a [TomSqlScimStore.named] store is
+/// routed per tenant, a [TomMemoryScimStore] partitioned by it.
+///
 /// ## How the identity provider authenticates
 ///
 /// With a bearer secret: the identity provider is configured with the tenant
@@ -47,19 +67,23 @@ import 'scim_service.dart';
 /// The installed SCIM service and the secrets that may call it.
 class TomScimProvisioning {
   /// Creates the configuration: [service] answers, and a caller presenting
-  /// one of [bearerTokens] is admitted.
+  /// one of [bearerTokens] is admitted outside every tenant, one presenting a
+  /// tenant's [tenantBearerTokens] inside that tenant.
   ///
   /// [baseUrl] is the address resources are published under
   /// (`meta.location`); by default, the address the request arrived at.
   TomScimProvisioning({
     required this.service,
-    required List<String> bearerTokens,
+    List<String> bearerTokens = const [],
+    Map<String, List<String>> tenantBearerTokens = const {},
     this.baseUrl,
-  }) : _digests = [
-         for (final token in bearerTokens)
-           if (token.isNotEmpty) _digest(token),
-       ] {
-    if (_digests.isEmpty) {
+  }) : _digests = _digestsOf(bearerTokens),
+       _tenantDigests = {
+         for (final entry in tenantBearerTokens.entries)
+           entry.key: _digestsOf(entry.value),
+       } {
+    if (_digests.isEmpty &&
+        _tenantDigests.values.every((digests) => digests.isEmpty)) {
       throw TomScimException(
         'scim.not_enabled',
         'SCIM provisioning needs at least one bearer token.',
@@ -82,6 +106,19 @@ class TomScimProvisioning {
 
   final List<List<int>> _digests;
 
+  final Map<String, List<List<int>>> _tenantDigests;
+
+  /// The tenants that have secrets of their own.
+  Set<String> get tenants => {
+    for (final entry in _tenantDigests.entries)
+      if (entry.value.isNotEmpty) entry.key,
+  };
+
+  static List<List<int>> _digestsOf(List<String> tokens) => [
+    for (final token in tokens)
+      if (token.isNotEmpty) _digest(token),
+  ];
+
   static TomScimProvisioning? _installed;
 
   /// The installed configuration, or `null` when SCIM is not enabled.
@@ -99,8 +136,9 @@ class TomScimProvisioning {
     TomEndpointCredentials.release(pathPrefix);
   }
 
-  /// Reads `scim.bearerTokens` (a list, or one string) and `scim.baseUrl` from
-  /// the configuration tree.
+  /// Reads `scim.bearerTokens` (a list, or one string), each tenant's
+  /// `scim.tenants.<id>.bearerTokens` and `scim.baseUrl` from the
+  /// configuration tree.
   ///
   /// Throws `scim.not_enabled` when no token is configured: an endpoint that
   /// admits nobody is a configuration mistake worth stopping the start for.
@@ -110,20 +148,33 @@ class TomScimProvisioning {
   ]) {
     final provider =
         config ?? TomServerConfigResourceProvider.getServerConfig();
-    final raw = provider.exists('$configurationKey.bearerTokens')
-        ? provider.get('$configurationKey.bearerTokens')
-        : null;
-    final tokens = raw is List
+    List<String> tokensOf(Object? raw) => raw is List
         ? [for (final token in raw) '$token']
         : raw == null
         ? const <String>[]
         : ['$raw'];
+    final tokens = tokensOf(
+      provider.exists('$configurationKey.bearerTokens')
+          ? provider.get('$configurationKey.bearerTokens')
+          : null,
+    );
+    final tenantsRaw = provider.exists('$configurationKey.tenants')
+        ? provider.get('$configurationKey.tenants')
+        : null;
+    final tenantTokens = <String, List<String>>{
+      if (tenantsRaw is Map)
+        for (final entry in tenantsRaw.entries)
+          '${entry.key}': tokensOf(
+            entry.value is Map ? (entry.value as Map)['bearerTokens'] : null,
+          ),
+    };
     final baseUrl = provider.exists('$configurationKey.baseUrl')
         ? '${provider.get('$configurationKey.baseUrl')}'
         : null;
     return TomScimProvisioning(
       service: service,
       bearerTokens: tokens,
+      tenantBearerTokens: tenantTokens,
       baseUrl: baseUrl,
     );
   }
@@ -139,8 +190,13 @@ class TomScimProvisioning {
     );
   }
 
-  /// Whether the `Authorization` header [header] carries a configured secret.
+  /// Whether the `Authorization` header [header] carries a secret of the
+  /// tenant in context — or, outside every tenant, of the deployment.
   bool authorizes(String? header) {
+    final tenant = TomTenantContext.currentId;
+    final digests = tenant == null
+        ? _digests
+        : (_tenantDigests[tenant] ?? const <List<int>>[]);
     if (header == null) return false;
     final space = header.indexOf(' ');
     if (space < 0 || header.substring(0, space).toLowerCase() != 'bearer') {
@@ -148,7 +204,7 @@ class TomScimProvisioning {
     }
     final presented = _digest(header.substring(space + 1).trim());
     var admitted = false;
-    for (final digest in _digests) {
+    for (final digest in digests) {
       var difference = 0;
       for (var i = 0; i < digest.length; i++) {
         difference |= digest[i] ^ presented[i];

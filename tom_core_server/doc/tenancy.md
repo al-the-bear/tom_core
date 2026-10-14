@@ -28,6 +28,7 @@ This guide is the server half.
   - [A login binds the token to its tenant](#a-login-binds-the-token-to-its-tenant)
 - [Tenant-Owned Entities](#tenant-owned-entities)
 - [Principals per Tenant](#principals-per-tenant)
+- [Identity Federation per Tenant](#identity-federation-per-tenant)
 - [What Is Tenant-Scoped](#what-is-tenant-scoped)
 - [What Stays Deployment-Wide](#what-stays-deployment-wide)
 - [Working in a Tenant Outside a Request](#working-in-a-tenant-outside-a-request)
@@ -400,6 +401,58 @@ isolation model, and the key is what makes all three models agree:
 The organization is not part of the key: a user's second factors, preferences
 and grants are theirs in every organization of the tenant they sign in for.
 
+## Identity Federation per Tenant
+
+A tenant federates with identity providers of its own — its staff directory,
+its customer's Entra ID — and provisions its users from them. Three parts of
+the authentication module follow the tenant in context for that.
+
+**SCIM.** The resources, the secrets and the requests are each tenant's own:
+
+- `TomSqlScimStore.named('main')` resolves the data source through tenancy's
+  routing on every call, so under `schema` and `database` isolation each
+  tenant's resources live in its own schema or database — and a tenant restored
+  on its own brings back its own. Every row also names its tenant, and every
+  statement reads and writes only the rows of the tenant in context: under
+  `shared`, where routing leaves every tenant in one table, that column is the
+  wall. A `userName` is unique per tenant. `TomMemoryScimStore` keeps one
+  partition per tenant.
+- `TomScimProvisioning` takes secrets per tenant (`tenantBearerTokens`, or
+  `scim.tenants.<id>.bearerTokens` in the configuration). A request is admitted
+  only by a secret of the tenant it resolves to; the deployment's `bearerTokens`
+  admit only requests outside every tenant, so no single secret writes into
+  every tenant.
+- The SCIM endpoints serve whichever tenant the request resolves to — by host,
+  by header, or by a path segment the deployment's router strips before the
+  `/scim/v2/…` routes.
+
+**The pending state of an external sign-in.** A flow completes only in the
+tenant it began in. `TomOAuthAuthorizationState.tenant` records the tenant of the
+request that began the flow, and both state stores answer `peek` and `consume`
+with records of the tenant in context only: a callback that reaches another
+tenant fails as `oauth.flow.unknown_state` and cannot spend the flow either.
+`tom_oauth_state` stays one deployment-wide table — a record lives minutes and
+needs no schema of its own, only its `tenant` column and the predicate.
+
+**Provider configuration.** `TomOAuthProviders.tenants` and
+`TomSamlProviders.tenants` hold a provider set per tenant. A sign-in in a tenant
+with a set of its own offers and accepts only those providers; a tenant without
+one uses the deployment's set. The sets are read from
+`oauth.tenants.<id>.providers` and `saml.tenants.<id>.providers`
+(`loadTenants()`), or installed at run time by a deployment that keeps its
+federation sources in its own database:
+
+```dart
+TomOAuthProviders.tenants.install(
+  'acme',
+  await TomOAuthProviders.discover(acmeProviderSettings),
+);
+TomOAuthProviders.tenants.remove('acme'); // back to the deployment's set
+```
+
+A tenant's providers name redirect URIs of the tenant's own — its host or path —
+so the provider's callback resolves to the tenant that began the flow.
+
 ## What Is Tenant-Scoped
 
 | Concern | How it is kept per tenant | Guide |
@@ -408,6 +461,8 @@ and grants are theirs in every organization of the tenant they sign in for.
 | Caches | `TomCache`'s static API qualifies every key by the tenant in context — two tenants caching `plan` hold two entries | [cache](cache.md#tenant-scoped-entries) |
 | Principal revocation | `revokePrincipal('alice')` in a tenant revokes that tenant's `alice` only; another tenant's `alice` is a different person | [authorization](authorization.md#revocation-per-tenant) |
 | Per-principal rows | 2FA enrolments, preferences, resource grants and delegations are keyed by the tenant-qualified principal id; another tenant's `u1` is a different person | [Principals per Tenant](#principals-per-tenant) |
+| SCIM | `TomSqlScimStore.named` routed per tenant with a `tenant` column; secrets per tenant | [Identity Federation per Tenant](#identity-federation-per-tenant) |
+| External sign-in | a pending flow completes only in the tenant it began in; provider sets per tenant | [Identity Federation per Tenant](#identity-federation-per-tenant) |
 | Jobs | a run records its tenant; its body runs inside it, across a worker isolate too; its window and its overlap protection are per tenant | [scheduling](scheduling.md#runs-per-tenant) |
 | Messaging outbox | a message is queued for the tenant in context and delivered inside it; its receipt and its delivery correlation name the tenant | [messaging](messaging.md#messages-per-tenant) |
 | Delivery reports | `tom_delivery_report.tenant` attributes a carrier's report, which arrives carrying nothing but the carrier's id, to its tenant | [messaging](messaging.md#messages-per-tenant) |
@@ -430,8 +485,7 @@ is in context. Where the tenant matters, it is a column.
 | `tom_scheduler_node` | `TomSqlSchedulerNodes` | none — nodes serve every tenant |
 | `tom_delivery_report` | `TomSqlDeliveryReportStore` | a nullable `tenant` column |
 | `tom_cache_invalidation` | `TomSqlInvalidationChannel` | none — the keys it carries are already qualified |
-| `tom_oauth_state` | `TomSqlOAuthStateStore` | none |
-| `tom_scim_resource` | `TomSqlScimStore` | none |
+| `tom_oauth_state` | `TomSqlOAuthStateStore` | a `tenant` column; `''` for a flow of no tenant; every read and the completion name the tenant in context |
 | `tom_blob`, `tom_blob_chunk` | `TomDatabaseBlobStore` | none |
 | `tom_audit_trail` | `TomSqlAuditSink` | none |
 | `tom_service_account`, `tom_api_key` | `TomSqlApiKeyStore` | a nullable `tenant` column on the account, carried onto the principal its keys authenticate |
@@ -563,9 +617,8 @@ raised as the kernel's `TomTenantException`.
   <!-- unpinned: absence — external identity is not keyed per tenant under shared isolation -->
 
 - **The framework's own stores are not tenant-scoped beyond their columns.** The
-  audit trail, the blob store, the SCIM store and the OAuth state store serve the
-  whole deployment from the data source they were built over, and their rows
-  carry no tenant. A deployment that needs a tenant's audit trail or blobs apart
+  audit trail and the blob store serve the whole deployment from the data
+  source they were built over, and their rows carry no tenant. A deployment that needs a tenant's audit trail or blobs apart
   builds one store per tenant.
   <!-- unpinned: decision — framework tables are deployment-wide and not routed -->
 - **A tenant's accounts are the authentication service's.** The framework binds
@@ -602,6 +655,13 @@ preferences, and the stored key is `tenant:<tenant>/u1` in every model.
 `test/tenancy_test.dart`'s group "one principal id in two tenants" covers the
 same rule without a database for the in-memory 2FA and grace stores, the `owner`
 scope and the resource-grant lookup.
+
+`test/tenant_bound_stores_test.dart` covers SCIM through the request pipeline —
+two tenants' clients each see only their own users, each tenant admits only its
+own secret — the memory SCIM and state stores, a flow begun in one tenant
+refused in another (also in `test/oauth_test.dart`), and provider sets per
+tenant. `test/tenant_bound_stores_db_test.dart`, tagged `db`, runs the SQL SCIM
+store and the SQL state store under each isolation model.
 
 The kernel half is covered by `tom_core_kernel/test/tenant_context_test.dart`
 and the tenant case of the kernel's job-store contract.

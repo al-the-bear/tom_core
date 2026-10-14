@@ -107,6 +107,7 @@ import '../configuration/base_server_configuration.dart';
 import '../little_things/server_exception.dart';
 import 'external_provider.dart';
 import 'oauth_flow.dart';
+import 'tenant_provider_sets.dart';
 
 /// Raised when external-identity configuration or a provider exchange is
 /// unusable.
@@ -524,15 +525,67 @@ class TomOAuthProviders {
   TomOAuthProviders(Map<String, TomOAuthProviderConfig> providers)
     : providers = Map.unmodifiable(providers);
 
-  /// The installed [TomOAuthProviders] bean, or `null` when none is registered.
+  /// The provider set of the tenant in context ([tenants]) or, for a tenant
+  /// without one and outside every tenant, the installed [TomOAuthProviders]
+  /// bean — `null` when neither is there.
   ///
   /// `null` rather than a throw, because "this deployment offers no external
   /// login" is an ordinary state — the great majority of deployments — and the
   /// endpoints answer an empty provider list for it rather than failing.
   static TomOAuthProviders? resolve() {
+    final ofTenant = tenants.current;
+    if (ofTenant != null) return ofTenant;
     final installed = TomBean.getBeanByType(TomOAuthProviders);
     return installed is TomOAuthProviders ? installed : null;
   }
+
+  /// The configuration path of the per-tenant provider sets — a map of tenant
+  /// id to a map holding that tenant's `providers`.
+  static const String tenantsConfigurationKey = 'oauth.tenants';
+
+  /// The provider sets installed per tenant. A sign-in in a tenant with a set
+  /// of its own offers and accepts only those providers; a tenant without one
+  /// uses the deployment's set. See [TomTenantProviderSets].
+  static final TomTenantProviderSets<TomOAuthProviders> tenants =
+      TomTenantProviderSets<TomOAuthProviders>();
+
+  /// Reads every tenant's provider set from [tenantsConfigurationKey] and
+  /// installs it in [tenants], fetching what [discover] fetches.
+  ///
+  /// ```yaml
+  /// oauth:
+  ///   tenants:
+  ///     acme:
+  ///       providers:
+  ///         staff: { ... }      # as under oauth.providers
+  /// ```
+  ///
+  /// Does nothing when the key is absent. A malformed block throws
+  /// `oauth.config.tenants_not_a_map`, at start-up.
+  static Future<void> loadTenants({
+    TomServerConfigResourceProvider? config,
+    TomOAuthTokenTransport? transport,
+  }) async {
+    final provider =
+        config ?? TomServerConfigResourceProvider.getServerConfig();
+    if (!provider.exists(tenantsConfigurationKey)) return;
+    final raw = provider.get(tenantsConfigurationKey);
+    if (raw is! Map) throw _tenantsNotAMap(raw);
+    for (final entry in raw.entries) {
+      final settings = entry.value;
+      if (settings is! Map) throw _tenantsNotAMap(settings);
+      tenants.install(
+        '${entry.key}',
+        await discover(settings['providers'] ?? const {}, transport: transport),
+      );
+    }
+  }
+
+  static TomOAuthException _tenantsNotAMap(Object? raw) => TomOAuthException(
+    'oauth.config.tenants_not_a_map',
+    "Configuration '$tenantsConfigurationKey' must be a map of tenant id to a "
+        'map holding the tenant\'s providers, but held a ${raw.runtimeType}.',
+  );
 
   /// Reads the provider set from the configuration tree under
   /// [configurationKey].
