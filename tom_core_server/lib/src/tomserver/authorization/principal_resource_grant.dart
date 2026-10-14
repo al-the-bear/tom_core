@@ -155,7 +155,9 @@ class TomPrincipalResourceRoleResolver {
   }
 
   /// Folds `resourceKey → roleName` [entries] into a map, collapsing duplicate
-  /// resources to the [stronger] of the competing roles.
+  /// resources to the [stronger] of the competing roles — or, on the key of a
+  /// declared item type, to the stronger level by the type's order
+  /// ([TomResourceRoleRegistry.strongerOn]).
   ///
   /// Shared with C-6 delegation resolution, which merges delegated role entries
   /// alongside a principal's direct grants under the *same* strength ordering, so
@@ -170,7 +172,12 @@ class TomPrincipalResourceRoleResolver {
       final existing = result[entry.key];
       result[entry.key] = existing == null
           ? entry.value
-          : stronger(existing, entry.value);
+          : TomResourceRoleRegistry.strongerOn(
+              entry.key,
+              existing,
+              entry.value,
+              stronger,
+            );
     }
     return result;
   }

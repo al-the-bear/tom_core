@@ -24,6 +24,7 @@
 /// granting access.
 library;
 
+import 'item_permissions.dart';
 import 'tom_authorization.dart';
 
 // =============================================================================
@@ -62,6 +63,35 @@ class TomResourceRoleRegistry {
   /// A `null` result is a *denial*: [TomResourceRoleAdapter] treats an unknown
   /// role as [TomAuthState.none] rather than granting access by default.
   static TomAuthState? stateFor(String role) => _states[role];
+
+  /// The resource-level state of [role] held on [resourceKey], or `null` when
+  /// it grants nothing there.
+  ///
+  /// On the key or pattern of a declared item type ([TomItemTypeRegistry]) the
+  /// role is a level of that type and its grade is the type's; on any other key
+  /// it is [stateFor].
+  static TomAuthState? stateOn(String resourceKey, String role) {
+    final type = TomItemTypeRegistry.typeOfKey(resourceKey);
+    return type == null ? stateFor(role) : type.gradeOf(role);
+  }
+
+  /// The stronger of two roles held on the same [resourceKey]: by the declared
+  /// order of an item type's levels on its keys, by the wider registered state
+  /// elsewhere ([fallback] when given). Folding two levels by their grades
+  /// would lose the difference between `view` and `comment`, both `read`.
+  static String strongerOn(
+    String resourceKey,
+    String a,
+    String b, [
+    String Function(String a, String b)? fallback,
+  ]) {
+    final type = TomItemTypeRegistry.typeOfKey(resourceKey);
+    if (type != null) return type.stronger(a, b);
+    if (fallback != null) return fallback(a, b);
+    final sa = stateFor(a) ?? TomAuthState.none;
+    final sb = stateFor(b) ?? TomAuthState.none;
+    return sa.index >= sb.index ? a : b;
+  }
 
   /// Unmodifiable snapshot of the current `role → state` mapping.
   static Map<String, TomAuthState> get mapping => Map.unmodifiable(_states);
@@ -103,8 +133,20 @@ class TomResourceRoleAdapter implements TomAuthorizationAdapter {
   /// `principal.aci.resourceRoles`).
   const TomResourceRoleAdapter(this.resourceRoles);
 
+  /// Resolves [resourceKeyPath] to the principal's state there. The key of an
+  /// item of a declared type resolves through [TomItemPermissions.gradeOn], so
+  /// a level held on a pattern covering the item counts and the type's grades
+  /// apply; any other key through the principal's exact role and the registry.
   @override
   TomAuthState resolveAuth(String resourceKeyPath) {
+    final type = TomItemTypeRegistry.typeOfKey(resourceKeyPath);
+    if (type != null) {
+      return TomItemPermissions.gradeOn(
+        resourceRoles,
+        type,
+        resourceKeyPath.substring(type.name.length + 1),
+      );
+    }
     final role = resourceRoles[resourceKeyPath];
     if (role == null) return TomAuthState.none;
     return TomResourceRoleRegistry.stateFor(role) ?? TomAuthState.none;

@@ -363,6 +363,43 @@ void main() {
     );
   });
 
+  group('item permission levels', () {
+    setUp(() {
+      TomItemTypeRegistry.reset();
+      TomItemTypeRegistry.register(TomItemType.standard('document'));
+    });
+    tearDown(TomItemTypeRegistry.reset);
+
+    test('read at view or comment, write at edit or manage', () async {
+      _install([
+        _grant(1, 'document:a', 'view'),
+        _grant(1, 'document:b', 'comment'),
+        _grant(1, 'document:c', 'edit'),
+        _grant(1, 'document:d', 'approve'), // not a level of the type
+      ]);
+      expect((await read(_principal(1))).parameters.values, [
+        'document:a',
+        'document:b',
+        'document:c',
+      ]);
+      expect((await write(_principal(1))).parameters.values, ['document:c']);
+    });
+
+    test(
+      'two levels on one item fold to the stronger by the type\'s order',
+      () {
+        // view and comment grade alike (read); the declared order decides.
+        final folded = TomPrincipalResourceRoleResolver.foldRoles([
+          const MapEntry('document:a', 'comment'),
+          const MapEntry('document:a', 'view'),
+          const MapEntry('document:b', 'view'),
+          const MapEntry('document:b', 'manage'),
+        ], TomPrincipalResourceRoleResolver.registryStrength);
+        expect(folded, {'document:a': 'comment', 'document:b': 'manage'});
+      },
+    );
+  });
+
   group('installation lifecycle', () {
     test('uninstall returns the scope to deny-all', () async {
       _install([_grant(1, 'project:alpha', 'owner')]);

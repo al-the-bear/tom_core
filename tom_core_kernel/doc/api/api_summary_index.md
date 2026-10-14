@@ -307,6 +307,9 @@ declarations are omitted.
 | `TomUIStateController` | class | Build-time UI-state narrowing controller. |
 | `TomResourceRoleRegistry` | class | Maps role names to a `TomAuthState`. |
 | `TomResourceRoleAdapter` | abstract class | Adapter supplying resource-role mappings. |
+| `TomItemType` | class | An item type with ordered permission levels, each mapped to a `TomAuthState`. |
+| `TomItemTypeRegistry` | class | The process-wide registry of item types. |
+| `TomItemPermissions` | abstract final class | The level a principal holds on an item, patterns included. |
 | `TomAccessControl` | abstract class | Base access-control policy; computes the `min(user, deployment)` meet. |
 | `TomGradedAccess`, `TomNoAccess`, `TomPublicAccess`, `TomAuthenticatedAccess`, `TomGuestAccess`, `TomCustomAccess`, `TomEntitlementAccess`, `TomRoleAccess`, `TomGroupAccess`, `TomResourceKeyAccess` | class | Concrete access-control policies. |
 | `TomServerPrincipal` | class | The ambient server principal — the deployment's own identity, which caps every user's grants. |

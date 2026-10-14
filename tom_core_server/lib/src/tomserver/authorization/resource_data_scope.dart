@@ -155,14 +155,15 @@ class TomResourceDataScope implements TomResourceScopeSource {
     final roles = await _effectiveRoles(principal);
     return [
       for (final entry in roles.entries)
-        if (_grades(entry.value, minimum)) entry.key,
+        if (_grades(entry.key, entry.value, minimum)) entry.key,
     ];
   }
 
-  /// Whether [role] is registered at [minimum] or wider. An unknown role grades
-  /// as nothing.
-  static bool _grades(String role, TomAuthState minimum) {
-    final state = TomResourceRoleRegistry.stateFor(role);
+  /// Whether [role] held on [key] grades at [minimum] or wider — through the
+  /// item type's levels on an item key ([TomResourceRoleRegistry.stateOn]). An
+  /// unknown role grades as nothing.
+  static bool _grades(String key, String role, TomAuthState minimum) {
+    final state = TomResourceRoleRegistry.stateOn(key, role);
     return state != null && state.index >= minimum.index;
   }
 

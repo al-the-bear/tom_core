@@ -2,6 +2,13 @@
 
 ### Added
 
+- **Item permission levels in the grant layer.** On the key of an item type the
+  kernel's `TomItemTypeRegistry` declares, `TomPrincipalResourceRoleResolver.foldRoles`
+  keeps the stronger level by the type's order and `TomResourceDataScope` grades
+  the level through the type (`TomResourceRoleRegistry.strongerOn`, `stateOn`):
+  `view` and `comment` admit a row to queries, `edit` and `manage` to writes.
+  `doc/authorization.md` § Grants, Grades and Delegations, § The grades are the
+  design; tests in `test/resource_data_scope_test.dart`.
 - **The sign-in organization.** `TomSignInOrganizationDirectory`, a bean the
   deployment installs, lists the organizations a principal may sign in for
   (`TomSignInOrganizations`: the organizations, the default, whether a choice

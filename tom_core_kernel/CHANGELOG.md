@@ -2,6 +2,17 @@
 
 ### Added
 
+- **Item permission levels.** `TomItemType` (ordered levels, each mapped to a
+  `TomAuthState`; `standard` is view < comment < edit < manage; `fromJson`
+  reads a manifest declaration), `TomItemTypeRegistry` and
+  `TomItemPermissions` (`levelOn`, `allows`, `gradeOn`) in
+  `security/item_permissions.dart`. Items are named at run time —
+  `<type>:<id>` — and a level held on a pattern `<type>:<prefix>*` covers every
+  item whose id starts with the prefix, so a category or folder needs no item
+  list. `TomResourceRoleAdapter.resolveAuth` resolves an item key through the
+  level's grade, and `TomResourceRoleRegistry.stateOn` / `strongerOn` apply the
+  type's grades and order on item keys. `doc/security/security.md` § Item
+  Permission Levels; tests in `test/item_permissions_test.dart`.
 - **Tenant context** in `context/tenant_context.dart`: `TomTenantContext` holds
   the tenant the current zone belongs to (`currentId`, `isSet`, `run`,
   `require`, `validate`, `qualify`, `idPattern` — a lower-case identifier of at

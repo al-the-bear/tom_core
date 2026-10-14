@@ -59,6 +59,7 @@ export 'src/tombase/security/access_controls.dart';
 export 'src/tombase/security/authentication_authorization.dart';
 export 'src/tombase/security/bearer_authentication.dart';
 export 'src/tombase/security/oauth_contract.dart';
+export 'src/tombase/security/item_permissions.dart';
 export 'src/tombase/security/resource_role_authorization.dart';
 export 'src/tombase/security/server_principal.dart';
 export 'src/tombase/security/tom_authorization.dart';

@@ -28,6 +28,9 @@ per-principal-per-resource role resolution.
   - [TomUIStateController](#tomuistatecontroller)
   - [TomResourceRoleRegistry](#tomresourceroleregistry)
   - [TomResourceRoleAdapter](#tomresourceroleadapter)
+  - [TomItemType](#tomitemtype)
+  - [TomItemTypeRegistry](#tomitemtyperegistry)
+  - [TomItemPermissions](#tomitempermissions)
   - [TomResourceKeyProtection](#tomresourcekeyprotection)
   - [TomProtectedField](#tomprotectedfield)
   - [TomProtectionSettingException](#tomprotectionsettingexception)
@@ -79,7 +82,7 @@ per-principal-per-resource role resolution.
 
 Sources: `lib/src/tombase/security/user_principal_aci.dart`,
 `lib/src/tombase/security/tom_authorization.dart`, `lib/src/tombase/security/access_controls.dart`,
-`lib/src/tombase/security/resource_role_authorization.dart`, `lib/src/tombase/security/authentication_authorization.dart`,
+`lib/src/tombase/security/resource_role_authorization.dart`, `lib/src/tombase/security/item_permissions.dart`, `lib/src/tombase/security/authentication_authorization.dart`,
 `lib/src/tombase/security/bearer_authentication.dart`, `lib/src/tombase/security/two_factor.dart`, `lib/src/tombase/security/server_principal.dart`,
 `lib/src/tombase/security/oauth_contract.dart`, `lib/src/tombase/security/webauthn.dart`.
 
@@ -174,6 +177,9 @@ Object
 ├── TomAuthorizer
 ├── TomUIStateController
 ├── TomResourceRoleRegistry                  (private constructor)
+├── TomItemType
+├── TomItemTypeRegistry                      (private constructor)
+├── TomItemPermissions                       (abstract final, statics only)
 ├── TomResourceKeyProtection
 ├── TomProtectedField                        (annotation)
 ├── TomAuthenticationMessage                 (@tomReflector)
@@ -743,6 +749,8 @@ principal holding that role has on a resource (C-5). Populated once at startup.
 | `register(String role, TomAuthState state)` | `void` | Declares that a principal holding [role] has resource-level [state]. |
 | `registerAll(Map<String, TomAuthState> mapping)` | `void` | Declares several `role → state` mappings at once. |
 | `stateFor(String role)` | `TomAuthState?` | The resource-level state for [role], or `null` when the role is unknown (a denial). |
+| `stateOn(String resourceKey, String role)` | `TomAuthState?` | The state of [role] held on [resourceKey]: on the key or pattern of a declared item type the type's grade of that level, elsewhere `stateFor(role)`; `null` when it grants nothing. |
+| `strongerOn(String resourceKey, String a, String b, [String Function(String a, String b)? fallback])` | `String` | The stronger of two roles on one key: by the item type's level order on its keys, by [fallback] or the wider registered state elsewhere. |
 | `reset()` | `void` | Clears every registered mapping. Intended for testing. |
 
 ### TomResourceRoleAdapter
@@ -770,8 +778,92 @@ const TomResourceRoleAdapter(Map<String, String> resourceRoles)
 
 | Method | Return Type | Description |
 | ------ | ----------- | ----------- |
-| `resolveAuth(String resourceKeyPath)` | `TomAuthState` | *(override)* Resolves the resource key via the principal's role and the registry; [none] when unknown. |
+| `resolveAuth(String resourceKeyPath)` | `TomAuthState` | *(override)* Resolves an item key of a declared type through `TomItemPermissions.gradeOn` (patterns covering the item count); any other key via the principal's role and the registry; [none] when unknown. |
 | `stateOf(String resourceKey)` | `TomAuthState` | The effective state on [resourceKey], exposed for server-side enforcement call sites. |
+
+### TomItemType
+
+An item type: a [name], ordered [levels] from weakest to strongest, and the
+`TomAuthState` each level stands for. Items are not declared — an item is named
+at run time by its id, and its resource key is `<name>:<id>`.
+
+#### Constructors
+
+```dart
+TomItemType(String name, List<String> levels, Map<String, TomAuthState> grades)
+factory TomItemType.standard(String name)
+factory TomItemType.fromJson(Map<String, Object?> json)
+```
+
+The constructor throws `ArgumentError` for a name that is not
+`[a-z][a-z0-9_.-]*`, no levels, a repeated level or a level without a grade.
+`standard` declares `view`, `comment` (`read`), `edit` and `manage` (`full`).
+`fromJson` reads a manifest declaration
+`{"name": …, "levels": [{"name": …, "grade": <TomAuthState name>}, …]}`.
+
+#### Static Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `standardLevels` | `List<String>` | `view`, `comment`, `edit`, `manage`. |
+| `namePattern` | `RegExp` | What a type name may be. |
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `name` | `String` | The type's name, the first part of its items' keys. |
+| `levels` | `List<String>` | The levels, weakest first; unmodifiable. |
+
+#### Methods
+
+| Method | Return Type | Description |
+| ------ | ----------- | ----------- |
+| `keyFor(String itemId)` | `String` | The item's resource key, `<name>:<itemId>`. |
+| `patternFor([String idPrefix = ''])` | `String` | `<name>:<idPrefix>*` — covers every item whose id starts with [idPrefix]; every item of the type without one. |
+| `rankOf(String level)` | `int` | The level's position, weakest 0, or `-1` when undeclared. |
+| `gradeOf(String level)` | `TomAuthState?` | The grade the level stands for, or `null`. |
+| `stronger(String a, String b)` | `String` | The stronger of two levels; an undeclared level is the weakest. |
+| `toJson()` | `Map<String, Object?>` | The manifest declaration `fromJson` reads. |
+| `toString()` | `String` | *(override)* The name and the levels in order. |
+
+### TomItemTypeRegistry
+
+The process-wide registry of item types, populated at start-up on client and
+server alike.
+
+- **Private constructor** (not instantiable; static-only)
+
+#### Static Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `types` | `List<TomItemType>` | Every declared type. |
+
+#### Static Methods
+
+| Method | Return Type | Description |
+| ------ | ----------- | ----------- |
+| `register(TomItemType type)` | `void` | Declares [type], replacing one of the same name. |
+| `registerAll(Iterable<TomItemType> types)` | `void` | Declares [types]. |
+| `lookup(String name)` | `TomItemType?` | The type named [name], or `null`. |
+| `typeOfKey(String resourceKey)` | `TomItemType?` | The declared type whose item key or pattern [resourceKey] is, or `null`. |
+| `reset()` | `void` | Removes every declared type. Intended for testing. |
+
+### TomItemPermissions
+
+Resolves the level a principal holds on one item from its `resourceKey → role`
+map. Statics only.
+
+- **Kind:** `abstract final class`
+
+#### Static Methods
+
+| Method | Return Type | Description |
+| ------ | ----------- | ----------- |
+| `levelOn(Map<String, String> resourceRoles, TomItemType type, String itemId)` | `String?` | The strongest level held on the item's key or on a pattern covering it, by the type's order; `null` when none. Levels the type does not declare are ignored. |
+| `allows(Map<String, String> resourceRoles, TomItemType type, String itemId, String level)` | `bool` | Whether [level] or a stronger one is held on the item. Throws `ArgumentError` for a level the type does not declare. |
+| `gradeOn(Map<String, String> resourceRoles, TomItemType type, String itemId)` | `TomAuthState` | The grade of the level held on the item, `none` when none. |
 
 ### TomResourceKeyProtection
 

@@ -30,6 +30,7 @@ The security module provides a comprehensive authentication and authorization sy
   - [TomAuthorizationGroup](#tomauthorizationgroup)
   - [TomAuthorization (Global Singleton)](#tomauthorization-global-singleton)
   - [Per-Resource Roles (the shipped adapter)](#per-resource-roles-the-shipped-adapter)
+  - [Item Permission Levels](#item-permission-levels)
   - [TomAuthorizer](#tomauthorizer)
   - [TomUIStateController](#tomuistatecontroller)
 - [The Server Principal and the Meet](#the-server-principal-and-the-meet)
@@ -80,6 +81,9 @@ The security module provides a comprehensive authentication and authorization sy
 | `TomAuthorizer` | class | Per-element authorizer applying a strategy. |
 | `TomUIStateController` | class | Build-time UI-state narrowing controller. |
 | `TomResourceRoleRegistry` | class | Maps role names to a `TomAuthState`. |
+| `TomItemType` | class | An item type with ordered permission levels, each mapped to a `TomAuthState`. |
+| `TomItemTypeRegistry` | class | The process-wide registry of item types. |
+| `TomItemPermissions` | abstract final class | The level a principal holds on an item, from its resource roles; statics only. |
 | `TomResourceRoleAdapter` | abstract class | Adapter supplying resource-role mappings. |
 | `TomAccessControl` | abstract class | Base access-control policy; computes the `min(user, deployment)` meet. |
 | `TomGradedAccess` | class | Access control that resolves to **all four** `TomAuthState` values by composing three binary controls — one each named after the state it grants: `full`, `read`, and `disabled`. |
@@ -1050,6 +1054,63 @@ wrong.
 A runnable walkthrough of all of the above, with both halves of the no-fallback
 guarantee asserted, is
 [`example/samples/security/07_resource_role_authorization_example.dart`](../../example/samples/security/07_resource_role_authorization_example.dart).
+
+### Item Permission Levels
+
+The four grades say how a resource is *shown*; they cannot say that a user may
+comment on a document but not edit it. An application declares its **item
+types** — usually from its manifest — each with **ordered levels**, weakest
+first, and the grade every level stands for:
+
+```dart
+TomItemTypeRegistry.register(TomItemType.standard('document'));
+// view < comment < edit < manage; view and comment are read, edit and manage full
+
+TomItemTypeRegistry.register(TomItemType.fromJson({
+  'name': 'todo',
+  'levels': [
+    {'name': 'see', 'grade': 'read'},
+    {'name': 'tick', 'grade': 'full'},
+  ],
+}));
+```
+
+**Items are parameters.** Only the types are declared. An item is named at run
+time by its id — a UUID, a path, a category — and its resource key is
+`<type>:<id>` (`TomItemType.keyFor`). A level held on a key ending in `*` covers
+every item whose id starts with what comes before it (`TomItemType.patternFor`):
+`document:*` is every document, `document:finance/*` every document the
+application files under `finance/`. A level on a category or a folder is
+therefore held without knowing its items in advance.
+
+The levels a principal holds travel in its `resourceRoles` map like any other
+resource role — the role of an item key is a level name of its type — and are
+read two ways:
+
+```dart
+final roles = principal.aci.resourceRoles;   // e.g. {'document:finance/*': 'comment'}
+final document = TomItemTypeRegistry.lookup('document')!;
+
+// In the application's own vocabulary:
+TomItemPermissions.allows(roles, document, 'finance/q1', 'comment'); // true
+TomItemPermissions.allows(roles, document, 'finance/q1', 'edit');    // false
+
+// As a grade, for code that only knows grades:
+TomResourceRoleAdapter(roles).resolveAuth('document:finance/q1');     // read
+```
+
+`TomItemPermissions.levelOn` takes the strongest of the item's key and every
+pattern covering it, by the type's order; a level the type does not declare
+grants nothing, and asking `allows` for an undeclared level throws
+`ArgumentError`, since that is a bug rather than a denial.
+`TomResourceRoleAdapter.resolveAuth` resolves an item key of a declared type
+through `TomItemPermissions.gradeOn`, so widgets dim and hide by the level's
+grade; any other key resolves through the role registry as above.
+`TomResourceRoleRegistry.stateOn(key, role)` and `strongerOn(key, a, b)` are the
+same rule for code holding one role: on an item key the type decides — two
+levels of one grade, `view` and `comment`, still fold to the stronger.
+
+A runnable test of all of this is `test/item_permissions_test.dart`.
 
 ### TomAuthorizer
 

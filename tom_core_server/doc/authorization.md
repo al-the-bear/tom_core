@@ -338,7 +338,11 @@ Three persisted record types answer three different questions. They stack:
 no entry — there is no fallback, and the kernel's `TomResourceRoleAdapter`
 resolves the absent key to `TomAuthState.none`. When several rows name the same
 resource the **strongest** role wins, decided by a caller-supplied ordering so
-the resolver stays independent of any particular role vocabulary.
+the resolver stays independent of any particular role vocabulary — except on the
+key of a declared item type (`<type>:<id>`), where the role is one of the type's
+ordered levels and the type's order decides, so `comment` beats `view` although
+both grade `read` (kernel `TomItemTypeRegistry`, `TomResourceRoleRegistry.strongerOn`;
+see the kernel's [security guide](../../tom_core_kernel/doc/security/security.md#item-permission-levels)).
 
 `TomDelegationResolver` wraps that resolver and folds in the delegations active
 at a given instant, in three modes: **share** (an explicit `(resourceKey, role)`
@@ -430,6 +434,13 @@ narrower one, and the persistence layer's `forWrite` flag selects it.
 An **unregistered role grades as nothing and grants nothing**, so a typo in a
 grant row closes a door rather than opening one.
 
+On the key of a declared item type the role is a **level** of the type and
+grades as the type maps it (`TomResourceRoleRegistry.stateOn`): with the standard
+levels, `view` and `comment` admit a row to queries, `edit` and `manage` to
+writes as well, and a level the type does not declare grants nothing. The
+scope matches keys exactly — a level held on a pattern (`document:finance/*`)
+counts in the kernel's local checks but names no row here.
+
 ### Resolution is live
 
 The keys are read from the grant and delegation tables on **every request**,
@@ -489,8 +500,10 @@ against MariaDB.
   `TomAuthState.none`/`disabled`/`read`/`full` is the whole vocabulary, and
   `TomResourceDataScope` maps it onto rows accordingly: readable at `read` or
   wider, writable only at `full`. There is no append-only, no delete-but-not-edit
-  and no per-operation grade; a deployment needing one expresses it in its own
-  resource keys rather than in the grade.
+  and no per-operation grade. An application that needs a finer vocabulary for
+  its items declares it as item permission levels (kernel `TomItemType`), checks
+  them with `TomItemPermissions.allows`, and leaves the grades to presentation
+  and the row scope.
   <!-- pinned: test/documented_limitations_test.dart › the graded model has exactly four states -->
 
 ## Verification
