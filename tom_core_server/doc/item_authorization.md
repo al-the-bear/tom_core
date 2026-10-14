@@ -21,6 +21,7 @@ change — its webhook and its change feed — is the cache module's
 - [Two Kinds of Call](#two-kinds-of-call)
 - [Checking a Level](#checking-a-level)
 - [The Row Scope](#the-row-scope)
+- [The Local Copy](#the-local-copy)
 - [Sharing for the User](#sharing-for-the-user)
 - [How a Change Reaches the Cache](#how-a-change-reaches-the-cache)
 - [Starting Up](#starting-up)
@@ -38,7 +39,7 @@ change — its webhook and its change feed — is the cache module's
 | Type | Kind | Purpose |
 | ---- | ---- | ------- |
 | `TomItemAuthority` | abstract interface class | The port to the authority, implemented by an adapter or a test fake |
-| `TomItemAuthorizationClient` | class | Checks and accessible-item queries, cached; the user's sharing acts; the feed follower |
+| `TomItemAuthorizationClient` | class | Checks and accessible-item queries, cached or from a local copy; the user's sharing acts; the feed follower |
 | `TomItemAuthorityScopeSource` | class | The `resource` row scope fed by the client |
 | `TomItemAuthorizationRecord` | class | One authorization as the authority keeps it |
 | `TomItemShareRequest` | class | A share as a user asks for it |
@@ -136,6 +137,44 @@ authority's answers and caches the whole list per subject, type and minimum
 level. A change on an item of the type that names the subject — or no subject,
 as a change for a group does — drops the list.
 
+## The Local Copy
+
+For the item types a client names as copied, it keeps a **local copy** per
+signed-in user instead of asking item by item: every item of the type the user
+reaches, with the level held. The copy is complete, so an item it does not hold
+is one the user does not reach, and checks and the row scope of those types are
+answered without asking the authority.
+
+```dart
+final client = TomItemAuthorizationClient(uamAdapter, copiedTypes: [document]);
+
+// When the user signs in:
+await client.loadCopy(principal);
+
+// Afterwards, answered from the copy:
+final level = await client.levelOn(principal, document, documentId);
+final readable = await client.accessibleItemIds(
+  principal,
+  document,
+  minimumLevel: 'view',
+);
+```
+
+| Property | How it is |
+| -------- | --------- |
+| Loaded | at sign-in by `loadCopy`, which the application calls from its own sign-in step; a copy not loaded then, or dropped since, is loaded when first needed |
+| Read from the authority | one accessible-item query per level of the type, weakest first, so each item ends at the strongest level that reaches it |
+| Held | in memory on each node, in the local-copy cache (`TomItemAuthorizationCache.copyCacheName`); never persisted |
+| Kept current | by the same changes as every answer: a change on an item of the type that names the user — or no user — drops the copy, and so does `*` for the user, which is how the authority reports a group membership or a delegation that changed; the next question loads it again |
+| Kept at most | `copyTimeToLive`, twelve hours by default, when no change names it |
+| Size | at most `maximumScopeItems` items per type; a larger one is refused at loading with `error.item_authority.scope_too_large` |
+
+The copy saves calls, not size: the row scope it feeds is still rendered as an
+`IN` list and bounded like the online one. Keeping the authorizations of a copied
+type small enough to hold in memory — and within `maximumScopeItems` per user —
+is the application's responsibility. Acting for a delegator bypasses the copy
+and is asked online, as it is uncached on the online path.
+
 ## Sharing for the User
 
 ```dart
@@ -182,10 +221,13 @@ TomItemTypeRegistry.register(document);
 TomItemAuthorizationCache.install();
 await TomCacheInvalidator.install(TomSqlInvalidationChannel.named('main'));
 
-final client = TomItemAuthorizationClient(uamAdapter);
+final client = TomItemAuthorizationClient(uamAdapter, copiedTypes: [document]);
 TomItemAuthorityScopeSource(client, [document]).install();
 await client.followChanges().start();
 ```
+
+`copiedTypes` is optional; without it every type is asked online. With it, the
+application's sign-in step calls `client.loadCopy(principal)`.
 
 The webhook receiver is mounted by the application's own endpoint, which hands
 each delivery to `TomItemAuthorizationWebhook.receive`.
@@ -196,6 +238,8 @@ each delivery to `TomItemAuthorizationWebhook.receive`.
 | ----- | ----- | ----- |
 | Items in one check call | 100 | `TomItemAuthority.maximumItemsPerCheck`; the client splits larger requests |
 | Items one accessible-item list may gather | 10,000 by default | `TomItemAuthorizationClient.maximumScopeItems`; beyond it the list is refused |
+| Items a local copy may hold per type | the same bound | refused at loading |
+| Local copies one node holds | 1,000 by default | `TomItemAuthorizationCache.install(maximumCopies: …)`, one per signed-in user and copied type |
 
 A row scope is rendered as `<column> IN (…)`, so it cannot grow without bound.
 Past the limit the client refuses rather than cutting the list short: a
@@ -205,7 +249,7 @@ shortened scope would hide rows without saying so.
 
 | Key | Raised when |
 | --- | ----------- |
-| `error.item_authority.scope_too_large` | `accessibleItemIds` gathers more than `maximumScopeItems` ids. A `TomItemAuthorizationException` (`clientThrow: false`), carrying `itemType` and `maximum`. |
+| `error.item_authority.scope_too_large` | `accessibleItemIds` gathers, or `loadCopy` loads for one type, more than `maximumScopeItems` ids. A `TomItemAuthorizationException` (`clientThrow: false`), carrying `itemType` and `maximum`. |
 
 ## Not Yet Implemented
 
@@ -213,10 +257,6 @@ shortened scope would hide rows without saying so.
   adapter that speaks Tom UAM's item interface follows Tom UAM's interface
   specification, which defines the paths and payloads.
   <!-- unpinned: absence — no adapter for Tom UAM's protocol exists -->
-- **No local copy.** An application whose row scope covers more items than a
-  list may gather would keep a copy of its item types' authorizations, fed by
-  the change feed; the client answers only online, from its cache.
-  <!-- unpinned: absence — no local copy exists -->
 
 ## Verification
 
@@ -228,8 +268,12 @@ and asked in chunks of at most 100, the type's order, undeclared levels,
 principals not signed in, acting for a delegator, an answer overtaken by a
 change; a share revoked or changed through the client and one revoked
 elsewhere and reported on the feed; group shares; the accessible-item lists,
-their pages, their invalidation and their limit; and the row scope's readable
-and writable keys, including after a revocation. The cache and the two report
+their pages, their invalidation and their limit; the local copy — loaded at
+sign-in with one query per level or on first use, answering checks and lists
+without asking, dropped by a change for its user or type and by a group change
+reported for the user on every item, not kept when overtaken by a change,
+refused past the limit, bypassed when acting for a delegator; and the row
+scope's readable and writable keys, including after a revocation. The cache and the two report
 paths are covered by `test/item_authorization_invalidation_test.dart`.
 
 ```bash
@@ -248,8 +292,8 @@ runs it.
 - **`TomItemAuthority`** — the port: the application's questions and the user's
   acts, items as item keys and levels as level names.
 - **`TomItemAuthorizationClient`** — `levelOn`, `levelsOn`, `allows`,
-  `accessibleItemIds`, `share`, `change`, `revoke`, `sharedWithMe`,
-  `followChanges`; `maximumScopeItems`.
+  `accessibleItemIds`, `loadCopy`, `share`, `change`, `revoke`, `sharedWithMe`,
+  `followChanges`; `maximumScopeItems`, `copiedTypes`.
 - **`TomItemAuthorityScopeSource`** — the row scope over the client; `install`.
 - **`TomItemAuthorizationRecord`**, **`TomItemShareRequest`**,
   **`TomShareSubjectKind`**, **`TomAccessibleItemsPage`**,

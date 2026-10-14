@@ -665,10 +665,12 @@ const TomCachedItemLevel(String? level)
 The process-wide cache of item-authorization answers, keyed by item — its
 resource key `<type>:<id>` — and subject — the id the authority names it by in
 its change reports — and the accessible-item lists, the ids of the items of
-one type a subject reaches at a minimum level. An `abstract final class`: every
-member is static. It is a
-`TomCache` named `cacheName`, so it lives on the main isolate, a worker's read
-and store are forwarded, and its entries are the current tenant's.
+one type a subject reaches at a minimum level, and the local copies, the level
+a subject holds on every item of one type it reaches. An `abstract final class`:
+every member is static. It is a
+`TomCache` named `cacheName`, with the copies in a second `TomCache` named
+`copyCacheName`, so both live on the main isolate, a worker's read and store are
+forwarded, and their entries are the current tenant's.
 
 #### Static Members
 
@@ -677,19 +679,24 @@ and store are forwarded, and its entries are the current tenant's.
 | `cacheName` | `String` | `'tom.itemAuthorization'`, the name of the underlying `TomCache`. |
 | `defaultTimeToLive` | `Duration` | Five minutes: how long an answer is kept when no change names it. |
 | `defaultMaximumEntries` | `int` | 10,000: the bound when `install` names none. |
+| `copyCacheName` | `String` | `'tom.itemAuthorization.copy'`, the name of the `TomCache` holding the local copies. |
+| `defaultCopyTimeToLive` | `Duration` | Twelve hours, a working session: how long a local copy is kept when no change names it. |
+| `defaultMaximumCopies` | `int` | 1,000: the bound on local copies — one per signed-in user and copied item type — when `install` names none. |
 | `generation` | `int` | Counts the invalidations applied on this isolate. A reader that asked the authority stores the answer only when the count did not move meanwhile, since an invalidation that arrived during the question may concern it. |
 
 #### Static Methods
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `install` | `static void install({Duration timeToLive = defaultTimeToLive, int? maximumEntries = defaultMaximumEntries})` | Registers the cache on this isolate's `TomCacheManager`, replacing one of the same name. Called once at start-up on the main isolate. |
-| `uninstall` | `static void uninstall()` | Removes the cache. Test support. |
+| `install` | `static void install({Duration timeToLive = defaultTimeToLive, int? maximumEntries = defaultMaximumEntries, Duration copyTimeToLive = defaultCopyTimeToLive, int? maximumCopies = defaultMaximumCopies})` | Registers the cache and the local-copy cache on this isolate's `TomCacheManager`, replacing ones of the same names. Called once at start-up on the main isolate. |
+| `uninstall` | `static void uninstall()` | Removes both caches. Test support. |
 | `lookup` | `static Future<TomCachedItemLevel?> lookup(String subject, String item)` | The cached answer for `subject` on `item`, or `null` on a miss. |
 | `store` | `static Future<void> store(String subject, String item, String? level)` | Caches `level` — `null` for none — as `subject`'s answer on `item`. Throws `ArgumentError` when either contains a NUL character. |
 | `lookupAccessible` | `static Future<List<String>?> lookupAccessible(String subject, String itemType, String minimumLevel)` | The cached ids of the items of `itemType` that `subject` reaches at `minimumLevel` or above, or `null` on a miss. |
 | `storeAccessible` | `static Future<void> storeAccessible(String subject, String itemType, String minimumLevel, List<String> itemIds)` | Caches an accessible-item list. |
-| `invalidateLocally` | `static int invalidateLocally(String qualifiedItem, String? subject)` | Drops on this node only the answers on `qualifiedItem` — an item key, a pattern `<type>:<prefix>*` or `*`, tenant-qualified as an `item` invalidation carries it — for `subject`, or for every subject when `null`, together with the accessible-item lists of that subject — or every subject — for the item's type; answers how many. `TomCacheInvalidator.apply` calls it. |
+| `lookupCopy` | `static Future<Map<String, String>?> lookupCopy(String subject, String itemType)` | `subject`'s local copy of `itemType` — item id to level, every item the subject reaches — or `null` when none is held. |
+| `storeCopy` | `static Future<void> storeCopy(String subject, String itemType, Map<String, String> levels)` | Holds `levels` as `subject`'s local copy of `itemType`. |
+| `invalidateLocally` | `static int invalidateLocally(String qualifiedItem, String? subject)` | Drops on this node only the answers on `qualifiedItem` — an item key, a pattern `<type>:<prefix>*` or `*`, tenant-qualified as an `item` invalidation carries it — for `subject`, or for every subject when `null`, together with the accessible-item lists and local copies of that subject — or every subject — for the item's type, or for every type when the item is `*`; answers how many. `TomCacheInvalidator.apply` calls it. |
 
 ### TomItemAuthorizationChange
 

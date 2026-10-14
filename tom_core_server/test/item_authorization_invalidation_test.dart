@@ -161,6 +161,77 @@ void main() {
       expect(await _cached('u-1', 'document:a1'), isTrue);
     });
 
+    group('of local copies', () {
+      Future<bool> held(String subject, String type) async =>
+          await TomItemAuthorizationCache.lookupCopy(subject, type) != null;
+
+      setUp(() async {
+        for (final subject in ['u-1', 'u-2']) {
+          for (final type in ['document', 'todo']) {
+            await TomItemAuthorizationCache.storeCopy(subject, type, {
+              'x': 'view',
+            });
+          }
+        }
+        await TomTenantContext.run(
+          'acme',
+          () => TomItemAuthorizationCache.storeCopy('u-1', 'document', {
+            'y': 'edit',
+          }),
+        );
+      });
+
+      test('are kept apart per tenant', () async {
+        expect(await TomItemAuthorizationCache.lookupCopy('u-1', 'document'), {
+          'x': 'view',
+        });
+        expect(
+          await TomTenantContext.run(
+            'acme',
+            () => TomItemAuthorizationCache.lookupCopy('u-1', 'document'),
+          ),
+          {'y': 'edit'},
+        );
+      });
+
+      test('drop by item type and subject', () async {
+        await TomCacheInvalidator.invalidateItemAuthorization(
+          'document:a1',
+          subject: 'u-1',
+        );
+        expect(await held('u-1', 'document'), isFalse);
+        expect(await held('u-1', 'todo'), isTrue);
+        expect(await held('u-2', 'document'), isTrue);
+        await TomCacheInvalidator.invalidateItemAuthorization('todo:t1');
+        expect(await held('u-1', 'todo'), isFalse);
+        expect(await held('u-2', 'todo'), isFalse);
+        expect(await held('u-2', 'document'), isTrue);
+      });
+
+      test('drop for a user on every item, as a group or delegation change '
+          'is reported', () async {
+        await TomCacheInvalidator.invalidateItemAuthorization(
+          '*',
+          subject: 'u-2',
+        );
+        expect(await held('u-2', 'document'), isFalse);
+        expect(await held('u-2', 'todo'), isFalse);
+        expect(await held('u-1', 'document'), isTrue);
+      });
+
+      test('drop in a tenant\'s context for that tenant only', () async {
+        await TomTenantContext.run(
+          'acme',
+          () => TomCacheInvalidator.invalidateItemAuthorization('*'),
+        );
+        expect(
+          await TomTenantContext.run('acme', () => held('u-1', 'document')),
+          isFalse,
+        );
+        expect(await held('u-1', 'document'), isTrue);
+      });
+    });
+
     test('is published for the other nodes', () async {
       await TomTenantContext.run(
         'acme',

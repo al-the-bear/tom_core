@@ -2,6 +2,22 @@
 
 ### Added
 
+- **A local copy of item authorizations per signed-in user.**
+  `TomItemAuthorizationClient(copiedTypes: …)` answers checks and
+  accessible-item lists of those types from a copy — every item the user
+  reaches with its level — loaded by `loadCopy` at sign-in (one accessible-item
+  query per level) or on first use, held in memory on each node in
+  `TomItemAuthorizationCache`'s new local-copy cache (`copyCacheName`,
+  `lookupCopy`, `storeCopy`; `install(copyTimeToLive: …, maximumCopies: …)`,
+  twelve hours and 1,000 copies by default), never persisted. A copy drops with
+  every change that names its user — or no user — on an item of its type, and
+  with `*` for the user, the report of a group membership or delegation change;
+  one overtaken by a change while loading is not kept, and one past
+  `maximumScopeItems` is refused (`error.item_authority.scope_too_large`).
+  The row scope reads it unchanged, still as an `IN` list. `doc/item_authorization.md`
+  § The Local Copy, `doc/cache.md`; tests in
+  `test/item_authorization_client_test.dart` and
+  `test/item_authorization_invalidation_test.dart`.
 - **The item_authorization module: item authorizations kept by an external
   authority.** `TomItemAuthority` is the transport-neutral port to it — Tom
   UAM's checks (at most 100 items a call), accessible-item query (paged) and

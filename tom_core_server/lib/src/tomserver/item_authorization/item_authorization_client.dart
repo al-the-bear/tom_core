@@ -7,6 +7,12 @@
 /// authority gives is cached ([TomItemAuthorizationCache]) until a change names
 /// its item or subject — through the webhook or the feed
 /// (`cache/item_authorization_changes.dart`) — or its lifetime ends.
+///
+/// For the item types it names as copied, the client keeps instead a **local
+/// copy** per signed-in user: every item the user reaches with its level, held
+/// in memory on each node, loaded at sign-in ([TomItemAuthorizationClient.loadCopy])
+/// and dropped by the same changes. Checks and the row scope of those types are
+/// then answered without asking the authority.
 library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
@@ -17,9 +23,10 @@ import '../cache/item_authorization_changes.dart';
 import '../little_things/server_exception.dart';
 import 'item_authority.dart';
 
-/// A row scope over more items than the client is configured to hold. The
-/// scope is refused rather than cut short, since a shortened scope hides rows
-/// without saying so; an application this large keeps a local copy instead.
+/// A row scope — or a local copy — over more items than the client is
+/// configured to hold. It is refused rather than cut short, since a shortened
+/// scope hides rows without saying so; keeping its item authorizations within
+/// the bound is the application's responsibility.
 class TomItemAuthorizationException extends TomServerException {
   /// Creates the exception.
   TomItemAuthorizationException(
@@ -45,7 +52,8 @@ class TomItemAuthorizationClient {
   TomItemAuthorizationClient(
     this.authority, {
     this.maximumScopeItems = defaultMaximumScopeItems,
-  });
+    List<TomItemType> copiedTypes = const [],
+  }) : copiedTypes = List.unmodifiable(copiedTypes);
 
   /// The most item ids one accessible-item query may gather when nothing else
   /// is said.
@@ -54,8 +62,57 @@ class TomItemAuthorizationClient {
   /// The authority asked.
   final TomItemAuthority authority;
 
-  /// The most item ids [accessibleItemIds] gathers before refusing.
+  /// The most item ids [accessibleItemIds] gathers — and a local copy holds per
+  /// item type — before refusing.
   final int maximumScopeItems;
+
+  /// The item types answered from a local copy per signed-in user; the others
+  /// are asked online and their answers cached.
+  final List<TomItemType> copiedTypes;
+
+  /// Loads [principal]'s local copy of every copied type, replacing what is
+  /// held; call it when the user signs in. A principal that is not signed in
+  /// loads nothing.
+  ///
+  /// A copy is the items the principal reaches at each of the type's levels,
+  /// one accessible-item query per level, so the authority is asked as many
+  /// times as the type has levels — the paging aside. A copy not loaded at
+  /// sign-in, or dropped by a change since, is loaded when first needed.
+  ///
+  /// Throws `error.item_authority.scope_too_large` when a type reaches more
+  /// than [maximumScopeItems] items.
+  Future<void> loadCopy(TomPrincipal? principal) async {
+    if (principal == null || !principal.authenticated) return;
+    for (final type in copiedTypes) {
+      await _loadCopy(principal.id, type);
+    }
+  }
+
+  bool _copies(TomItemType type) => copiedTypes.any((t) => t.name == type.name);
+
+  Future<Map<String, String>> _copyOf(String subject, TomItemType type) async =>
+      await TomItemAuthorizationCache.lookupCopy(subject, type.name) ??
+      await _loadCopy(subject, type);
+
+  /// Reads the items [subject] reaches at each level of [type], weakest first,
+  /// so each item ends at the strongest level that reaches it. Held only when
+  /// no invalidation arrived meanwhile, like any answer.
+  Future<Map<String, String>> _loadCopy(
+    String subject,
+    TomItemType type,
+  ) async {
+    final generation = TomItemAuthorizationCache.generation;
+    final levels = <String, String>{};
+    for (final level in type.levels) {
+      for (final id in await _gather(subject, type, level, null)) {
+        levels[id] = level;
+      }
+    }
+    if (generation == TomItemAuthorizationCache.generation) {
+      await TomItemAuthorizationCache.storeCopy(subject, type.name, levels);
+    }
+    return levels;
+  }
 
   /// The level [principal] holds on item [itemId] of [type], or `null` for
   /// none.
@@ -86,6 +143,10 @@ class TomItemAuthorizationClient {
     }
     final subject = principal.id;
     final cacheable = actingFor == null;
+    if (cacheable && _copies(type)) {
+      final copy = await _copyOf(subject, type);
+      return {for (final id in ids) id: copy[id]};
+    }
     final missing = <String>[];
     for (final id in ids) {
       final cached = cacheable
@@ -153,7 +214,8 @@ class TomItemAuthorizationClient {
   }
 
   /// The ids of the items of [type] that [principal] reaches at
-  /// [minimumLevel] or above, gathered page by page and cached.
+  /// [minimumLevel] or above, gathered page by page and cached — or read from
+  /// the local copy when [type] is copied.
   ///
   /// Throws `error.item_authority.scope_too_large` when the authority
   /// answers more than [maximumScopeItems] ids, and [ArgumentError] when
@@ -175,6 +237,16 @@ class TomItemAuthorizationClient {
     if (principal == null || !principal.authenticated) return const [];
     final subject = principal.id;
     final cacheable = actingFor == null;
+    if (cacheable && _copies(type)) {
+      final wanted = type.rankOf(minimumLevel);
+      return [
+        for (final MapEntry(key: id, value: level) in (await _copyOf(
+          subject,
+          type,
+        )).entries)
+          if (type.rankOf(level) >= wanted) id,
+      ];
+    }
     if (cacheable) {
       final cached = await TomItemAuthorizationCache.lookupAccessible(
         subject,
@@ -184,6 +256,26 @@ class TomItemAuthorizationClient {
       if (cached != null) return cached;
     }
     final generation = TomItemAuthorizationCache.generation;
+    final ids = await _gather(subject, type, minimumLevel, actingFor);
+    if (cacheable && generation == TomItemAuthorizationCache.generation) {
+      await TomItemAuthorizationCache.storeAccessible(
+        subject,
+        type.name,
+        minimumLevel,
+        ids,
+      );
+    }
+    return ids;
+  }
+
+  /// Every page of the authority's answer to which items of [type] [subject]
+  /// reaches at [minimumLevel]; refused past [maximumScopeItems].
+  Future<List<String>> _gather(
+    String subject,
+    TomItemType type,
+    String minimumLevel,
+    String? actingFor,
+  ) async {
     final ids = <String>[];
     String? page;
     do {
@@ -204,14 +296,6 @@ class TomItemAuthorizationClient {
       }
       page = answer.nextPage;
     } while (page != null && page.isNotEmpty);
-    if (cacheable && generation == TomItemAuthorizationCache.generation) {
-      await TomItemAuthorizationCache.storeAccessible(
-        subject,
-        type.name,
-        minimumLevel,
-        ids,
-      );
-    }
     return ids;
   }
 

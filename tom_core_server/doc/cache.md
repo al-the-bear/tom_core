@@ -864,11 +864,12 @@ current tenant's.
 
 | Call | Does |
 | ---- | ---- |
-| `install(timeToLive: …, maximumEntries: …)` | registers the cache; each answer is kept for `timeToLive` (five minutes by default) when no change names it, and the cache holds `maximumEntries` (10,000 by default) |
+| `install(timeToLive: …, maximumEntries: …, copyTimeToLive: …, maximumCopies: …)` | registers the cache; each answer is kept for `timeToLive` (five minutes by default) when no change names it, and the cache holds `maximumEntries` (10,000 by default). The local copies go to a second cache, `copyCacheName`, kept `copyTimeToLive` (twelve hours by default) and bounded by `maximumCopies` (1,000 by default) |
 | `store(subject, item, level)` | caches `level` — `null` for "holds none" — as `subject`'s answer on `item` |
 | `lookup(subject, item)` | the cached `TomCachedItemLevel`, or `null` on a miss; a cached "none" is `TomCachedItemLevel(null)`, not a miss |
 | `lookupAccessible(subject, itemType, minimumLevel)` / `storeAccessible(…, itemIds)` | the cached ids of the items of a type the subject reaches at a minimum level — the input of a row scope |
-| `invalidateLocally(qualifiedItem, subject)` | drops the matching answers on this node, with the accessible-item lists of the subject — or every subject — for the item's type; `apply` calls it |
+| `lookupCopy(subject, itemType)` / `storeCopy(…, levels)` | the subject's **local copy** of a type: the level it holds on every item it reaches, so an item the copy does not hold is one it does not reach |
+| `invalidateLocally(qualifiedItem, subject)` | drops the matching answers on this node, with the accessible-item lists and local copies of the subject — or every subject — for the item's type, or every type for `*`; `apply` calls it |
 | `generation` | counts the invalidations applied on this isolate, so a reader stores an answer only when none arrived while it asked |
 | `uninstall()` | removes the cache — test support |
 
@@ -897,6 +898,13 @@ A `subject` narrows the drop to that subject's answers; without one every
 subject's answers on the matching items go. Raised in a tenant's context, the
 item is qualified by the tenant, so one tenant's report never drops another
 tenant's answers. The pattern grammar is the one item permission levels use.
+
+The accessible-item lists and the local copies go with any drop that reaches
+their type: a change on an item of the type that names their subject — or no
+subject — drops them, and `*` drops them for every type. That is how a change
+the authority cannot pin to items reaches them: a user who joins or leaves a
+group, or a delegation to the user that starts or ends, is reported as `*` for
+that user, and every answer, list and copy of that user goes.
 
 ### The webhook
 
@@ -982,7 +990,7 @@ together: the webhook for speed, the feed for what the webhook missed.
 | ---- | ------------------------------------- |
 | webhook delivered | the invalidation channel's `stalenessBound` (two seconds with the SQL channel) |
 | webhook lost, feed followed | `follower.stalenessBound`: the poll interval plus the channel's bound — 32 seconds with the defaults |
-| neither | the cache's `timeToLive`, five minutes by default |
+| neither | the cache's `timeToLive`, five minutes by default; for a local copy its `copyTimeToLive`, twelve hours by default |
 
 ## Core Components
 
@@ -1012,7 +1020,8 @@ together: the webhook for speed, the feed for what the webhook missed.
 - **`invalidationTable` / `invalidationTableDdl` / `defaultInvalidationTable`**
   — the log's single declaration.
 - **`TomItemAuthorizationCache` + `TomCachedItemLevel`** — the answers a remote
-  authority gave on items, keyed by item and subject.
+  authority gave on items, keyed by item and subject, the accessible-item lists
+  and the local copies.
 - **`TomItemAuthorizationChange` / `TomItemAuthorizationChangePage`** — what the
   authority reports, one change and one page of the feed.
 - **`TomItemAuthorizationWebhook` / `TomItemAuthorizationFeedFollower`** — the
@@ -1062,7 +1071,8 @@ invalidator gave it — revocation and its second-granularity comparison, a
 publish failure that still revokes here, entry and cache invalidations, channel
 replacement and the retention sweep. `test/item_authorization_invalidation_test.dart`
 covers the item answers the same way: drops by item, pattern, subject and
-tenant, published and received; the webhook's signature, rotation, tolerance,
+tenant, published and received; local copies kept apart per tenant and
+dropped by type, subject, `*` for a user, and tenant; the webhook's signature, rotation, tolerance,
 payload and group subjects; and the feed follower's position, pages, expired
 cursor and failed read. `test/cache_invalidation_db_test.dart`,
 tagged `db`, runs `TomSqlInvalidationChannel` against MariaDB: own-origin rows

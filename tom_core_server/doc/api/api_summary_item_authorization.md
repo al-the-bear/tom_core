@@ -199,12 +199,15 @@ principal is the subject by its id; a principal that is not signed in holds no
 level and the authority is not asked. Answers given while acting for a
 delegator are not cached, and an answer during which an invalidation was
 applied on this isolate (`TomItemAuthorizationCache.generation`) is returned
-but not stored.
+but not stored. For the item types in `copiedTypes` it answers checks and
+accessible-item lists from a local copy per signed-in user instead — every item
+the user reaches with its level, held in memory on each node, loaded at sign-in
+by `loadCopy` or on first use, and dropped by the same changes.
 
 #### Constructors
 
 ```dart
-TomItemAuthorizationClient(TomItemAuthority authority, {int maximumScopeItems = defaultMaximumScopeItems})
+TomItemAuthorizationClient(TomItemAuthority authority, {int maximumScopeItems = defaultMaximumScopeItems, List<TomItemType> copiedTypes = const []})
 ```
 
 #### Static Members
@@ -218,16 +221,18 @@ TomItemAuthorizationClient(TomItemAuthority authority, {int maximumScopeItems = 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `authority` | `TomItemAuthority` | The authority asked (final). |
-| `maximumScopeItems` | `int` | The most item ids `accessibleItemIds` gathers before refusing (final). |
+| `maximumScopeItems` | `int` | The most item ids `accessibleItemIds` gathers — and a local copy holds per item type — before refusing (final). |
+| `copiedTypes` | `List<TomItemType>` | The item types answered from a local copy per signed-in user; the others are asked online (final, unmodifiable). |
 
 #### Methods
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
+| `loadCopy` | `Future<void> loadCopy(TomPrincipal? principal)` | Loads the principal's local copy of every copied type, replacing what is held — one accessible-item query per level of the type; called at sign-in. Nothing for a principal that is not signed in; throws `TomItemAuthorizationException` when a type reaches more than `maximumScopeItems` items. |
 | `levelOn` | `Future<String?> levelOn(TomPrincipal? principal, TomItemType type, String itemId, {String? actingFor})` | The level `principal` holds on one item, or `null`. |
-| `levelsOn` | `Future<Map<String, String?>> levelsOn(TomPrincipal? principal, TomItemType type, List<String> itemIds, {String? actingFor})` | The level on each item, keyed by id in request order; cached answers used, the rest asked in calls of at most `maximumItemsPerCheck`; a level the type does not declare is none. |
+| `levelsOn` | `Future<Map<String, String?>> levelsOn(TomPrincipal? principal, TomItemType type, List<String> itemIds, {String? actingFor})` | The level on each item, keyed by id in request order; for a copied type read from the local copy, otherwise cached answers used and the rest asked in calls of at most `maximumItemsPerCheck`; a level the type does not declare is none. |
 | `allows` | `Future<bool> allows(TomPrincipal? principal, TomItemType type, String itemId, String level, {String? actingFor})` | Whether the principal holds `level` or a stronger one; `ArgumentError` for an undeclared `level`. |
-| `accessibleItemIds` | `Future<List<String>> accessibleItemIds(TomPrincipal? principal, TomItemType type, {required String minimumLevel, String? actingFor})` | The ids of the items of `type` the principal reaches at `minimumLevel` or above, gathered page by page and cached; throws `TomItemAuthorizationException` past `maximumScopeItems`, `ArgumentError` for an undeclared level. |
+| `accessibleItemIds` | `Future<List<String>> accessibleItemIds(TomPrincipal? principal, TomItemType type, {required String minimumLevel, String? actingFor})` | The ids of the items of `type` the principal reaches at `minimumLevel` or above, gathered page by page and cached, or read from the local copy for a copied type; throws `TomItemAuthorizationException` past `maximumScopeItems`, `ArgumentError` for an undeclared level. |
 | `share` | `Future<TomItemAuthorizationRecord> share(String userToken, TomItemShareRequest request)` | Shares as the user, then drops the subject's answers on the item on every node. |
 | `change` | `Future<TomItemAuthorizationRecord> change(String userToken, TomItemAuthorizationRecord authorization, {String? level, DateTime? validTo})` | Changes an authorization as the user, then drops the answers it affects. |
 | `revoke` | `Future<void> revoke(String userToken, TomItemAuthorizationRecord authorization)` | Revokes as the user, then drops the answers it affects. |

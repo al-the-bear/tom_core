@@ -22,6 +22,7 @@ class _FakeUam implements TomItemAuthority {
   int queryCalls = 0;
   int pageSize = 2;
   Future<void> Function()? duringCheck;
+  Future<void> Function()? duringQuery;
   var _ids = 0;
 
   TomItemType _typeOf(String item) => types[item.split(':').first]!;
@@ -80,6 +81,7 @@ class _FakeUam implements TomItemAuthority {
             when type.rankOf(held) >= type.rankOf(minimumLevel))
           item.substring(itemType.length + 1),
     ];
+    await duringQuery?.call();
     final from = int.parse(page ?? '0');
     final to = (from + pageSize).clamp(0, reached.length);
     return TomAccessibleItemsPage(
@@ -453,6 +455,174 @@ void main() {
           ),
         ),
       );
+    });
+  });
+
+  group('the local copy', () {
+    late TomItemAuthorizationClient copying;
+
+    setUp(() {
+      copying = TomItemAuthorizationClient(uam, copiedTypes: [document]);
+      uam.put(
+        const TomItemAuthorizationRecord(
+          id: 'given',
+          item: 'document:a1',
+          subjectKind: TomShareSubjectKind.user,
+          subjectId: 'bob',
+          level: 'comment',
+        ),
+      );
+    });
+
+    test('is loaded at sign-in, one query per level, and answers checks '
+        'without asking', () async {
+      uam.pageSize = 100;
+      await copying.loadCopy(bob);
+      expect(uam.queryCalls, document.levels.length);
+      expect(await copying.levelOn(bob, document, 'a1'), 'comment');
+      expect(await copying.levelOn(bob, document, 'b1'), 'manage');
+      expect(await copying.levelOn(bob, document, 'a2'), isNull);
+      expect(await copying.allows(bob, document, 'a1', 'edit'), isFalse);
+      expect(await copying.levelsOn(bob, document, ['a1', 'a2', 'b1']), {
+        'a1': 'comment',
+        'a2': null,
+        'b1': 'manage',
+      });
+      expect(uam.checkCalls, isEmpty);
+      expect(uam.queryCalls, document.levels.length);
+    });
+
+    test('feeds the accessible-item lists at every level', () async {
+      await copying.loadCopy(bob);
+      uam.queryCalls = 0;
+      expect(
+        await copying.accessibleItemIds(bob, document, minimumLevel: 'view'),
+        ['a1', 'b1'],
+      );
+      expect(
+        await copying.accessibleItemIds(bob, document, minimumLevel: 'edit'),
+        ['b1'],
+      );
+      expect(uam.queryCalls, 0);
+    });
+
+    test('is loaded on first use when sign-in did not load it', () async {
+      expect(await copying.levelOn(bob, document, 'a1'), 'comment');
+      expect(uam.checkCalls, isEmpty);
+      uam.queryCalls = 0;
+      await copying.levelOn(bob, document, 'b1');
+      expect(uam.queryCalls, 0);
+    });
+
+    test('leaves types it does not copy to the online path', () async {
+      uam.owners['report:r1'] = 'bob';
+      await copying.loadCopy(bob);
+      expect(await copying.levelOn(bob, report, 'r1'), 'see');
+      expect(uam.checkCalls, hasLength(1));
+    });
+
+    test(
+      'drops with a change for its user or its type, then reloads',
+      () async {
+        await copying.loadCopy(bob);
+        await copying.loadCopy(alice);
+        uam.queryCalls = 0;
+        await TomCacheInvalidator.invalidateItemAuthorization(
+          'report:r1',
+          subject: 'bob',
+        );
+        await TomCacheInvalidator.invalidateItemAuthorization(
+          'document:a1',
+          subject: 'carol',
+        );
+        await copying.levelOn(bob, document, 'a1');
+        expect(uam.queryCalls, 0);
+        uam.remove('given');
+        await TomCacheInvalidator.invalidateItemAuthorization(
+          'document:a1',
+          subject: 'bob',
+        );
+        expect(await copying.levelOn(bob, document, 'a1'), isNull);
+        expect(uam.queryCalls, document.levels.length);
+        uam.queryCalls = 0;
+        await copying.levelOn(alice, document, 'a1');
+        expect(uam.queryCalls, 0, reason: "alice's copy is untouched");
+      },
+    );
+
+    test('a group membership change, reported for the user on every item, '
+        'reaches the copy', () async {
+      uam.groups['sales'] = {'carol'};
+      uam.put(
+        const TomItemAuthorizationRecord(
+          id: 'to-sales',
+          item: 'document:a2',
+          subjectKind: TomShareSubjectKind.group,
+          subjectId: 'sales',
+          level: 'view',
+        ),
+      );
+      final follower = copying.followChanges();
+      await follower.poll();
+      await copying.loadCopy(bob);
+      await copying.loadCopy(alice);
+      expect(await copying.levelOn(bob, document, 'a2'), isNull);
+      uam.groups['sales']!.add('bob');
+      expect(
+        await copying.levelOn(bob, document, 'a2'),
+        isNull,
+        reason: 'held until the change arrives',
+      );
+      uam.feed.add(const TomItemAuthorizationChange('*', subject: 'bob'));
+      expect(await follower.poll(), 1);
+      expect(await copying.levelOn(bob, document, 'a2'), 'view');
+      uam.queryCalls = 0;
+      await copying.levelOn(alice, document, 'a2');
+      expect(uam.queryCalls, 0, reason: "alice's copy is kept");
+    });
+
+    test('acting for a delegator is asked online', () async {
+      await copying.loadCopy(bob);
+      expect(
+        await copying.levelOn(bob, document, 'a2', actingFor: 'alice'),
+        'manage',
+      );
+      expect(uam.checkCalls, hasLength(1));
+    });
+
+    test('a copy overtaken by a change is not kept', () async {
+      uam.duringQuery = () async {
+        uam.duringQuery = null;
+        await TomCacheInvalidator.invalidateItemAuthorization('document:a1');
+      };
+      await copying.loadCopy(bob);
+      uam.queryCalls = 0;
+      await copying.levelOn(bob, document, 'a1');
+      expect(uam.queryCalls, document.levels.length);
+    });
+
+    test('more items than a row scope may hold are refused at loading', () {
+      final small = TomItemAuthorizationClient(
+        uam,
+        maximumScopeItems: 1,
+        copiedTypes: [document],
+      );
+      expect(
+        () => small.loadCopy(bob),
+        throwsA(
+          isA<TomItemAuthorizationException>().having(
+            (e) => e.key,
+            'key',
+            'error.item_authority.scope_too_large',
+          ),
+        ),
+      );
+    });
+
+    test('a principal that is not signed in loads nothing', () async {
+      await copying.loadCopy(null);
+      await copying.loadCopy(_user('bob', authenticated: false));
+      expect(uam.queryCalls, 0);
     });
   });
 
