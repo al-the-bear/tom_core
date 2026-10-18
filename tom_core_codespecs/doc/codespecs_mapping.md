@@ -726,8 +726,8 @@ surface — pillar (a)/(b)):
 | CE-VA | Validation | `validation` | `@CsValidation`, `@CsFieldRule`, `@CsFormRule` | `Validators` (`tom_flutter_ui`); **no gap** — provided as **Dart validation methods** (standalone validator classes or methods on the `TomForm` subclass), the §3 first-level-implementation latitude (§5.9, §5.19) |
 | CE-AC | Action | `action` | `@CsAction`, `@CsTrigger` *(required `CsTriggerKind`)* | `TomAction` / `TomActionController` / `TomActionTrigger` (`tom_flutter_ui`); **no gap** — full action implementation reused (§5.10, §5.20). The closed 5-kind trigger taxonomy rides `@CsTrigger` as a documented classification, not a class |
 | CE-SC | ServerCall | `serverCall` | `@CsServerCall` | `TomServerEndpoint<T,R>` + `TomServerCall` / `TomServerCallSpecs` / `TomServerChannel` (`tom_core_kernel`, §5.3) |
-| CE-API | ServerApi | `serverApi` | `@CsEndpoint` | `TomApi` / `TomApiEndpoint<R,Q>` / `TomRemoteApis` (`tom_core_kernel`) + `TomEndpoint` / `TomEndpointHandler` / `TomEndpointRouting` / `TomServer` (`tom_core_server`) (§5.6.1) |
-| CE-SU | ServiceUnit | `serviceUnit` | `@CsServiceUnit` | **no gap** — ordinary **(abstract) classes** clustering the server API into functional-group *closures*, carrying the `tom_core_server` server-API mapping annotations (`@tomService` / `TomApiImplementation`) (§5.1, §5.6.2) |
+| CE-API | ServerApi | `serverApi` | `@CsEndpoint`, `@CsOperationBinding` (§5.30) | `TomApi` / `TomApiEndpoint<R,Q>` / `TomRemoteApis` (`tom_core_kernel`) + `TomEndpoint` / `TomEndpointHandler` / `TomEndpointRouting` / `TomServer` (`tom_core_server`) (§5.6.1) |
+| CE-SU | ServiceUnit | `serviceUnit` | `@CsServiceUnit`, `@CsFeatureHook` (§5.30) | **no gap** — ordinary **(abstract) classes** clustering the server API into functional-group *closures*, carrying the `tom_core_server` server-API mapping annotations (`@tomService` / `TomApiImplementation`) (§5.1, §5.6.2) |
 | CE-DB | DataAccess | `dataAccess` | `@CsTable`, `@CsColumn`, `@CsRepository` | Tom persistence model + repository (`tom_core_server`) |
 | CE-ST | ViewState | `viewState` | `@CsViewModel` | `TomObservable` / `TomObject` (`tom_core_kernel`) |
 | CE-NV | Navigation | `navigation` | `@CsRoute`, `@CsScreenFlow` | `TomPageRoute` (`tom_flutter_ui`); route-id + **screen-flow** model `TomRouteDefinition` / `TomFormScreenAssignment` / `TomScreenFlowEdge` / `TomRouteRegistry` (`tom_core_codespecs`; screen↔form assignment as *replace* / *popup overlay*; action-triggered, conditional targets) → **gap** (§5.11) |
@@ -5153,6 +5153,107 @@ substrate is **complete**; every item below ships in
   class. The job base class is `tom_core_kernel`'s, and `TomJobDispatcher` — not
   any CodeSpecs class — is the seam that makes execution pluggable.
 
+### 5.30 Protocol bindings and framework protocol features — two more CE-API / CE-SU markers
+
+**Decision.** A system can expose its operations to third parties in standard
+protocol shapes without giving up the §7 contract. There are two cases, and
+CodeSpecs represents both:
+
+1. **Protocol bindings** (CE-API). A **named operation** of the system's own
+   surface is *also* served under a standard HTTP shape — a REST administration
+   API, say. The binding is a **separate declaration that references the
+   operation** (`CsOperationRef`); the operation is not changed. Its own client
+   keeps calling it under §7: one POST per named operation, the CE-ER Result
+   envelope, 5xx-only transport errors. An operation may have several bindings.
+2. **Framework protocol features** (CE-SU). A **standard protocol server** the
+   framework provides — an OAuth 2.0 / OpenID Connect authorization server, a
+   SCIM 2.0 server — is enabled by the system, which plugs its domain in through
+   the feature's **hooks**. The framework owns the protocol's endpoints, wire
+   format and error format; the system writes no protocol endpoint. What the
+   system writes is one class per hook, implementing the framework contract.
+   This generalises §5.25: "the app's `TomAuthenticationService` implementation
+   **is** the `@CsAuth` CodeSpec" becomes "the class implementing a feature
+   hook's contract **is** the `@CsFeatureHook` CodeSpec".
+
+Neither adds a part. A binding is CE-API's second marker, as CE-DB has three;
+a hook implementation is CE-SU's second marker. So the §4.1 catalogue and the
+`CodeSpecPart` enum are unchanged, and both reach their extracts through the
+routing their SOM sections already carry.
+
+**SOM homes.**
+
+| Part | Marker | SOM section | Fields consumed |
+|------|--------|-------------|-----------------|
+| CE-API | `@CsOperationBinding` | `OperationBindingEntry` (`SVOBI`), the `bindings` list of a `ServerOperationEntry` (`SVOPE`) | `httpMethod`, `pathTemplate`, `versionPrefix`, `successStatus`, `responseHeaders`, `consumes`, `produces`, `errorFormat`, `servedInterface`; its `parameters` list of `BindingParameterEntry` (`SVOBP`): the headline is the wire name, then `source` and `requestMember` |
+| CE-SU | `@CsFeatureHook` | `ProtocolFeatureEntry` (`PROTF`), the `protocolFeatures` list of the server operation registry (`SVOPR`), and its `hooks` list of `FeatureHookEntry` (`FEHOK`) | `PROTF.feature`; `FEHOK.hook`; per contract member a `HookMethodEntry` (`FEHOM`), whose headline is the member's name: `callsOperations` (in order), `readsEntities`, `writesEntities`, and the content as the behaviour |
+
+The binding's interface-level conventions — the version prefix and the error
+format an API uses throughout — are authored once on the interface
+specification (`INTSPE` `conventions`) and copied onto each binding of that
+interface. The binding is what the derivation reads.
+
+**Built on.**
+
+- **Binding:** `TomOperationBinding` (`tom_core_codespecs`), a const value
+  class holding the operation name, method, path, version prefix, parameter
+  mapping, success status, response headers, content types and error format.
+  It is a **gap class**. `tom_core_server` can give an endpoint any HTTP shape
+  (`@TomEndpoint`, `TomApiEndpoint`), but it has no **second** binding of an
+  already-named operation, so serving one operation under two shapes means a
+  second hand-written handler. The generic protocol capability that closes this
+  gap is requested from tom_core; when it ships, the class moves there and the
+  derivation follows. The marker carries only the operation reference
+  (`codespecs_derivation_contract.md` §2.3 test **b**: the attributes are the substrate constructor's).
+- **Hook:** the framework contract itself. For SCIM 2.0 these are
+  `TomScimStore`, `TomScimIdentityDirectory` and the `revoke` callback of
+  `TomScimService` (`tom_core_server`). An OIDC authorization server is
+  requested from tom_core, and its contracts do not exist yet.
+
+**The hook catalogue.** Which hooks a feature has, which it requires and which
+contracts they implement is the closed catalogue `csFeatureHooks` in
+`tom_code_specs`' vocabulary. `csFeatureReservedPaths` lists the path prefixes
+the framework serves for each feature. Each entry says whether tom_core ships
+its contract today (`available`):
+
+| Feature | Hook | Contract | Required | Available |
+|---------|------|----------|----------|-----------|
+| `scim2Server` | `scimStore` | `TomScimStore` | yes | yes |
+| `scim2Server` | `scimIdentityDirectory` | `TomScimIdentityDirectory` | no | yes |
+| `scim2Server` | `scimSessionRevocation` | `TomScimService.revoke` | no | yes |
+| `oidcAuthorizationServer` | `clientRegistry` | *TomOidcClientRegistry* (provisional) | yes | no |
+| `oidcAuthorizationServer` | `subjectAuthentication` | *TomOidcSubjectAuthenticator* (provisional) | yes | no |
+| `oidcAuthorizationServer` | `claimsProvider` | *TomOidcClaimsProvider* (provisional) | yes | no |
+| `oidcAuthorizationServer` | `consentStore` | *TomOidcConsentStore* (provisional) | no | no |
+
+The OIDC contract names are provisional until tom_core ships them. A hook whose
+contract is not available cannot be derived: no tom_core class exists to
+implement (pillar 2). Stage B rules such an area insufficient, with the
+missing tom_core contract as its gap line, and it becomes an L0 question
+(`codespecs_prompt.md` §6.3).
+
+**The rules every derivation is held to** (`codespecs_derivation_contract.md`
+§6 checks 38–41):
+
+1. Every binding names an operation the trio declares (a `@CsEndpoint`).
+2. Two bindings never share a method and a route (version prefix + path), and
+   every `{name}` in a path is mapped by a `path` parameter.
+3. Every hook belongs to its feature's catalogue, and every required hook of an
+   enabled feature is implemented exactly once. A feature is enabled when its
+   `ProtocolFeatureEntry` exists.
+4. No binding declares a route under a path the framework reserves for a
+   feature. The system never re-declares a protocol endpoint.
+
+**Worked examples** (the code is in `codespecs_derivation_contract.md` §3.4.5
+and §3.4.6):
+
+| Example | SOM | CodeSpec |
+|---------|-----|----------|
+| REST listing | `SVOPE` `user.list`, binding `GET /users`, prefix `/api/v1`, query parameters `filter` and `page` | `@CsOperationBinding(UserOperations.list)` on `const userListRest = TomOperationBinding('user.list', method: 'GET', path: '/users', …)` |
+| REST save | `user.save`, binding `PUT /users/{userId}`, path parameter `userId`, body `user`, 200 with `ETag` | the same, with two parameters and `responseHeaders: ['ETag']` |
+| REST transition | `user.suspend`, binding `POST /users/{userId}/suspension`, 204 | the same, `successStatus: 204` |
+| OIDC client registry | `PROTF` `oidcAuthorizationServer`, hook `clientRegistry`, member `findClient` calling `client.find` | `@CsFeatureHook(CsProtocolFeature.oidcAuthorizationServer, 'clientRegistry')` on `class UamOidcClientRegistry implements` *TomOidcClientRegistry*. Insufficient at Stage B until tom_core ships the contract |
+| SCIM user mapping | `PROTF` `scim2Server`, hook `scimStore`, member `create` calling `user.create` then `user.assignGroups` | `@CsFeatureHook(CsProtocolFeature.scim2Server, 'scimStore')` on `class UamScimUserStore implements TomScimStore`, `create` a form-3b body of those two calls |
+
 ## 6. Completion elements (recap)
 
 CE-ST, CE-NV, CE-AZ and CE-ER complete the client→server→DB core
@@ -5174,6 +5275,10 @@ Design constraints to encode in the CE-API / CE-ER derivation:
    details).
 4. **Error texts are keyed by the structured error codes** (CE-TX ↔ CE-ER), so
    client copy and server error codes share one source.
+5. **A third-party shape is a binding, not a second contract.** When an
+   operation is also served in a standard HTTP shape, or the system enables a
+   framework protocol server, the operation above is unchanged: the binding or
+   the feature's hooks are separate declarations (§5.30).
 
 ## 8. SOM → CodeSpecs derivation map
 
@@ -5637,8 +5742,8 @@ parts §4.4.3's slices.
 | CE-VA | `validation` | `ElementValidationRuleEntry` ELVARU · `DataAttributeConstraintEntry` DATAA · `IntegrityConstraints` INCO | `@CsValidation` · `@CsFieldRule` · `@CsFormRule` | COVERED |
 | CE-AC | `action` | `ScreenActionEntry` SCRAC · `ScreenElementAction` SCELAC · the ISC step entries MNSST/ALST/EXTST/SCNST | `@CsAction` · `@CsTrigger` | COVERED |
 | CE-SC | `serverCall` | the ISC step entries MNSST/ALST/EXTST/SCNST, each under its own flow container (`MainSuccessScenario` MASUSC · `AlternativeFlowEntry` ALFL · `ExtensionEntry` EXTEN · `ScenarioEntry` SCNRY). All four step entries carry `action`+`serverCall`+`navigation` together, since one step is at once all three, and each carries the `ServerCallStepEntry` SVCST list whose required `role` routes a step to one of the call's three handling methods (§5.3). The operation the call targets is **authored** on the step: the optional `serverOperation` field cites `SVOPE.operationName`, and its presence is exactly what emits the call (§5.3) | `@CsServerCall` | COVERED |
-| CE-API | `serverApi` | `ServerOperationEntry` SVOPE · `ServerOperationMemberEntry` SVOPM, under the `ServerOperationRegistry` SVOPR projection root (`operationName` · `primaryDataEntity` · `authorization` → the AZREQ closed choice (§5.15) · `descriptionKey` · `errorCodes` · request/response members). `DataEntityEntry` DAENT · `DataAttributeEntry` DAATT · `DataAttributeConstraintEntry` DATAA are **dual-routed** here beside their `dataAccess` home: they supply the shared entity wire DTO of an entity a member's `SVOPM.dataEntity` names (`codespecs_derivation_contract.md` §3.2.11), since the slice-2 shared emission may not forward-reference slice 3. The external-interface inventory `InterfaceOperationEntry` IOE and `IntegrationPointEntry` INTEG describe **foreign** contracts and carry `serverCall` only | `@CsEndpoint` (shared and server halves) · the markerless entity wire DTO of `codespecs_derivation_contract.md` §3.2.11 | COVERED |
-| CE-SU | `serviceUnit` | `DataEntityEntry` DAENT — the `DAENT-CLAS` grouping fields `aggregateRoot` (the ownership key, a `refersTo` reference to `DAENT.entityName`, so a root names itself) · `serviceUnitAggregate` (the process-cohesion merge/split adjustment) · `boundedContext` (the outer cap, a `refersTo` reference to `BCE.contextName`, so the cap is a registry key rather than a spelling). The unit set is the distinct effective aggregates, so it is counted rather than authored. `ArchitectureComponentEntry` ARCM (identity · `boundaries.dataOwnership` · `content.domain` · `purpose.responsibilities`) supplies the component narrative only; `FunctionModel` FUMO / `FunctionEntry` FUNCT / `SubFunctionEntry` SUFN / `FunctionDataMatrixEntry` FNDMX supply the function×data view the operation inventory is checked against | `@CsServiceUnit` | COVERED |
+| CE-API | `serverApi` | `ServerOperationEntry` SVOPE · `ServerOperationMemberEntry` SVOPM, under the `ServerOperationRegistry` SVOPR projection root (`operationName` · `primaryDataEntity` · `authorization` → the AZREQ closed choice (§5.15) · `descriptionKey` · `errorCodes` · request/response members). `DataEntityEntry` DAENT · `DataAttributeEntry` DAATT · `DataAttributeConstraintEntry` DATAA are **dual-routed** here beside their `dataAccess` home: they supply the shared entity wire DTO of an entity a member's `SVOPM.dataEntity` names (`codespecs_derivation_contract.md` §3.2.11), since the slice-2 shared emission may not forward-reference slice 3. The external-interface inventory `InterfaceOperationEntry` IOE and `IntegrationPointEntry` INTEG describe **foreign** contracts and carry `serverCall` only. Protocol bindings enter at `OperationBindingEntry` SVOBI (the `bindings` list of each SVOPE) · `BindingParameterEntry` SVOBP (§5.30) | `@CsEndpoint` (shared and server halves) · `@CsOperationBinding` · the markerless entity wire DTO of `codespecs_derivation_contract.md` §3.2.11 | COVERED |
+| CE-SU | `serviceUnit` | `DataEntityEntry` DAENT — the `DAENT-CLAS` grouping fields `aggregateRoot` (the ownership key, a `refersTo` reference to `DAENT.entityName`, so a root names itself) · `serviceUnitAggregate` (the process-cohesion merge/split adjustment) · `boundedContext` (the outer cap, a `refersTo` reference to `BCE.contextName`, so the cap is a registry key rather than a spelling). The unit set is the distinct effective aggregates, so it is counted rather than authored. `ArchitectureComponentEntry` ARCM (identity · `boundaries.dataOwnership` · `content.domain` · `purpose.responsibilities`) supplies the component narrative only; `FunctionModel` FUMO / `FunctionEntry` FUNCT / `SubFunctionEntry` SUFN / `FunctionDataMatrixEntry` FNDMX supply the function×data view the operation inventory is checked against. Framework protocol features enter at `ProtocolFeatureEntry` PROTF (the `protocolFeatures` list of SVOPR) · `FeatureHookEntry` FEHOK · `HookMethodEntry` FEHOM (§5.30) | `@CsServiceUnit` · `@CsFeatureHook` | COVERED |
 | CE-DB | `dataAccess` | `DataEntityEntry` DAENT · `DataAttributeEntry` DAATT · `EntityRelationshipEntry` ENRLE (the `DataModel` projection root) · `DataAttributeConstraintEntry` DATAA, whose storage facts (nullable, length, format) the `@CsColumn` derivation consumes (`codespecs_derivation_contract.md` §3.3.2) beside its `validation` home | `@CsTable` · `@CsColumn` · `CsFileReference` · `@CsRepository` | COVERED |
 | CE-ST | `viewState` | `ScreenStateEntry` SCRST · `ScreenElementDataDisplay` SEDD · `ComponentStateEntry` COMSTA (D09 XDS, the states and data-bound displays) · `DisplayPropertyEntry` DISPL · `BusinessObjectAttributeEntry` BIOBAT with its `BOAED` detail (D03 IMO, the per-field shape and requirement level). The IMO business-object catalogue above BIOBAT — `BusinessObjectModel` BJOMD, `BusinessObjectEntry` BJOEN — carries the kind but is **unprojected**: it is the domain catalogue fields are read from, not a screen's state | `@CsViewModel` | COVERED |
 | CE-NV | `navigation` | `ScreenRouteEntry` SCRTEN · `FormScreenAssignmentEntry` FMSCAS · `ScreenTransitionEntry` SCTREN, under `ScreenRouteMap` SCRTMP | `@CsRoute` · `@CsScreenFlow` | COVERED (screen-flow half verified) |

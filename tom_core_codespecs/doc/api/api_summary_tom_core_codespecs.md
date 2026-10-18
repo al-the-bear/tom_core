@@ -1,7 +1,7 @@
 # TomSpecs CodeSpecs API Reference: tom_core_codespecs
 
 The concrete `tom_core`-family classes CodeSpecs needs and `tom_core` does
-not already carry. One library, seven source modules, no dependencies.
+not already carry. One library, eight source modules, no dependencies.
 
 For task-oriented guidance see [gap_classes.md](../gap_classes.md). For which
 parts are gaps and which are reuse verdicts, see
@@ -35,6 +35,9 @@ parts are gaps and which are reuse verdicts, see
     - [TomNotificationType](#tomnotificationtype)
     - [TomNotificationPreferences](#tomnotificationpreferences)
     - [TomNotificationCatalog](#tomnotificationcatalog)
+  - [CE-API — operation binding](#ce-api--operation-binding)
+    - [TomBindingParameter](#tombindingparameter)
+    - [TomOperationBinding](#tomoperationbinding)
   - [CE-RP — report model](#ce-rp--report-model)
     - [TomReportDimension](#tomreportdimension)
     - [TomReportMeasure](#tomreportmeasure)
@@ -53,6 +56,8 @@ parts are gaps and which are reuse verdicts, see
   - [TomFlowOutcome](#tomflowoutcome)
   - [TomNotificationCategory](#tomnotificationcategory)
   - [TomNotificationUrgency](#tomnotificationurgency)
+  - [TomBindingSource](#tombindingsource)
+  - [TomBindingErrorFormat](#tombindingerrorformat)
   - [TomReportValueKind](#tomreportvaluekind)
   - [TomReportMeasureFunction](#tomreportmeasurefunction)
   - [TomReportDeliveryChannel](#tomreportdeliverychannel)
@@ -61,7 +66,7 @@ parts are gaps and which are reuse verdicts, see
 
 ## Overview
 
-The package declares **24 classes** and **12 enums** across seven modules.
+The package declares **26 classes** and **14 enums** across eight modules.
 
 | Module | Part | Classes | Enums |
 |--------|------|---------|-------|
@@ -71,6 +76,7 @@ The package declares **24 classes** and **12 enums** across seven modules.
 | `route_flow.dart` | CE-NV | `TomRouteDefinition`, `TomFormScreenAssignment`, `TomScreenFlowEdge`, `TomRouteRegistry` | `TomScreenPresentation`, `TomFlowOutcome` |
 | `job_declaration.dart` | CE-JB | `TomJobDeclaration` | *(none)* |
 | `notification_model.dart` | CE-NT | `TomNotificationChannelDeclaration`, `TomNotificationType`, `TomNotificationPreferences`, `TomNotificationCatalog` | `TomNotificationCategory`, `TomNotificationUrgency` |
+| `operation_binding.dart` | CE-API | `TomBindingParameter`, `TomOperationBinding` | `TomBindingSource`, `TomBindingErrorFormat` |
 | `report_model.dart` | CE-RP | `TomReportDimension`, `TomReportMeasure`, `TomReportColumn`, `TomReportParameter`, `TomReportChart`, `TomReportDefinition`, `TomReportResultSection`, `TomReportResult` | `TomReportValueKind`, `TomReportMeasureFunction`, `TomReportDeliveryChannel`, `TomReportChartKind` |
 
 **`dependencies: {}` is an invariant.** Nothing under `lib/` imports anything
@@ -103,6 +109,9 @@ Object
 │   ├── TomNotificationType
 │   ├── TomNotificationPreferences
 │   └── TomNotificationCatalog
+├── CE-API — operation binding
+│   ├── TomBindingParameter
+│   └── TomOperationBinding
 └── CE-RP — report model
     ├── TomReportDimension
     ├── TomReportMeasure
@@ -559,6 +568,67 @@ TomNotificationCatalog({
 |--------|-------------|-------------|
 | `fallbackChainFrom(String channelId)` | `List<String>` | The fallback chain starting at [channelId], nearest first. |
 
+### CE-API — operation binding
+
+#### TomBindingParameter
+
+One wire parameter of a [TomOperationBinding]: where it is read from, and which request member of the operation it supplies.
+
+##### Constructors
+```dart
+const TomBindingParameter(
+  this.name, {
+  required this.source,
+  required this.member,
+})
+```
+
+##### Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `name` | `String` | The parameter's name on the wire. |
+| `source` | `TomBindingSource` | Where on the request the parameter is read from. |
+| `member` | `String` | The operation's request member this parameter supplies. |
+
+#### TomOperationBinding
+
+A second HTTP shape for an operation that already has a name.
+
+##### Constructors
+```dart
+const TomOperationBinding(
+  this.operation, {
+  required this.method,
+  required this.path,
+  this.versionPrefix = '',
+  this.parameters = const [],
+  this.successStatus = 200,
+  this.responseHeaders = const [],
+  this.consumes,
+  this.produces = 'application/json',
+  this.errorFormat = TomBindingErrorFormat.resultEnvelope,
+})
+```
+
+##### Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `methods` | `Set<String>` | *(static const)* The HTTP methods a binding may declare — the closed set the CodeSpecs validator holds [method] to. |
+| `operation` | `String` | The name of the operation this binding serves, verbatim. |
+| `method` | `String` | The HTTP method, one of [methods]. |
+| `path` | `String` | The path template after [versionPrefix], with `{name}` captures. |
+| `versionPrefix` | `String` | The prefix the path is served under, such as `/scim/v2`. Empty by default. |
+| `parameters` | `List<TomBindingParameter>` | How each wire parameter maps onto the operation's request members. |
+| `successStatus` | `int` | The status code a successful call answers with. |
+| `responseHeaders` | `List<String>` | Response headers the binding sets on success, by name. |
+| `consumes` | `String?` | The request media type the binding accepts, or `null` when the request carries no body. |
+| `produces` | `String` | The response media type. |
+| `errorFormat` | `TomBindingErrorFormat` | The shape a failed call's CE-ER error is written in. |
+| `route` | `String` | The full route the binding is served under: [versionPrefix] then [path]. |
+| `pathCaptures` | `List<String>` | The names inside the `{...}` captures of [path], in order. |
+
 ### CE-RP — report model
 
 #### TomReportDimension
@@ -912,6 +982,28 @@ How urgent a notification is — the closed catalogue authored in `NotificationT
 | `medium` | The default — delivered promptly but not interrupting. |
 | `high` | Should reach the user the same day. |
 | `critical` | Must interrupt. |
+
+### TomBindingSource
+
+Where a [TomBindingParameter] finds the request member it supplies.
+
+| Value | Meaning |
+|-------|---------|
+| `path` | A `{name}` capture in the binding's [TomOperationBinding.path]. |
+| `query` | A query-string parameter. |
+| `body` | A field of the decoded request body. |
+| `header` | A request header. |
+
+### TomBindingErrorFormat
+
+The error shape a [TomOperationBinding] renders a failed operation in.
+
+| Value | Meaning |
+|-------|---------|
+| `resultEnvelope` | The CE-ER `Result` envelope of `codespecs_mapping.md` §7 — the shape the operation's primary binding speaks. |
+| `problemJson` | RFC 9457 problem details (`application/problem+json`). |
+| `scim` | The SCIM error response of RFC 7644 §3.12. |
+| `oauth` | The OAuth 2.0 error response of RFC 6749 §5.2. |
 
 ### TomReportValueKind
 

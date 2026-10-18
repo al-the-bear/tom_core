@@ -12,7 +12,7 @@ documents here cite it rather than restating it
 
 | Document | Covers |
 |----------|--------|
-| [gap_classes.md](gap_classes.md) | The seven modules and their holders: the dependency-free invariant, the two-layer layout model, the message-key registry, the route registry and screen flow, the notification catalogue, and the report model — plus where each kind of error surfaces |
+| [gap_classes.md](gap_classes.md) | The eight modules and their holders: the dependency-free invariant, the two-layer layout model, the message-key registry, the route registry and screen flow, the notification catalogue, the report model and the second operation binding — plus where each kind of error surfaces |
 
 ## Design
 

@@ -3,7 +3,7 @@
 // The package is dependency-free and its gap classes are plain data holders,
 // so there is nothing to bootstrap: no reflection registry, no platform
 // identity, no service locator. This runner is therefore what it looks like —
-// seven `main()` calls in sequence — and that plainness is itself a property
+// eight `main()` calls in sequence — and that plainness is itself a property
 // of the package worth seeing.
 //
 // Run with:
@@ -21,6 +21,7 @@ import 'job_declaration_example.dart' as job_declaration;
 import 'layout_node_example.dart' as layout_node;
 import 'message_key_example.dart' as message_key;
 import 'notification_model_example.dart' as notification_model;
+import 'operation_binding_example.dart' as operation_binding;
 import 'report_model_example.dart' as report_model;
 import 'route_flow_example.dart' as route_flow;
 
@@ -36,6 +37,7 @@ final _examples = <String, Future<void> Function()>{
   'layout_node': () async => layout_node.main(),
   'message_key': () async => message_key.main(),
   'notification_model': () async => notification_model.main(),
+  'operation_binding': () async => operation_binding.main(),
   'report_model': () async => report_model.main(),
   'route_flow': () async => route_flow.main(),
 };

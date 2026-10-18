@@ -65,7 +65,7 @@ void main() {
       // than an exact count, because the count is supposed to grow.
       expect(
         examples.length,
-        greaterThanOrEqualTo(7),
+        greaterThanOrEqualTo(8),
         reason: 'the walk of example/ found ${examples.length} programs',
       );
     });

@@ -45,7 +45,8 @@ the third lands here, as a **concrete** class; never an abstract `Cs*` base,
 because the framework in
 [`tom_code_specs`](../../ai_build/tom_code_specs) carries annotations only
 (`codespecs_mapping.md` §1.1). Seven parts survive that survey: CE-CL, CE-LO,
-CE-TX, CE-NV, CE-JB, CE-NT and CE-RP.
+CE-TX, CE-NV, CE-JB, CE-NT and CE-RP. An eighth gap sits inside a part that is
+otherwise reuse: CE-API's *second* binding of an already-named operation.
 
 > **The package is dependency-free, and that is an invariant.** `pubspec.yaml`
 > declares `dependencies: {}` and nothing under `lib/` carries an import
@@ -62,7 +63,7 @@ CE-TX, CE-NV, CE-JB, CE-NT and CE-RP.
 
 ```yaml
 dependencies:
-  tom_core_codespecs: ^0.11.2
+  tom_core_codespecs: ^0.13.0
 ```
 
 or
@@ -121,6 +122,21 @@ free text gives a generator nothing to read.
 | `TomReportDefinition` (+ `TomReportDimension`, `TomReportMeasure`, `TomReportColumn`, `TomReportParameter`, `TomReportChart`, `TomReportValueKind`, `TomReportMeasureFunction`, `TomReportDeliveryChannel`, `TomReportChartKind`) | CE-RP Reporting (`codespecs_mapping.md` §5.28) | The grouped projection a specification authors — dimension by dimension, measure by measure — plus the output columns that display them, the per-execution parameters, and the charts declared over the projection. | `TomGroupedSelect` is a *query*, compiled from an already-decided grouping. Nothing in `tom_core` holds the decision itself, nor the report's identity or delivery channels. |
 | `TomReportResult` (+ `TomReportResultSection`) | CE-RP Reporting (`codespecs_mapping.md` §5.28) | The **shared** result envelope: sections of columns over a `Stream` of rows, plus the chart declarations and run metadata. | `tom_core_server`'s `TomTabularResult` is server-side, and the envelope's locus is *shared* — the client renders a report too. |
 
+### The second operation binding
+
+CE-API is a reuse verdict — `TomApi`/`TomApiEndpoint` (`tom_core_kernel`) and
+the `TomEndpoint` pipeline (`tom_core_server`) — but one capability inside it is
+missing, and it is a gap until `tom_core` ships it
+([`codespecs_mapping.md`](doc/codespecs_mapping.md) §5.30).
+
+| Class | Part | Purpose | Why the substrate does not cover it |
+|-------|------|---------|-------------------------------------|
+| `TomOperationBinding` (+ `TomBindingParameter`, `TomBindingSource`, `TomBindingErrorFormat`) | CE-API Server API (`codespecs_mapping.md` §5.30) | A const value class binding an already-named operation to a second HTTP shape: method, `versionPrefix` + `path` (`route`, with `pathCaptures` from its `{name}` captures), the wire parameter → request member mapping, success status, response headers, media types and the error format (the CE-ER result envelope, RFC 9457, SCIM or OAuth). A `@CsOperationBinding` (`tom_code_specs`) marks a top-level `const` of it in the server project, and Phase 6 registers it with the project's routing (`codespecs_derivation_contract.md` §3.4.5). | `@TomEndpoint` / `TomApiEndpoint` declare any HTTP shape, but an endpoint *is* its shape: there is no second binding of a named operation, so serving one under a second shape means a second hand-written handler. A generic protocol capability over named operations is requested from `tom_core`; when it ships this class moves there, or is replaced. |
+
+`method` is a `String` held by the validator to `TomOperationBinding.methods`
+rather than `tom_core_kernel`'s `TomHttpMethod`, which is its runtime type —
+taking that type would break the dependency-free invariant.
+
 CE-LG was promoted alongside CE-NT but is a *reuse* verdict — `@CsAudited`
 marks the framework's own `@TomAudited` — so it needs no gap class here.
 
@@ -175,7 +191,7 @@ hold it"**. Four verdicts recur, and each has a settled answer:
 | **reuse** | A shipped `tom_core` class is the holder. | CE-AU on `TomAuthenticationService`, CE-CF on `TomBaseServerConfiguration` |
 | **reuse via annotation** | The part is markers over shipped classes; nothing to hold. | CE-DB — `@CsTable`/`@CsColumn`/`@CsRepository` over `tom_core_server` persistence |
 | **no holder needed** | Every attribute lives on the annotated member, an annotation argument, or another part. | CE-UP, domain enums |
-| **gap** | Nothing holds it. A concrete class lands here. | The seven parts above |
+| **gap** | Nothing holds it. A concrete class lands here. | The seven parts above, and CE-API's second binding |
 
 A candidate that would need to import a `tom_core_*` type fails the
 dependency-free invariant and is not a gap class at all — it belongs in the
@@ -285,6 +301,7 @@ tom_core_codespecs                    (dependencies: {} — no imports at all)
     ├── layout_node.dart          CE-LO  TomLayoutModel + node tree + deltas
     ├── message_key.dart          CE-TX  TomMessageKeyRegistry + entries
     ├── notification_model.dart   CE-NT  TomNotificationCatalog + types
+    ├── operation_binding.dart    CE-API TomOperationBinding + parameters
     ├── report_model.dart         CE-RP  TomReportDefinition + TomReportResult
     └── route_flow.dart           CE-NV  TomRouteRegistry + screen flow
 
@@ -303,6 +320,7 @@ tom_core_codespecs                    (dependencies: {} — no imports at all)
 | `TomRouteRegistry` | Route-id uniqueness and dangling-reference checking, plus the screen-flow edges between forms and screens. |
 | `TomJobDeclaration` | The spec-side decision to deploy a job at all, and the entity targets it reads and writes. |
 | `TomNotificationCatalog` | Which notification types exist and which channels each may go out on, narrowed by preferences. |
+| `TomOperationBinding` | A second HTTP shape for an already-named operation: route, parameter mapping, status, media types and error format. |
 | `TomReportDefinition` | The grouped projection a specification authors — dimensions, measures, columns, parameters and charts. |
 | `TomReportResult` | The shared result envelope both the server and the client read. |
 
@@ -333,7 +351,7 @@ an essential type.
         │
         │ what it lacks
         ▼
-  tom_core_codespecs               ← this package: 7 concrete gap classes
+  tom_core_codespecs               ← this package: 8 concrete gap classes
         ▲
         │ built on
   generated CodeSpecs trio         shared / client / server
@@ -363,7 +381,7 @@ an essential type.
 | Guide | Covers |
 |-------|--------|
 | [doc/index.md](doc/index.md) | The catalogue of this package's documentation |
-| [doc/gap_classes.md](doc/gap_classes.md) | The seven modules, the dependency-free invariant, and where each kind of error surfaces |
+| [doc/gap_classes.md](doc/gap_classes.md) | The eight modules, the dependency-free invariant, and where each kind of error surfaces |
 | [doc/api/api_summary_tom_core_codespecs.md](doc/api/api_summary_tom_core_codespecs.md) | Every class and enum, its constructor, properties and methods |
 
 **Runnable examples** — one per gap class, under [example/](example):
@@ -376,7 +394,7 @@ The flag is not cosmetic. Every example states its expected outcome with
 `assert` and nothing else, and `dart run` strips asserts — so a flagless run
 prints the same transcript, exits 0 and verifies nothing. Each example refuses
 that run rather than letting it look like a pass, and
-`test/examples_test.dart` runs all seven plus the aggregator under exactly the
+`test/examples_test.dart` runs all eight plus the aggregator under exactly the
 command their headers document. It also holds the folder to the gap-class
 inventory in both directions, so a gap class without an example is a failure
 rather than an omission.
@@ -392,14 +410,16 @@ rather than an omission.
 
 ## Status
 
-Version **0.12.4**, published on pub.dev. The suite runs with `dart test`; no
+Version **0.13.0**, published on pub.dev. The suite runs with `dart test`; no
 count is given, because a count is a claim nothing checks and every added test
 would be a README edit nobody makes. The version is checked.
 
 Every part the
 [`codespecs_mapping.md`](doc/codespecs_mapping.md)
 §4.1 catalogue marks *gap* has its class here — CE-CL, CE-LO, CE-TX, CE-NV,
-CE-JB, CE-NT and CE-RP. Every other part resolves onto shipped `tom_core`
+CE-JB, CE-NT and CE-RP — and CE-API's second operation binding
+(`codespecs_mapping.md` §5.30) has `TomOperationBinding` until `tom_core` ships a
+generic protocol capability over named operations. Every other part resolves onto shipped `tom_core`
 classes and needs none. **CE-WF is the sole remaining `codespecs_mapping.md`
 §4.3 deferred candidate**, and it is deferred permanently; a class is added here
 only if a further part is ever promoted out of `codespecs_mapping.md` §4.3.

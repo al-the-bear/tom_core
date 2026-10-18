@@ -1,7 +1,7 @@
 # TomSpecs CodeSpecs — The `tom_core` Gap Classes
 
 This package holds the **concrete classes `tom_core` genuinely lacks** for
-CodeSpecs, and nothing else. This guide covers the seven modules, the shape each
+CodeSpecs, and nothing else. This guide covers the eight modules, the shape each
 holder has, and — because it is the question that actually comes up — how to
 tell whether a candidate class belongs here at all. Which parts are gaps and
 which are reuse verdicts is
@@ -13,7 +13,7 @@ which are reuse verdicts is
 - [Overview](#overview)
 - [Quick Start](#quick-start)
 - [Core Components](#core-components)
-  - [The seven modules](#the-seven-modules)
+  - [The eight modules](#the-eight-modules)
   - [The dependency-free invariant](#the-dependency-free-invariant)
 - [The layout model: base plus overrides](#the-layout-model-base-plus-overrides)
 - [The message-key registry](#the-message-key-registry)
@@ -31,8 +31,8 @@ The core principle is that every class a CodeSpec instantiates is a
 `tom_core` class wherever one fits; only the concrete gaps land here, which is
 what keeps `tom_core` free of CodeSpecs-only concerns.
 
-What is here is therefore small and deliberate — **seven source files, 24
-classes and 12 enums** — and what is *not* here is as much of the design as what
+What is here is therefore small and deliberate — **eight source files, 26
+classes and 14 enums** — and what is *not* here is as much of the design as what
 is. `tom_core` already carries the substrate for authentication, server
 configuration, client configuration, user preferences, persistence and the audit
 trail, so none of those needs a holder here.
@@ -101,7 +101,7 @@ than a missing one.
 
 ## Core Components
 
-### The seven modules
+### The eight modules
 
 | Module | Part | Holder(s) | Fills the gap in |
 |--------|------|-----------|------------------|
@@ -111,6 +111,7 @@ than a missing one.
 | `route_flow.dart` | CE-NV | `TomRouteRegistry`, `TomRouteDefinition`, `TomFormScreenAssignment`, `TomScreenFlowEdge` | The route-id registry and screen-flow model a page route assumes but cannot check |
 | `job_declaration.dart` | CE-JB | `TomJobDeclaration` | The deployment/ownership envelope around the scheduling runtime |
 | `notification_model.dart` | CE-NT | `TomNotificationCatalog`, `TomNotificationType`, `TomNotificationChannelDeclaration`, `TomNotificationPreferences` | The layer that *chooses* a channel, above the messaging module that delivers on one |
+| `operation_binding.dart` | CE-API | `TomOperationBinding`, `TomBindingParameter` | A second HTTP shape for an already-named operation, which an endpoint — being its own shape — cannot give (`codespecs_mapping.md` §5.30) |
 | `report_model.dart` | CE-RP | `TomReportDefinition` (+ dimension, measure, column, parameter, chart) and `TomReportResult` | A grouped projection's authorable shape, which the row-shaped persistence surface has no home for |
 
 ### The dependency-free invariant

@@ -106,11 +106,19 @@
 /// `TomTabularResult`: the envelope's locus is *shared* (the client reads it
 /// too) and this package is dependency-free, so the server adapts one way onto
 /// the tabular shape — the same placement decision CE-DB records for entities.
+/// **CE-API's second binding (`codespecs_mapping.md` §5.30).** CE-API itself is
+/// reuse — `TomApiEndpoint` and the `TomEndpoint` pipeline — but an endpoint
+/// *is* its HTTP shape, so `tom_core` cannot bind an already-named operation a
+/// second time. [TomOperationBinding] (with [TomBindingParameter],
+/// [TomBindingSource] and [TomBindingErrorFormat]) holds that second shape
+/// until `tom_core` ships a generic protocol capability over named operations,
+/// at which point it moves there.
 /// @docImport 'src/client_application.dart';
 /// @docImport 'src/job_declaration.dart';
 /// @docImport 'src/layout_node.dart';
 /// @docImport 'src/message_key.dart';
 /// @docImport 'src/notification_model.dart';
+/// @docImport 'src/operation_binding.dart';
 /// @docImport 'src/report_model.dart';
 /// @docImport 'src/route_flow.dart';
 library;
@@ -120,5 +128,6 @@ export 'src/job_declaration.dart';
 export 'src/layout_node.dart';
 export 'src/message_key.dart';
 export 'src/notification_model.dart';
+export 'src/operation_binding.dart';
 export 'src/report_model.dart';
 export 'src/route_flow.dart';

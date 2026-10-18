@@ -28,6 +28,8 @@ const Map<String, String> _expectedGapClassFiles = {
   'layout_node.dart': 'CE-LO — no base/override two-layer layout model',
   'message_key.dart': 'CE-TX — no closed message-key catalogue',
   'notification_model.dart': 'CE-NT — no channel-choosing layer',
+  'operation_binding.dart':
+      'CE-API — no second binding of an already-named operation',
   'report_model.dart': 'CE-RP — no authorable grouped-projection shape',
   'route_flow.dart': 'CE-NV — no route-id registry / screen-flow model',
 };

@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.13.0
+
+- **`TomOperationBinding`** (`lib/src/operation_binding.dart`), with
+  `TomBindingParameter`, `TomBindingSource` and `TomBindingErrorFormat`: a
+  const value class that binds an already-named operation to a second HTTP
+  shape — method, `versionPrefix` + `path` (`route`, `pathCaptures`), the wire
+  parameter → request member mapping, success status, response headers, media
+  types and the error format (the CE-ER result envelope, RFC 9457, SCIM or
+  OAuth). It is the holder a CodeSpec's `@CsOperationBinding` (CE-API) marks
+  in the server project (`codespecs_mapping.md` §5.30,
+  `codespecs_derivation_contract.md` §3.4.5). `tom_core_server` declares one
+  HTTP shape per endpoint and has no second binding of a named operation; the
+  class moves to `tom_core` when a generic protocol capability over named
+  operations ships there.
+- `example/operation_binding_example.dart`; the gap-class inventory, README,
+  `doc/gap_classes.md` and the API summary list the new module.
+
 ## 0.12.4
 
 - Documentation only. `codespecs_derivation_contract.md` names the stored

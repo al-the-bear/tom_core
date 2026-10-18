@@ -1584,6 +1584,143 @@ emits here too, but authors no marked declaration, so it has no entry of its own
 | **6 Cross-refs** | `CsOperationRef` (the login operation); `Type` literal for the identity declaration; `CsRoleRef` where a flow step grants a role, and for each key of the policy's `requirementByRole`. |
 | **7 Back-link** | `@DocSpec([DocRef('LGFLS', 'supplies the flow step this method performs'), DocRef('USATE', 'supplies the attribute projected into the token')])`; the policy declaration carries `@DocSpec([DocRef('MC', 'supplies the second-factor requirement, the offered mechanisms in preference order and the enrolment grace')])`. |
 
+#### 3.4.5 `@CsOperationBinding` — CE-API protocol binding
+
+| Point | Contract |
+|-------|----------|
+| **1 Input** | `OperationBindingEntry` (`SVOBI`), the `bindings` list of a `ServerOperationEntry` (`SVOPE`). Consumed: `httpMethod`, `pathTemplate`, `versionPrefix`, `successStatus`, `responseHeaders`, `consumes`, `produces`, `errorFormat`, and the `parameters` list of `BindingParameterEntry` (`SVOBP`): the entry's headline (the wire name), `source` and `requestMember`. The owning `SVOPE.operationName` names the operation. |
+| **2 Output** | A **top-level `const` of `TomOperationBinding`** (`tom_core_codespecs`), **form 1**: the constructor call is the whole declaration, so there is no body. The operation keeps its §3.2.1 / §3.4.2 contract unchanged; the binding is a second shape of it for third-party callers (`codespecs_mapping.md` §5.30). |
+| **3 Arguments** | The marker: `operation` (**required**, first positional) ← the `CsOperationRef` const §3.2.1 emits for the owning `SVOPE.operationName`. Everything else is a `TomOperationBinding` constructor argument (§2.3 test **b**). The first positional is the operation name verbatim. `method:` ← `httpMethod` upper-cased (`get` → `'GET'`). `path:` ← `pathTemplate` verbatim. `versionPrefix:` ← `versionPrefix`, omitted when empty. `parameters:` ← one `TomBindingParameter(<headline>, source: TomBindingSource.<source>, member: '<requestMember>')` per `SVOBP`, in list order. `successStatus:` ← `successStatus`, omitted when empty (the default 200). `responseHeaders:` ← `responseHeaders` split at commas and trimmed. `consumes:` / `produces:` ← verbatim, each omitted when empty. `errorFormat:` ← `TomBindingErrorFormat.<errorFormat>`, omitted when empty (the default `resultEnvelope`). Nothing is derived that the section does not state: an empty field is an omitted argument, never a guessed one (§2.8 C1). |
+| **4 Naming** | lowerCamel of the operation name + PascalCase of the method + `Binding` (`user.save`, PUT → `userSavePutBinding`). When two bindings of one operation share a method, the second and later take their 1-based position among them as a suffix (`userGetGetBinding2`). |
+| **5 Locus** | `server`, beside the service unit that owns the operation (§3.4.1). |
+| **6 Cross-refs** | `CsOperationRef` (the operation). The served interface is a string in the back-link description, not a reference: the external-interface inventory describes the interface, not a generated declaration. |
+| **7 Back-link** | `@DocSpec([DocRef('SVOBI', 'supplies the HTTP shape this binding serves the operation under')])`. |
+
+**Worked example — a listing, a save and a transition.** Three operations of a
+user administration API, each bound once:
+
+```dart
+@CsOperationBinding(UserOperations.list)
+@DocSpec([DocRef('SVOBI', 'supplies the HTTP shape this binding serves the operation under')])
+const userListGetBinding = TomOperationBinding(
+  'user.list',
+  method: 'GET',
+  path: '/users',
+  versionPrefix: '/api/v1',
+  parameters: [
+    TomBindingParameter('filter', source: TomBindingSource.query, member: 'filter'),
+    TomBindingParameter('page', source: TomBindingSource.query, member: 'page'),
+  ],
+  errorFormat: TomBindingErrorFormat.problemJson,
+);
+
+@CsOperationBinding(UserOperations.save)
+@DocSpec([DocRef('SVOBI', 'supplies the HTTP shape this binding serves the operation under')])
+const userSavePutBinding = TomOperationBinding(
+  'user.save',
+  method: 'PUT',
+  path: '/users/{userId}',
+  versionPrefix: '/api/v1',
+  parameters: [
+    TomBindingParameter('userId', source: TomBindingSource.path, member: 'userId'),
+    TomBindingParameter('user', source: TomBindingSource.body, member: 'user'),
+  ],
+  responseHeaders: ['ETag'],
+  consumes: 'application/json',
+  errorFormat: TomBindingErrorFormat.problemJson,
+);
+
+@CsOperationBinding(UserOperations.suspend)
+@DocSpec([DocRef('SVOBI', 'supplies the HTTP shape this binding serves the operation under')])
+const userSuspendPostBinding = TomOperationBinding(
+  'user.suspend',
+  method: 'POST',
+  path: '/users/{userId}/suspension',
+  versionPrefix: '/api/v1',
+  parameters: [
+    TomBindingParameter('userId', source: TomBindingSource.path, member: 'userId'),
+  ],
+  successStatus: 204,
+  errorFormat: TomBindingErrorFormat.problemJson,
+);
+```
+
+The transition is a `POST` to a sub-resource, not a `PATCH` of a status field:
+what the SOM states is the operation `user.suspend`, and the binding only gives
+it a path. Phase 6 registers each const with the routing the project has; the
+three handlers are the §3.4.2 ones, unchanged.
+
+#### 3.4.6 `@CsFeatureHook` — CE-SU framework protocol-feature hook
+
+| Point | Contract |
+|-------|----------|
+| **1 Input** | `ProtocolFeatureEntry` (`PROTF`) → its `hooks` list of `FeatureHookEntry` (`FEHOK`) → each hook's `methods` list of `HookMethodEntry` (`FEHOM`). Consumed: `PROTF.feature`; `FEHOK.hook`; and per `FEHOM` its headline (the contract member it implements), `callsOperations` (in order), `readsEntities`, `writesEntities` and its content (the behaviour). |
+| **2 Output** | An **ordinary class implementing the hook's framework contract**, the `contract` its `csFeatureHooks` entry names (`codespecs_mapping.md` §5.30). The class **is** the CodeSpec, as §3.4.4's `TomAuthenticationService` implementation is. One method per contract member, each with the contract's own signature. Its body is **form 3b** when the member's `callsOperations` lists operations: one statement per operation, in list order, each `await collaborator.<op>(<the member's parameters>)`, the last one returned when the member returns a value. A member with no listed operation is **form 3a**, `throw UnsupportedError('<FEHOM content>')`. The abstract collaborator is emitted per §3.0.1; it declares one method per called operation, named lowerCamel of the full operation name (`user.create` → `userCreate`), taking the member's parameters and returning the member's return type for the last call and `Future<void>` otherwise. A hook whose catalogue entry is **not available** is not emitted at all: there is no tom_core contract to implement, and Stage B has already ruled the area insufficient (`codespecs_prompt.md` §6.3). |
+| **3 Arguments** | `feature` (**required**, first positional) ← `CsProtocolFeature.<PROTF.feature>`, constant for constant. `hook` (**required**, second positional) ← `FEHOK.hook` verbatim, an authored catalogue key (N5), never re-cased. |
+| **4 Naming** | The app name + the contract's name with its `Tom` prefix removed (`TomScimStore` → `UamScimStore`; *TomOidcClientRegistry* (provisional) → `UamOidcClientRegistry`). A contract that is a member, not a type (`TomScimService.revoke`), takes PascalCase of the hook instead (`UamScimSessionRevocation`). |
+| **5 Locus** | `server`. |
+| **6 Cross-refs** | `CsOperationRef` per called operation; `Type` literals for the entities in `readsEntities` / `writesEntities` (their repositories, §3.3.4). |
+| **7 Back-link** | On the class, `@DocSpec([DocRef('FEHOK', 'supplies the hook this class implements'), DocRef('PROTF', 'enables the protocol feature this hook belongs to')])`. On each method, `@DocSpec([DocRef('FEHOM', 'supplies what this contract member does')])`. |
+
+**Worked example — a SCIM user-mapping hook.** The SCIM server is tom_core's;
+the system maps SCIM users onto its own users. The `scimStore` hook's `create`
+member calls `user.create`, then `user.assignGroups`:
+
+```dart
+import 'package:tom_core_server/tom_core_server.dart';
+
+@CsFeatureHook(CsProtocolFeature.scim2Server, 'scimStore')
+@DocSpec([
+  DocRef('FEHOK', 'supplies the hook this class implements'),
+  DocRef('PROTF', 'enables the protocol feature this hook belongs to'),
+])
+class UamScimStore implements TomScimStore {
+  late final UamScimStoreCollaborator collaborator;
+
+  /// Creates the user the SCIM document describes and assigns its groups.
+  @DocSpec([DocRef('FEHOM', 'supplies what this contract member does')])
+  @override
+  Future<TomScimResource> create(
+    TomScimResourceType type,
+    Map<String, Object?> document,
+  ) async {
+    await collaborator.userCreate(type, document);
+    return await collaborator.userAssignGroups(type, document);
+  }
+
+  // … read, findByName, list, replace and delete follow the same rule.
+}
+```
+
+The doc comment is the `FEHOM` content, verbatim (§2.8). The SCIM endpoints,
+filters, paging and error schema are tom_core's, under the `/scim/v2` prefix the
+framework reserves, so §6 check 41 refuses any binding the system declares
+there.
+
+**Worked example — an OIDC client-registry hook.** The same shape, against the
+authorization server tom_core has been asked for:
+
+```dart
+import 'package:tom_core_server/tom_core_server.dart';
+
+@CsFeatureHook(CsProtocolFeature.oidcAuthorizationServer, 'clientRegistry')
+class UamOidcClientRegistry implements TomOidcClientRegistry {
+  late final UamOidcClientRegistryCollaborator collaborator;
+
+  @override
+  Future<TomOidcClient?> findClient(String clientId) async {
+    return await collaborator.clientFind(clientId);
+  }
+}
+```
+
+*TomOidcClientRegistry* (provisional) does not exist yet, so the `clientRegistry` catalogue
+entry is `available: false`. Today Stage B rules the area insufficient, and a
+run opens an L0 question for the missing tom_core contract instead of emitting
+this class.
+Once tom_core ships the contract, the entry flips to available and the class
+above is what the derivation writes.
+
 ### 3.5 Slice 5 — client interaction core
 
 Cites slices 1 and 2 **and never 3 or 4**: the client project depends on shared
@@ -2318,7 +2455,7 @@ Each is named here so the toolchain implements it as a check rather than as a
 convention. They are the mechanised half of the authoring side (§2.0): the agent
 writes the trio, and this program decides whether what it wrote is admissible.
 
-**Where they run.** All thirty-seven are implemented in
+**Where they run.** All forty-one are implemented in
 `tom_ai/ai_build/tom_specs_clitool/lib/src/codespecs/` (`cs_reader` reads the generated trio via
 the analyzer, `cs_model` resolves it, `cs_extract` reads the per-area extracts
 (through the SOM runtime's `CodeSpecsExtractSet`, the reader every runtime shares),
@@ -2389,7 +2526,7 @@ violating `@CsTrigger(kind: userGesture, form: …)` therefore passes `dart
 analyze` untouched — and the annotation is the only site these markers are ever
 written at. An assert there would enforce nothing while reading as if it did,
 which is worse than no guard, so the enforcement point is the generation-time
-validator's pass over the resolved annotation for **all** thirty-seven.
+validator's pass over the resolved annotation for **all** forty-one.
 
 | # | Check | Defined in | Implemented by |
 |---|-------|------------|----------------|
@@ -2430,6 +2567,10 @@ validator's pass over the resolved annotation for **all** thirty-seven.
 | 35 | Every token the extracts hold a value for is cited by a back-link in the trio — an uncited token is a specification fact that reached no code | §9.6 of `codespecs_mapping.md` | `CsExtractCoverageCheck` |
 | 36 | Every token a back-link names exists in the extracts — a trace to a token no area routed is stale or invented | §9.6 of `codespecs_mapping.md` | `CsBackLinkExtractedCheck` |
 | 37 | A member reflection writes — a `@CsColumn` attribute, a CE-API DTO field — is a plain field, `late` where it is non-nullable and **never `final`**, because reflection assigns through a setter a final field does not have. A `static` holder, the `collaborator` seam, and a member the declaration assigns in its own method body are §2.4's carve-outs | §2.4 | `CsReflectionWrittenNotFinalCheck` |
+| 38 | Every `@CsOperationBinding` names an operation the trio declares — its `CsOperationRef` resolves to a shared-half `@CsEndpoint`, and the `TomOperationBinding`'s first argument is that operation's name | §3.4.5 | `CsBindingOperationCheck` |
+| 39 | A binding's method is one of `TomOperationBinding.methods`; no two bindings share a method and a route (version prefix + path); every `{name}` in a path is mapped by a `path` parameter, and every `path` parameter by a `{name}` | §3.4.5 | `CsBindingRouteCheck` |
+| 40 | Every `@CsFeatureHook` names a hook of its feature in `csFeatureHooks`; for every feature the trio implements a hook of, every required hook is implemented exactly once; no hook whose contract is not available is implemented | §3.4.6 | `CsFeatureHookCompletenessCheck` |
+| 41 | No binding's route lies under a path `csFeatureReservedPaths` reserves for a framework protocol feature — the system never re-declares a protocol endpoint | §3.4.5 | `CsReservedProtocolPathCheck` |
 
 **Check 23 is the one that makes "compiles" checkable before a compiler sees
 it.** Its two halves fail in opposite directions and neither implies the other.

@@ -1,6 +1,6 @@
 // CE-CL — the client-application descriptor root.
 //
-// The smallest of the seven gap classes, and the one whose shape is entirely
+// The smallest of the eight gap classes, and the one whose shape is entirely
 // in its defaults: every field is optional, so a headless client and a
 // full-screen one are the same call with different arguments. That is the
 // point worth seeing — there is no second constructor and no "minimal" mode.
