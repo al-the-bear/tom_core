@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.12.4
+
+- Documentation only. `codespecs_derivation_contract.md` names the stored
+  sources of `@CsTrigger.kind` (`triggerKind`) and `@CsNotification.body`
+  (`bodyMessageKey`), and `codespecs_mapping.md` §10 has nothing open against
+  it. The README states the current version.
+
 ## 0.12.3
 
 - Documentation only. `codespecs_derivation_contract.md` names the validator's
