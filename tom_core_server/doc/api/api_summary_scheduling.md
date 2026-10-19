@@ -12,6 +12,7 @@ has, for nodes that do not share a filesystem.
   - [TomSqlJobStore](#tomsqljobstore)
   - [TomJobRunRow](#tomjobrunrow)
   - [TomJobRunWindowRow](#tomjobrunwindowrow)
+  - [TomJobBacklogRow](#tomjobbacklogrow)
   - [TomSqlLeaseLock](#tomsqlleaselock)
   - [TomLeaseRow](#tomleaserow)
   - [TomSchedulerNode](#tomschedulernode)
@@ -86,6 +87,7 @@ TomSchedulerNode
 
 TomJobRunRow
 TomJobRunWindowRow
+TomJobBacklogRow
 TomLeaseRow
 TomSchedulerNodeRow
 ```
@@ -156,6 +158,7 @@ tick.
 | `fail` | `Future<void> fail(TomJobClaim claim, String error, DateTime now, {DateTime? retryAt})` | *(override)* Without `retryAt`, writes the run off as `failed`; with it, returns the run to `pending` at that instant and increments `attempt` in the statement rather than from a possibly stale copy. Both branches are fenced on the claim — the retrying one doubly needs it, since it spends a retry. |
 | `recoverAbandoned` | `Future<List<TomJobRun>> recoverAbandoned(DateTime now, Duration leaseTimeout, {bool Function(String jobName)? requestsRecovery})` | *(override)* Checks this node in, then re-queues runs whose lease lapsed (and, with a roll call wired, those held by a failed peer). A run that never started is always re-queued; a started one only when the job opted in, otherwise it is written off with `TomJobStore.recoveryDeclinedError`. |
 | `all` | `Future<List<TomJobRun>> all()` | *(override)* Every row in the queue, in insertion order. |
+| `backlog` | `Future<List<TomJobBacklog>> backlog(DateTime now)` | *(override)* One `TomJobBacklog` per job with pending runs due at `now` — how many, and the earliest `run_at` among them — in one grouped `SELECT` (projected as `TomJobBacklogRow`). The kernel scheduler reads it for the `tom_job_backlog` and `tom_job_backlog_age_seconds` gauges when a scrape or an export takes a snapshot. |
 | `purgeFinished` | `Future<int> purgeFinished(DateTime before)` | *(override)* Deletes terminal runs completed before the cutoff and returns how many were removed. |
 | `deleteAll` | `Future<void> deleteAll()` | Empties the queue table. Not part of `TomJobStore` — for provisioning and for tests that need a known-empty queue. |
 | `toString` | `String toString()` | *(override)* Renders `"TomSqlJobStore(<table>)"`. |
@@ -210,6 +213,27 @@ TomJobRunWindowRow()
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `scheduledFor` | `String?` | The latest window, as stored UTC text, or `null` when the job has no runs at all. |
+
+### TomJobBacklogRow
+
+One job's aggregate row of `TomSqlJobStore.backlog`: how many of its runs are
+due and unclaimed, and the earliest `run_at` among them. Reflected and
+`@TomDbTable`-annotated with placeholder values, like `TomJobRunWindowRow`,
+because the mapper binds by column name.
+
+#### Constructors
+
+```dart
+TomJobBacklogRow()
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `jobName` | `String` | The job (`job_name`). |
+| `due` | `int` | How many of its runs are due and unclaimed (`due`). |
+| `oldestRunAt` | `String?` | The earliest due `run_at`, as stored UTC text (`oldest_run_at`). |
 
 ### TomSqlLeaseLock
 

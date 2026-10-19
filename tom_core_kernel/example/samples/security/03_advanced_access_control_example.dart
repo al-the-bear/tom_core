@@ -340,9 +340,9 @@ class ResourceKeyProtectionExample {
 bool _isDocumentOwner(TomPrincipal? principal, String docId) {
   if (principal == null) return false;
   // Simulate ownership check - user 1 owns document 123
-  if (principal.id == 1 && docId == '123') return true;
+  if (principal.id == '1' && docId == '123') return true;
   // User 2 owns document 456
-  if (principal.id == 2 && docId == '456') return true;
+  if (principal.id == '2' && docId == '456') return true;
   return false;
 }
 

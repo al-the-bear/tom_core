@@ -2,6 +2,28 @@
 
 ### Added
 
+- **Metrics module** (`metrics/`): `TomMetricRegistry` holds counters
+  (`TomCounter`), gauges (`TomGauge`), histograms (`TomHistogram`, with
+  `tomLatencyBuckets` and `tomLagBuckets`) and observed gauges (`observe`,
+  `TomMetricObserver`, `TomObservedValue`, `TomMetricObservation`) per isolate;
+  `collect()` answers a sorted snapshot of `TomMetricFamily` / `TomMetricPoint`,
+  and `tomPrometheusText` renders it in the Prometheus text format 0.0.4
+  (`tomPrometheusContentType`). `TomMetrics.registry` is the registry the
+  framework records into; misuse raises `TomMetricsException`
+  (`metrics.name.invalid`, `metrics.name.conflict`, `metrics.label.invalid`,
+  `metrics.counter.negative`). A failing or slow observer is skipped and counted
+  in `tom_metrics_observation_failures_total`. `doc/metrics/metrics.md`; samples
+  in `example/samples/metrics/`; tests in `test/metrics_test.dart`.
+- **Scheduler metrics.** `TomScheduler` records `tom_job_start_lag_seconds`,
+  `tom_job_run_duration_seconds`, `tom_job_runs_total{job,outcome}` and
+  `tom_job_last_success_timestamp_seconds`, and from `start()` to `close()`
+  observes `tom_job_backlog` and `tom_job_backlog_age_seconds` for its own
+  registered jobs. `doc/scheduling/scheduling.md` § Metrics.
+- **`TomJobStore.backlog(now)`** and **`TomJobBacklog`**: the due, unclaimed
+  runs per job — how many, and since when the oldest has been due. A new
+  abstract member: an implementation of `TomJobStore` outside this package must
+  add it. Implemented by `TomMemoryJobStore` and `TomFileJobStore`, and held to
+  the store contract suite.
 - **`TomItemType.lowestLevelGranting(grade)`** — the weakest level whose grade
   is at least `grade`, the minimum level of a "every item this principal may
   read (or write)" query. A type whose stronger level stands for a weaker grade

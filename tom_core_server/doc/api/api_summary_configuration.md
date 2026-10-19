@@ -226,6 +226,12 @@ last so a merged key spelled `args` cannot displace the invocation.
 | `logLevel` | `String` | The global log level by name (`TRACE` … `FATAL`, or an aggregate such as `PRODUCTION`). Empty leaves the logger as it was — a deployment that says nothing does not get silence. Applied by the application's boot, so anything logged before that call uses the previous level. Environment name `LOG_LEVEL`. |
 | `databaseMigrationsDirectory` | `String` | The directory `TomDbMigrations.migrateDatabases` reads, one subdirectory per datasource name (default `"./database_migrations"`). Relative, so a server started from anywhere but its package root finds no migrations. Migration is the application's boot step. |
 | `openApiDocument` | `String` | The generated OpenAPI document this server publishes at `GET /openapi.json` (default `""`, publish none). `TomServer.start` hands it to `TomOpenApiServer.globalSettingDocumentPath`; the file is written at build time by `tom_core_openapi` and only served here. Relative to the working directory unless absolute, like `databaseMigrationsDirectory`. Environment name `OPEN_API_DOCUMENT`. |
+| `metricsEndpoint` | `bool` | Whether `TomServer.start` answers Prometheus scrapes at `metricsPath`, ahead of authentication (default `false`). The series are recorded either way. Environment name `METRICS_ENDPOINT`. See [metrics.md](../metrics.md#configuration). |
+| `metricsPath` | `String` | The path scrapes are answered at when `metricsEndpoint` is on (default `"/metrics"`). Environment name `METRICS_PATH`. |
+| `metricsToken` | `String` | The bearer token a scrape must present, compared in constant time; empty leaves the endpoint open (default `""`). **Secret-bearing.** Environment name `METRICS_TOKEN`. |
+| `otlpEndpoint` | `String` | The OTLP/HTTP receiver's base URL, such as `http://collector:4318`, that `TomServer.start` pushes metrics to through `TomServer.metricsExporter`; empty pushes none (default `""`). Environment name `OTLP_ENDPOINT`. |
+| `otlpHeaders` | `String` | Headers of every OTLP export, as `key=value,key=value` — the form of `OTEL_EXPORTER_OTLP_HEADERS`, values percent-decoded (default `""`). May carry a credential. Environment name `OTLP_HEADERS`. |
+| `otlpMetricsIntervalSeconds` | `int` | How often metrics are pushed to `otlpEndpoint`, in seconds (default `60`). Environment name `OTLP_METRICS_INTERVAL_SECONDS`. |
 
 Three of the blocks above are whole subsystems that are **off until
 configured**, and each names one field that switches it on:

@@ -1280,6 +1280,7 @@ or calls, not part of the surface an application reaches for.
 | `poolMaxLifetimeMs` | `int` | How long a connection is used at all before it is replaced, in milliseconds. Default `1800000`. |
 | `poolValidateAfterIdleMs` | `int` | How long a connection may sit idle and still be lent without a check, in milliseconds. Default `30000`. |
 | `poolSettings` | `TomConnectionPoolSettings` | *(getter)* The pool settings the six `pool…` fields describe; read when the data source is opened. |
+| `registeredName` | `String` | *(getter)* The name this data source is registered under — `app`, or `app@tenant` for a tenant's own pool — which is the `datasource` label of its metrics; `driverLabel` until `registerAs` names it. |
 | `driverLabel` | `String` | *(getter, protected, abstract)* How the driver names itself in messages — `MariadbDatasource`, `PostgresDatasource`. |
 | `preparedStatementLabel` | `String` | *(getter, protected, abstract)* How the driver's prepared statements name themselves in messages. |
 | `participantPrefix` | `String` | *(getter, protected, abstract)* The prefix of `getParticipantId` — `MariaDb`, `Postgres`. |
@@ -1316,6 +1317,7 @@ or calls, not part of the surface an application reaches for.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
+| `registerAs` | `void registerAs(String name)` | Records the registry name `registeredName` reports. Called by `TomDataSourceInfo.initialize` when it creates the driver, before the data source is opened; a data source created by hand calls it to be labelled. |
 | `connect` | `Future<void> connect()` | Opens the data source: creates the pool from `poolSettings` and opens its first connection. A server that cannot be reached or refuses the session fails the call with the driver's own error and leaves the data source unopened. Does nothing on an open data source. |
 | `withLink` | `Future<R> withLink<R>(String operation, Future<R> Function(TomSqlLink link) body)` | *(protected)* Runs `body` on the connection `operation` belongs on — the one place connections are chosen: a transaction's own lifecycle statement runs on the connection pinned to that transaction; a statement inside a running transaction first enlists this data source in it, then runs on the transaction's connection; any other statement borrows a connection for itself and hands it back, discarding it if it went down while in use. |
 | `prepareStatement` | `Future<TomPreparedStatement<T>> prepareStatement<T extends Object>(TomQuery query, [Type? resultType])` | *(override)* Renders `query` through `sqlDialect`, translates it with `toPositional`, and prepares it on the connection the current zone selects, so a statement the server cannot compile fails here. A grouped query's `projectionTypes` travel with the returned handle. |
@@ -2252,6 +2254,22 @@ Fails](../datasources.md#when-a-write-fails).
 | `tomSqlBindParams` | `Map<String, Object?>? tomSqlBindParams(Map<String, dynamic>? params)` | `params` with every value marshalled through `tomSqlBindValue`, or `null` for `null`. Both statement paths marshal, so a hand-written store binding a `DateTime` or a `bool` gets the same encoding as a prepared statement. |
 | `tomSqlBranchId` | `String tomSqlBranchId({required String databaseName, required String host, required int port, required String processTag, required int counter, required int maxBytes})` | A process-unique two-phase branch id, `<database>@<host>:<port>_<process>_<time>_<counter>`, at most `maxBytes` long. Both servers refuse an over-long transaction id, so the unique tail is always kept whole and the readable head is truncated; characters outside `[A-Za-z0-9_.@:-]` become `_`, which keeps the id single-byte and safe to quote. |
 | `unknownFrameworkColumns` | `List<String> unknownFrameworkColumns(String sql, Iterable<TomFrameworkTable> tables)` | The identifiers in `sql` that are not a column of any of `tables`, not one of their names or index names, and not SQL. The guard for the half of a statement a column list cannot cover — the references inside `SET`, `WHERE` and `ORDER BY` — driven by passing every statement a store issued through it. String literals, `:bind` placeholders and numbers are stripped first, and anything surviving that is not a known SQL word is reported: a missing word is a noisy false positive in a test, a missed column reference is a production failure. |
+
+### Constants
+
+The names of the series every `TomSqlDatasource` records into
+`TomMetrics.registry` (see [metrics.md](../metrics.md#data-sources)). Each is
+labelled `datasource` with `registeredName`.
+
+| Constant | Value | Description |
+| -------- | ----- | ----------- |
+| `tomDbStatementDurationMetric` | `'tom_db_statement_duration_seconds'` | Histogram of one statement's duration on a connection already held, also labelled `operation` (`query`, `command`, `prepare`, `prepared`, `driver`). |
+| `tomDbStatementErrorsMetric` | `'tom_db_statement_errors'` | Counter of statements that threw, labelled as the duration. |
+| `tomDbPoolConnectionsMetric` | `'tom_db_pool_connections'` | Observed gauge of the pool's connections by `state`: `idle`, `in_use`, `waiting`, `max`. Reported while the data source is open. |
+| `tomDbPoolAcquireDurationMetric` | `'tom_db_pool_acquire_duration_seconds'` | Histogram of the wait for a pooled connection. |
+| `tomDbPoolAcquireFailuresMetric` | `'tom_db_pool_acquire_failures'` | Counter of failed acquires — the acquire timeout, or a connection that could not be opened. |
+
+The constants live in `sql_datasource.dart`, beside the class that records them.
 
 `SqlString` (in `sql_dialects.dart`) is a typedef alias for `String` that
 documents "this is a SQL fragment" at call sites.

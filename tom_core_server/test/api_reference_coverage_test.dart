@@ -8803,6 +8803,7 @@ class After {}
         'errorHandler',
         'authenticationErrorHandler',
         'loggingMiddleware',
+        'metricsExporter',
       ]);
       // Methods are declarations at the same indentation as fields; a parser
       // that took them for fields would then look for assignments to `start`.
@@ -8881,6 +8882,11 @@ class After {}
   // limitation the guide records has to still be the module's behaviour, so
   // that closing one turns this red instead of leaving the section advertising
   // a defect somebody already fixed.
+  //
+  // Monitoring has since left the disowned list: the server records metrics
+  // and exposes them (`doc/metrics.md`), and the guide's Metrics section says
+  // so. What the guide still disowns is forms rendering and the WebSocket
+  // capabilities it names.
   group("the server guide's Not Yet Implemented section matches the module", () {
     const guide = 'doc/server.md';
     const source = 'lib/src/tomserver/server/server.dart';
@@ -8905,11 +8911,7 @@ class After {}
         // that every bullet has a mapping — a fourth bullet with no entry in
         // `_capabilityFiles` is a bullet nothing checks, which is the failure
         // this group exists to prevent one level up.
-        expect(disowned(), [
-          'Diagnostics and monitoring',
-          'Server-rendered forms',
-          'WebSocket',
-        ]);
+        expect(disowned(), ['Server-rendered forms', 'WebSocket']);
         expect(_unmappedCapabilityComplaints(disowned()), isEmpty);
       },
     );
@@ -8939,10 +8941,10 @@ class After {}
       expect(
         _disownedFileComplaints(disowned(), const [
           'server.dart',
-          'diagnostics.dart',
+          'forms.dart',
           'readme.md',
         ]),
-        [contains('diagnostics.dart')],
+        [contains('forms.dart')],
       );
       // A file whose name merely contains a disowned word does not escape by
       // being longer, and one that shares no word does not get caught by being
@@ -9666,14 +9668,13 @@ List<String> _disownedCapabilities(List<String> sectionBody) {
 
 /// The file basenames a capability would occupy if the module implemented it.
 ///
-/// The guide's bullets are prose — "Diagnostics and monitoring" — and a file is
-/// `diagnostics.dart`. Bridging the two is a judgement, so it is written down
+/// The guide's bullets are prose — "WebSocket" — and a file is
+/// `websocket_upgrade.dart`. Bridging the two is a judgement, so it is written down
 /// rather than inferred from the words: inferring would make `Server-rendered
 /// forms` look for `server.dart`, which is the module itself. The cost of
 /// writing it down is that the map goes stale, which is what
 /// [_unmappedCapabilityComplaints] is for.
 const Map<String, List<String>> _capabilityFiles = {
-  'Diagnostics and monitoring': ['diagnostics', 'monitoring'],
   'Server-rendered forms': ['forms'],
   'WebSocket': ['websocket'],
 };

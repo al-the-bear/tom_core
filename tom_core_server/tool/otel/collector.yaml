@@ -1,0 +1,17 @@
+# The OpenTelemetry Collector configuration tool/run_otel_tests.sh starts:
+# receive OTLP over HTTP, write every metrics export to a file the test reads.
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+
+exporters:
+  file:
+    path: /out/metrics.json
+
+service:
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      exporters: [file]

@@ -52,6 +52,10 @@ void main() {
 }
 ```
 
+**Metrics.** `metricsEndpoint`, `metricsPath`, `metricsToken`, `otlpEndpoint`,
+`otlpHeaders` and `otlpMetricsIntervalSeconds` decide whether the series leave
+the process as a Prometheus scrape, an OTLP push, or both — see [`doc/metrics.md`](../../../../doc/metrics.md).
+
 See [`doc/configuration.md`](../../../../doc/configuration.md) for the source
 precedence, the typed key wrappers and the loader hook, and
 `example/configuration/configuration_example.dart` for a twelve-step walkthrough

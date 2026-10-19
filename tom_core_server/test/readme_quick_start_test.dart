@@ -91,6 +91,10 @@ const _quickStarts = <_QuickStart>[
   _QuickStart.runnable('resources', prints: ['Ihre Rechnung', 'null']),
   _QuickStart.runnable('tenancy', prints: ['acme', '403', 'globex']),
   _QuickStart.runnable('ratelimit', prints: ['allowed=false', 'Retry-After']),
+  _QuickStart.runnable(
+    'metrics',
+    prints: ['401', '200', 'route="unmatched",status="404"} 1'],
+  ),
 
   _QuickStart.notRunnable(
     'authorization',

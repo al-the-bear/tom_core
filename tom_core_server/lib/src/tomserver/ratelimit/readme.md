@@ -61,6 +61,10 @@ In a server the limiter is not called by hand: install the rules —
 `TomRateLimits.install(TomRateLimits(rules: [rule]))`, or a `rateLimits` block in
 the configuration — and the middleware counts every request.
 
+**Metrics.** Every refusal is counted in `tom_rate_limit_refusals`
+(`tomRateLimitRefusalsMetric`) by rule and tenant, `none` (`tomNoTenantLabel`)
+outside any — see [`doc/metrics.md`](../../../../doc/metrics.md).
+
 See [`doc/ratelimit.md`](../../../../doc/ratelimit.md) for the configuration, the
 three scopes, the sliding-window algorithm, per-node and shared counting, the
 client address behind proxies, the response headers and starting values, and

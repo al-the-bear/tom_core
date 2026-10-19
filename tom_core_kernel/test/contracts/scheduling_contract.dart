@@ -241,6 +241,41 @@ void runTomJobStoreContract(String variant, TomJobStoreFactory create) {
       expect(await store.claimDue(at, 'owner-1'), isEmpty);
     });
 
+    test(
+      'backlog counts the due, unclaimed runs per job, oldest first',
+      () async {
+        final earlier = at.subtract(const Duration(minutes: 5));
+        await store.enqueue(makeRun('a', window: earlier));
+        await store.enqueue(makeRun('b'));
+        await store.enqueue(
+          makeRun('future', window: at.add(const Duration(minutes: 1))),
+        );
+        await store.enqueue(
+          TomJobRun(id: 'other', jobName: 'other', scheduledFor: at, runAt: at),
+        );
+        await store.enqueue(
+          TomJobRun(
+            id: 'claimed',
+            jobName: 'claimed',
+            scheduledFor: earlier,
+            runAt: earlier,
+          ),
+        );
+        await store.claimDue(
+          at,
+          'owner-1',
+          accept: (run) => run.jobName == 'claimed',
+        );
+
+        final backlog = {for (final b in await store.backlog(at)) b.jobName: b};
+        expect(backlog.keys, unorderedEquals(['job', 'other']));
+        expect(backlog['job']!.due, 2);
+        expect(backlog['job']!.oldestDueAt.toUtc(), earlier);
+        expect(backlog['other']!.due, 1);
+        expect(backlog['other']!.oldestDueAt.toUtc(), at);
+      },
+    );
+
     test('claimDue does not re-claim a running run', () async {
       await store.enqueue(makeRun('a'));
       await store.claimDue(at, 'owner-1');

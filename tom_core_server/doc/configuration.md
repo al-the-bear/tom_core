@@ -30,6 +30,7 @@ store before the configuration is built.
   - [Outbound Mail (SMTP)](#outbound-mail-smtp)
   - [Outbound SMS (HTTP Gateway)](#outbound-sms-http-gateway)
 - [Publishing the OpenAPI Document](#publishing-the-openapi-document)
+- [Publishing Metrics](#publishing-metrics)
 - [Source Precedence](#source-precedence)
   - [A `SCREAMING_SNAKE_CASE` variable names a `lowerCamelCase` field](#a-screaming_snake_case-variable-names-a-lowercamelcase-field)
 - [Secret References](#secret-references)
@@ -769,6 +770,32 @@ route itself is described in [endpoints.md](endpoints.md#the-openapi-document).
 # assets/config-resources_default.yaml
 openApiDocument: "openapi/openapi.json"
 ```
+
+## Publishing Metrics
+
+Six settings decide how the series the framework records leave the process: a
+Prometheus scrape, an OTLP push, both or neither. The series are recorded
+either way; both exports are off by default.
+
+| Setting | Type | Default | What it decides |
+| ------- | ---- | ------- | --------------- |
+| `metricsEndpoint` | `bool` | `false` | Whether `TomServer.start` answers Prometheus scrapes at `metricsPath`, ahead of authentication. Environment name `METRICS_ENDPOINT`. |
+| `metricsPath` | `String` | `/metrics` | The path scrapes are answered at. Environment name `METRICS_PATH`. |
+| `metricsToken` | `String` | `""` | The bearer token a scrape must present; empty leaves the endpoint open, which is right only where nothing but the scraper reaches the port. **Secret-bearing.** Environment name `METRICS_TOKEN`. |
+| `otlpEndpoint` | `String` | `""` | The OTLP/HTTP receiver's base URL (`http://collector:4318`); `/v1/metrics` is appended. Empty pushes nothing. Environment name `OTLP_ENDPOINT`. |
+| `otlpHeaders` | `String` | `""` | Headers sent with every push, as `key=value,key=value` with percent-encoded values — the form of `OTEL_EXPORTER_OTLP_HEADERS`. An entry without `=` stops the start with `otlp.config.invalid_headers`. Secret-bearing when it carries a credential. Environment name `OTLP_HEADERS`. |
+| `otlpMetricsIntervalSeconds` | `int` | `60` | How often metrics are pushed. Environment name `OTLP_METRICS_INTERVAL_SECONDS`. |
+
+```yaml
+# assets/config-resources_default.yaml
+metricsEndpoint: true
+metricsToken: "${METRICS_TOKEN}"
+otlpEndpoint: "http://otel-collector:4318"
+```
+
+The series, the scrape endpoint and the export are described in
+[metrics.md](metrics.md); where the scrape sits in the pipeline, in
+[server.md](server.md#the-pipeline).
 
 ## Source Precedence
 

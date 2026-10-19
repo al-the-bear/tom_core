@@ -133,9 +133,17 @@ void main() {
       expect(TomRequestLogInfo.contextName, 'loggingInfo');
     });
 
-    test('toString reflects both flags', () {
+    test('toString reflects both flags and the route', () {
       final info = TomRequestLogInfo()..hasBeenLogged = true;
-      expect(info.toString(), 'TomRequestLogInfo should=true has=true');
+      expect(
+        info.toString(),
+        'TomRequestLogInfo should=true has=true route=null',
+      );
+      info.route = '/tasks/<id>';
+      expect(
+        info.toString(),
+        'TomRequestLogInfo should=true has=true route=/tasks/<id>',
+      );
     });
   });
 

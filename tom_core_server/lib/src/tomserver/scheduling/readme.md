@@ -246,6 +246,11 @@ instant, a UTC value would not compare equal to the value read back. A caller
 that writes a local `DateTime` gets a UTC one back — the same instant,
 differently labelled.
 
+**Metrics.** `TomSqlJobStore.backlog` — one grouped `SELECT`, read through
+`TomJobBacklogRow` — is what the kernel scheduler's `tom_job_backlog` and
+`tom_job_backlog_age_seconds` gauges report for a shared queue; the scheduler
+records the per-run job series itself — see [`doc/metrics.md`](../../../../doc/metrics.md).
+
 See [`doc/scheduling.md`](../../../../doc/scheduling.md) for the two ports, the
 claim protocol and the roll call, and
 `example/scheduling/scheduling_example.dart` for a walkthrough that checks its

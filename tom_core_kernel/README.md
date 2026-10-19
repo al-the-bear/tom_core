@@ -37,7 +37,8 @@ serialized without hand-written boilerplate. Conceptually it provides five thing
 - **Security** — authentication, a layered access-control model, bearer-token
   auth, and a four-state authorization model (`TomAuthState`).
 - **Runtime utilities** — logging (including isolate/remote), an isolate worker
-  pool, a durable job scheduler, the canonical success-or-error result
+  pool, a durable job scheduler, in-process metrics exported to Prometheus
+  and OTLP, the canonical success-or-error result
   envelope, JSON tree helpers, resource providers, settings, timezone-aware
   timestamps, and ordered shutdown.
 
@@ -123,6 +124,7 @@ handle declared so far so a missing binding fails at start-up.
 | ------ | --------- | ------------ |
 | `logging` | isolate & remote log output/server | Structured logging across isolates and the wire |
 | `isolate_pooling` | `TomWorker`, `TomWorkerPool`, `TomExecutor`, `TomCommand` | Worker-pool execution across isolates |
+| `metrics` | `TomMetricRegistry`, `TomCounter`, `TomGauge`, `TomHistogram`, `TomMetrics.registry`, `tomPrometheusText` | Per-isolate counters, gauges, histograms and observed gauges; one snapshot rendered as Prometheus text and read by the server's OTLP exporter |
 | `scheduling` | `TomScheduler`, `TomJobDefinition`, `TomSchedule` (cron / calendar / interval / once / event), `TomJobStore`, `TomLeaseLock` | Durable, leased job scheduling with retry and catch-up policies |
 | `json` | map-merge, pretty-print helpers | JSON tree merge/serialization utilities |
 | `resources` | `TomTextResourceProvider`, `TomConfigResourceProvider` | Text and configuration resource resolution |
@@ -177,6 +179,7 @@ so anything listed below is executed on every run.
 | [`example/samples/logging/`](example/samples/logging/) | Structured / isolate / remote logging |
 | [`example/samples/resources/`](example/samples/resources/) | Text & config resource providers |
 | [`example/samples/preferences/`](example/samples/preferences/) | The preference codec's scalar, `DateTime` and reflected round-trips, and the `/preferences` contract |
+| [`example/samples/metrics/`](example/samples/metrics/) | The three instruments and every misuse refused, the exact Prometheus text of a snapshot, and the `tom_job_*` series a scheduler records |
 | [`example/samples/scheduling/`](example/samples/scheduling/) | The in-memory substrate, `@TomScheduledJob` discovery, every schedule kind against the missed-window policies, and what at-least-once asks of a job body |
 | [`example/samples/json/`](example/samples/json/) · [`example/samples/timezoned/`](example/samples/timezoned/) · [`example/samples/settings/`](example/samples/settings/) · [`example/samples/shutdown_cleanup/`](example/samples/shutdown_cleanup/) · [`example/samples/http_connection/`](example/samples/http_connection/) · [`example/samples/little_things/`](example/samples/little_things/) · [`example/samples/reflection/`](example/samples/reflection/) | The remaining utility modules |
 
@@ -333,7 +336,7 @@ tears them down in a deterministic order on process exit.
    ┌──────────┬───────┼────────┬───────────┐
 observable  context  security  resources   runtime utils
  (TomObject) (scope) (TomAuth*) (providers) (logging, isolates,
-                                             json, settings,
+                                             json, settings, metrics,
                                              shutdown, timezoned)
                       │
               tom_reflection  ← introspection / serialization
@@ -380,6 +383,9 @@ the common dependency of the server and Flutter layers. See the
 - [`doc/scheduling/scheduling.md`](doc/scheduling/scheduling.md) — the job
   scheduler: schedule kinds, retry and missed-window policies, the job store,
   and the lease lock that keeps one owner per job across processes.
+- [`doc/metrics/metrics.md`](doc/metrics/metrics.md) — counters, gauges,
+  histograms and observed gauges, the snapshot both exporters read, and the
+  series the framework records.
 - Per-module API reference under [`doc/api/`](doc/api/) —
   one summary per barrel-exported module plus a cross-module type index; start at
   [`api_summary_index.md`](doc/api/api_summary_index.md).

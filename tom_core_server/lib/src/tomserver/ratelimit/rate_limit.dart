@@ -529,6 +529,13 @@ class TomRateLimits {
   );
 }
 
+/// The counter of requests a rate limit refused, labelled `rule` and
+/// `tenant` ([tomNoTenantLabel] outside any tenant).
+const String tomRateLimitRefusalsMetric = 'tom_rate_limit_refusals';
+
+/// The `tenant` label of a series recorded outside any tenant's context.
+const String tomNoTenantLabel = 'none';
+
 /// The rate-limiting [Middleware] of a `TomServer`.
 ///
 /// Placed inside the authentication middleware, where the request's principal
@@ -544,8 +551,17 @@ Middleware tomRateLimitMiddleware() =>
       final (decision, rule) = await limits.check(request);
       if (decision == null) return innerHandler(request);
       if (!decision.allowed) {
+        TomMetrics.registry
+            .counter(
+              tomRateLimitRefusalsMetric,
+              help: 'Requests refused by a rate limit, by rule and tenant.',
+            )
+            .add(1, {
+              'rule': rule!.name,
+              'tenant': TomTenantContext.currentId ?? tomNoTenantLabel,
+            });
         tomLog.info(
-          "Rate limit '${rule!.name}' refused a request to "
+          "Rate limit '${rule.name}' refused a request to "
           '${request.requestedUri.path}; retry after '
           '${decision.retryAfterSeconds}s.',
         );

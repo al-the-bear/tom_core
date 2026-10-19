@@ -81,6 +81,10 @@ Future<void> main() async {
 }
 ```
 
+**Metrics.** Every value read is counted in `tom_cache_lookups`
+(`tomCacheLookupsMetric`) by cache and result — `hit`, `miss` or `expired` — see
+[`doc/metrics.md`](../../../../doc/metrics.md).
+
 See [`doc/cache.md`](../../../../doc/cache.md) for expiry and bounds, the
 isolate model, cross-node invalidation, and what the module does not yet do, and
 `example/cache/cache_example.dart` for a runnable ten-step walkthrough that

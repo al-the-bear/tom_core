@@ -545,6 +545,9 @@ void main() {
       'server/server.dart':
           'a server-side log line for a failed self-login, written to the '
           'operator log and never to a response',
+      'metrics/otlp_exporter.dart':
+          'a server-side warning for a periodic OTLP push that failed, written '
+          'to the operator log and never to a response',
     };
 
     /// Package-relative paths (below [_sourceRoot]) that read it, excluding

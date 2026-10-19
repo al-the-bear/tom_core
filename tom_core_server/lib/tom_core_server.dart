@@ -1,11 +1,12 @@
 /// Tom Core Server — the server half of the Tom stack.
 ///
-/// Twenty modules over `tom_core_kernel`: the `TomServer` that composes a shelf
-/// pipeline in front of a reflected endpoint router, the object persistence,
-/// datasource and migration layers beneath it, and the services a deployment
-/// builds on those — authentication and authorization, audit, messaging,
-/// export, file storage, scheduling, caching, preferences and localized
-/// resources.
+/// Twenty-four modules over `tom_core_kernel`: the `TomServer` that composes a
+/// shelf pipeline in front of a reflected endpoint router, the object
+/// persistence, datasource and migration layers beneath it, and the services a
+/// deployment builds on those — authentication and authorization, tenancy,
+/// rate limiting, audit, messaging, export, file storage, scheduling, caching,
+/// preferences, localized resources, and the metrics a scrape or an OTLP
+/// collector reads.
 ///
 /// Everything is exported from this one library, so `TomServer`,
 /// `TomSqlDatasourceRepository` and `TomAuditTrail` are all reachable from a
@@ -153,6 +154,8 @@ export 'src/tomserver/messaging/sql_delivery_report_store.dart';
 export 'src/tomserver/messaging/templated_message_service.dart';
 export 'src/tomserver/messaging/vendor_mapping.dart';
 export 'src/tomserver/messaging/webhook_transport.dart';
+export 'src/tomserver/metrics/metrics_middleware.dart';
+export 'src/tomserver/metrics/otlp_exporter.dart';
 export 'src/tomserver/object_persistence/annotation_analyzer.dart';
 export 'src/tomserver/object_persistence/blob_migration.dart';
 export 'src/tomserver/object_persistence/column_authorization.dart';

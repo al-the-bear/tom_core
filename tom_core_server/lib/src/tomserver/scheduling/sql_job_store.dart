@@ -707,6 +707,26 @@ class TomSqlJobStore implements TomJobStore {
   }
 
   @override
+  Future<List<TomJobBacklog>> backlog(DateTime now) async {
+    await ensureSchema();
+    final rows = await datasource.executeQuery<TomJobBacklogRow>(
+      'SELECT job_name, COUNT(*) AS due, MIN(run_at) AS oldest_run_at '
+      'FROM $table WHERE state = :pending AND run_at <= :now '
+      'GROUP BY job_name',
+      {'pending': TomJobRunState.pending.name, 'now': sqlInstant(now)},
+    );
+    return [
+      for (final row in rows)
+        if (row.oldestRunAt != null && row.oldestRunAt!.isNotEmpty)
+          TomJobBacklog(
+            jobName: row.jobName,
+            due: row.due,
+            oldestDueAt: parseSqlInstant(row.oldestRunAt!),
+          ),
+    ];
+  }
+
+  @override
   Future<int> purgeFinished(DateTime before) async {
     await ensureSchema();
     final removed = await datasource.executeCommand(
@@ -904,4 +924,26 @@ class TomJobRunWindowRow {
   /// The latest window, or `null` when the job has no runs at all.
   @TomDbColumn(columnName: "scheduled_for")
   String? scheduledFor;
+}
+
+/// One job's aggregate row of [TomSqlJobStore.backlog]: how many of its runs
+/// are due and unclaimed, and the earliest `run_at` among them.
+@tomReflector
+@TomDbTable(
+  datasource: "irrelevant",
+  table: "irrelevant",
+  primaryKeyFields: ["irrelevant"],
+)
+class TomJobBacklogRow {
+  /// The job.
+  @TomDbColumn(columnName: "job_name")
+  String jobName = "";
+
+  /// How many of its runs are due and unclaimed.
+  @TomDbColumn(columnName: "due")
+  int due = 0;
+
+  /// The earliest due `run_at`, as stored UTC text.
+  @TomDbColumn(columnName: "oldest_run_at")
+  String? oldestRunAt;
 }

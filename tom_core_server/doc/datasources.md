@@ -107,6 +107,7 @@ declared.
 | `TomFrameworkTable` / `TomFrameworkColumn` / `TomFrameworkKey` | class | The single declaration of a table the framework itself owns, from which its DDL, column lists and row writes are derived — in each database's own words |
 | `TomSchemaProvisioning` | class | Creates a store's tables at most once, however many first calls arrive together |
 | `unknownFrameworkColumns` | function | Audits a hand-written statement for column references no framework table declares |
+| `tomDbStatementDurationMetric` / `tomDbStatementErrorsMetric` / `tomDbPoolConnectionsMetric` / `tomDbPoolAcquireDurationMetric` / `tomDbPoolAcquireFailuresMetric` | const String | The names of the statement and pool series every `TomSqlDatasource` records, labelled with its `registeredName` — see [metrics.md](metrics.md#data-sources) |
 
 ## SQL-Typed Values
 
@@ -990,6 +991,21 @@ with `clientThrow: false`: the condition is the server's, and its key is what an
 operator matches on. `size`, `lentCount`, `idleCount`, `waitingCount`,
 `connections`, `idleConnections`, `isLent(connection)` and `isClosed` describe
 the pool's state, and `toString` summarises it.
+
+**Every SQL data source reports its pool and its statements as metrics.**
+`TomSqlDatasource` records the wait for a connection
+(`tom_db_pool_acquire_duration_seconds`), the acquires that failed
+(`tom_db_pool_acquire_failures`), each statement's duration on its connection by
+operation (`tom_db_statement_duration_seconds`), the statements that threw
+(`tom_db_statement_errors`), and — while it is open — the pool's connections by
+state (`tom_db_pool_connections`: `idle`, `in_use`, `waiting`, `max`). Every
+series is labelled `datasource` with `registeredName`, the name
+`TomDataSourceInfo.initialize` records through `registerAs`; a tenant's own pool
+is `<base>@<tenant>`, so each tenant pool's usage is visible on its own. The
+series names are the constants `tomDbStatementDurationMetric`,
+`tomDbStatementErrorsMetric`, `tomDbPoolConnectionsMetric`,
+`tomDbPoolAcquireDurationMetric` and `tomDbPoolAcquireFailuresMetric`. See
+[metrics.md](metrics.md#data-sources).
 
 ## The SQL Drivers
 

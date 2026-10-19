@@ -31,6 +31,7 @@ run, and a tick loop that plans, claims, dispatches and retries.
   - [TomJobRun](#tomjobrun)
   - [TomJobClaim](#tomjobclaim)
   - [TomJobStore](#tomjobstore)
+  - [TomJobBacklog](#tomjobbacklog)
   - [TomMemoryJobStore](#tommemoryjobstore)
   - [TomFileJobStore](#tomfilejobstore)
 - [The lease lock](#the-lease-lock)
@@ -98,6 +99,8 @@ TomJobDispatcher  (abstract)
 TomJobStore  (abstract)
     └── TomMemoryJobStore  (implements TomJobStore)
             └── TomFileJobStore
+
+TomJobBacklog  (value — one job's due, unclaimed runs)
 
 TomLeaseLock  (abstract)
     ├── TomMemoryLeaseLock
@@ -734,6 +737,26 @@ re-reading the store.
 | `recoverAbandoned` | `Future<List<TomJobRun>> recoverAbandoned(DateTime now, Duration leaseTimeout, {bool Function(String jobName)? requestsRecovery})` | Reclaims runs left `running` by a holder that vanished, without charging an attempt. Returns every run it changed, so the caller can alert on each. |
 | `all` | `Future<List<TomJobRun>> all()` | Every held run, in insertion order — diagnostics and tests. |
 | `purgeFinished` | `Future<int> purgeFinished(DateTime before)` | Deletes terminal runs completed before `before`; returns the count. |
+| `backlog` | `Future<List<TomJobBacklog>> backlog(DateTime now)` | The runs due at `now` that nobody has claimed — `pending` with `runAt` at or before `now` — grouped per job: how many, and since when the oldest has been due. A job with nothing due is absent. The scheduler reports it as the `tom_job_backlog` and `tom_job_backlog_age_seconds` gauges; a backlog that does not drain is the signal that no node is taking the job's work, which a start-lag histogram cannot give, because a run nobody starts records no lag. |
+
+### TomJobBacklog
+
+The due, unclaimed runs of one job — one element of what `TomJobStore.backlog`
+answers.
+
+#### Constructors
+
+```dart
+const TomJobBacklog({required String jobName, required int due, required DateTime oldestDueAt})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `jobName` | `final String` | The job. |
+| `due` | `final int` | How many of its runs are due and unclaimed; at least 1. |
+| `oldestDueAt` | `final DateTime` | When the oldest of them became due — its `runAt`, so a backed-off retry counts from its retry time, not its window. |
 
 ### TomMemoryJobStore
 
@@ -748,6 +771,7 @@ An in-process store — the default for tests and single-process use.
 | `onMutated` | `void onMutated()` | Hook called after every mutation; the extension point `TomFileJobStore` uses to learn that an operation changed the queue and must be written back. |
 | `snapshotSync` | `List<TomJobRun> snapshotSync()` | A synchronous copy of the held runs. |
 | `replaceAll` | `void replaceAll(Iterable<TomJobRun> runs)` | Replaces the contents wholesale (used when loading). |
+| `backlog` | `Future<List<TomJobBacklog>> backlog(DateTime now)` | *(override)* One pass over the held runs, counting those `isDue(now)` per job and keeping the earliest `runAt`. |
 
 ### TomFileJobStore
 
@@ -764,8 +788,8 @@ process id in the staging name keeps two nodes on a shared mount from publishing
 each other's partial writes; strays are ignored on load.
 
 Several stores over one file — processes on one host or a shared mount, isolates
-in one process — share one queue. Every operation (all twelve `TomJobStore`
-methods, `all()` included) holds an exclusive mutex, a `TomFileLeaseLock` on
+in one process — share one queue. Every operation (all thirteen `TomJobStore`
+methods, `all()` and `backlog()` included) holds an exclusive mutex, a `TomFileLeaseLock` on
 the sibling directory `<path>.lock` with a 30-second lease, re-reads the file,
 applies itself and writes the file back if it changed anything. A claim is
 therefore atomic across every store on the file, and the in-memory queue is only
@@ -796,6 +820,12 @@ effect on disk, and the price of a salvage that survives the next restart.
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `file` | `File` | The backing file. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `backlog` | `Future<List<TomJobBacklog>> backlog(DateTime now)` | *(override)* The in-memory answer, taken under the file mutex after re-reading the file, so it counts what every store on the file has enqueued and claimed. |
 
 ## The lease lock
 
@@ -1049,11 +1079,31 @@ the interval is defaulted from it.
 | ------ | --------- | ----------- |
 | `register` | `void register(TomJobDefinition job)` | Adds a job; subscribes its stream for an event schedule. |
 | `deregister` | `void deregister(String name)` | Removes a job and cancels any subscription. |
-| `start` | `Future<void> start()` | Runs one `tick` immediately — which is what recovers abandoned leases and catches up on restart — then repeats roughly every `tickInterval`. |
+| `start` | `Future<void> start()` | Runs one `tick` immediately — which is what recovers abandoned leases and catches up on restart — then repeats roughly every `tickInterval`. Registers the `tom_job_backlog` and `tom_job_backlog_age_seconds` observations on `TomMetrics.registry` (once per scheduler). |
 | `stop` | `void stop()` | Stops the timer; in-flight runs are left to finish. |
-| `close` | `Future<void> close()` | *(override)* Shutdown: stops, cancels subscriptions, closes the dispatcher, and releases held leases so peers can take the work at once instead of waiting out `leaseTtl`; completes once the releases have landed. A release that fails is logged and left to expire. |
+| `close` | `Future<void> close()` | *(override)* Shutdown: stops, cancels subscriptions, closes the dispatcher, and releases held leases so peers can take the work at once instead of waiting out `leaseTtl`; completes once the releases have landed. A release that fails is logged and left to expire. Cancels the backlog observations `start` registered. |
 | `tick` | `Future<void> tick()` | One complete pass — recover, plan, claim, dispatch. Safe to call directly (this is what tests drive); overlapping calls are collapsed rather than re-entered. Awaiting it awaits the pass, not the runs it started — for that, follow with `drain`. |
 | `drain` | `Future<void> drain()` | Completes once every run in flight has finished and written its outcome to the store — success, scheduled retry, or terminal failure. The affordance a test asserting an effect, or a shutdown emptying its queue, needs; `stop()` then `await drain()` quiesces the scheduler. A body that outlived its timeout is not waited for — its attempt finished at the timeout, and it may never settle — see `overrunningCount`. |
+
+#### Metrics
+
+The scheduler records into `TomMetrics.registry` (see
+[`api_summary_metrics.md`](api_summary_metrics.md)). Every series is labelled
+`job` with the job's name — a bounded label, since jobs are registered, not
+created per request.
+
+| Series | Kind | Labels | Recorded |
+| ------ | ---- | ------ | -------- |
+| `tom_job_start_lag_seconds` | histogram (`tomLagBuckets`) | `job` | When an attempt is marked started: how long after the run's `runAt` it began. |
+| `tom_job_run_duration_seconds` | histogram (`tomLagBuckets`) | `job` | When an attempt ends — succeeded, failed or timed out — if its body was dispatched. A run that never reached dispatch records nothing. |
+| `tom_job_runs` | counter (`tom_job_runs_total`) | `job`, `outcome` | When an attempt's outcome is recorded: `succeeded`, `retried` (failed with another attempt scheduled) or `failed` (terminal). |
+| `tom_job_last_success_timestamp_seconds` | gauge | `job` | On every success: the completion time in seconds since the epoch, as seen by this node. |
+| `tom_job_backlog` | observed gauge | `job` | At every snapshot, between `start` and `close`: `store.backlog(clock()).due`, for this scheduler's registered jobs only. |
+| `tom_job_backlog_age_seconds` | observed gauge | `job` | At every snapshot, between `start` and `close`: how long the oldest unclaimed due run has been due. |
+
+The backlog gauges are filtered to the jobs registered on this scheduler so two
+schedulers sharing a store — an application's and the messaging outbox's
+(`messaging.outbox` in `tom_core_server`) — do not both report every job.
 
 ## Enums
 

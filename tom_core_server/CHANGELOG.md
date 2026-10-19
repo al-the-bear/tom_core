@@ -2,6 +2,51 @@
 
 ### Added
 
+- **Metrics, exposed for Prometheus and over OTLP — the new `metrics` module.**
+  The server records into the kernel's process registry (`TomMetrics.registry`,
+  the kernel's new `metrics` module) beside the scheduler's job series:
+  `tom_http_server_requests` {`method`, `route`, `status`} and
+  `tom_http_server_request_duration_seconds` {`method`, `route`}, labelled by the
+  endpoint's route pattern (`tomUnmatchedRoute`, `unmatched`, when no endpoint
+  matched) through `tomRequestMetricsMiddleware`; a Prometheus scrape answered by
+  `tomMetricsEndpointMiddleware` at the outer edge of the pipeline, before
+  authentication, with an optional bearer token compared in constant time; and
+  an OTLP/HTTP JSON export — `TomOtlpHttpTransport` (signal-neutral, posts to
+  `<endpoint>/v1/<signal>`, `parseHeaders` in the `OTEL_EXPORTER_OTLP_HEADERS`
+  form, `urlOf`), `TomOtlpMetricsExporter` (cumulative, every interval, a final
+  push on `close`), `tomOtlpMetricsJson` and `TomOtlpExportException`
+  (`otlp.export.failed`, `otlp.config.invalid_headers`). `doc/metrics.md`,
+  `example/metrics/metrics_example.dart`.
+- **Configuration keys `metricsEndpoint`, `metricsPath`, `metricsToken`,
+  `otlpEndpoint`, `otlpHeaders` and `otlpMetricsIntervalSeconds`** (environment
+  `METRICS_ENDPOINT`, `METRICS_PATH`, `METRICS_TOKEN`, `OTLP_ENDPOINT`,
+  `OTLP_HEADERS`, `OTLP_METRICS_INTERVAL_SECONDS`); `TomServer.start` installs
+  the scrape when `metricsEndpoint` is on and creates
+  `TomServer.metricsExporter` — registered with the shutdown cleanup — when
+  `otlpEndpoint` is set. `doc/configuration.md` § Publishing Metrics.
+- **`TomRequestLogInfo.route`** — the pattern of the endpoint that served the
+  request, set by the endpoint pipeline.
+- **Data-source series**, recorded by `TomSqlDatasource` for both drivers:
+  `tom_db_statement_duration_seconds` and `tom_db_statement_errors` {`datasource`,
+  `operation`}, `tom_db_pool_connections` {`datasource`, `state`: `idle`,
+  `in_use`, `waiting`, `max`}, `tom_db_pool_acquire_duration_seconds` and
+  `tom_db_pool_acquire_failures` {`datasource`} — names exported as
+  `tomDbStatementDurationMetric`, `tomDbStatementErrorsMetric`,
+  `tomDbPoolConnectionsMetric`, `tomDbPoolAcquireDurationMetric` and
+  `tomDbPoolAcquireFailuresMetric`. The label is the new
+  `TomSqlDatasource.registeredName`, recorded by `registerAs`, which
+  `TomDataSourceInfo.initialize` calls — `<base>@<tenant>` for a tenant's own
+  pool.
+- **`tom_cache_lookups`** {`cache`, `result`: `hit`, `miss`, `expired`}
+  (`tomCacheLookupsMetric`) and **`tom_rate_limit_refusals`** {`rule`, `tenant`}
+  (`tomRateLimitRefusalsMetric`, with `tomNoTenantLabel` = `none` outside any
+  tenant).
+- **`TomSqlJobStore.backlog`** and its row type **`TomJobBacklogRow`** — the
+  due, unclaimed runs per job and the earliest among them, in one grouped
+  `SELECT`, read by the kernel scheduler's `tom_job_backlog` and
+  `tom_job_backlog_age_seconds` gauges. The messaging outbox runs as the job
+  `messaging.outbox`, so its lag is the kernel's job series.
+
 - **PostgreSQL (15 and later) as a second database beside MariaDB.**
   `PostgresDatasource` (`type: postgresql`) over `package:postgres`, with the
   settings `schema` (the session's `search_path`) and `sslMode` (`disable`,
@@ -500,6 +545,12 @@
 
 ### Changed
 
+- **The server records metrics.** `doc/server.md` no longer states that the
+  module has no metrics facility and that a metrics route is an ordinary
+  endpoint: the pipeline now opens with the scrape endpoint (when configured)
+  and the request series, outside logging, both error layers and
+  authentication. `doc/server.md` § The Pipeline and § Metrics.
+
 - **Breaking: the MariaDB types extend the SQL base.** `MariaDbDatasource` /
   `MariaDbXADatasource` extend `TomSqlDatasource`; `MariadbDatasourceException`
   extends `TomSqlDatasourceException`, `MariadbPreparedStatementException`
@@ -610,6 +661,14 @@
 
 ### Tests
 
+- **`test/metrics_test.dart`** covers the request series by route pattern, an
+  unmatched path, an escaping error counted as `500`, the scrape (not counted,
+  token refusals, `HEAD`), one scrape carrying request, rate-limit, cache and
+  job series, an expired cache read, and the OTLP exporter against an
+  in-process receiver; **`test/metrics_db_test.dart`** (tag `db`) the statement
+  and pool series on MariaDB or PostgreSQL; **`test/metrics_otel_test.dart`**
+  (new tag `otel`, run by `tool/run_otel_tests.sh`) has promtool lint the scrape
+  and an OpenTelemetry Collector (`tool/otel/collector.yaml`) receive an export.
 - **`test/optimistic_locking_test.dart`** covers which fields may be the version,
   the versioned `UPDATE`, the values a versioned save and delete bind, the
   refusals against a scripted data source, and the migration shapes the

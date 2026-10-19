@@ -50,6 +50,7 @@ import 'package:tom_basics/tom_basics.dart';
 
 import '../context/tenant_context.dart';
 import '../isolate_pooling/tom_worker.dart';
+import '../metrics/metrics.dart';
 import '../shutdown_cleanup/tom_shutdown_cleanup.dart';
 import 'job_definition.dart';
 import 'job_store.dart';
@@ -446,9 +447,85 @@ class TomScheduler implements TomClosable {
   Future<void> start() async {
     _requireOpen();
     if (_timer != null) return;
+    _observeBacklog();
     _scheduleNextTick();
     await tick();
   }
+
+  /// The backlog gauges of this scheduler's jobs, registered by [start] and
+  /// cancelled by [close].
+  final List<TomMetricObservation> _backlogObservations = [];
+
+  /// Reports [TomJobStore.backlog] for the jobs registered here as
+  /// `tom_job_backlog` and `tom_job_backlog_age_seconds`.
+  ///
+  /// Only this scheduler's jobs: two schedulers sharing a store — the
+  /// application's and the outbox's — would otherwise both report every job.
+  void _observeBacklog() {
+    if (_backlogObservations.isNotEmpty) return;
+    Future<List<TomJobBacklog>> mine() async => [
+      for (final b in await store.backlog(clock()))
+        if (_jobs.containsKey(b.jobName)) b,
+    ];
+    final registry = TomMetrics.registry;
+    _backlogObservations
+      ..add(
+        registry.observe(
+          'tom_job_backlog',
+          help: 'Runs due and not yet claimed, by job.',
+          observer: () async => [
+            for (final b in await mine())
+              TomObservedValue(b.due, {'job': b.jobName}),
+          ],
+        ),
+      )
+      ..add(
+        registry.observe(
+          'tom_job_backlog_age_seconds',
+          help: 'How long the oldest unclaimed due run has been due, by job.',
+          unit: 's',
+          observer: () async {
+            final now = clock();
+            return [
+              for (final b in await mine())
+                TomObservedValue(_seconds(now.difference(b.oldestDueAt)), {
+                  'job': b.jobName,
+                }),
+            ];
+          },
+        ),
+      );
+  }
+
+  static double _seconds(Duration d) =>
+      d.isNegative ? 0 : d.inMicroseconds / Duration.microsecondsPerSecond;
+
+  static TomHistogram get _startLag => TomMetrics.registry.histogram(
+    'tom_job_start_lag_seconds',
+    help: 'How late a run started after it became due, by job.',
+    unit: 's',
+    buckets: tomLagBuckets,
+  );
+
+  static TomHistogram get _runDuration => TomMetrics.registry.histogram(
+    'tom_job_run_duration_seconds',
+    help: 'How long an attempt ran, by job.',
+    unit: 's',
+    buckets: tomLagBuckets,
+  );
+
+  static TomCounter get _runsEnded => TomMetrics.registry.counter(
+    'tom_job_runs',
+    help: 'Attempts ended, by job and outcome (succeeded, retried, failed).',
+  );
+
+  static TomGauge get _lastSuccess => TomMetrics.registry.gauge(
+    'tom_job_last_success_timestamp_seconds',
+    help:
+        'When a run of the job last succeeded on this node, in seconds '
+        'since the epoch.',
+    unit: 's',
+  );
 
   /// Arms a one-shot timer for the next pass and re-arms from its own callback.
   ///
@@ -501,6 +578,10 @@ class TomScheduler implements TomClosable {
   Future<void> close() async {
     _closed = true;
     stop();
+    for (final observation in _backlogObservations) {
+      observation.cancel();
+    }
+    _backlogObservations.clear();
     for (final subscription in _eventSubscriptions.values) {
       _cancel(subscription);
     }
@@ -959,6 +1040,9 @@ class TomScheduler implements TomClosable {
   ) async {
     final run = claim.run;
     final heartbeat = _startHeartbeat(job, claim);
+    // Started when the body is dispatched; a run that never got that far
+    // records no duration.
+    final attempt = Stopwatch();
     // Set only when the attempt timed out with its body still executing; the
     // `finally` then hands the run's protection over instead of releasing it.
     Future<Object?>? overrunningBody;
@@ -988,7 +1072,12 @@ class TomScheduler implements TomClosable {
       // confuse. The cost is the opposite error — a run marked started whose
       // dispatch never happened — and that one is safe, because it only ever
       // makes recovery more cautious.
-      await store.markStarted(claim, clock());
+      final started = clock();
+      _startLag.record(_seconds(started.difference(run.runAt)), {
+        'job': job.name,
+      });
+      await store.markStarted(claim, started);
+      attempt.start();
       final body = dispatcher.dispatch(command);
       try {
         await body.timeout(job.timeout);
@@ -996,7 +1085,15 @@ class TomScheduler implements TomClosable {
         overrunningBody = body;
         rethrow;
       }
-      if (_stillOurs(run)) await store.complete(claim, clock());
+      if (_stillOurs(run)) {
+        final now = clock();
+        await store.complete(claim, now);
+        _runsEnded.add(1, {'job': job.name, 'outcome': 'succeeded'});
+        _lastSuccess.set(
+          now.millisecondsSinceEpoch / Duration.millisecondsPerSecond,
+          {'job': job.name},
+        );
+      }
     } on TimeoutException catch (error, stack) {
       onAlert(
         TomJobAlert(
@@ -1010,6 +1107,9 @@ class TomScheduler implements TomClosable {
     } catch (error, stack) {
       if (_stillOurs(run)) await _failAttempt(job, claim, error, stack);
     } finally {
+      if (attempt.isRunning) {
+        _runDuration.recordDuration(attempt.elapsed, {'job': job.name});
+      }
       _inFlight.remove(run.id);
       final overrun = overrunningBody;
       if (overrun == null) {
@@ -1147,6 +1247,7 @@ class TomScheduler implements TomClosable {
     }
     final retryAt = now.add(job.retryPolicy.backoffFor(run.attempt, random));
     await store.fail(claim, error.toString(), now, retryAt: retryAt);
+    _runsEnded.add(1, {'job': job.name, 'outcome': 'retried'});
     onAlert(
       TomJobAlert(
         jobName: job.name,
@@ -1167,6 +1268,7 @@ class TomScheduler implements TomClosable {
     StackTrace stack,
   ) async {
     await store.fail(claim, error.toString(), clock());
+    _runsEnded.add(1, {'job': job.name, 'outcome': 'failed'});
     onAlert(
       TomJobAlert(
         jobName: job.name,

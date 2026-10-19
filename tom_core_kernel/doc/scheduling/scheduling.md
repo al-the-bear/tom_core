@@ -37,6 +37,7 @@ fails*, and *which node in a cluster actually runs a given occurrence*.
 - [Lease Locks](#lease-locks)
   - [Choosing a substrate](#choosing-a-substrate)
 - [Observability](#observability)
+  - [Metrics](#metrics)
 - [Best Practices](#best-practices)
 - [Dependencies](#dependencies)
 
@@ -72,6 +73,7 @@ fails*, and *which node in a cluster actually runs a given occurrence*.
 | `TomJobStore` | abstract class | The persistence contract the tick loop is written in. |
 | `TomMemoryJobStore` | class | A `TomJobStore` that keeps everything in memory and nothing across restarts. |
 | `TomFileJobStore` | class | A `TomJobStore` that mirrors the queue to a JSON file on every mutation. |
+| `TomJobBacklog` | class | One job's due, unclaimed runs — how many, and since when the oldest has been due — as `TomJobStore.backlog` answers them. |
 | `TomLease` | class | A time-limited claim carrying a monotonic fencing `token`. |
 | `TomLeaseInfo` | class | A resource's lock state, including "the holder vanished". |
 | `TomLeaseLock` | abstract class | The mutual-exclusion contract. |
@@ -529,6 +531,11 @@ The scheduler calls `markStarted` immediately before dispatching the body, so th
 distinction is recorded where a *peer* can read it rather than being remembered
 in the node that is about to disappear.
 
+The store also answers `backlog(now)`: the runs that are due — `pending`, with
+`runAt` at or before `now` — and that nobody has claimed, grouped per job as a
+`TomJobBacklog` (`due`, `oldestDueAt`). It changes nothing; the scheduler reads
+it for its [backlog gauges](#metrics).
+
 Two implementations ship here:
 
 - **`TomMemoryJobStore`** — one process, nothing survives a restart. Right for
@@ -611,7 +618,7 @@ overwritten by that process's next write.
 ### Shared by several processes
 
 A store's in-memory queue is only a working copy. Each operation — enqueue,
-claim, complete, fail, renew, recover, even `all()` — takes an exclusive mutex,
+claim, complete, fail, renew, recover, even `all()` and `backlog()` — takes an exclusive mutex,
 **re-reads the file**, applies itself, writes the file back if it changed
 anything, and releases the mutex. The mutex is a `TomFileLeaseLock` on the
 sibling directory `<queue>.lock`, so it holds between processes and between
@@ -1144,6 +1151,49 @@ Three questions and where they are answered:
   one that merely **lapsed** (`holderVanished` — a node died mid-run). The run
   itself is recovered on the next tick and alerted as `runAbandoned`.
 
+### Metrics
+
+Alerts say what went wrong; the metrics say how the jobs are doing. The
+scheduler records into `TomMetrics.registry` — the per-isolate registry of the
+[metrics module](../metrics/metrics.md) — so the series reach Prometheus through
+the server's `/metrics` endpoint and an OTLP collector through
+`tom_core_server`'s exporter without any configuration on the scheduler. Every
+series carries a `job` label with the job's name.
+
+| Series | Kind | What it answers |
+| ------ | ---- | --------------- |
+| `tom_job_start_lag_seconds` | histogram | How late an attempt started after its run became due (`runAt`). Recorded when the run is marked started. |
+| `tom_job_run_duration_seconds` | histogram | How long an attempt ran, from dispatch to its outcome — succeeded, failed or timed out. |
+| `tom_job_runs_total` | counter, `outcome` label | Attempts ended: `succeeded`, `retried` (failed with another attempt scheduled), `failed` (terminally). |
+| `tom_job_last_success_timestamp_seconds` | gauge | When a run of the job last succeeded **on this node**, in seconds since the epoch. |
+| `tom_job_backlog` | observed gauge | How many runs are due and unclaimed — `TomJobStore.backlog`, read at every scrape. |
+| `tom_job_backlog_age_seconds` | observed gauge | How long the oldest of them has been due. |
+
+Both histograms use `tomLagBuckets` (0.1 s to an hour), because job delays are
+measured in seconds and minutes rather than in the milliseconds an HTTP request
+takes.
+
+The backlog gauges exist because the start-lag histogram is silent about the
+failure that matters most: **a run that nobody starts records no lag.** When no
+node is taking a job's work — every node down, a lease held by a dead holder,
+the job registered nowhere — the histogram simply stops receiving
+observations, which reads exactly like a quiet period. A backlog that does not
+drain and an age that keeps rising are the signal. They are observed from
+`start()` until `close()`, so they are read only while the scheduler runs, and
+each scheduler reports only **its own registered jobs**: two schedulers sharing
+one store — an application's and the messaging outbox's, which runs as the job
+`messaging.outbox` in `tom_core_server` — would otherwise both report every
+job. Outbox lag is therefore these series with `job="messaging.outbox"`.
+
+Two alert rules cover most of what an operator wants:
+
+- `tom_job_backlog_age_seconds > <a few tick intervals>` — work is due and
+  nobody is taking it.
+- `time() - tom_job_last_success_timestamp_seconds > <the job's period>` —
+  a job has not succeeded when it should have. Take the `max` across nodes:
+  the gauge is per node, and the node that ran the last success is the one
+  holding the newest value.
+
 ## Best Practices
 
 - **Declare jobs with `@TomScheduledJob`.** A hand-written definition is a second
@@ -1188,6 +1238,7 @@ Three questions and where they are answered:
 | [context](../context/context.md) | module | `scheduler.dart` | `TomTenantContext`, `TomTenantScopedCommand` and `TomTenantEvent` — a run's body runs inside its tenant |
 | [isolate_pooling](../isolate_pooling/isolate_pooling.md) | module | `job_definition.dart`, `scheduled_job.dart`, `scheduler.dart` | `TomCommand`, which *is* the job body type; `TomWorkerPool` for `TomWorkerPoolJobDispatcher` |
 | [little_things](../little_things/little_things.md) | module | `job_store.dart`, `schedule.dart`, `scheduled_job.dart` | `TomException`, base of `TomScheduleException` and `TomScheduledJobException`; `tomWriteFileAtomically` for `TomFileJobStore` |
+| [metrics](../metrics/metrics.md) | module | `scheduler.dart` | `TomMetrics.registry` and its instruments — the `tom_job_*` series of [Metrics](#metrics) |
 | [reflection](../reflection/reflection.md) | module | `scheduled_job.dart` | The global `tomReflector` and the `@tomReflector` annotation — the only query the scan has |
 | [shutdown_cleanup](../shutdown_cleanup/shutdown_cleanup.md) | module | `scheduler.dart` | `TomClosable`, implemented by `TomScheduler` |
 

@@ -593,6 +593,35 @@ abstract class TomJobStore {
   /// caller-driven operation rather than an automatic one because how much
   /// history to keep is a deployment decision, not the store's.
   Future<int> purgeFinished(DateTime before);
+
+  /// The runs due at [now] that nobody has claimed, per job: how many, and
+  /// since when the oldest has been due.
+  ///
+  /// The scheduler reports it as the `tom_job_backlog` and
+  /// `tom_job_backlog_age_seconds` gauges. A run that is due and unclaimed is
+  /// late by definition, so a backlog that does not drain is the signal that no
+  /// node is taking that job's work — the one a start-lag histogram cannot
+  /// give, because a run nobody starts records no lag.
+  Future<List<TomJobBacklog>> backlog(DateTime now);
+}
+
+/// The due, unclaimed runs of one job — see [TomJobStore.backlog].
+class TomJobBacklog {
+  /// The backlog of [jobName]: [due] runs, the oldest due since [oldestDueAt].
+  const TomJobBacklog({
+    required this.jobName,
+    required this.due,
+    required this.oldestDueAt,
+  });
+
+  /// The job.
+  final String jobName;
+
+  /// How many of its runs are due and unclaimed.
+  final int due;
+
+  /// When the oldest of them became due.
+  final DateTime oldestDueAt;
 }
 
 // =============================================================================
@@ -785,6 +814,24 @@ class TomMemoryJobStore implements TomJobStore {
 
   @override
   Future<List<TomJobRun>> all() async => snapshotSync();
+
+  @override
+  Future<List<TomJobBacklog>> backlog(DateTime now) async {
+    final due = <String, int>{};
+    final oldest = <String, DateTime>{};
+    for (final run in _runs.values) {
+      if (!run.isDue(now)) continue;
+      due[run.jobName] = (due[run.jobName] ?? 0) + 1;
+      final first = oldest[run.jobName];
+      if (first == null || run.runAt.isBefore(first)) {
+        oldest[run.jobName] = run.runAt;
+      }
+    }
+    return [
+      for (final job in due.keys)
+        TomJobBacklog(jobName: job, due: due[job]!, oldestDueAt: oldest[job]!),
+    ];
+  }
 
   /// The current runs, without going through the asynchronous contract.
   ///
@@ -1008,6 +1055,10 @@ class TomFileJobStore extends TomMemoryJobStore {
 
   @override
   Future<List<TomJobRun>> all() => _exclusively(() => super.all());
+
+  @override
+  Future<List<TomJobBacklog>> backlog(DateTime now) =>
+      _exclusively(() => super.backlog(now));
 
   @override
   Future<int> purgeFinished(DateTime before) =>

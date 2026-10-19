@@ -15,6 +15,8 @@ import '../configuration/base_server_configuration.dart';
 import '../configuration/runtime_environment.dart';
 import '../endpoints/endpoint_pipeline.dart';
 import '../endpoints/openapi_document_endpoint.dart';
+import '../metrics/metrics_middleware.dart';
+import '../metrics/otlp_exporter.dart';
 import '../authorization/authorization_cache.dart';
 import '../ratelimit/rate_limit.dart';
 import '../tenancy/tenancy.dart';
@@ -529,9 +531,15 @@ class TomRequestLogInfo {
   /// Whether this request should produce an access-log line at all.
   bool shouldBeLogged = true;
 
+  /// The pattern of the endpoint that served the request (`/tasks/<id>`), set
+  /// by the endpoint pipeline; `null` while no endpoint has matched. The
+  /// request metrics label requests with it.
+  String? route;
+
   @override
   String toString() =>
-      "TomRequestLogInfo should=$shouldBeLogged has=$hasBeenLogged";
+      "TomRequestLogInfo should=$shouldBeLogged has=$hasBeenLogged "
+      "route=$route";
 }
 
 /// The HTTP entry point of a Tom server application.
@@ -680,6 +688,8 @@ class TomServer {
       if (limits != null) TomRateLimits.install(limits);
     }
 
+    _startMetricsExport();
+
     // let the router be set up...
     router = TomEndpointRouting().initializeRouter();
 
@@ -717,8 +727,22 @@ class TomServer {
     // operator read a quiet server for exactly the requests worth reading
     // about, while `_handleError`'s own error line named neither method, path,
     // status nor protocol version and so could be correlated with nothing.
+    //
+    // The metrics pair sits at the very edge. A scrape is answered before
+    // anything else sees it — see `metrics_middleware.dart` for why — and every
+    // other request is measured around everything, so its status is the one
+    // the client received.
     final handler = Pipeline()
         .addMiddleware(tomRequestLogInfoMiddleware())
+        .addMiddleware(
+          configuration.metricsEndpoint
+              ? tomMetricsEndpointMiddleware(
+                  path: configuration.metricsPath,
+                  token: configuration.metricsToken,
+                )
+              : (inner) => inner,
+        )
+        .addMiddleware(tomRequestMetricsMiddleware())
         .addMiddleware(loggingMiddleware)
         .addMiddleware(
           _handleError(
@@ -773,6 +797,26 @@ class TomServer {
       'Server listening on port ${server.port} ${server.address} ${securityContext != null ? "SSL" : "no SSL"} at ${DateTime.now()}',
     );
     return server;
+  }
+
+  /// The exporter pushing metrics to the configured OTLP receiver, or `null`
+  /// when [TomBaseServerConfiguration.otlpEndpoint] names none. Started by
+  /// [start], and closed — with a final push — by the process shutdown.
+  TomOtlpMetricsExporter? metricsExporter;
+
+  void _startMetricsExport() {
+    if (configuration.otlpEndpoint.isEmpty || metricsExporter != null) return;
+    final appId = tomAppId;
+    final exporter = TomOtlpMetricsExporter(
+      transport: TomOtlpHttpTransport(
+        endpoint: Uri.parse(configuration.otlpEndpoint),
+        headers: TomOtlpHttpTransport.parseHeaders(configuration.otlpHeaders),
+      ),
+      resource: {'service.name': appId.isEmpty ? 'tom_server' : appId},
+      interval: Duration(seconds: configuration.otlpMetricsIntervalSeconds),
+    )..start();
+    tomShutdownCleanup.addClosable(exporter);
+    metricsExporter = exporter;
   }
 
   /// Warns when this server is about to serve TLS with the checked-in

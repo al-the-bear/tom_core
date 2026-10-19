@@ -4,6 +4,10 @@ import 'dart:isolate';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 import '../little_things/server_exception.dart';
 
+/// The counter of cache reads, labelled `cache` and `result` (`hit`, `miss`,
+/// `expired`); the hit rate is `hit` over the sum of the three.
+const String tomCacheLookupsMetric = 'tom_cache_lookups';
+
 /// Raised by the cache API when an operation cannot be completed: the named
 /// cache does not exist in this isolate (and cannot be forwarded), or a
 /// retrieved value does not match the requested type parameter.
@@ -602,6 +606,20 @@ class TomCache {
   static String _tenantKey(String key) =>
       TomTenantContext.qualify(key, TomTenantContext.currentId);
 
+  /// Counts one read of [cacheName] in `tom_cache_lookups` with its
+  /// [result]: `hit`, `miss`, or `expired` (an entry found past its deletion
+  /// time, which reads as a miss).
+  ///
+  /// Counted where the cache lives: a read a worker isolate forwards is
+  /// counted once, by the isolate that answers it.
+  static void _countLookup(String cacheName, String result) => TomMetrics
+      .registry
+      .counter(
+        tomCacheLookupsMetric,
+        help: 'Cache reads, by cache and result: hit, miss or expired.',
+      )
+      .add(1, {'cache': cacheName, 'result': result});
+
   /// Reads the value of type [T] keyed by [key] from the cache named after [T].
   /// See [fromNameCache].
   static Future<T?> fromTypeCache<T>(String key) async {
@@ -637,14 +655,17 @@ class TomCache {
     var cache = TomCacheManager.getCache(cacheName);
     if (cache != null) {
       TomCacheEntry? entry = cache.getEntry(key);
+      if (entry == null) _countLookup(cacheName, 'miss');
       if (entry != null) {
         // An entry with no deletionTime never expires ("cache forever"); one
         // with a deletionTime is dropped once that instant has passed.
         if (entry.deletionTime != null &&
             !entry.deletionTime!.isAfter(DateTime.now())) {
           cache.removeEntry(key);
+          _countLookup(cacheName, 'expired');
           return null;
         }
+        _countLookup(cacheName, 'hit');
         tomLog.trace(
           "Found cache entry for $key ${entry.deletionTime} ${entry.value}",
         );

@@ -81,6 +81,7 @@ as Tom UAM, and its webhook and change feed say when they changed.
 | `TomItemAuthorizationWebhookException` | class | A webhook delivery that cannot be trusted or read |
 | `TomItemAuthorizationFeedExpiredException` | class | The change feed no longer holds the cursor asked with |
 | `invalidationTable` / `invalidationTableDdl` / `defaultInvalidationTable` | functions / const String | The invalidation log, declared once as a framework-owned table |
+| `tomCacheLookupsMetric` | const String | `tom_cache_lookups` — the counter value reads are counted in, by cache and result |
 
 ## Walkthrough
 
@@ -500,6 +501,15 @@ what they are for, and they also forward correctly from a worker isolate.
 cover: storing an entry with a lifetime of its own, and inspecting what is
 actually held. A caller that reaches for them is asking about the structure, and
 gets a structural answer.
+
+**Value reads are counted; structural reads are not.** Every
+`fromNameCache` / `fromTypeCache` read adds one to the `tom_cache_lookups`
+counter (`tomCacheLookupsMetric`), labelled with the cache's name and its
+`result`: `hit`, `miss`, or `expired` — the entry found past its deletion time,
+which the caller receives as a miss. The hit rate is `hit` over the sum of the
+three. A read forwarded from a worker isolate is counted once, by the isolate
+that holds the cache. `getEntry` counts nothing, being the structural read. See
+[metrics.md](metrics.md#caches-and-rate-limits).
 
 **All four configuration numbers must be positive or `null`.** `null` is how
 each is switched off, so zero is never a second way of saying that — it is a

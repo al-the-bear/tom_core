@@ -49,6 +49,7 @@ names the tenant through a `TomTenantEvent`.
 | `TomJobRun` | One attempt-carrying occurrence of a job: its window, attempt count, state, claim and tenant. |
 | `TomJobRunState` | The lifecycle of a single `TomJobRun`. |
 | `TomJobClaim` | A ticket proving one particular claim of a run was won — the fencing token a displaced node fails to present. |
+| `TomJobBacklog` | One job's due, unclaimed runs — how many and since when — as `TomJobStore.backlog` answers them. |
 
 ### Running the body
 
@@ -80,6 +81,11 @@ names the tenant through a `TomTenantEvent`.
 | `TomJobAlert` | A failure worth telling somebody about. |
 | `TomJobAlertKind` | Why a `TomJobAlert` was raised. |
 | `TomJobAlertSink` | Where alerts are delivered. |
+
+Beside the alerts, the scheduler records `tom_job_*` series into
+`TomMetrics.registry` — start lag, run duration, runs by outcome, the last
+success, and the backlog gauges observed from `TomJobStore.backlog` — see
+[Observability](../../../../doc/scheduling/scheduling.md#observability).
 
 ## Quick start
 

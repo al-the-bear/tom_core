@@ -34,7 +34,8 @@ the proxies whose `X-Forwarded-For` is believed, and is installed once per
 process — by `TomRateLimits.install`, or by `TomServer.start` from the
 `rateLimits` configuration key. `tomRateLimitMiddleware`, which `TomServer`
 places inside the authentication middleware, counts every request against every
-rule that covers it and answers the first refusal with a `429`.
+rule that covers it and answers the first refusal with a `429`, counting it in
+`tom_rate_limit_refusals` (`tomRateLimitRefusalsMetric`) by rule and tenant.
 
 A rule's `TomRateLimitScope` says what it counts by — the signed-in principal,
 the API key (`TomApiKeyIdentity`, from the authentication module) or the client
@@ -354,8 +355,11 @@ What a rule counts requests by.
 | Name | Signature | Description |
 | ---- | --------- | ----------- |
 | `tomRateLimitMiddleware` | `Middleware tomRateLimitMiddleware()` | The rate-limiting middleware `TomServer` installs inside the authentication middleware, where the principal and the API key are in the zone. A no-op while no limits are installed and for an `OPTIONS` request. A refused request is answered with `TomRateLimits.tooManyRequests` and logged at info level with the rule's name; an admitted one runs and its response gains `TomRateLimits.headersOf` the tightest decision. |
+| `tomRateLimitRefusalsMetric` | `const String` | `'tom_rate_limit_refusals'` — the counter `tomRateLimitMiddleware` adds one to for every refused request, labelled `rule` (the refusing rule's name) and `tenant`. See [metrics.md](../metrics.md#caches-and-rate-limits). |
+| `tomNoTenantLabel` | `const String` | `'none'` — the `tenant` label of a series recorded outside any tenant's context. |
 | `defaultRateLimitTable` | `const String` | `'tom_rate_limit'` — the counter table's default name. |
 | `rateLimitTable` | `TomFrameworkTable rateLimitTable(String table)` | The counter table's single declaration — `bucket` (`VARCHAR(191)`), `rule` (`VARCHAR(64)`), `window_index` (`BIGINT`), `hits` (`INT`), primary key `(bucket, window_index)` and a key on `(rule, window_index)` — from which the limiter's DDL derives. |
 
-`tomRateLimitMiddleware` lives in `rate_limit.dart`; `defaultRateLimitTable` and
+`tomRateLimitMiddleware`, `tomRateLimitRefusalsMetric` and `tomNoTenantLabel`
+live in `rate_limit.dart`; `defaultRateLimitTable` and
 `rateLimitTable` in `sql_rate_limiter.dart`, beside the limiter.

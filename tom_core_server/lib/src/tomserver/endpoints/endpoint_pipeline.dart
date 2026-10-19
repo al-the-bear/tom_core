@@ -1061,6 +1061,7 @@ class TomEndpointHandler {
     TomRequestLogInfo logInfo =
         req.context[TomRequestLogInfo.contextName] as TomRequestLogInfo;
     logInfo.shouldBeLogged = shouldLogRequests;
+    logInfo.route = metadata.endpoint.uri;
 
     final requestId = getFromCurrentZone<TomRequestId>();
     final reqId = requestId == null ? "" : requestId.uuid;
@@ -1346,6 +1347,7 @@ class TomEndpointHandler {
     final logInfo =
         req.context[TomRequestLogInfo.contextName] as TomRequestLogInfo?;
     logInfo?.shouldBeLogged = shouldLogRequests;
+    logInfo?.route = metadata.endpoint.uri;
 
     final requestId = getFromCurrentZone<TomRequestId>();
     final reqId = requestId == null ? "" : requestId.uuid;

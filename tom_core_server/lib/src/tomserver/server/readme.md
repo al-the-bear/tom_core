@@ -20,7 +20,7 @@ consumes it.
 | Type | Responsibility |
 | ---- | -------------- |
 | `TomServer` | The server: `TomServer(configuration)`; builds the `TomEndpointRouting` and starts listening. |
-| `TomRequestLogInfo` | Captured per-request log metadata. |
+| `TomRequestLogInfo` | Captured per-request log metadata, including the matched endpoint's `route` pattern the request metrics are labelled with. |
 | `tomRequestLogInfoMiddleware` | Seeds a new `TomRequestLogInfo` into every request's context; `start` installs it outermost. |
 | `TomEndpointCredentials` | The path prefixes whose `Authorization` header belongs to the endpoint rather than the framework — the SCIM endpoints, whose identity provider presents a static secret. `extractAuthentication` leaves such a header unread and reports `TomCredentialOutcome.endpointCredential`; the endpoint checks it. |
 
@@ -56,6 +56,11 @@ configured deployment that cannot log in has the error rethrown and **never
 binds the socket** — visible as an unhandled asynchronous error at boot, since
 `start()` is fire-and-forget. A deployment that configures no credential skips
 the login and is unaffected.
+
+**Metrics.** `start` places the metrics module's scrape endpoint (when
+`metricsEndpoint` is on) and request series at the outer edge of the pipeline,
+and pushes over OTLP through `TomServer.metricsExporter` when `otlpEndpoint` is
+set — see [`doc/metrics.md`](../../../../doc/metrics.md).
 
 See [`doc/server.md`](../../../../doc/server.md) for the boot sequence, the
 middleware chain and the shutdown path, and

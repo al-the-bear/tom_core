@@ -952,6 +952,42 @@ utj3flRQDLaDAl91lySpAjUp9aM8
   /// Environment name: `OPEN_API_DOCUMENT`.
   String openApiDocument = "";
 
+  /// Whether [TomServer.start] answers Prometheus scrapes at [metricsPath].
+  ///
+  /// Off by default: the series are recorded either way, and what reads them
+  /// is a deployment's choice. Turn it on where a Prometheus scrapes the
+  /// server, and set [metricsToken] unless only the scraper reaches the port.
+  ///
+  /// Environment name: `METRICS_ENDPOINT`.
+  bool metricsEndpoint = false;
+
+  /// The path scrapes are answered at when [metricsEndpoint] is on.
+  ///
+  /// Environment name: `METRICS_PATH`.
+  String metricsPath = "/metrics";
+
+  /// The bearer token a scrape must present, or empty for an open endpoint.
+  ///
+  /// Environment name: `METRICS_TOKEN`.
+  String metricsToken = "";
+
+  /// The OTLP/HTTP receiver metrics are pushed to — its base URL, such as
+  /// `http://collector:4318` — or empty to push none.
+  ///
+  /// Environment name: `OTLP_ENDPOINT`.
+  String otlpEndpoint = "";
+
+  /// Headers sent with every OTLP export, as `key=value,key=value` — the form
+  /// of `OTEL_EXPORTER_OTLP_HEADERS`.
+  ///
+  /// Environment name: `OTLP_HEADERS`.
+  String otlpHeaders = "";
+
+  /// How often metrics are pushed to [otlpEndpoint], in seconds.
+  ///
+  /// Environment name: `OTLP_METRICS_INTERVAL_SECONDS`.
+  int otlpMetricsIntervalSeconds = 60;
+
   /// Builds the merged value map used to populate a configuration instance.
   ///
   /// Starts from a **deep copy** of the active provider's

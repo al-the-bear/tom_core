@@ -1,6 +1,7 @@
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 import '../little_things/server_exception.dart';
 import '../transactions/transaction_manager.dart';
+import 'sql_datasource.dart';
 import 'sql_dialects.dart';
 import 'queries.dart';
 
@@ -385,6 +386,9 @@ class TomDataSourceInfo {
           if (!registryKeys.contains(e.key)) e.key: e.value,
       };
       _rejectUnknownSettings(datasourceCandidate, driverSettings);
+      if (datasourceCandidate is TomSqlDatasource) {
+        datasourceCandidate.registerAs(name);
+      }
       await datasourceCandidate.initialize(driverSettings);
       _datasource = datasourceCandidate;
     } else {

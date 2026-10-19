@@ -23,6 +23,7 @@ base that reads it; see [little_things.md](little_things.md#tomrequestid).
   - [The request's tenant](#the-requests-tenant)
 - [Error Mapping](#error-mapping)
 - [Extending the Pipeline](#extending-the-pipeline)
+- [Metrics](#metrics)
 - [Verification](#verification)
 - [Not Yet Implemented](#not-yet-implemented)
   - [What this module does not do at all](#what-this-module-does-not-do-at-all)
@@ -112,7 +113,20 @@ order:
    middleware marks it logged and the endpoint pipeline sets whether it should
    be. `contextSetupMiddleware` is not used for it — the entries it seeds are
    the same objects for every request.
-2. **Logging middleware** — `loggingMiddleware` (defaults to
+2. **Metrics endpoint** — `tomMetricsEndpointMiddleware`, present when the
+   `metricsEndpoint` configuration key is on: answers a Prometheus scrape of
+   `metricsPath` (default `/metrics`), checking the `metricsToken` bearer token
+   when one is set, and passes every other request on. A scrape is answered
+   here, before anything below sees it — it is infrastructure like a probe, so
+   it is not counted, logged, authenticated or rate-limited. See
+   [metrics.md](metrics.md).
+3. **Request metrics** — `tomRequestMetricsMiddleware`, recording
+   `tom_http_server_requests` and `tom_http_server_request_duration_seconds`
+   for every request, labelled by the route pattern the endpoint pipeline
+   writes into `TomRequestLogInfo.route` (`unmatched` when no endpoint matched,
+   which includes a request refused before routing). It sits outside both error
+   layers, so a request is counted with the status the client received.
+4. **Logging middleware** — `loggingMiddleware` (defaults to
    `tomLoggingMiddleware`), which emits one line per served request:
 
    ```text
@@ -125,19 +139,19 @@ order:
    the requested URI carries a port, but that only separates them while they are
    separate ports on one host. A deployment that configures no `appId` sees the
    line without the prefix.
-3. **Outer error handler** — catches errors from the authentication phase using
+5. **Outer error handler** — catches errors from the authentication phase using
    the `authenticationErrorHandler`.
-4. **Authentication middleware** — the configuration's `authenticationMiddleware`
+6. **Authentication middleware** — the configuration's `authenticationMiddleware`
    or `tomDefaultAuthenticationMiddleware`.
-5. **Rate-limiting middleware** — `tomRateLimitMiddleware()`, directly inside
+7. **Rate-limiting middleware** — `tomRateLimitMiddleware()`, directly inside
    authentication, where the request's principal and the API key it
    authenticated with are in the zone. A no-op while no limits are installed;
    otherwise a request over a limit is answered `429` here, before any handler
    runs. `start()` installs the limits the `rateLimits` configuration key
    describes when no limits were installed before it. See
    [ratelimit.md](ratelimit.md).
-6. **Inner error handler** — catches errors from handling using `errorHandler`.
-7. **Router** — optionally wrapped in a `Cascade` with the configuration's
+8. **Inner error handler** — catches errors from handling using `errorHandler`.
+9. **Router** — optionally wrapped in a `Cascade` with the configuration's
    `preExecutionHandler` / `postExecutionHandler`.
 
 **Logging sits above both error layers**, and that is what makes the access log
@@ -352,11 +366,42 @@ to guess from and an intermediary free to sniff it as anything it likes.
   cascade handlers around the router (e.g. static assets, fallbacks).
 - **Errors** — set `errorHandler` / `authenticationErrorHandler`.
 
+## Metrics
+
+**The server records metrics, and exposes them for Prometheus and over OTLP.**
+This reverses the earlier position that the module has no metrics facility and
+that a metrics route is an ordinary endpoint: an enterprise operator expects
+request rates, latencies and pool usage out of the box, and a series a module
+records about itself — a statement's duration, a pool's waiters, a job's lag —
+cannot be recorded from an endpoint an application declares.
+
+The instruments live in `tom_core_kernel`'s `metrics` module, where the
+scheduler records its job series; the server records its requests, statements,
+pool usage, cache lookups and rate-limit refusals into the same process
+registry, `TomMetrics.registry`. What reads them is configuration:
+
+| Key | Default | Effect |
+| --- | ------- | ------ |
+| `metricsEndpoint` | `false` | Answer Prometheus scrapes, ahead of authentication |
+| `metricsPath` | `/metrics` | The path scrapes are answered at |
+| `metricsToken` | empty | The bearer token a scrape must present; empty leaves the endpoint open |
+| `otlpEndpoint` | empty | The OTLP/HTTP receiver `start()` pushes metrics to; empty pushes none |
+| `otlpHeaders` | empty | Headers of every export, as `key=value,key=value` |
+| `otlpMetricsIntervalSeconds` | `60` | How often metrics are pushed |
+
+The series are recorded whether or not anything reads them; both exports read
+the same instruments, so a series exists once however it leaves the process.
+`start()` creates the OTLP exporter as `TomServer.metricsExporter` and registers
+it with the shutdown cleanup, which pushes once more before the process ends.
+The series, their labels and the exporter are described in
+[metrics.md](metrics.md).
+<!-- pinned: test/metrics_test.dart › exposes the request, cache, rate-limit and job series -->
+
 ## Verification
 
 Three suites cover this module, a fourth covers its endpoint-owned
-credentials, a fifth its tenant resolution, and a sixth the API keys and rate
-limits it reads.
+credentials, a fifth its tenant resolution, a sixth the API keys and rate
+limits it reads, and a seventh the metrics middlewares it installs.
 
 `test/server_test.dart` covers the pipeline as composed functions:
 `TomRequestLogInfo`, `extractAuthentication` reading a credential off a request
@@ -390,6 +435,12 @@ point — the installed principal capping what a user's grants can reach.
 than of behaviour: every exception class in the package is a
 `TomServerException`, so one `on TomServerException` in the pipeline reaches all
 of them.
+
+The two metrics middlewares at the outer edge are covered by
+`test/metrics_test.dart`, which composes them in the order `start()` does: a
+request counted under its route pattern, an unmatched path, an escaping error
+counted as a `500`, and a scrape that is answered before — and so not counted
+by — the request series. See [metrics.md](metrics.md#verification).
 
 `TomEndpointCredentials` is exercised where it is used: `test/scim_test.dart`'s
 test `the framework leaves the claimed header to the endpoint` reads a SCIM
@@ -447,17 +498,10 @@ The operator gets the detail; the client gets one answer.
 
 ### What this module does not do at all
 
-Three capabilities a reader may come here looking for are not gaps waiting to be
+Two capabilities a reader may come here looking for are not gaps waiting to be
 filled. They are not this module's surface, nothing here is planned for them,
 and an application that needs one builds it today rather than waiting:
 
-- **Diagnostics and monitoring.** The module has no introspection or metrics
-  facility and none is intended. What a deployment can observe is the access-log
-  line `tomLoggingMiddleware` emits, the health endpoint from the `healthcheck`
-  module, and whatever its own `preExecutionHandler` records. An introspection
-  or metrics route is an ordinary endpoint — declare it like any other, see
-  [endpoints.md](endpoints.md).
-  <!-- unpinned: decision — none is intended; a route is an ordinary endpoint -->
 - **Server-rendered forms.** *Receiving* a form is shipped, and belongs to the
   endpoints module — see [Multipart Forms](endpoints.md#multipart-forms).
   Rendering one is a templating concern rather than a transport one, so it sits
@@ -483,6 +527,7 @@ and an application that needs one builds it today rather than waiting:
 | [configuration](configuration.md) | module | every file | `TomBaseServerConfiguration` |
 | [endpoints](endpoints.md) | module | every file | `TomEndpointRouting` (router initialisation), `TomOpenApiServer` (the OpenAPI document path, set from `openApiDocument`) |
 | [little_things](little_things.md) | module | every file | `TomServerException` (its `clientThrow` flag feeds the error response) and `TomRequestId` (seeded into every request zone) |
+| [metrics](metrics.md) | module | every file | `tomMetricsEndpointMiddleware` and `tomRequestMetricsMiddleware` (the outer edge of the pipeline), `TomOtlpHttpTransport` and `TomOtlpMetricsExporter` (`metricsExporter`) |
 | [ratelimit](ratelimit.md) | module | every file | `TomRateLimits` (installed from configuration at start) and `tomRateLimitMiddleware` |
 | [tenancy](tenancy.md) | module | every file | `TomTenancy` and `TomTenantResolution` — the request's tenant, or the refusal to answer it with |
 | [transactions](transactions.md) | module | every file | `TomTransactionManager` |

@@ -199,7 +199,7 @@ class BearerAuthenticationExample {
 
     // Assertions
     assert(publicPayload['username'] == 'john.doe', 'Username should match');
-    assert(publicPayload['userId'] == 123, 'User ID should match');
+    assert(publicPayload['userId'] == '123', 'User ID should match');
     assert(
       (privatePayload['roles'] as List).contains('premium'),
       'Should have premium role',
@@ -384,7 +384,8 @@ class BearerAuthenticationExample {
     );
     assert(holdsNothing['email'] == null, 'Redaction follows the subject');
     assert(
-      nothingPublic['username'] == 'john.doe' && nothingPublic['userId'] == 123,
+      nothingPublic['username'] == 'john.doe' &&
+          nothingPublic['userId'] == '123',
       'username and userId always travel in the public half',
     );
     assert(

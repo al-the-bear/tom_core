@@ -1,7 +1,7 @@
 # Tom Core Kernel API Reference: Index
 
 Per-module API summaries for `tom_core_kernel` — the foundational layer of Tom
-Core. The package barrel (`lib/tom_core_kernel.dart`) exports the seventeen
+Core. The package barrel (`lib/tom_core_kernel.dart`) exports the eighteen
 modules documented here and re-exports `tom_basics`, `tom_crypto`, and
 `tom_reflection` (see those packages' docs for their APIs — notably the runtime
 and platform-detection types, which live in `tom_basics`).
@@ -22,6 +22,7 @@ declarations are omitted.
 | JSON | [api_summary_json.md](api_summary_json.md) | JSON serialization contract, map merge/traversal, env substitution, pretty printing. |
 | Little Things | [api_summary_little_things.md](api_summary_little_things.md) | Kernel base exception, zone helpers, checked runners, stack-trace and offset formatting. |
 | Logging | [api_summary_logging.md](api_summary_logging.md) | Cross-isolate and remote log transport, outputs, and log servers. |
+| Metrics | [api_summary_metrics.md](api_summary_metrics.md) | Counters, gauges, histograms and observed gauges in a per-isolate registry, and the Prometheus text rendering of its snapshot. |
 | Observable | [api_summary_observable.md](api_summary_observable.md) | Observable base, observers, and the boxed `TomObject<T>` value/collection hierarchy. |
 | Preferences | [api_summary_preferences.md](api_summary_preferences.md) | Well-known preference keys, wire DTOs, the value codec, and the `/preferences` API declaration. |
 | Reflection | [api_summary_reflection.md](api_summary_reflection.md) | The kernel reflector, reflection info, and JSON (de)serialization via mirrors. |
@@ -181,6 +182,29 @@ declarations are omitted.
 | `TomInMemoryLogReplayStore` | class | In-memory `TomLogReplayStore` — the zero-config default. |
 | `TomLogReplayStore` | abstract class | Pluggable backend for `TomRemoteLogOutput`'s replay queue. |
 
+### Metrics (`lib/src/tombase/metrics/`)
+
+| Type | Kind | Description |
+| ---- | ---- | ----------- |
+| `TomMetricsException` | class | A misuse of the metrics API: an invalid name, a name registered as two kinds, a negative counter increment (extends `TomException`). |
+| `TomMetricKind` | enum | `counter`, `gauge`, `histogram` — how an instrument's points are read. |
+| `tomLatencyBuckets` | const | Bucket bounds in seconds for millisecond-to-second latencies. |
+| `tomLagBuckets` | const | Bucket bounds in seconds for second-to-hour delays (job start lag, job run time). |
+| `TomMetric` | sealed class | One instrument of a registry: name, help, unit, kind. |
+| `TomCounter` | class | A total that only grows; read as `<name>_total`. |
+| `TomGauge` | class | A value set whenever it changes. |
+| `TomHistogram` | class | Observations sorted into fixed buckets; read as `_bucket`, `_sum`, `_count`. |
+| `TomHistogramData` | class | One histogram series: a count per bucket, the observation count and their sum. |
+| `TomMetricPoint` | class | One series of a family at the moment of the snapshot. |
+| `TomMetricFamily` | class | One instrument's series at the moment of the snapshot. |
+| `TomObservedValue` | class | One value an observation callback reports, with its labels. |
+| `TomMetricObserver` | typedef | Computes an observed gauge's values when a snapshot is taken. |
+| `TomMetricObservation` | class | A registered observation; `cancel` removes it. |
+| `TomMetricRegistry` | class | The instruments of one isolate, and the sorted snapshot of them (`collect`). |
+| `TomMetrics` | abstract final class | `TomMetrics.registry` — the registry the framework records into. |
+| `tomPrometheusContentType` | const | The `Content-Type` a Prometheus scrape is served with. |
+| `tomPrometheusText` | function | A snapshot in the Prometheus text exposition format 0.0.4. |
+
 ### Observable (`lib/src/tombase/observable/`)
 
 | Type | Kind | Description |
@@ -274,6 +298,7 @@ declarations are omitted.
 | `TomScheduleException`, `TomScheduledJobException` | class | Misconfiguration, raised eagerly at construction / scan time. |
 | `TomJobClaim` | class | A ticket proving that one particular claim of `run` was won. |
 | `TomOneShotResource` | extension type | A lease resource name that will never be acquired again once its work is done — the only kind `TomLeaseLock.forget` accepts. |
+| `TomJobBacklog` | class | The due, unclaimed runs of one job — what `TomJobStore.backlog` answers. |
 
 ### Scope IDs (`lib/src/tombase/scope_ids/`)
 

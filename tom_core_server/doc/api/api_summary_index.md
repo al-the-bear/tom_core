@@ -24,6 +24,7 @@ surface documented here.
 | Item Authorization | [api_summary_item_authorization.md](api_summary_item_authorization.md) | Item authorizations kept by an external authority: the port to it, a caching client for checks, accessible items and the user's sharing acts, and the row scope it feeds. |
 | Little Things | [api_summary_little_things.md](api_summary_little_things.md) | The server-side base exception `TomServerException`, the `TomLoginFailure` reason its login subclass carries, the per-request correlation id `TomRequestId` it reads, and `tomErrorEnvelope`, the wire shape every error response uses. |
 | Messaging | [api_summary_messaging.md](api_summary_messaging.md) | Channel-neutral messages, delivery transports (SMTP, HTTP SMS gateway and stand-ins), MIME encoding, the durable outbox, and resource-keyed email and SMS. |
+| Metrics | [api_summary_metrics.md](api_summary_metrics.md) | The request series, the Prometheus scrape endpoint answered ahead of authentication, and the OTLP/HTTP transport and metrics exporter. |
 | Object Persistence | [api_summary_object_persistence.md](api_summary_object_persistence.md) | Persistence annotations, repositories, query builder, operators/expressions, grouped queries and their aggregates, paging and sorting, file-reference columns, data scoping, column authorization. |
 | Preferences | [api_summary_preferences.md](api_summary_preferences.md) | Server-stored per-principal preferences: the scoped `tom_user_preference` entity, the typed service over it, and the `/preferences/*` endpoints. |
 | Rate Limiting | [api_summary_ratelimit.md](api_summary_ratelimit.md) | Request rate limits per principal, API key or client address: the rules, the sliding-window arithmetic, the per-process and shared limiters, and the middleware answering `429` with `Retry-After`. |
@@ -294,6 +295,7 @@ surface documented here.
 | `invalidationTable` | function | The invalidation log, declared once as a framework-owned table. |
 | `invalidationTableDdl` | function | The `CREATE TABLE` for it, for a deployment that applies DDL by hand. |
 | `defaultInvalidationTable` | constant | `tom_cache_invalidation`. |
+| `tomCacheLookupsMetric` | constant | `tom_cache_lookups` — the counter of cache reads by `cache` and `result`. |
 | `TomItemAuthorizationCache` | abstract final class | The answers a remote authority gave on items, keyed by item and subject. |
 | `TomCachedItemLevel` | class | One cached answer: the level held, or none. |
 | `TomItemAuthorizationChange` | class | One change an authority reports: an item and, for one user, that user. |
@@ -401,6 +403,7 @@ surface documented here.
 | `tomSqlBindValue` | function | Marshals one bind value into the primitive every SQL driver binds. |
 | `tomSqlBindParams` | function | A parameter map with every value marshalled through `tomSqlBindValue`. |
 | `tomSqlBranchId` | function | A bounded, process-unique two-phase branch id. |
+| `tomDbStatementDurationMetric` / `tomDbStatementErrorsMetric` / `tomDbPoolConnectionsMetric` / `tomDbPoolAcquireDurationMetric` / `tomDbPoolAcquireFailuresMetric` | constant | The names of the statement and pool series every `TomSqlDatasource` records. |
 
 ### Database Migration (`lib/src/tomserver/db_migration/`)
 
@@ -646,6 +649,18 @@ surface documented here.
 | `tomMimeLineEnding` / `tomMimeMaxLineLength` | top-level | MIME line ending and maximum line length. |
 | `tomOutboxJobName` | top-level | The default job name the outbox registers under. |
 
+### Metrics (`lib/src/tomserver/metrics/`)
+
+| Type | Kind | Description |
+| ---- | ---- | ----------- |
+| `TomOtlpExportException` | class | An OTLP export not delivered, or headers that cannot be read (extends `TomServerException`). |
+| `TomOtlpHttpTransport` | class | Posts OTLP/HTTP JSON bodies to `<endpoint>/v1/<signal>`; signal-neutral. |
+| `TomOtlpMetricsExporter` | class | Pushes the registry to an OTLP receiver every interval, cumulatively, and once more on close. |
+| `tomRequestMetricsMiddleware` | function | Records the request series by method, route pattern and status. |
+| `tomMetricsEndpointMiddleware` | function | Answers a Prometheus scrape ahead of authentication, with an optional bearer token. |
+| `tomOtlpMetricsJson` | function | A snapshot as an OTLP `ExportMetricsServiceRequest` in JSON. |
+| `tomUnmatchedRoute` | constant | `unmatched` — the route label of a request no endpoint matched. |
+
 ### Object Persistence (`lib/src/tomserver/object_persistence/`)
 
 | Type | Kind | Description |
@@ -721,6 +736,8 @@ surface documented here.
 | `tomRateLimitMiddleware` | function | The middleware `TomServer` installs inside authentication. |
 | `rateLimitTable` | top-level function | The `tom_rate_limit` declaration. |
 | `defaultRateLimitTable` | constant | `tom_rate_limit`. |
+| `tomRateLimitRefusalsMetric` | constant | `tom_rate_limit_refusals` — the counter of refused requests by `rule` and `tenant`. |
+| `tomNoTenantLabel` | constant | `none` — the `tenant` label outside any tenant. |
 
 ### Resources (`lib/src/tomserver/resources/`)
 
@@ -737,6 +754,7 @@ surface documented here.
 | `TomSqlJobStore` | class | A `TomJobStore` whose queue is a table in a `TomDataSource`. |
 | `TomJobRunRow` | class | One row of the job queue table. |
 | `TomJobRunWindowRow` | class | The aggregate column `lastWindow` projects. |
+| `TomJobBacklogRow` | class | One job's aggregate row of `backlog`: due runs and the earliest `run_at`. |
 | `TomSqlLeaseLock` | class | A `TomLeaseLock` whose leases are rows in a `TomDataSource`. |
 | `TomLeaseRow` | class | One row of the lease table. |
 | `TomSqlSchedulerNodes` | class | The cluster roll call, backed by a table. |
@@ -753,7 +771,7 @@ surface documented here.
 | Type | Kind | Description |
 | ---- | ---- | ----------- |
 | `TomServer` | class | The HTTP server. |
-| `TomRequestLogInfo` | class | Per-request log record. |
+| `TomRequestLogInfo` | class | Per-request log record; carries the matched endpoint's `route` pattern the request metrics read. |
 | `TomCredentialOutcome` | enum | Why a request carries the credentials it does. |
 | `TomEndpointCredentials` | abstract final class | The path prefixes whose `Authorization` header belongs to the endpoint; `extractAuthentication` leaves it unread. |
 | `contextSetupMiddleware` | function | Seeds the same entries into every request's context. |
@@ -1216,6 +1234,7 @@ surface documented here.
 | `TomItemAuthorizationWebhook` | Cache |
 | `TomItemAuthorizationWebhookException` | Cache |
 | `TomItemShareRequest` | Item Authorization |
+| `TomJobBacklogRow` | Scheduling |
 | `TomJobRunRow` | Scheduling |
 | `TomJobRunWindowRow` | Scheduling |
 | `TomJwksServer` | Authentication |
@@ -1254,6 +1273,7 @@ surface documented here.
 | `TomMessageTransport` | Messaging |
 | `TomMessagingException` | Messaging |
 | `TomMethodMetadata` | Endpoints |
+| `tomMetricsEndpointMiddleware` | Metrics |
 | `TomMigrationArtifact` | Database Migration |
 | `TomMigrationFileName` | Database Migration |
 | `TomMimeEncoder` | Messaging |
@@ -1285,6 +1305,10 @@ surface documented here.
 | `TomOperator` | Datasources |
 | `TomOptimisticLockException` | Object Persistence |
 | `TomOrganizationFallback` | Authentication |
+| `TomOtlpExportException` | Metrics |
+| `TomOtlpHttpTransport` | Metrics |
+| `TomOtlpMetricsExporter` | Metrics |
+| `tomOtlpMetricsJson` | Metrics |
 | `tomOutboxJobName` | Messaging |
 | `TomPageRequest` | Object Persistence |
 | `TomPdfRenderer` | Export |
@@ -1328,6 +1352,7 @@ surface documented here.
 | `TomRequestId` | Little Things |
 | `TomRequestLogInfo` | Server |
 | `tomRequestLogInfoMiddleware` | Server |
+| `tomRequestMetricsMiddleware` | Metrics |
 | `TomResourceDataScope` | Authorization |
 | `TomResourceGrant` | Authorization |
 | `TomResourceLocaleException` | Resources |

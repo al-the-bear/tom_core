@@ -26,7 +26,9 @@ which installs the `TomServerPrincipal` that caps every user's grants, and which
 aborts the start with no socket bound when a configured credential is refused —
 then initialises the endpoint `Router` (via `TomEndpointRouting`), composes a
 shelf `Pipeline` — `tomRequestLogInfoMiddleware` (seeds a new
-`TomRequestLogInfo` per request), `tomLoggingMiddleware`, an outer error layer,
+`TomRequestLogInfo` per request), the metrics module's
+`tomMetricsEndpointMiddleware` (when `metricsEndpoint` is on) and
+`tomRequestMetricsMiddleware`, `tomLoggingMiddleware`, an outer error layer,
 `tomDefaultAuthenticationMiddleware`, `tomRateLimitMiddleware` (the ratelimit module's) and an inner error layer — optionally wraps the router in a `Cascade` with
 pre/post handlers, and binds the socket (with TLS unless `noSsl`).
 
@@ -78,12 +80,13 @@ TomRequestLogInfo()
 | `contextName` | `static const String` | The request-context key under which the `TomRequestLogInfo` is stored (`"loggingInfo"`). |
 | `hasBeenLogged` | `bool` | Whether the access-log line for this request has already been emitted. |
 | `shouldBeLogged` | `bool` | Whether this request should produce an access-log line at all. |
+| `route` | `String?` | The pattern of the endpoint that served the request (`/tasks/<id>`), set by the endpoint pipeline; `null` while no endpoint has matched. `tomRequestMetricsMiddleware` labels the request series with it, `unmatched` when it is `null`. |
 
 #### Methods
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `toString` | `String toString()` | *(override)* Compact `should=`/`has=` description. |
+| `toString` | `String toString()` | *(override)* Compact `should=`/`has=`/`route=` description. |
 
 ### TomServer
 
@@ -107,6 +110,7 @@ TomServer(TomBaseServerConfiguration configuration)
 | `errorHandler` | `Response? Function(Request, Object, StackTrace)` | Maps a thrown error to a JSON error response (HTTP 500), declared `Content-Type: application/json` and marked `x-tom-error: true`; overridable via the configuration. The body is [`tomErrorEnvelope`](api_summary_little_things.md#tomerrorenvelope) — the package's single definition of the wire error shape, which this handler renders and does not define. |
 | `authenticationErrorHandler` | `Response? Function(Request, Object, StackTrace)?` | Error handler applied by the outer pipeline layer; defaults to the configuration's handler, falling back to `errorHandler`. |
 | `loggingMiddleware` | `Middleware` | The middleware that emits the per-request access log (`late`; from the configuration). |
+| `metricsExporter` | `TomOtlpMetricsExporter?` | The exporter pushing metrics to the configured OTLP receiver, or `null` when `otlpEndpoint` names none. Created and started by `start`, registered with the shutdown cleanup, which closes it with a final push. A post-`start()` handle like `router`. |
 
 #### Methods
 
@@ -114,7 +118,7 @@ TomServer(TomBaseServerConfiguration configuration)
 | ------ | --------- | ----------- |
 | `warnOnDevelopmentTlsMaterial` | `void warnOnDevelopmentTlsMaterial()` | Warns when this server is about to serve TLS with the checked-in development pair, naming which half is still at its default. Called by `start` before it builds the `SecurityContext`. Silent when `noSsl` is set, since nothing is served over TLS. Nothing refuses to start: an opt-in flag would cost every local TLS run an extra setting. Public and separate from `start` because `start` binds a socket and returns nothing, so a property of the boot is otherwise unobservable. |
 | `warnOnUnenforcedResourceKeys` | `void warnOnUnenforcedResourceKeys()` | Warns when this server is about to serve with resource-key grants unenforced (`tom.protection.resourceKeys` off, the default) outside a development or test environment, naming the setting that changes it. Called by `start` before the socket is bound. Silent when enforcement is on or the environment is development or test. Nothing refuses to start: the default stays off because enforcing refuses every undeclared endpoint of an application with no grants configured. |
-| `start` | `Future<HttpServer> start()` | Logs the deployment in as itself (`TomServerSelfLogin.loginAndInstall`) before anything else, then warns if the TLS material is still the development pair, installs the rate limits the `rateLimits` configuration key describes when none were installed (`TomRateLimits.fromConfiguration`), initialises the router, composes the pipeline, builds TLS, resolves the listen address, and binds the socket. The future completes **when the socket is listening**, with the bound `HttpServer` — so a bind failure rejects it rather than surfacing as an unhandled asynchronous error, and the socket can be closed by its opener. A deployment that configured a service credential and cannot log in has the error rethrown and **no socket is bound**; one that configured none is unaffected. Awaiting is optional: the bound socket keeps the isolate alive on its own. |
+| `start` | `Future<HttpServer> start()` | Logs the deployment in as itself (`TomServerSelfLogin.loginAndInstall`) before anything else, then warns if the TLS material is still the development pair, installs the rate limits the `rateLimits` configuration key describes when none were installed (`TomRateLimits.fromConfiguration`), starts `metricsExporter` when `otlpEndpoint` is set, initialises the router, composes the pipeline, builds TLS, resolves the listen address, and binds the socket. The future completes **when the socket is listening**, with the bound `HttpServer` — so a bind failure rejects it rather than surfacing as an unhandled asynchronous error, and the socket can be closed by its opener. A deployment that configured a service credential and cannot log in has the error rethrown and **no socket is bound**; one that configured none is unaffected. Awaiting is optional: the bound socket keeps the isolate alive on its own. |
 
 ### TomEndpointCredentials
 

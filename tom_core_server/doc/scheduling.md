@@ -51,6 +51,7 @@ covers only what changes when the substrate is a database.
 | `defaultJobRunTable` / `defaultLeaseTable` / `defaultSchedulerNodeTable` | const String | `tom_job_run`, `tom_lease`, `tom_scheduler_node` |
 | `TomJobRunRow` / `TomLeaseRow` / `TomSchedulerNodeRow` | class | The reflected row types the stores' result mappers materialise, one per table |
 | `TomJobRunWindowRow` | class | The single aggregate column `TomSqlJobStore.lastWindow` projects — its own row type because the mapper binds by column name and that select has no other columns |
+| `TomJobBacklogRow` | class | One job's aggregate row of `TomSqlJobStore.backlog`: its due, unclaimed runs and the earliest `run_at` among them |
 
 Two things the stores lean on hardest belong to `datasources`, because nothing
 about them is specific to scheduling:
@@ -591,6 +592,14 @@ See [tenancy.md](tenancy.md) for where tenants come from.
 - **Run NTP.** The roll call is the one place a node reads a peer's clock; see
   [The Roll Call](#the-roll-call). Skew beyond a second or so makes nodes accuse
   each other or excuse each other, without affecting claiming or leasing.
+- **The backlog is a metric.** `TomSqlJobStore.backlog` answers, per job, how
+  many runs are due and unclaimed and since when, with one grouped `SELECT` —
+  the kernel scheduler reads it into the `tom_job_backlog` and
+  `tom_job_backlog_age_seconds` gauges whenever a scrape or an export takes a
+  snapshot, beside the per-run series it records itself (start lag, run
+  duration, runs by outcome, last success). The messaging outbox is the job
+  `messaging.outbox`, so its lag is those series. See
+  [metrics.md](metrics.md#jobs-and-the-outbox).
 - **A warning naming a failed node is the signal to look at.**
   `TomSqlJobStore` logs the node it declared failed and how many runs it
   recovered from it — the difference between "a run was orphaned" and "that host
@@ -636,7 +645,10 @@ window uniqueness constraint, holder death and recovery, eight-way lease races o
 both the free and the lapsed paths, the fencing counter surviving release,
 `started_at` being legible to a peer, recovery in both opt-in states, a departed
 node's work being recovered two minutes into a fifteen-minute lease, and the
-shipped migrations building the schema on a dropped database.
+shipped migrations building the schema on a dropped database. The contract
+suite's `backlog counts the due, unclaimed runs per job, oldest first` holds
+`TomSqlJobStore.backlog` — the grouped `SELECT` behind the scheduler's backlog
+gauges — to the answer the in-memory store gives.
 
 It is tagged `db` and skips when no server is reachable, so the default
 `testkit :test` run stays green without one.

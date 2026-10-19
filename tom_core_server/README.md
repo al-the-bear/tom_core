@@ -43,7 +43,11 @@ observable state, security, resources) and adds everything a service needs:
   caches, revocations, jobs and the outbox kept apart by the tenant in context;
 - **service accounts with scoped API keys** — issued once, stored as a hash,
   rotated and revoked on every node — and **request rate limits** per user, per
-  API key or per client address, off until a deployment configures them.
+  API key or per client address, off until a deployment configures them;
+- **metrics** recorded by every module — requests by route pattern, SQL
+  statements and connection pools, cache lookups, rate-limit refusals and the
+  scheduler's jobs — read by a **Prometheus scrape** answered ahead of
+  authentication or pushed to an **OpenTelemetry collector over OTLP**.
 
 Because the barrel re-exports the kernel, a server app depends only on
 `tom_core_server` — one import gives both the kernel API and the server stack.
@@ -119,7 +123,7 @@ added.
 | `TomSchemaConvergenceCheck` / `TomSchemaModel` / `TomEntitySchemaReader` / `TomSchemaDivergence` | Checks that the entities, the migrations and the live database still describe the same schema, and names each divergence |
 | `TomTransactionManager` / `TomTransaction` / `TomTransactionParticipant` | Local and two-phase transaction coordination (XA on MariaDB, prepared transactions on PostgreSQL) |
 
-### Platform services (`configuration`, `cache`, `authentication`, `authorization`, `item_authorization`, `tenancy`, `ratelimit`, `audit`, `messaging`, `resources`, `export`, `file_storage`, `scheduling`, `preferences`, `healthcheck`, `cmdline`, `little_things`)
+### Platform services (`configuration`, `cache`, `authentication`, `authorization`, `item_authorization`, `tenancy`, `ratelimit`, `metrics`, `audit`, `messaging`, `resources`, `export`, `file_storage`, `scheduling`, `preferences`, `healthcheck`, `cmdline`, `little_things`)
 
 | Module | Key types | What it does |
 | ------ | --------- | ------------ |
@@ -130,6 +134,7 @@ added.
 | `item_authorization` | `TomItemAuthority`, `TomItemAuthorizationClient`, `TomItemAuthorityScopeSource` | Item authorizations kept by an external authority such as Tom UAM, for an application that keeps none of its own: checks and accessible-item lists asked through a transport-neutral port and cached until the authority's webhook or change feed names their item or subject; the user's share, change and revoke carried with the user's token; and the `resource` row scope fed from the same answers, so a list shows what the user owns and what was shared with them |
 | `tenancy` | `TomTenancy`, `TomTenant`, `TomTenantIsolation`, `TomTenantHostResolver`, `TomTenantHeaderResolver` | Multi-tenancy. A **tenant** is an isolation boundary — not an organization, which is a business unit inside a tenant. Each tenant's data lives in the shared database, a schema of its own or a database of its own, chosen per tenant and reached through one data-source routing seam; a request's tenant is its token's `tenant` claim, or before login its host or a header; `@TomTenantOwned` entities are filtered and checked per tenant |
 | `ratelimit` | `TomRateLimits`, `TomRateLimitRule`, `TomRateLimitScope`, `TomMemoryRateLimiter`, `TomSqlRateLimiter`, `tomRateLimitMiddleware` | Request rate limits per signed-in user, per API key or per client address, as sliding-window counters kept per node or in a table every node shares; a request over a limit is answered `429` with `Retry-After`, an admitted one carries `RateLimit-*` headers. Nothing is limited until a deployment configures `rateLimits`; behind a proxy the client address is read from `X-Forwarded-For` only from a trusted proxy |
+| `metrics` | `tomRequestMetricsMiddleware`, `tomMetricsEndpointMiddleware`, `TomOtlpHttpTransport`, `TomOtlpMetricsExporter` | The series every module records into the kernel's `TomMetrics.registry` — requests by method, route pattern and status, SQL statements and pool usage per data source (and per tenant pool), cache hits and misses, rate-limit refusals, and the scheduler's job lag, duration, outcomes and backlog — exposed as a Prometheus scrape at `/metrics`, answered before authentication with a bearer token of its own, and pushed cumulatively to an OTLP/HTTP collector, once more on shutdown. Both are off until `metricsEndpoint` / `otlpEndpoint` are configured |
 | `audit` | `TomAuditTrail`, `TomAudited`, `TomAuditRecord`, `TomAuditSink`, `TomSqlAuditSink`, `TomAuditAnchor`, `TomAuditAnchorStore`, `TomAuditAnchorPublisher` | Attributable, tamper-evident trail written at the endpoint and repository chokepoints, stored in memory, in append-only files, or in a table whose write-once guarantee is the grant it is served with — and anchors, published outside the server, that turn a wholesale rewrite or a truncation from invisible into provable |
 | `messaging` | `TomMessage`, `TomMessageTransport`, `TomSmtpTransport`, `TomMessageOutbox` | Outbound messages: a channel-neutral shape, SMTP, and a durable outbox on the kernel's job scheduler |
 | `resources` | `TomTextLocale`, `TomLocalizedTextResources`, `TomResourceLocaleException` | Per-recipient text for a server that renders many languages at once: the locale is an argument rather than ambient state, bundles resolve along a fallback chain *per key* so a half-translated language serves what it has, and a missing key answers `null` instead of the key — right on a screen, unacceptable in a subject line |
@@ -215,6 +220,7 @@ there, or excluded with a stated reason.
 | [`example/scheduling/`](example/scheduling/) | The relational job queue and lease lock: the schema and why each constraint is load-bearing, the shipped migrations, the UTC instant encoding, and the cluster wiring. [`example/scheduling/cluster/`](example/scheduling/cluster/) adds the part that needs a database — two real nodes arbitrating over one MariaDB, asserted rather than narrated |
 | [`example/ratelimit/`](example/ratelimit/) | A service account's scoped API key authenticating requests through the server's own middlewares, limits per key and per anonymous address answering `429` with `Retry-After`, a rotation and a revocation |
 | [`example/tenancy/`](example/tenancy/) | Two tenants in one deployment: request resolution by host, header and token, a login binding its token, and caches, revocations, jobs and the outbox kept apart |
+| [`example/metrics/`](example/metrics/) | Requests counted by route pattern rather than path, a scrape refused without its token and answered with it, cache lookups in the same scrape, and the registry pushed over OTLP to an in-process receiver and once more on close |
 | [`example/healthcheck/`](example/healthcheck/) · [`example/cmdline/`](example/cmdline/) · [`example/little_things/`](example/little_things/) | Health, CLI, and exceptions |
 
 Run a single example, or all of them:
@@ -404,7 +410,7 @@ See [`doc/authentication.md`](doc/authentication.md).
 ```text
                        TomServer (shelf host)
                             │
-         middleware: context · request-id · auth · rate limits · logging · JSON errors
+         middleware: context · metrics · request-id · auth · rate limits · logging · JSON errors
                             │
                     TomEndpointRouting
                             │
@@ -470,7 +476,10 @@ apps get the full kernel API through one dependency. See the
   each runs the tagged tests against it; the two compose projects can run side
   by side. The single sign-on
   interoperability suite is tagged `sso` and skips unless a Keycloak is
-  reachable; `tool/run_sso_tests.sh` starts one and runs it.
+  reachable; `tool/run_sso_tests.sh` starts one and runs it. The metrics
+  exports are checked by their consumers in the `otel`-tagged suite, which
+  skips unless `tool/run_otel_tests.sh` started an OpenTelemetry Collector and
+  named promtool's image.
 
   No count is given, and that is deliberate. A count here is a claim nothing
   checks, and this package's whole position is that an unchecked claim about

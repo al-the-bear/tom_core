@@ -1,10 +1,10 @@
 /// Tom Core Kernel — the platform-neutral foundation of the Tom stack.
 ///
-/// Seventeen modules that assume no server, no Flutter and no database:
+/// Eighteen modules that assume no server, no Flutter and no database:
 /// dependency lookup, the execution context and its zone values, observables,
 /// the security model — principals, grants and the access-control meet —
-/// resources, settings and preferences, scheduling, reflection, logging, JSON,
-/// timezone-aware instants and shutdown coordination. `tom_core_server` and
+/// resources, settings and preferences, scheduling, metrics, reflection,
+/// logging, JSON, timezone-aware instants and shutdown coordination. `tom_core_server` and
 /// `tom_flutter_ui` are built on it and neither is needed to use it.
 ///
 /// Everything is exported from this one library — including the `tom_basics`
@@ -44,6 +44,8 @@ export 'src/tombase/logging/logging_isolate.dart';
 export 'src/tombase/logging/remote_logoutput.dart';
 export 'src/tombase/logging/file_log_replay_store.dart';
 export 'src/tombase/logging/remote_logserver.dart';
+export 'src/tombase/metrics/metrics.dart';
+export 'src/tombase/metrics/prometheus_text.dart';
 export 'src/tombase/preferences/user_preference_codec.dart';
 export 'src/tombase/preferences/user_preference_keys.dart';
 export 'src/tombase/preferences/user_preferences_contract.dart';

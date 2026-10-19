@@ -1,10 +1,10 @@
 // ignore_for_file: avoid_print
 /// The package's example runner: every module example, in reading order.
 ///
-/// `tom_core_server` has no single introductory program, because it is twenty
-/// modules and no one program is the way in. What it has instead is a runnable
-/// sample per module, and this is the index of them — as a list a reader can
-/// read and a runner that executes it:
+/// `tom_core_server` has no single introductory program, because it is
+/// twenty-four modules and no one program is the way in. What it has instead is
+/// a runnable sample per module, and this is the index of them — as a list a
+/// reader can read and a runner that executes it:
 ///
 /// ```bash
 /// dart run example/tom_core_server_example.dart
@@ -181,6 +181,11 @@ const List<TourStop> tour = [
     'example/item_authorization/item_authorization_example.dart',
     'Item authorizations kept by an external authority: checks cached until a '
         'change names them, sharing for the user, and the row scope',
+  ),
+  TourStop(
+    'example/metrics/metrics_example.dart',
+    'Requests counted by route pattern, the token-guarded Prometheus scrape, '
+        'and the same registry pushed over OTLP',
   ),
   TourStop(
     'example/healthcheck/healthcheck_example.dart',

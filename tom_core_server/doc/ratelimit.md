@@ -59,6 +59,8 @@ authentication module: see
 | `tomRateLimitMiddleware` | function | The rate-limiting middleware `TomServer` installs inside the authentication middleware |
 | `rateLimitTable` | function | The `tom_rate_limit` declaration, from which the limiter's DDL derives |
 | `defaultRateLimitTable` | const String | `'tom_rate_limit'` — the counter table's default name |
+| `tomRateLimitRefusalsMetric` | const String | `'tom_rate_limit_refusals'` — the counter of refused requests, by rule and tenant |
+| `tomNoTenantLabel` | const String | `'none'` — the `tenant` label outside any tenant |
 
 The module is two files: `rate_limit.dart` holds the rules, the decision
 arithmetic, the in-process limiter, the client address, the installed limits and
@@ -317,7 +319,12 @@ the authentication middleware answers itself — a tenancy refusal — never rea
 it and is not counted.
 
 A refusal is logged at info level with the rule's name and the path, never with
-the caller's credential.
+the caller's credential, and counted in the `tom_rate_limit_refusals` counter
+(`tomRateLimitRefusalsMetric`) labelled with the rule's name and the request's
+tenant — `none` (`tomNoTenantLabel`) outside any. The counter is not labelled by
+caller: a user, a key or an address is an unbounded dimension, and the log line
+is where an operator finds who was refused. See
+[metrics.md](metrics.md#caches-and-rate-limits).
 
 A limiter that cannot count — the shared table unreachable — throws, and the
 request fails through the server's error handling rather than being admitted
@@ -422,7 +429,9 @@ runs it.
   where the counts live; `TomSqlRateLimiter` over `rateLimitTable` and
   `TomRateLimitRow`.
 - **`TomClientAddress`** — the address an `address` rule counts by.
-- **`tomRateLimitMiddleware`** — the middleware `TomServer` installs.
+- **`tomRateLimitMiddleware`** — the middleware `TomServer` installs; counts
+  each refusal in `tomRateLimitRefusalsMetric`, labelled with `tomNoTenantLabel`
+  outside any tenant.
 - **`TomRateLimitException`** — every refusal this module raises.
 
 ## Dependencies

@@ -886,5 +886,6 @@ What a `TomCacheInvalidation` invalidates.
 | Name | Declaration | Description |
 | ---- | ----------- | ----------- |
 | `defaultInvalidationTable` | `const String defaultInvalidationTable = 'tom_cache_invalidation'` | The default name of the cache-invalidation log. |
+| `tomCacheLookupsMetric` | `const String tomCacheLookupsMetric = 'tom_cache_lookups'` | The counter `TomCache` reads are counted in, labelled `cache` and `result` — `hit`, `miss`, or `expired` (an entry found past its deletion time, which reads as a miss). The hit rate is `hit` over the sum of the three. A read a worker isolate forwards is counted once, by the isolate that holds the cache. See [metrics.md](../metrics.md#caches-and-rate-limits). |
 | `invalidationTable` | `TomFrameworkTable invalidationTable(String table)` | The cache-invalidation log `table`, declared once as a framework-owned table: `id` (`BIGINT` auto-increment, primary key), `kind`, `target`, `entry_key` (nullable), `origin`, `raised_at` (`DATETIME(6)`, indexed). Listed by `frameworkOwnedTables`. |
 | `invalidationTableDdl` | `String invalidationTableDdl(String table)` | The `CREATE TABLE` for the log `table`, for a deployment that applies DDL by hand. |

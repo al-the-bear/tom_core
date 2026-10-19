@@ -372,6 +372,25 @@ typedef _PendingReference = ({
   InstanceMirror row,
 });
 
+/// The histogram of SQL statement durations, labelled `datasource` and
+/// `operation` (`query`, `command`, `prepare`, `prepared`, `driver`).
+const String tomDbStatementDurationMetric = 'tom_db_statement_duration_seconds';
+
+/// The counter of failed SQL statements, labelled as
+/// [tomDbStatementDurationMetric].
+const String tomDbStatementErrorsMetric = 'tom_db_statement_errors';
+
+/// The observed gauge of a pool's connections, labelled `datasource` and
+/// `state` (`idle`, `in_use`, `waiting`, `max`).
+const String tomDbPoolConnectionsMetric = 'tom_db_pool_connections';
+
+/// The histogram of the wait for a pooled connection, labelled `datasource`.
+const String tomDbPoolAcquireDurationMetric =
+    'tom_db_pool_acquire_duration_seconds';
+
+/// The counter of failed connection acquires, labelled `datasource`.
+const String tomDbPoolAcquireFailuresMetric = 'tom_db_pool_acquire_failures';
+
 /// A pooled SQL [TomDataSource]; see the library documentation.
 ///
 /// Connection settings ([username], [password], [host], [port],
@@ -467,6 +486,21 @@ abstract class TomSqlDatasource implements TomDataSource {
 
   /// Whether the most recent attempt to open a connection failed.
   bool _lastOpenFailed = false;
+
+  String _registeredName = "";
+
+  /// The name this data source is registered under — `app`, or `app@tenant`
+  /// for a tenant's own pool — which labels its metrics; the driver label
+  /// until [registerAs] names it.
+  String get registeredName =>
+      _registeredName.isEmpty ? driverLabel : _registeredName;
+
+  /// Records the registry name of this data source; called by
+  /// [TomDataSourceInfo] when it creates the driver.
+  void registerAs(String name) => _registeredName = name;
+
+  /// The pool gauges of this data source, reported while it is open.
+  TomMetricObservation? _poolObservation;
 
   // ---------------------------------------------------------------------------
   // What a driver supplies
@@ -602,6 +636,22 @@ abstract class TomSqlDatasource implements TomDataSource {
     final first = await pool.acquire();
     await pool.release(first);
     _pool = pool;
+    _poolObservation = TomMetrics.registry.observe(
+      tomDbPoolConnectionsMetric,
+      help:
+          'Connections of a data source pool, by state: idle, in_use, and '
+          'max (the configured ceiling); waiting counts the statements '
+          'queued for one.',
+      observer: () {
+        final labels = {'datasource': registeredName};
+        return [
+          TomObservedValue(pool.idleCount, {...labels, 'state': 'idle'}),
+          TomObservedValue(pool.lentCount, {...labels, 'state': 'in_use'}),
+          TomObservedValue(pool.waitingCount, {...labels, 'state': 'waiting'}),
+          TomObservedValue(pool.settings.maxSize, {...labels, 'state': 'max'}),
+        ];
+      },
+    );
   }
 
   /// Opens a link through [openLink], recording whether it failed for
@@ -702,12 +752,13 @@ abstract class TomSqlDatasource implements TomDataSource {
     final pool = _requirePool(operation);
     final branch = await _branchForThisZone();
     if (branch != null) {
-      return body(await _pinnedLink(pool, branch));
+      final link = await _pinnedLink(pool, branch);
+      return _timed(operation, () => body(link));
     }
-    final link = await pool.acquire();
+    final link = await _acquireTimed(pool);
     var lost = false;
     try {
-      return await body(link);
+      return await _timed(operation, () => body(link));
     } catch (_) {
       lost = !link.connected;
       rethrow;
@@ -715,6 +766,80 @@ abstract class TomSqlDatasource implements TomDataSource {
       await _handBack(pool, link, discard: lost);
     }
   }
+
+  /// Runs [body] — one statement on a connection already held — recording
+  /// its duration in `tom_db_statement_duration_seconds` and, when it throws,
+  /// `tom_db_statement_errors`. The wait for the connection is not part of it:
+  /// that is `tom_db_pool_acquire_duration_seconds`.
+  Future<R> _timed<R>(String operation, Future<R> Function() body) async {
+    final labels = {
+      'datasource': registeredName,
+      'operation': _operationLabels[operation] ?? operation,
+    };
+    final watch = Stopwatch()..start();
+    try {
+      return await body();
+    } catch (_) {
+      TomMetrics.registry
+          .counter(
+            tomDbStatementErrorsMetric,
+            help: 'SQL statements that failed, by data source and operation.',
+          )
+          .add(1, labels);
+      rethrow;
+    } finally {
+      TomMetrics.registry
+          .histogram(
+            tomDbStatementDurationMetric,
+            help:
+                'How long an SQL statement took on its connection, by data '
+                'source and operation.',
+            unit: 's',
+          )
+          .recordDuration(watch.elapsed, labels);
+    }
+  }
+
+  /// Takes a connection from [pool], recording the wait in
+  /// `tom_db_pool_acquire_duration_seconds` and a failure — the acquire
+  /// timeout, or a connection that could not be opened — in
+  /// `tom_db_pool_acquire_failures`.
+  Future<TomSqlLink> _acquireTimed(TomConnectionPool<TomSqlLink> pool) async {
+    final labels = {'datasource': registeredName};
+    final watch = Stopwatch()..start();
+    try {
+      return await pool.acquire();
+    } catch (_) {
+      TomMetrics.registry
+          .counter(
+            tomDbPoolAcquireFailuresMetric,
+            help:
+                'Connection acquires that failed — timed out or could not '
+                'open a connection — by data source.',
+          )
+          .add(1, labels);
+      rethrow;
+    } finally {
+      TomMetrics.registry
+          .histogram(
+            tomDbPoolAcquireDurationMetric,
+            help:
+                'How long a statement waited for a pooled connection, by '
+                'data source.',
+            unit: 's',
+          )
+          .recordDuration(watch.elapsed, labels);
+    }
+  }
+
+  /// The `operation` label of each [withLink] operation.
+  static const Map<String, String> _operationLabels = {
+    'executeQuery': 'query',
+    'executeCommand': 'command',
+    'prepared statement': 'prepared',
+    'prepareStatement': 'prepare',
+    'withDriverConnection': 'driver',
+  };
 
   /// The connection pinned to [branch], taking it from [pool] on first use.
   Future<TomSqlLink> _pinnedLink(
@@ -726,7 +851,10 @@ abstract class TomSqlDatasource implements TomDataSource {
     // A failed acquire leaves the branch without a connection, so the next
     // statement tries again rather than inheriting the failure.
     late final Future<TomSqlLink> acquiring;
-    acquiring = pool.acquire().catchError((Object error, StackTrace stack) {
+    acquiring = _acquireTimed(pool).catchError((
+      Object error,
+      StackTrace stack,
+    ) {
       if (identical(branch.link, acquiring)) branch.link = null;
       Error.throwWithStackTrace(error, stack);
     });
@@ -1703,6 +1831,8 @@ abstract class TomSqlDatasource implements TomDataSource {
     tomLog.info("$driverLabel closing $host:$port/$databaseName");
     _pool = null;
     _wasClosed = true;
+    _poolObservation?.cancel();
+    _poolObservation = null;
     await pool.close();
   }
 

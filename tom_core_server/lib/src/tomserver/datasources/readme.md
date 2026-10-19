@@ -99,6 +99,11 @@ Future<void> main() async {
 > fails at the `connect()` line. Everything after that line, including the
 > close, is what a script that *does* reach a database must do.
 
+**Metrics.** Every SQL data source records its statements' durations and
+failures and its pool's connections, waits and failed acquires, labelled with
+`registeredName` (`<base>@<tenant>` for a tenant's own pool); the series names
+are the `tomDb…Metric` constants — see [`doc/metrics.md`](../../../../doc/metrics.md).
+
 See [`doc/datasources.md`](../../../../doc/datasources.md) for the driver
 registry, the connection pool, the connection lifecycle and the transaction
 seam, and

@@ -25,3 +25,8 @@ tags:
   # `tool/run_sso_tests.sh`, which starts one from docker-compose.sso.yaml.
   sso:
     timeout: 2x
+  # The metrics exports checked by their consumers (metrics_otel_test.dart):
+  # promtool and an OpenTelemetry Collector, both in containers. Self-skipping
+  # unless tool/run_otel_tests.sh started them.
+  otel:
+    timeout: 2x

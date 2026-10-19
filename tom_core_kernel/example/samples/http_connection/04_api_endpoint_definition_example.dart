@@ -453,8 +453,8 @@ class ApiEndpointDefinitionExample {
     // declaration to a callable endpoint needs no hand-written URI either.
     final endpoint =
         TomServerEndpoint.createApiServerEndpoint<
-          OrderResponse,
-          CreateUserRequest
+          CreateUserRequest,
+          OrderResponse
         >(
           catalogApi['getById'],
           baseUri: Uri.parse('https://api.example.com'),
