@@ -47,7 +47,7 @@ instead of silently overwriting the first.
 | `TomColumnAuthorization` · `TomColumnWriteDecision` | The per-column half of the same idea: which columns of a row this principal may *write*, resolved through a `TomColumnAuthResolver` — or a `TomRowColumnAuthResolver` when the answer depends on the row. |
 | `TomFileReference` · `TomFileReferenceKeys` | Marks a `String` column as holding a blob storage key rather than the bytes, and mints the keys for it. The bytes live in the file-storage module; the column holds the way back to them. |
 | `TomBlobMigration` · `TomBlobMigrationReport` | Moves the blobs those columns name from one blob store to another. The key list comes from the rows because a blob store cannot enumerate itself — which makes a file column the index of what a deployment stored, and the sweep read-only on the database. |
-| `MariadbRepository<T, K>` | The MariaDB binding of `TomSqlDatasourceRepository` — constructed directly, and the only thing it adds is `MariadbSqlDialect`. |
+| `MariadbRepository<T, K>` | The MariaDB binding of `TomSqlDatasourceRepository` — constructed directly, and the only thing it adds is a pinned `MariadbSqlDialect`. A repository extending `TomSqlDatasourceRepository` directly renders through its data source's dialect, so it serves MariaDB and PostgreSQL alike. |
 | `TomQuerySentenceCompiler` | Compiles a written sentence (`find by owner = :who order by created_at`) into the same operator tree the builder produces, so a query can be data. |
 | `TomGroupedSelect` · `TomGroupedRow` · `TomAggregate` | `GROUP BY` and its aggregates — `CountAll`, `Count`, `Sum`, `Avg`, `Min`, `Max` — projected under an alias and read back off the row by it. A `DateTime` alias reads back UTC, through the one instant convention the data source writes (`datasources/sql_instant.dart`). |
 
@@ -91,7 +91,7 @@ walkthrough that checks its own results, with its entities beside it in
 locking the same way, and `test/optimistic_locking_test.dart` and
 `test/optimistic_locking_db_test.dart` cover it without and with a server.
 `test/object_persistence_test.dart` covers the module and
-`test/object_persistence_db_test.dart` adds what only a live MariaDB can answer;
+`test/object_persistence_db_test.dart` adds what only a live MariaDB or PostgreSQL can answer;
 `test/examples_test.dart` runs the example and
 `test/readme_quick_start_test.dart` runs the snippet above, so neither can drift
 away from the code.

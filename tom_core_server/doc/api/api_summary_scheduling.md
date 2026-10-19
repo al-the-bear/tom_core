@@ -65,9 +65,9 @@ Quartz's, exposed as the pure functions `schedulerNodeFailedAfter` and
 `isSchedulerNodeFailed` so it can be asserted without a database.
 
 All three tables are declared exactly once, as `TomFrameworkTable` descriptors
-in `sql_scheduling_sql.dart`; the `CREATE TABLE` each store issues, the column
-list of every `SELECT` and every `REPLACE` / `INSERT` are derived from that one
-declaration. Table names are constructor arguments, and index names follow them.
+in `sql_scheduling_sql.dart`; the `CREATE TABLE` each store issues (in its data
+source's dialect), the column list of every `SELECT` and every replacing write
+and insert are derived from that one declaration. Table names are constructor arguments, and index names follow them.
 Instants are stored as UTC `DATETIME(6)` and carried through `String` fields in
 the row types, because the driver materialises a `DATETIME` as a *local*
 `DateTime` that would not compare equal to the UTC value written.
@@ -145,7 +145,7 @@ tick.
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `ensureSchema` | `Future<void> ensureSchema()` | Creates the queue table if it does not exist. Idempotent, called by every operation, and exposed so a start-up sequence can provision the schema before serving traffic. |
-| `enqueue` | `Future<void> enqueue(TomJobRun run)` | *(override)* Writes the run with `REPLACE`, so re-planning a window overwrites it; the unique key on `(job_name, tenant, scheduled_for)` keeps one-run-per-window — per tenant — a database invariant. A payload that is not JSON-encodable is refused by `TomJobStore.encodePayload` while the bind map is built, so no statement is sent. |
+| `enqueue` | `Future<void> enqueue(TomJobRun run)` | *(override)* Writes the run with a replacing write (`TomFrameworkTable.replaceRow`: `REPLACE` on MariaDB; on PostgreSQL a `DELETE` of the rows it supersedes and an upsert, in one transaction), so re-planning a window overwrites it; the unique key on `(job_name, tenant, scheduled_for)` keeps one-run-per-window — per tenant — a database invariant. A payload that is not JSON-encodable is refused by `TomJobStore.encodePayload` while the bind map is built, so no statement is sent. |
 | `findWindow` | `Future<TomJobRun?> findWindow(String jobName, DateTime scheduledFor, {String? tenant})` | *(override)* The run recorded for that job and window for `tenant` (`null` matching the stored `''` of a run of no tenant), or `null`. |
 | `lastWindow` | `Future<DateTime?> lastWindow(String jobName)` | *(override)* The greatest `scheduled_for` recorded for the job, as a UTC instant, or `null` when it has no runs. |
 | `claimDue` | `Future<List<TomJobClaim>> claimDue(DateTime now, String owner, {int limit = 16, bool Function(TomJobRun run)? accept})` | *(override)* Scans pending runs due at `now` ordered by `seq`, applies `accept` in Dart, and issues one conditional compare-and-set per survivor; a candidate a peer claimed first is skipped. Returns a ticket per run actually won, at most `limit`. |
@@ -214,7 +214,8 @@ TomJobRunWindowRow()
 ### TomSqlLeaseLock
 
 A `TomLeaseLock` whose leases are rows in a `TomDataSource`. First acquisition is
-an `INSERT IGNORE`, extension by the live holder keeps the token, and takeover of
+an insert that keeps a stored row on a conflict (`INSERT IGNORE` on MariaDB,
+`ON CONFLICT DO NOTHING` on PostgreSQL), extension by the live holder keeps the token, and takeover of
 a released or lapsed lease is a compare-and-set on `(token, version)` that writes
 `token + 1`. Meant to live in the same data source as `TomSqlJobStore`.
 
@@ -375,7 +376,7 @@ registered.
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `ensureSchema` | `Future<void> ensureSchema()` | Creates the roll-call table if it does not exist. Idempotent and called by every operation. |
-| `checkIn` | `Future<void> checkIn(DateTime now)` | Announces this node as alive at `now`, rewriting its single row with `REPLACE` and recording the instant as `lastCheckin`. |
+| `checkIn` | `Future<void> checkIn(DateTime now)` | Announces this node as alive at `now`, rewriting its single row with a replacing write (`replaceRow`) and recording the instant as `lastCheckin`. |
 | `nodes` | `Future<List<TomSchedulerNode>> nodes()` | Every node in the roll call, including this one, ordered by node id. |
 | `failedNodes` | `Future<List<TomSchedulerNode>> failedNodes(DateTime now)` | The peers that have missed their check-in long enough to count as failed at `now`, judged by `isSchedulerNodeFailed` with this node's own lateness granted to them. Never includes this node. |
 | `forget` | `Future<void> forget(String nodeId)` | Removes that node's row, so the cluster stops re-reporting a departure it has already dealt with; also the clean way for a node to leave on shutdown. |

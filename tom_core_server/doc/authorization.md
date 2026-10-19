@@ -489,7 +489,7 @@ the built-in `owner` and `group` scopes.
 
 `example/authorization/resource_data_scope_example.dart` walks all of this
 connection-free; `test/resource_data_scope_db_test.dart` covers it end to end
-against MariaDB.
+against a live database — MariaDB or PostgreSQL.
 
 ### When an external authority keeps the grants
 
@@ -543,7 +543,7 @@ principal dropped, a revoked token refused with nothing cached, a token issued
 after the revocation served, a token issued within the revocation's second and
 one carrying no issue instant both refused, other users untouched, the later of
 two revocations kept, and the retention sweep — and
-across two nodes over MariaDB by `test/cache_invalidation_db_test.dart`.
+across two nodes over MariaDB or PostgreSQL by `test/cache_invalidation_db_test.dart`.
 `test/server_test.dart` asserts that the middleware serves a revoked token's
 request unauthenticated.
 

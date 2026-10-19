@@ -142,7 +142,7 @@ class TomSqlLeaseLock extends TomLeaseLock {
   /// start-up sequence can provision the schema before serving traffic.
   Future<void> ensureSchema() => _schema.ensure(() async {
     if (createSchema) {
-      await datasource.executeCommand(_leases.createTableDdl);
+      await _leases.create(datasource);
     }
   });
 
@@ -156,13 +156,19 @@ class TomSqlLeaseLock extends TomLeaseLock {
     // the duplicate-key collision into a zero row count instead of an
     // exception, which is exactly the answer wanted: someone else owns the
     // resource row, go and look at it.
-    final created = await datasource
-        .executeCommand(_leases.insert('INSERT IGNORE', _acquireColumns), {
-          'resource': resource,
-          'owner': owner,
-          'acquiredAt': sqlInstant(now),
-          'expiresAt': sqlInstant(expiresAt),
-        });
+    final created = await datasource.executeCommand(
+      _leases.insertRow(
+        datasource.sqlDialect,
+        _acquireColumns,
+        ignoreConflict: true,
+      ),
+      {
+        'resource': resource,
+        'owner': owner,
+        'acquiredAt': sqlInstant(now),
+        'expiresAt': sqlInstant(expiresAt),
+      },
+    );
     if (created == BigInt.one) {
       return TomLease(
         resource: resource,

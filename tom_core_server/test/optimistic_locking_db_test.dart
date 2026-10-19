@@ -56,8 +56,8 @@ void main() async {
   final reachable = await TestDatabase.isReachable();
   final String? skipReason = reachable
       ? null
-      : 'MariaDB not reachable on ${TestDatabase.host}:${TestDatabase.port} — '
-            'start one with tool/run_db_tests.sh';
+      : 'No ${TestDatabase.engine} server reachable on ${TestDatabase.host}:${TestDatabase.port} — '
+            'start one with tool/run_db_tests.sh or tool/run_db_tests_postgres.sh';
 
   late TomDataSourceInfo info;
 
@@ -65,7 +65,7 @@ void main() async {
     await info.datasource.executeCommand(
       'DROP TABLE IF EXISTS fixture_versioned_doc',
     );
-    await info.datasource.executeCommand(ddl);
+    await TestDatabase.execute(info.datasource, ddl);
   }
 
   setUpAll(() async {
@@ -74,11 +74,11 @@ void main() async {
     info = await TestDatabase.register();
   });
 
+  // The table goes with the suite's database, which the fixture drops when
+  // this group ends; dropping it here as well would reach for a database that
+  // may already be gone.
   tearDownAll(() async {
     if (!reachable) return;
-    await info.datasource.executeCommand(
-      'DROP TABLE IF EXISTS fixture_versioned_doc',
-    );
     await TestDatabase.reset();
   });
 
@@ -240,7 +240,7 @@ void main() async {
       await info.datasource.executeCommand(
         'DROP TABLE IF EXISTS optimistic_locking_versioning',
       );
-      final adaptor = MariadbMigrationAdaptor();
+      final adaptor = TestDatabase.migrationAdaptor();
       await adaptor.initializeMigration(info, 'optimistic_locking');
       await adaptor.applyMigration(
         info,

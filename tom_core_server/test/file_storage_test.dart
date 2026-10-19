@@ -125,6 +125,9 @@ TomS3BlobStore _s3WithClient(
 /// `TomDataSource` the way a hand-written stub of two methods would.
 class _UntouchableDataSource implements TomDataSource {
   @override
+  TomStandardSqlDialect get sqlDialect => MariadbSqlDialect();
+
+  @override
   dynamic noSuchMethod(Invocation invocation) => fail(
     'the key reached SQL: '
     '${invocation.memberName.toString().split('"').elementAtOrNull(1)}',
@@ -140,6 +143,9 @@ class _UntouchableDataSource implements TomDataSource {
 /// into a failed future, and a wrapper that caught only failed futures would
 /// let it through.
 class _FailingDataSource implements TomDataSource {
+  @override
+  TomStandardSqlDialect get sqlDialect => MariadbSqlDialect();
+
   @override
   dynamic noSuchMethod(Invocation invocation) =>
       throw const SocketException('connection reset by peer');
@@ -286,6 +292,9 @@ class _IssuedStatement {
 /// reason it does — the claim is about a bound *value*, not about the SQL text
 /// around it.
 class _RecordingBlobDataSource implements TomDataSource {
+  @override
+  TomStandardSqlDialect get sqlDialect => MariadbSqlDialect();
+
   /// Every statement issued, command and query alike, in order.
   final List<_IssuedStatement> issued = [];
 
@@ -479,6 +488,9 @@ class _ClaimsPrefixDelete extends _WholeReadsOnlyBlobStore {
 /// what makes "only the chunks the range touches are fetched" assertable in the
 /// default suite rather than only under `--tags db`.
 class _StoredBlobDataSource implements TomDataSource {
+  @override
+  TomStandardSqlDialect get sqlDialect => MariadbSqlDialect();
+
   _StoredBlobDataSource({
     required this.key,
     required this.content,

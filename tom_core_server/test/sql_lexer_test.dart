@@ -281,6 +281,19 @@ void main() {
       expect(TomSqlLexer.endOfQuotedRun(sql, 7), sql.length - 1);
     });
   });
+  group('a database that reads a backslash literally', () {
+    test('ends a literal at the quote after a backslash', () {
+      // PostgreSQL: `'C:\'` is a complete literal, so the `;` after it
+      // separates two statements.
+      expect(
+        TomSqlLexer.splitStatements(
+          r"INSERT INTO t (p) VALUES ('C:\'); SELECT 1",
+          backslashEscapes: false,
+        ),
+        [r"INSERT INTO t (p) VALUES ('C:\')", 'SELECT 1'],
+      );
+    });
+  });
 }
 
 /// The three comment openers MariaDB recognises.

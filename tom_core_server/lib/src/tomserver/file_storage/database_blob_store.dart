@@ -173,8 +173,8 @@ class TomDatabaseBlobStore extends TomBlobStore {
   /// than on the first request.
   Future<void> ensureSchema() => _schema.ensure(() async {
     if (createSchema) {
-      await datasource.executeCommand(_manifest.createTableDdl);
-      await datasource.executeCommand(_chunks.createTableDdl);
+      await _manifest.create(datasource);
+      await _chunks.create(datasource);
     }
   });
 
@@ -201,7 +201,7 @@ class TomDatabaseBlobStore extends TomBlobStore {
     Future<void> flush() async {
       if (buffer.isEmpty) return;
       await datasource.executeCommand(
-        _chunks.insert('INSERT', const {
+        _chunks.insertRow(datasource.sqlDialect, const {
           'upload_id': ':uploadId',
           'chunk_index': ':chunkIndex',
           'chunk_data': ':chunkData',
@@ -247,8 +247,9 @@ class TomDatabaseBlobStore extends TomBlobStore {
     // The commit point: one statement, so a concurrent reader sees the old
     // upload id or the new one and never a manifest that names chunks which
     // are still arriving.
-    await datasource.executeCommand(
-      _manifest.insert('REPLACE', const {
+    await _manifest.replaceRow(
+      datasource,
+      const {
         'storage_key': ':key',
         'upload_id': ':uploadId',
         'media_type': ':mediaType',
@@ -258,7 +259,7 @@ class TomDatabaseBlobStore extends TomBlobStore {
         'chunk_size': ':chunkSize',
         'digest': ':digest',
         'stored_at': ':storedAt',
-      }),
+      },
       {
         'key': key,
         'uploadId': uploadId,
@@ -399,8 +400,9 @@ class TomDatabaseBlobStore extends TomBlobStore {
     // manifest row still names the upload — see [_deleteChunks] — so the two
     // keys have independent lifetimes despite sharing bytes.
     final storedAt = clock();
-    await datasource.executeCommand(
-      _manifest.insert('REPLACE', const {
+    await _manifest.replaceRow(
+      datasource,
+      const {
         'storage_key': ':key',
         'upload_id': ':uploadId',
         'media_type': ':mediaType',
@@ -410,7 +412,7 @@ class TomDatabaseBlobStore extends TomBlobStore {
         'chunk_size': ':chunkSize',
         'digest': ':digest',
         'stored_at': ':storedAt',
-      }),
+      },
       {
         'key': toKey,
         'uploadId': source.uploadId,

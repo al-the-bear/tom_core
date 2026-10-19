@@ -88,8 +88,8 @@ void main() async {
   final reachable = await TestDatabase.isReachable();
   final String? skipReason = reachable
       ? null
-      : 'MariaDB not reachable on ${TestDatabase.host}:${TestDatabase.port} — '
-            'start one with tool/run_db_tests.sh';
+      : 'No ${TestDatabase.engine} server reachable on ${TestDatabase.host}:${TestDatabase.port} — '
+            'start one with tool/run_db_tests.sh or tool/run_db_tests_postgres.sh';
 
   group('TomSqlInvalidationChannel (DB-backed)', () {
     late TomDataSource ds;
@@ -100,7 +100,10 @@ void main() async {
     });
 
     setUp(() async {
-      await ds.executeCommand(invalidationTableDdl(defaultInvalidationTable));
+      await TestDatabase.execute(
+        ds,
+        invalidationTableDdl(defaultInvalidationTable),
+      );
       await ds.executeCommand('DELETE FROM $defaultInvalidationTable');
       TomAuthorizationCache.instance.dispose();
     });

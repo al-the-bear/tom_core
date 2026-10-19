@@ -119,7 +119,7 @@ matters rather than implying otherwise — the entity's
 neither is something a map can demonstrate and neither is claimed.
 
 Both belong to `test/preferences_db_test.dart`, which runs the deployment
-sequence against a live MariaDB — its `asSession` helper is the `runZoned`
+sequence against a live MariaDB or PostgreSQL — its `asSession` helper is the `runZoned`
 above and its `setUpAll` is steps 1 and 2.
 `test/preferences_service_test.dart`, `test/preferences_key_test.dart` and
 `test/preferences_dto_test.dart` cover the module without a database,

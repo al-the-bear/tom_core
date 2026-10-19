@@ -55,6 +55,9 @@ List<TomMigrationArtifact> _chain(String directory) {
 /// tolerates the resulting exception — the statements issued before it are still
 /// recorded, and those are the subject.
 class _RecordingDataSource implements TomDataSource {
+  @override
+  TomStandardSqlDialect get sqlDialect => MariadbSqlDialect();
+
   /// Every statement issued, command and query alike, in order.
   final List<String> statements = [];
 

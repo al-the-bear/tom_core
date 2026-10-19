@@ -516,15 +516,14 @@ class TomTenancy {
         parameters: {'tenant': tenant.id, 'schema': schema},
       );
     }
+    final dialect = base.datasource.sqlDialect;
     if (createSchemas) {
       // The pattern above is what makes interpolating it safe.
-      await base.datasource.executeCommand(
-        'CREATE DATABASE IF NOT EXISTS `$schema`',
-      );
+      await base.datasource.executeCommand(dialect.createSchema(schema));
     }
     return _open('${base.name}@${tenant.id}', {
       ...base.settings,
-      'databaseName': schema,
+      dialect.schemaSetting: schema,
     });
   }
 

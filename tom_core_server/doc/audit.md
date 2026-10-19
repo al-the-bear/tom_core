@@ -88,7 +88,8 @@ is a peer of the other three layers rather than an option on the sink.
 | Sink | `verifyAuditChain` / `TomAuditChainVerification` | function / class | Verifying a chain, and the result of doing so |
 | Sink | `parseAuditLines` / `tomAuditGenesisHash` | function / constant | Reading JSON-Lines storage back; the sixty-four zeros a chain starts from |
 | Sink | `auditTrailTable` / `auditTrailTableDdl` / `defaultAuditTrailTable` | functions / constant | The relational trail's schema, declared once and derived from |
-| Sink | `auditTrailNoUpdateTriggerDdl` / `auditTrailNoDeleteTriggerDdl` | functions | The optional database-side guards that refuse `UPDATE` / `DELETE` |
+| Sink | `auditTrailGuardStatements` | function | The optional database-side guard that refuses `UPDATE` or `DELETE`, as the statements a given dialect's database runs |
+| Sink | `auditTrailNoUpdateTriggerDdl` / `auditTrailNoDeleteTriggerDdl` | functions | The MariaDB text of the two guards |
 | Sink | `auditTrailNoUpdateTriggerName` / `auditTrailNoDeleteTriggerName` | functions | The names those two guards are installed under, so a deployment can drop or probe one without re-deriving the string |
 | Sink | `TomAuditWriteOnceCheck` | class | What a deployment's audit table actually permits, as observed |
 | Sink | `TomAuditTrailRow` / `TomAuditHeadRow` / `TomAuditSeqRow` / `TomAuditTriggerRow` | classes | The reflected row shapes `TomSqlAuditSink` reads through |
@@ -456,15 +457,19 @@ Four design points are worth stating outright:
   audited action closed. The row is addressed by `seq`; identity across writers
   is the actor and timestamp.
 
-Reference migrations live in `example/audit/migrations/main/tomcore/`. The table
-itself is declared **once**, as the `auditTrailTable(name)` descriptor in
-`sql_audit_sql.dart`: the `CREATE TABLE` the sink issues, its entry `INSERT` and
+Reference migrations live in `example/audit/migrations/main/tomcore/`, and their
+PostgreSQL form, generated from them, in
+`example/audit/migrations_postgresql/main/tomcore/` (see
+[db_migration.md](db_migration.md#reference-migrations-for-postgresql)). The
+table itself is declared **once**, as the `auditTrailTable(name)` descriptor in
+`sql_audit_sql.dart`: the `CREATE TABLE` the sink issues (`create`, in the
+connected database's words), its entry `INSERT` and
 the column list of every read are all derived from it, and
 `test/framework_schema_test.dart` compares that declaration against the shipped
 migration, the reflected row type and every statement the sink issues — see
-[Schema Convergence](db_migration.md#schema-convergence). The two trigger-DDL
-functions are separate on purpose: they are a *grant* posture, not a column
-declaration, and are what the write-once story below rests on.
+[Schema Convergence](db_migration.md#schema-convergence). The guard functions
+are separate on purpose: they are a *grant* posture, not a column declaration,
+and are what the write-once story below rests on.
 
 ## The Write-Once Story
 
@@ -481,7 +486,7 @@ mechanism for the second:
 | Posture | What makes it write-once | When it is right |
 | ------- | ------------------------ | ---------------- |
 | **Separate credential** (adopted) | The serving user holds `INSERT` and `SELECT` on the trail table and nothing else | Any deployment that can issue a second credential — which is nearly all of them |
-| **Database-side guard** | `BEFORE UPDATE` / `BEFORE DELETE` triggers that `SIGNAL SQLSTATE '45000'` | A deployment that cannot separate credentials: one application user, one schema, `UPDATE` already granted across it |
+| **Database-side guard** | `BEFORE UPDATE` / `BEFORE DELETE` triggers that refuse the statement — `SIGNAL SQLSTATE '45000'` on MariaDB, `RAISE EXCEPTION` from a trigger function on PostgreSQL | A deployment that cannot separate credentials: one application user, one schema, `UPDATE` already granted across it |
 | **Explicit acceptance** | Nothing. The trail is tamper-*evident* only | Development and test, where operational convenience genuinely outweighs tamper-resistance — and stated as such, never assumed |
 
 None of the three detects a rewrite performed *with* the credential that is
@@ -493,8 +498,13 @@ makes it visible.
 privileged credential, then serve the trail with a restricted one:
 
 ```sql
+-- MariaDB
 CREATE USER 'audit_writer'@'%' IDENTIFIED BY '…';
 GRANT INSERT, SELECT ON app_db.tom_audit_trail TO 'audit_writer'@'%';
+
+-- PostgreSQL
+CREATE ROLE audit_writer LOGIN PASSWORD '…';
+GRANT INSERT, SELECT ON tom_audit_trail TO audit_writer;
 ```
 
 Configure that credential as the sink's **own** data source — never the
@@ -511,6 +521,15 @@ not wish to exercise. They are also not a *guarantee* — a connection holding
 `SUPER` or `TRIGGER` can drop them. Where they earn their place is the
 deployment that cannot separate credentials at all: there the grant cannot
 express "append-only" and a trigger can.
+
+`auditTrailGuardStatements(table, dialect, event: 'UPDATE' | 'DELETE')` renders
+a guard for the dialect's database (through the dialect's `rejectingTrigger`):
+one `CREATE TRIGGER … SIGNAL SQLSTATE '45000'` on MariaDB, and on PostgreSQL a
+PL/pgSQL trigger function raising the same message plus the `BEFORE` row
+trigger that calls it. The message is `audit trail is append-only: <event> is
+not permitted` on both. `auditTrailNoUpdateTriggerDdl` and
+`auditTrailNoDeleteTriggerDdl` are the MariaDB text of the two, which the
+canonical migrations carry; the PostgreSQL migrations carry the translated form.
 
 The two guards are tagged separately because they cost differently. The `UPDATE`
 guard costs nothing. The `DELETE` guard **blocks retention entirely** — both
@@ -536,7 +555,8 @@ observations, because neither alone is conclusive:
 
 - a **privilege** probe — an `UPDATE`/`DELETE` restricted to no rows, which
   still fails at permission-check time when the grant is missing; and
-- a **trigger** probe of `information_schema.TRIGGERS`, because a zero-row
+- a **trigger** probe of `information_schema.TRIGGERS` in the connection's
+  current schema (the dialect's `currentSchema`), because a zero-row
   statement matches nothing and therefore fires no `FOR EACH ROW` trigger. A
   trigger-protected table looks perfectly mutable to the privilege probe alone.
 
@@ -1076,7 +1096,7 @@ guard triggers reject rather than silently ignore.
 
 Two suites are tagged `db` and skip when no server is reachable, so the default
 run stays green without one. `test/audit_sql_db_test.dart` covers the relational
-sink against a live MariaDB — appending, reopening, concurrency, writer scoping,
+sink against a live database — MariaDB or PostgreSQL — appending, reopening, concurrency, writer scoping,
 retention removing a prefix and nothing else, querying — including the two
 claims the projection rests on, that an actor too long for its column is still
 found and that two actors sharing a prefix are told apart by the record —
@@ -1227,9 +1247,10 @@ a result is the value that crosses between them.
 - **`TomAuditSink` / `TomMemoryAuditSink` / `TomFileAuditSink` /
   `TomSqlAuditSink`** — storage.
 - **`TomAuditWriteOnceCheck` / `auditTrailTable` / `auditTrailTableDdl` /
-  `auditTrailNoUpdateTriggerDdl` / `auditTrailNoDeleteTriggerDdl` /
-  `defaultAuditTrailTable`** — the relational trail's schema, declared once, and
-  its write-once probe.
+  `auditTrailGuardStatements` / `auditTrailNoUpdateTriggerDdl` /
+  `auditTrailNoDeleteTriggerDdl` / `defaultAuditTrailTable`** — the relational
+  trail's schema, declared once, its guards in each database's words, and its
+  write-once probe.
 - **`TomAuditTrailRow` / `TomAuditHeadRow` / `TomAuditSeqRow` /
   `TomAuditTriggerRow`** — the reflected row shapes `TomSqlAuditSink` reads
   through.

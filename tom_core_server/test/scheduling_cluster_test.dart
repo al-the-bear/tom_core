@@ -51,6 +51,9 @@ import 'package:tom_core_server/tom_core_server.dart';
 /// Only the two execution methods are implemented; [noSuchMethod] makes anything
 /// else a loud test bug rather than a silent `null`.
 class _ScriptedDataSource implements TomDataSource {
+  @override
+  TomStandardSqlDialect get sqlDialect => MariadbSqlDialect();
+
   /// What each successive `executeQuery` does: a `List` of rows to return, or
   /// any other object to throw.
   final Queue<Object> queryAnswers = Queue();

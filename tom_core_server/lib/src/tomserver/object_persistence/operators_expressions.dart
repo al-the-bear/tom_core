@@ -207,6 +207,20 @@ class BoolLiteral extends TomUnaryOperator<bool, TomDbBool> {
   SqlString generate(TomStandardSqlDialect t) => t.boolOp(operant1);
 }
 
+/// A constant truth value used as a predicate in its own right — the `WHERE`
+/// of a scope that admits nothing — as distinct from a [BoolLiteral], which is
+/// a value compared with a truth column.
+///
+/// The two read alike on MariaDB and differently on PostgreSQL, where a truth
+/// column is a `SMALLINT` (so a value is `1`/`0`) and a predicate has to be a
+/// boolean (`TRUE`/`FALSE`); see [TomStandardSqlDialect.truthPredicate].
+class TruthPredicate extends TomUnaryOperator<bool, TomDbBool> {
+  /// Creates a constant predicate.
+  TruthPredicate(super.operant1);
+  @override
+  SqlString generate(TomStandardSqlDialect t) => t.truthPredicate(operant1);
+}
+
 /// A timestamp literal.
 class DateTimeLiteral extends TomUnaryOperator<DateTime, TomDbDateTime> {
   /// Creates a timestamp literal.

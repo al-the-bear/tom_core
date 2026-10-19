@@ -1584,7 +1584,9 @@ SELECT * FROM ${dbTable.table}
   /// values — the composite counterpart of [TomDataScope.inList].
   TomDataScopePredicate _compositeKeyList(Iterable<K> ids) {
     final keys = ids.toList();
-    if (keys.isEmpty) return TomDataScopePredicate(boolOp(false), const {});
+    if (keys.isEmpty) {
+      return TomDataScopePredicate(truthPredicate(false), const {});
+    }
     final parameters = <String, Object?>{};
     final terms = <TomOperator<TomDbBool>>[];
     for (var n = 0; n < keys.length; n++) {
@@ -1812,8 +1814,22 @@ SELECT * FROM ${dbTable.table}
 
     if (insert) {
       // INSERT
-      final (sql, paramNames) = buildInsertStatement(dbTable.table, writable);
-      _saveInsertQuery ??= await datasourceInfo.datasource.prepareStatement<T>(
+      final (insertSql, paramNames) = buildInsertStatement(
+        dbTable.table,
+        writable,
+      );
+      // A single surrogate key is assigned by the database, and asked back
+      // from it in the same statement where the database needs asking —
+      // `RETURNING` on PostgreSQL, nothing on MariaDB, whose last-insert id
+      // answers on its own (`TomStandardSqlDialect.returningKey`).
+      final datasource = datasourceInfo.datasource;
+      final sql = hasCompositeKey
+          ? insertSql
+          : datasource.sqlDialect.returningKey(
+              insertSql,
+              primaryKeyColumns.single.getQueryFieldName(),
+            );
+      _saveInsertQuery ??= await datasource.prepareStatement<T>(
         TomLiteralSelect([T], query: sql, parameters: paramNames),
       );
       final params = <String, Object?>{

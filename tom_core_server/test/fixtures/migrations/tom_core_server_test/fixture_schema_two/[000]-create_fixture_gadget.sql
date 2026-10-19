@@ -14,7 +14,7 @@
 -- which surfaces as a checksum/description mismatch rather than a silent skip —
 -- either way the fixture fails loudly if the per-schema binding regresses.
 CREATE TABLE IF NOT EXISTS fixture_gadget (
-  id   BIGINT       NOT NULL AUTO_INCREMENT,
+  id   BIGINT       NOT NULL,
   name VARCHAR(255) NULL,
   PRIMARY KEY (id)
 );

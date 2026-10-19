@@ -96,7 +96,7 @@ guarantee and what an anchor adds. The connection-free surface runs in
 `example/audit/audit_example.dart`; `test/audit_test.dart`,
 `test/audit_anchor_test.dart` and `test/audit_anchor_monitor_test.dart` cover it
 without a server, and `test/audit_sql_db_test.dart` and `test/audit_db_test.dart`
-cover the relational sink and the repository chokepoint against a live MariaDB.
+cover the relational sink and the repository chokepoint against a live MariaDB or PostgreSQL.
 
 ---
 

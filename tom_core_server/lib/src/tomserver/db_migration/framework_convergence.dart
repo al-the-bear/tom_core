@@ -111,9 +111,10 @@ class TomFrameworkSchemaCheck {
 
   /// Creates a check.
   ///
-  /// [dialect] defaults to [MariadbSqlDialect], the only dialect these tables
-  /// are shipped for and the one whose `TINYINT(1)` spelling of a truth value
-  /// the classification has to know about.
+  /// [dialect] defaults to [MariadbSqlDialect]: the descriptors declare their
+  /// types in MariaDB's spelling, whose `TINYINT(1)` truth value the
+  /// classification has to know about. [verifyLive] classifies in the
+  /// connected database's own dialect instead.
   TomFrameworkSchemaCheck({TomStandardSqlDialect? dialect})
     : dialect = dialect ?? MariadbSqlDialect(),
       _comparison = TomSchemaConvergenceCheck(dialect: dialect);
@@ -273,15 +274,16 @@ class TomFrameworkSchemaCheck {
     String datasourceName = 'live',
     String schema = 'DATABASE()',
   }) async {
-    final expected = modelOf(tables);
+    // Classified in the connected database's own dialect, on both sides: the
+    // descriptors' canonical `TINYINT(1)` is a truth value to MariaDB and the
+    // `smallint` PostgreSQL stores it as is an integer to PostgreSQL, so each
+    // side has to be read the way the other one will be.
+    final live = datasource.sqlDialect;
+    final expected = TomFrameworkSchemaCheck(dialect: live).modelOf(tables);
     final builder = TomSchemaBuilder();
     for (final table in tables) {
       final rows = await datasource.executeQuery<TomInformationSchemaColumnRow>(
-        'SELECT COLUMN_NAME AS column_name, COLUMN_TYPE AS column_type, '
-        'IS_NULLABLE AS is_nullable, COLUMN_KEY AS column_key '
-        'FROM information_schema.COLUMNS '
-        'WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = :table '
-        'ORDER BY ORDINAL_POSITION',
+        live.tableColumnsQuery,
         {'table': table.name},
       );
       // No rows means no such table — the diff reports it as missing, which is
@@ -297,7 +299,7 @@ class TomFrameworkSchemaCheck {
             // COLUMN_TYPE, not DATA_TYPE: the latter drops the length, and
             // `TINYINT(1)` without its length is an ordinary integer rather
             // than MariaDB's spelling of a truth value.
-            family: dialect.typeFamily(row.columnType),
+            family: live.typeFamily(row.columnType),
             declaredType: row.columnType,
             origin: origin,
             nullable: row.isNullable.toUpperCase() == 'YES',
@@ -313,7 +315,9 @@ class TomFrameworkSchemaCheck {
       datasource: datasourceName,
       schema: schema,
       chain: const ['information_schema'],
-      divergences: _comparison.diff(expected, builder.build()),
+      divergences: TomSchemaConvergenceCheck(
+        dialect: live,
+      ).diff(expected, builder.build()),
     );
   }
 

@@ -34,8 +34,8 @@ void main() async {
   final reachable = await TestDatabase.isReachable();
   final String? skipReason = reachable
       ? null
-      : 'MariaDB not reachable on ${TestDatabase.host}:${TestDatabase.port} — '
-            'start one with tool/run_db_tests.sh';
+      : 'No ${TestDatabase.engine} server reachable on ${TestDatabase.host}:${TestDatabase.port} — '
+            'start one with tool/run_db_tests.sh or tool/run_db_tests_postgres.sh';
 
   group('a DATE and a TIME column round-trip their Dart types', () {
     late TomDataSourceInfo dsi;
@@ -235,6 +235,9 @@ void main() async {
             DateTime.utc(2026, 9, 30, 5, 42, 27, 91),
           );
         },
+        skip: TestDatabase.onlyOnMariaDb(
+          'the binary-protocol fraction repair is the MariaDB client\'s',
+        ),
       );
     },
     skip: skipReason,

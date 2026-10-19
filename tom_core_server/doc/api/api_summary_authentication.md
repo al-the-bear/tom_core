@@ -4701,7 +4701,8 @@ shared invalidation channel carries to every node.
 ### TomSqlApiKeyStore
 
 A `TomApiKeyStore` whose accounts and keys are rows of two framework tables in a
-`TomDataSource` every node shares. A write replaces the row whole (`REPLACE`).
+`TomDataSource` every node shares. A write replaces the row whole
+(`TomFrameworkTable.replaceRow`).
 In `authentication/sql_api_key_store.dart`.
 
 - **Implements:** `TomApiKeyStore`

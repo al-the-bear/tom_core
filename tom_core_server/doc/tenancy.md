@@ -21,6 +21,7 @@ This guide is the server half.
   - [The model is chosen per tenant](#the-model-is-chosen-per-tenant)
   - [How a data source is routed](#how-a-data-source-is-routed)
 - [Configuration](#configuration)
+  - [A schema on each database](#a-schema-on-each-database)
 - [Starting a Multi-Tenant Server](#starting-a-multi-tenant-server)
   - [Per-tenant migrations](#per-tenant-migrations)
 - [Resolving a Request's Tenant](#resolving-a-requests-tenant)
@@ -90,7 +91,7 @@ other. A token therefore carries both claims, independently:
 | Model | Where a tenant's rows live | Isolation | Operating cost |
 | ----- | -------------------------- | --------- | -------------- |
 | `TomTenantIsolation.shared` | the shared database; every tenant-owned table carries a tenant column | the row predicate | one database, one migration run |
-| `TomTenantIsolation.schema` | a schema of its own on the shared server (on MariaDB, a database) | the schema boundary, and the predicate | one schema and one connection pool per tenant |
+| `TomTenantIsolation.schema` | a schema of its own on the shared server — on MariaDB a database, on PostgreSQL a schema inside the one database | the schema boundary, and the predicate | one schema and one connection pool per tenant |
 | `TomTenantIsolation.database` | a database of its own, configured per tenant — another server, another region | the server boundary, and the predicate | one database, one pool and one migration run per tenant |
 
 The row predicate that `@TomTenantOwned` adds (see
@@ -177,7 +178,7 @@ tenancy:
 | `pathPrefix` | `t` | The path segments before the tenant's, for the `path` resolver: `t`, or `api/t`. |
 | `pathSegments` | none | Segment → tenant id, for the `path` resolver. Without it the segment is the tenant id; with it only a listed segment names a tenant, and any other segment after the prefix is refused as an unknown tenant. |
 | `header` | `X-Tenant-Id` | The header the `header` resolver reads. |
-| `createSchemas` | `false` | Whether provisioning a `schema` tenant runs `CREATE DATABASE IF NOT EXISTS` for its schema. |
+| `createSchemas` | `false` | Whether provisioning a `schema` tenant creates its schema if it does not exist — `CREATE DATABASE IF NOT EXISTS` on MariaDB, `CREATE SCHEMA IF NOT EXISTS` on PostgreSQL. |
 | `tenants.<id>.name` | none | A display name. |
 | `tenants.<id>.isolation` | the default | The tenant's model. |
 | `tenants.<id>.schema` | `<databaseName>_<id>` | Under `schema`, the schema's name. |
@@ -207,6 +208,23 @@ final tenancy = TomTenancy(
   ],
 );
 ```
+
+### A schema on each database
+
+A `schema` tenant's data source is the base data source with one setting
+changed, and the base data source's dialect says which setting and how the
+schema is created (`schemaSetting`, `createSchema`):
+
+| Database | A tenant's schema is | Created with | The setting changed |
+| -------- | -------------------- | ------------ | ------------------- |
+| MariaDB | a database on the shared server | `` CREATE DATABASE IF NOT EXISTS `<schema>` `` | `databaseName` |
+| PostgreSQL | a schema inside the base data source's database | `CREATE SCHEMA IF NOT EXISTS "<schema>"` | `schema`, which the driver sets as each connection's `search_path` |
+
+On PostgreSQL the tenants therefore share one database and one server role, and
+the schema boundary is the `search_path`: an unqualified name resolves in the
+tenant's schema. The schema name defaults to `<databaseName>_<id>` on both, so
+the base data source has to name its `databaseName` on PostgreSQL too
+(`tenancy.config.schema_unsupported` otherwise).
 
 ## Starting a Multi-Tenant Server
 
@@ -555,6 +573,7 @@ final removed = await tenancy.removeTenant('umbrella');
 final main = TomDataSourceInfo.getBaseDataSourceInfo('main')!;
 final schema =
     removed.schema ?? '${main.settings['databaseName']}_${removed.id}';
+// MariaDB; on PostgreSQL: 'DROP SCHEMA IF EXISTS "$schema" CASCADE'.
 await main.datasource.executeCommand('DROP DATABASE IF EXISTS `$schema`');
 ```
 
@@ -578,7 +597,8 @@ configuration as well, so the next start does not provision it again.
 
 - **Connection pools.** Every `schema` and `database` tenant has a data source
   of its own, and so a pool of its own: a deployment of fifty schema tenants
-  holds fifty pools against one server. Size each tenant's pool in its settings
+  holds fifty pools against one server — on PostgreSQL, against one database,
+  every pool counting toward its `max_connections`. Size each tenant's pool in its settings
   (a schema tenant inherits the base data source's), and size the server's
   connection limit for the sum. `shared` tenants add no pool.
 - **Migrations.** A `shared` deployment migrates once. Every `schema` or
@@ -651,12 +671,14 @@ request inside its tenant and refusing a token used for another; a deployment
 without tenancy running every request in none; and a login binding its token to
 its tenant and refusing an account of another.
 
-`test/tenancy_db_test.dart`, tagged `db`, runs two tenants against MariaDB under
+`test/tenancy_db_test.dart`, tagged `db`, runs two tenants against the database
+the DB suites run against — MariaDB or PostgreSQL — under
 each of the three isolation models with the same assertions — that is the point
 of one seam — and checks where the rows land: in the shared table under
 `shared`, in each tenant's schema under `schema`, in each tenant's database under
 `database`. It covers repositories, caches, revocations, jobs and the outbox.
-`tool/run_db_tests.sh` starts a database for it.
+`tool/run_db_tests.sh` (MariaDB) or `tool/run_db_tests_postgres.sh`
+(PostgreSQL) starts a database for it.
 
 `test/principal_per_tenant_db_test.dart`, tagged `db`, runs `alice` with id `u1`
 in two tenants under each model: each keeps her own 2FA enrolments and her own
@@ -710,5 +732,5 @@ result, and `test/examples_test.dart` runs it.
 | `shelf` | package | every file | `Request`, which a resolver reads and `resolveRequest` resolves |
 | `tom_core_kernel` | package | `tenancy.dart` | `TomTenantContext` — the zone-carried tenant, the id rule and `qualify` |
 | [configuration](configuration.md) | module | `tenancy.dart` | `TomServerConfigResourceProvider`, which `fromConfiguration` reads the `tenancy` key from |
-| [datasources](datasources.md) | module | `tenancy.dart` | `TomDataSourceInfo` — the registry routed per tenant, the data sources opened over a tenant's schema or database |
+| [datasources](datasources.md) | module | `tenancy.dart` | `TomDataSourceInfo` — the registry routed per tenant, the data sources opened over a tenant's schema or database — and the base data source's dialect, whose `createSchema` and `schemaSetting` say how a schema is made and pointed at |
 | [little_things](little_things.md) | module | `tenancy.dart` | `TomServerException`, the base of `TomTenancyException` |

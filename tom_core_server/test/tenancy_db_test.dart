@@ -86,8 +86,8 @@ void main() async {
   final reachable = await TestDatabase.isReachable();
   final String? skipReason = reachable
       ? null
-      : 'MariaDB not reachable on ${TestDatabase.host}:${TestDatabase.port} — '
-            'start one with tool/run_db_tests.sh';
+      : 'No ${TestDatabase.engine} server reachable on ${TestDatabase.host}:${TestDatabase.port} — '
+            'start one with tool/run_db_tests.sh or tool/run_db_tests_postgres.sh';
 
   group('two tenants', () {
     late TomDataSourceInfo base;
@@ -96,7 +96,7 @@ void main() async {
     setUpAll(() async {
       initializeReflection();
       base = await TestDatabase.register();
-      await base.datasource.executeCommand(_noteDdl);
+      await TestDatabase.execute(base.datasource, _noteDdl);
     });
 
     tearDownAll(() async {
@@ -138,9 +138,7 @@ void main() async {
           }
           for (final database in extraDatabases) {
             if (isolation == TomTenantIsolation.database) {
-              await base.datasource.executeCommand(
-                'CREATE DATABASE IF NOT EXISTS `$database`',
-              );
+              await TestDatabase.createDatabase(base.datasource, database);
             }
           }
           tenancy = TomTenancy(
@@ -152,9 +150,10 @@ void main() async {
           // Routed: under schema and database isolation this creates the table
           // in each tenant's own place.
           await tenancy.forEachTenant(
-            (_) => TomDataSourceInfo.getDataSourceInfo(
-              name,
-            )!.datasource.executeCommand(_noteDdl),
+            (_) => TestDatabase.execute(
+              TomDataSourceInfo.getDataSourceInfo(name)!.datasource,
+              _noteDdl,
+            ),
           );
           notes = FixtureTenantNoteRepository();
         });
@@ -162,9 +161,11 @@ void main() async {
         tearDownAll(() async {
           await TomTenancy.reset();
           for (final database in extraDatabases) {
-            await base.datasource.executeCommand(
-              'DROP DATABASE IF EXISTS `$database`',
-            );
+            if (isolation == TomTenantIsolation.database) {
+              await TestDatabase.dropDatabase(base.datasource, database);
+            } else {
+              await TestDatabase.dropSchema(base.datasource, database);
+            }
           }
         });
 

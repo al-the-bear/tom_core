@@ -56,6 +56,9 @@ class _Issued {
 /// keeping the binds too, because "the same statement" has to mean the same
 /// parameter as well as the same text.
 class _RecordingDataSource implements TomDataSource {
+  @override
+  TomStandardSqlDialect get sqlDialect => MariadbSqlDialect();
+
   /// Every statement issued, command and query alike, in order.
   final List<_Issued> issued = [];
 

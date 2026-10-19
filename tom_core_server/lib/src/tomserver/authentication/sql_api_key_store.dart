@@ -91,22 +91,23 @@ class TomSqlApiKeyStore implements TomApiKeyStore {
   /// Creates the tables when [createSchema] asks for it; once per store.
   Future<void> ensureSchema() => _schema.ensure(() async {
     if (!createSchema) return;
-    await datasource.executeCommand(_accounts.createTableDdl);
-    await datasource.executeCommand(_keys.createTableDdl);
+    await _accounts.create(datasource);
+    await _keys.create(datasource);
   });
 
   @override
   Future<void> saveAccount(TomServiceAccount account) async {
     await ensureSchema();
-    await datasource.executeCommand(
-      _accounts.insert('REPLACE', const {
+    await _accounts.replaceRow(
+      datasource,
+      const {
         'id': ':id',
         'name': ':name',
         'roles': ':roles',
         'tenant': ':tenant',
         'organization': ':organization',
         'disabled': ':disabled',
-      }),
+      },
       {
         'id': account.id,
         'name': account.name,
@@ -140,8 +141,9 @@ class TomSqlApiKeyStore implements TomApiKeyStore {
   @override
   Future<void> saveKey(TomApiKey key) async {
     await ensureSchema();
-    await datasource.executeCommand(
-      _keys.insert('REPLACE', const {
+    await _keys.replaceRow(
+      datasource,
+      const {
         'id': ':id',
         'account_id': ':accountId',
         'secret_hash': ':secretHash',
@@ -151,7 +153,7 @@ class TomSqlApiKeyStore implements TomApiKeyStore {
         'expires_at': ':expiresAt',
         'revoked_at': ':revokedAt',
         'last_used_at': ':lastUsedAt',
-      }),
+      },
       {
         'id': key.id,
         'accountId': key.accountId,

@@ -39,6 +39,7 @@
 library;
 
 import 'package:mysql_client/exception.dart';
+import 'package:postgres/postgres.dart' as pg;
 import 'package:tom_basics/tom_basics.dart';
 
 /// What a failed data-source write says about whether it took effect.
@@ -61,12 +62,14 @@ const int _maxCauseDepth = 8;
 /// Classifies [error], the failure of a data-source write.
 ///
 /// Returns [TomSqlFailureMode.definite] when the chain contains a
-/// [MySQLServerException] — the server received the statement, rejected it, and
-/// said so — and [TomSqlFailureMode.ambiguous] for everything else. See the
+/// [MySQLServerException] or a PostgreSQL `ServerException` — the server
+/// received the statement, rejected it, and said so — and [TomSqlFailureMode.ambiguous] for everything else. See the
 /// library comment for why the recognisable side is the definite one.
 TomSqlFailureMode classifySqlFailure(Object? error) {
   for (final cause in sqlFailureCauses(error)) {
-    if (cause is MySQLServerException) return TomSqlFailureMode.definite;
+    if (cause is MySQLServerException || cause is pg.ServerException) {
+      return TomSqlFailureMode.definite;
+    }
   }
   return TomSqlFailureMode.ambiguous;
 }

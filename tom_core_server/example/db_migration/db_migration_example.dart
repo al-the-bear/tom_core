@@ -4,7 +4,7 @@
 ///
 ///  1. binding a migrator to a data-source type ([TomDbMigrationAdaptor]);
 ///  2. the recorded row and its content digest ([TomDbVersion],
-///     [MariadbMigrationAdaptor.checksumOf]);
+///     [TomSqlMigrationAdaptor.checksumOf]);
 ///  3. the file-name grammar, parsed rather than printed
 ///     ([TomDbMigrations.parseMigrationFileName]);
 ///  4. environment tags ([TomMigrationFileName.appliesInEnvironment]);
@@ -62,7 +62,7 @@ void run() {
     ..version = 2
     ..description = 'add_orders'
     ..script = script
-    ..checksum = MariadbMigrationAdaptor.checksumOf(script)
+    ..checksum = TomSqlMigrationAdaptor.checksumOf(script)
     ..success = 1;
   print('2. recorded migration');
   print(
@@ -76,7 +76,7 @@ void run() {
   final edited = '$script\n-- edited after the fact';
   print(
     '   an edited script still matches? '
-    '${MariadbMigrationAdaptor.checksumOf(edited) == version.checksum}',
+    '${TomSqlMigrationAdaptor.checksumOf(edited) == version.checksum}',
   );
   check(
     version.checksum ==
@@ -84,7 +84,7 @@ void run() {
     'the digest of a given script is stable across processes',
   );
   check(
-    MariadbMigrationAdaptor.checksumOf(edited) != version.checksum,
+    TomSqlMigrationAdaptor.checksumOf(edited) != version.checksum,
     'editing a script changes its digest',
   );
 

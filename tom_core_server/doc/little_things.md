@@ -156,7 +156,7 @@ answer:
 | `parse contract` | A public parse function keeping Dart's own convention — `int.parse`, `DateTime.parse` — and throwing `FormatException`. The obligation moves to the caller: code that parses *data from outside the process* with one converts the `FormatException` into a keyed exception. | `parseSqlDate`, `parseSqlTimeOfDay`, `TomS3BlobStore.parseHttpDate` |
 | `kernel protocol` | A kernel type the kernel dispatches on, raised to speak that protocol. | `TomPermanentJobFailure`, the scheduler's "do not retry" |
 
-The parse-contract row is the one with teeth. The MariaDB driver reads stored
+The parse-contract row is the one with teeth. Every SQL driver reads stored
 `DATE`, `TIME` and `DATETIME` text through those parse functions, and a stored
 row is data from outside, so the driver converts: an unreadable value raises
 `error.result_processing.not_a_date`, `.not_a_time` or `.not_an_instant`, naming

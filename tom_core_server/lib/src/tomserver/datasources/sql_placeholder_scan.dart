@@ -51,8 +51,19 @@ class SqlPlaceholderScan {
   /// the exact left-to-right order the `?` slots appear (repeats included).
   ///
   /// Content inside string literals is copied verbatim, so a `:name`-looking
-  /// substring there never becomes a slot.
-  static (String, List<String>) toPositional(String namedSql) {
+  /// substring there never becomes a slot, and a `::` (a PostgreSQL cast) is
+  /// never read as a placeholder.
+  ///
+  /// [slot] renders the placeholder for the slot at a 0-based index — `?` by
+  /// default; PostgreSQL's `$1`, `$2`, … for its driver. [backslashEscapes]
+  /// says whether a backslash escapes the next character inside a string
+  /// literal: MariaDB's default mode, and not PostgreSQL's, where `'\'` is a
+  /// literal backslash and the quote after it closes the literal.
+  static (String, List<String>) toPositional(
+    String namedSql, {
+    String Function(int index)? slot,
+    bool backslashEscapes = true,
+  }) {
     final names = <String>[];
     final out = StringBuffer();
     final length = namedSql.length;
@@ -60,7 +71,20 @@ class SqlPlaceholderScan {
     while (i < length) {
       final c = namedSql.codeUnitAt(i);
       if (c == _singleQuote || c == _doubleQuote) {
-        i = _copyQuoted(namedSql, i, c, out, escapeWithBackslash: true);
+        i = _copyQuoted(
+          namedSql,
+          i,
+          c,
+          out,
+          escapeWithBackslash: backslashEscapes,
+        );
+        continue;
+      }
+      if (c == _colon &&
+          i + 1 < length &&
+          namedSql.codeUnitAt(i + 1) == _colon) {
+        out.write('::');
+        i += 2;
         continue;
       }
       if (c == _backtick) {
@@ -76,8 +100,8 @@ class SqlPlaceholderScan {
         while (j < length && _isIdentifierPart(namedSql.codeUnitAt(j))) {
           j++;
         }
+        out.write(slot == null ? '?' : slot(names.length));
         names.add(namedSql.substring(i + 1, j));
-        out.write('?');
         i = j;
         continue;
       }

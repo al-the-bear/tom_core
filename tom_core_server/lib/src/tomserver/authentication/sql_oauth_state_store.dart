@@ -247,7 +247,7 @@ class TomSqlOAuthStateStore implements TomOAuthStateStore {
   /// start-up sequence can provision the schema before serving traffic.
   Future<void> ensureSchema() => _schema.ensure(() async {
     if (createSchema) {
-      await datasource.executeCommand(_states.createTableDdl);
+      await _states.create(datasource);
     }
   });
 
@@ -262,7 +262,7 @@ class TomSqlOAuthStateStore implements TomOAuthStateStore {
     // handle, and both must fail loudly rather than silently overwrite a live
     // flow with a different one.
     await datasource.executeCommand(
-      _states.insert('INSERT', _writeColumns),
+      _states.insertRow(datasource.sqlDialect, _writeColumns),
       _bindOf(pending),
     );
   }

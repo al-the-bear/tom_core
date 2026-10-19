@@ -107,8 +107,8 @@ fragment above installs. `test/authorization_test.dart` covers the module, with
 `test/principal_delegation_test.dart` and
 `test/principal_resource_grant_test.dart` on delegation, and
 `test/data_scope_test.dart` / `test/resource_data_scope_test.dart` on the row
-scope — `test/resource_data_scope_db_test.dart` adds what only a live MariaDB
-can answer. `test/examples_test.dart` runs both examples and
+scope — `test/resource_data_scope_db_test.dart` adds what only a live database
+(MariaDB or PostgreSQL) can answer. `test/examples_test.dart` runs both examples and
 `test/readme_quick_start_test.dart` holds the fragment above to admitting that
 it is one. Revocation is covered by `test/cache_invalidation_test.dart`.
 

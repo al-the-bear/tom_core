@@ -43,17 +43,17 @@ void main() async {
   final reachable = await TestDatabase.isReachable();
   final String? skipReason = reachable
       ? null
-      : 'MariaDB not reachable on ${TestDatabase.host}:${TestDatabase.port} — '
-            'start one with tool/run_db_tests.sh';
+      : 'No ${TestDatabase.engine} server reachable on ${TestDatabase.host}:${TestDatabase.port} — '
+            'start one with tool/run_db_tests.sh or tool/run_db_tests_postgres.sh';
 
   group('DECIMAL columns on the entity-mapping paths', () {
     late TomDataSourceInfo dsi;
-    late MariaDbDatasource ds;
+    late TomSqlDatasource ds;
 
     setUpAll(() async {
       initializeReflection();
       dsi = await TestDatabase.register();
-      ds = dsi.datasource as MariaDbDatasource;
+      ds = dsi.datasource as TomSqlDatasource;
       await TestDatabase.ensureFixtureAmountTable(dsi);
     });
 
@@ -201,7 +201,7 @@ void main() async {
           );
         },
         throwsA(
-          isA<MariadbDatasourceException>().having(
+          isA<TomSqlDatasourceException>().having(
             (e) => e.toString(),
             'message',
             allOf(contains('1234.56'), contains('entries')),

@@ -33,13 +33,14 @@ const String _xaName = 'tom_core_server_test_xa';
 void main() async {
   final reachable = await TestDatabase.isReachable();
   final String? skipReason = reachable
-      ? null
-      : 'MariaDB not reachable on ${TestDatabase.host}:${TestDatabase.port} — '
-            'start one with tool/run_db_tests.sh';
+      ? await TestDatabase.twoPhaseSkipReason()
+      : 'No database reachable on ${TestDatabase.host}:${TestDatabase.port} — '
+            'start one with tool/run_db_tests.sh or '
+            'tool/run_db_tests_postgres.sh';
 
   group('MariaDbXADatasource through TomTransaction (DB-backed)', () {
-    late MariaDbXADatasource xa;
-    late MariaDbDatasource reader;
+    late TomSqlDatasource xa;
+    late TomSqlDatasource reader;
 
     setUpAll(() async {
       initializeReflection();
@@ -49,7 +50,8 @@ void main() async {
       await TomDataSourceInfo.initializeDatasourceInfo(<String, dynamic>{
         ...TestDatabase.datasourceConfig,
         _xaName: <String, dynamic>{
-          'type': 'mariadb_xa',
+          'type': TestDatabase.isPostgres ? 'postgresql_xa' : 'mariadb_xa',
+          if (TestDatabase.isPostgres) 'sslMode': 'disable',
           'username': TestDatabase.username,
           'password': TestDatabase.password,
           'host': TestDatabase.host,
@@ -60,11 +62,11 @@ void main() async {
       final plain = TomDataSourceInfo.getDataSourceInfo(
         TestDatabase.datasourceName,
       )!;
-      reader = plain.datasource as MariaDbDatasource;
+      reader = plain.datasource as TomSqlDatasource;
       await TestDatabase.ensureFixtureTaskTable(plain);
       xa =
           TomDataSourceInfo.getDataSourceInfo(_xaName)!.datasource
-              as MariaDbXADatasource;
+              as TomSqlDatasource;
     });
 
     tearDown(() async {

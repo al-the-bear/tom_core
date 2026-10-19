@@ -68,13 +68,21 @@ class TomSqlLexer {
   /// This is a lexer, not a validator: a caller splitting statements should
   /// hand the malformed tail to the server and let it produce the syntax error,
   /// which says far more than anything this function could.
-  static int endOfQuotedRun(String sql, int openIndex) {
+  ///
+  /// [backslashEscapes] is the database's literal rule: MariaDB's default mode
+  /// escapes with a backslash, PostgreSQL does not — `'C:\'` is a complete
+  /// literal there.
+  static int endOfQuotedRun(
+    String sql,
+    int openIndex, {
+    bool backslashEscapes = true,
+  }) {
     final quote = sql[openIndex];
     // Backslash escapes apply to string literals only, never to identifiers.
-    final backslashEscapes = quote != '`';
+    final escapes = backslashEscapes && quote != '`';
     for (var i = openIndex + 1; i < sql.length; i++) {
       final c = sql[i];
-      if (backslashEscapes && c == r'\' && i + 1 < sql.length) {
+      if (escapes && c == r'\' && i + 1 < sql.length) {
         i++; // whatever follows is escaped, including a quote
         continue;
       }
@@ -135,7 +143,14 @@ class TomSqlLexer {
   /// half-reads a multi-statement command, consuming the first result set and
   /// leaving the rest, which desyncs the shared connection so every later read
   /// returns stale data.
-  static List<String> splitStatements(String sql) {
+  ///
+  /// [backslashEscapes] is the database's literal rule — see
+  /// [endOfQuotedRun]; a caller holding a dialect passes its
+  /// `TomStandardSqlDialect.backslashEscapes`.
+  static List<String> splitStatements(
+    String sql, {
+    bool backslashEscapes = true,
+  }) {
     final statements = <String>[];
     final buffer = StringBuffer();
     for (var i = 0; i < sql.length; i++) {
@@ -148,7 +163,7 @@ class TomSqlLexer {
         continue;
       }
       if (quoteCharacters.contains(ch)) {
-        final end = endOfQuotedRun(sql, i);
+        final end = endOfQuotedRun(sql, i, backslashEscapes: backslashEscapes);
         buffer.write(sql.substring(i, end + 1));
         i = end;
         continue;

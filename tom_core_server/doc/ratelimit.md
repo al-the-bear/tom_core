@@ -223,10 +223,12 @@ node shares, so a limit is one limit across the cluster:
 | `hits` | `INT` | The requests counted in it |
 
 The primary key is `(bucket, window_index)`, with a second key on
-`(rule, window_index)`. A request is counted with one statement,
-`INSERT … VALUES (…, LAST_INSERT_ID(1)) ON DUPLICATE KEY UPDATE hits =
-LAST_INSERT_ID(hits + 1)`, atomic on the server, which hands back *this*
-request's place in the count as the statement's generated id. Reading the count
+`(rule, window_index)`. A request is counted with one statement, the data
+source dialect's `incrementCounter` — on MariaDB `INSERT … VALUES (…,
+LAST_INSERT_ID(1)) ON DUPLICATE KEY UPDATE hits = LAST_INSERT_ID(hits + 1)`, on
+PostgreSQL `INSERT … ON CONFLICT (bucket, window_index) DO UPDATE SET hits =
+<table>.hits + 1 RETURNING hits` — atomic on the server, which hands back
+*this* request's place in the count as the statement's generated id. Reading the count
 with a second statement would be wrong under concurrency: every request of a
 burst would see the burst's final total and nearly all of it would be refused.
 The previous window's count is read beside it, and the decision follows the same
@@ -361,11 +363,6 @@ than the first request.
 - **The default limiter counts per node.** On N nodes a caller gets up to N
   times the limit; `TomSqlRateLimiter` is the shared alternative.
   <!-- unpinned: decision — the in-process limiter is the default because it costs no database call per request -->
-- **The shared limiter speaks the MariaDB / MySQL dialect.** It counts with
-  `INSERT … ON DUPLICATE KEY UPDATE` and `LAST_INSERT_ID(expr)`, which the
-  framework's MariaDB data source supports; another database needs a limiter of
-  its own behind `TomRateLimiter`.
-  <!-- unpinned: absence — no other dialect's limiter ships -->
 - **A limiter that cannot count does not admit.** There is no fail-open
   setting: a shared table that is unreachable fails the requests it would have
   counted.
@@ -392,9 +389,10 @@ API key apart from the address rule, a refused key counted by its address, no
 limits installed, and a principal rule keyed by tenant and name.
 
 `test/ratelimit_api_keys_db_test.dart`, tagged `db`, runs `TomSqlRateLimiter`
-against MariaDB: two nodes counting into one limit, concurrent requests each
+against the database the DB suites run against — MariaDB or PostgreSQL: two nodes counting into one limit, concurrent requests each
 counted once, and a new window admitting again weighted by the previous one.
-`tool/run_db_tests.sh` starts a database for it.
+`tool/run_db_tests.sh` (MariaDB) or `tool/run_db_tests_postgres.sh`
+(PostgreSQL) starts a database for it.
 
 ```bash
 dart run example/ratelimit/rate_limit_example.dart

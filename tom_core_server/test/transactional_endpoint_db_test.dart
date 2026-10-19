@@ -34,12 +34,12 @@ void main() async {
   final reachable = await TestDatabase.isReachable();
   final String? skipReason = reachable
       ? null
-      : 'MariaDB not reachable on ${TestDatabase.host}:${TestDatabase.port} — '
-            'start one with tool/run_db_tests.sh';
+      : 'No ${TestDatabase.engine} server reachable on ${TestDatabase.host}:${TestDatabase.port} — '
+            'start one with tool/run_db_tests.sh or tool/run_db_tests_postgres.sh';
 
   group('a @TomTransactional endpoint (DB-backed)', () {
     late Router router;
-    late MariaDbDatasource reader;
+    late TomSqlDatasource reader;
 
     setUpAll(() async {
       initializeReflection();
@@ -53,7 +53,7 @@ void main() async {
       final info = TomDataSourceInfo.getDataSourceInfo(
         TestDatabase.datasourceName,
       )!;
-      reader = info.datasource as MariaDbDatasource;
+      reader = info.datasource as TomSqlDatasource;
       await TestDatabase.ensureFixtureTaskTable(info);
     });
 

@@ -281,8 +281,10 @@ TomRateLimits({
 
 The shared limiter: sliding-window counters in a table every node writes, so a
 limit is one limit across the cluster. One row per key and fixed window; a
-request is counted with one `INSERT … ON DUPLICATE KEY UPDATE hits =
-LAST_INSERT_ID(hits + 1)`, atomic on the server, which hands back this
+request is counted with one statement, the dialect's `incrementCounter` — on
+MariaDB `INSERT … ON DUPLICATE KEY UPDATE hits = LAST_INSERT_ID(hits + 1)`, on
+PostgreSQL `INSERT … ON CONFLICT … DO UPDATE … RETURNING hits` — atomic on the
+server, which hands back this
 request's place in the count as the statement's generated id — exact under
 concurrency. The previous window's count is read beside it. Every 512 hits the
 limiter deletes the rule's rows of windows that can no longer be read; a failed

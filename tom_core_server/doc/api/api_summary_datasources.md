@@ -4,8 +4,9 @@ The data-access foundation of the server: SQL-typed values (`TomDbType<T>`), a
 typed operator tree (`TomOperator<R>`), a SQL dialect that renders that tree to
 SQL fragments (`TomStandardSqlDialect`), reusable query objects (`TomSelect`,
 `TomCount`, `TomDelete`, `TomLiteralSelect`), and the data-source / driver
-abstraction (`TomDataSource`, `TomDatasourceDriver`, `TomDataSourceInfo`) with a
-MariaDB implementation. Two smaller surfaces sit beside them because every
+abstraction (`TomDataSource`, `TomDatasourceDriver`, `TomDataSourceInfo`) with
+two SQL drivers — MariaDB and PostgreSQL — built on one driver-neutral base
+(`TomSqlDatasource`). Two smaller surfaces sit beside them because every
 table has them whichever module owns it: `TomFrameworkTable` declares a table
 the framework itself owns, once, and `sqlInstant` / `parseSqlInstant` are the
 one encoding of an instant in a `DATETIME(6)` column. The object-persistence
@@ -30,6 +31,7 @@ module builds its query DSL and repositories on top of this layer.
   - [The SQL Dialect](#the-sql-dialect)
     - [TomStandardSqlDialect](#tomstandardsqldialect)
     - [MariadbSqlDialect](#mariadbsqldialect)
+    - [PostgresSqlDialect](#postgressqldialect)
   - [Persistence Metadata](#persistence-metadata)
     - [TomTypePersistenceInfo](#tomtypepersistenceinfo)
     - [TomTypedPersistenceBase](#tomtypedpersistencebase)
@@ -50,10 +52,21 @@ module builds its query DSL and repositories on top of this layer.
     - [TomConnectionPool&lt;C&gt;](#tomconnectionpoolc)
     - [TomConnectionPoolSettings](#tomconnectionpoolsettings)
     - [TomConnectionFactory&lt;C&gt;](#tomconnectionfactoryc)
+  - [The SQL Driver Base](#the-sql-driver-base)
+    - [TomSqlDatasource](#tomsqldatasource)
+    - [TomSqlPreparedStatement&lt;T&gt;](#tomsqlpreparedstatementt)
+    - [TomSqlRow](#tomsqlrow)
+    - [TomSqlResult](#tomsqlresult)
+    - [TomSqlResultValues](#tomsqlresultvalues)
+    - [TomSqlLink](#tomsqllink)
+    - [TomSqlBranch](#tomsqlbranch)
   - [The MariaDB Driver](#the-mariadb-driver)
     - [MariaDbDatasource](#mariadbdatasource)
     - [MariaDbXADatasource](#mariadbxadatasource)
     - [MariadbPreparedStatement&lt;T&gt;](#mariadbpreparedstatementt)
+  - [The PostgreSQL Driver](#the-postgresql-driver)
+    - [PostgresDatasource](#postgresdatasource)
+    - [PostgresXADatasource](#postgresxadatasource)
   - [Placeholder Scanning](#placeholder-scanning)
     - [SqlPlaceholderScan](#sqlplaceholderscan)
   - [SQL Lexing](#sql-lexing)
@@ -66,8 +79,12 @@ module builds its query DSL and repositories on top of this layer.
   - [Exceptions](#exceptions)
     - [TomDatasourceInitException](#tomdatasourceinitexception)
     - [TomConnectionPoolException](#tomconnectionpoolexception)
+    - [TomSqlDatasourceException](#tomsqldatasourceexception)
+    - [TomSqlConnectionLostException](#tomsqlconnectionlostexception)
     - [MariadbDatasourceException](#mariadbdatasourceexception)
     - [MariadbPreparedStatementException](#mariadbpreparedstatementexception)
+    - [PostgresDatasourceException](#postgresdatasourceexception)
+    - [PostgresConnectionLostException](#postgresconnectionlostexception)
 - [Enums](#enums)
   - [TomAggregateFunction](#tomaggregatefunction)
   - [TomSqlTypeFamily](#tomsqltypefamily)
@@ -81,7 +98,10 @@ Source: `lib/src/tomserver/datasources/connection_pool.dart`,
 `lib/src/tomserver/datasources/framework_table.dart`,
 `lib/src/tomserver/datasources/mariadb_datasource.dart`,
 `lib/src/tomserver/datasources/mariadb_sql_dialect.dart`,
+`lib/src/tomserver/datasources/postgres_datasource.dart`,
+`lib/src/tomserver/datasources/postgres_sql_dialect.dart`,
 `lib/src/tomserver/datasources/queries.dart`,
+`lib/src/tomserver/datasources/sql_datasource.dart`,
 `lib/src/tomserver/datasources/sql_dialects.dart`,
 `lib/src/tomserver/datasources/sql_failure_mode.dart`,
 `lib/src/tomserver/datasources/sql_instant.dart`,
@@ -100,12 +120,24 @@ in the object-persistence module because it is built from that module's
 aggregate nodes. A `TomDataSource` is a driver-implemented data source that prepares
 statements, runs commands and queries, and enlists in transactions;
 `TomDataSourceInfo` is the process-wide registry of named, configured data
-sources. The MariaDB driver (`MariaDbDatasource`, plus the XA variant
-`MariaDbXADatasource`) implements the full surface over a `TomConnectionPool` —
-a connection per transaction, so concurrent transactions run side by side — and
-`SqlPlaceholderScan`
-rewrites the generated `:name` placeholders into the positional `?` form the
-MySQL binary protocol binds.
+sources. `TomSqlDatasource` implements the whole surface once, over a
+`TomConnectionPool` — a connection per transaction, so concurrent transactions
+run side by side — and reads every result through one text convention
+(`TomSqlRow`, `TomSqlResult`); a driver supplies only the wire. Two drivers
+extend it: MariaDB (`MariaDbDatasource`, plus the XA variant
+`MariaDbXADatasource`) and PostgreSQL 15 and later (`PostgresDatasource`, plus
+the two-phase variant `PostgresXADatasource`), each with its own dialect
+(`MariadbSqlDialect`, `PostgresSqlDialect`). `SqlPlaceholderScan` rewrites the
+generated `:name` placeholders into the positional form each protocol binds —
+`?` for MariaDB, `$1`, `$2`, … for PostgreSQL.
+
+The framework declares its own tables in one canonical DDL vocabulary,
+MariaDB's spelling (`DATETIME(6)`, `TINYINT(1)`, `AUTO_INCREMENT`, inline
+`KEY`s). The dialect's DDL and row-write methods (`columnType`,
+`columnDefinition`, `keyDefinition`, `createIndex`, `insertInto`,
+`replaceInto`, `incrementCounter`, `returningKey`, `translateCanonical`) render
+that declaration and the framework's conflicting writes in each database's own
+words; the defaults render MariaDB's spelling unchanged.
 
 Two surfaces here are about *tables* rather than about queries, and are in this
 module because they belong to no single module that uses them. A
@@ -138,7 +170,8 @@ TomObject<T>  (kernel)
 TomOperator<R>
 
 TomStandardSqlDialect
-    └── MariadbSqlDialect
+    ├── MariadbSqlDialect
+    └── PostgresSqlDialect
 
 TomDatasourceDriver  (annotation)
 
@@ -154,14 +187,24 @@ TomTypedPersistenceBase
 TomTypePersistenceInfo
 
 TomPreparedStatement<T>
-    └── MariadbPreparedStatement<T>
+    └── TomSqlPreparedStatement<T>
+            └── MariadbPreparedStatement<T>
 
 TomStatementOutcome<T>  (value — what one run reported)
 
 TomTransactionParticipant  (transactions)
     └── TomDataSource
-            └── MariaDbDatasource
-                    └── MariaDbXADatasource
+            └── TomSqlDatasource  (implements)
+                    ├── MariaDbDatasource
+                    │       └── MariaDbXADatasource
+                    └── PostgresDatasource
+                            └── PostgresXADatasource
+
+TomSqlRow     (interface)
+TomSqlResult  (interface)
+    └── TomSqlResultValues  (implements)
+TomSqlLink
+TomSqlBranch
 
 TomConnectionPool<C>
 TomConnectionPoolSettings
@@ -176,8 +219,12 @@ TomFrameworkKey
 TomSchemaProvisioning
 
 TomServerException  (little_things)
-    ├── MariadbDatasourceException
-    ├── MariadbPreparedStatementException
+    ├── TomSqlDatasourceException
+    │       ├── MariadbDatasourceException
+    │       └── PostgresDatasourceException
+    ├── TomSqlConnectionLostException
+    │       ├── MariadbPreparedStatementException
+    │       └── PostgresConnectionLostException
     ├── TomConnectionPoolException
     └── TomDatasourceInitException
 ```
@@ -405,6 +452,11 @@ fragment.
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `likeEscapeCharacter` | `String` | *(getter)* The character that turns the next `%` or `_` in a `LIKE` pattern into itself, named in the `ESCAPE` clause `like` and `notLike` render. A dialect whose escape character differs overrides this alone; `escapeLikePattern` and the rendered clause both read it from here. Defaults to `\`. |
+| `declaresIndexesInline` | `bool` | *(getter)* Whether a `CREATE TABLE` body may declare a non-unique index inline (`KEY name (columns)`). `true` here; where it is `false`, `createIndex` renders one statement per index after the table. |
+| `backslashEscapes` | `bool` | *(getter)* Whether a backslash escapes the next character inside a string literal — `true` here (MariaDB's default mode); a statement splitter needs the database's rule. |
+| `schemaSetting` | `String` | *(getter)* The data-source setting that points a connection at a schema — `databaseName` here, where a schema and a database are one thing. A schema-isolated tenant's data source is its base data source with this one setting changed. |
+| `currentSchema` | `SqlString` | *(getter)* The expression naming the schema the connection works in — `DATABASE()` here — for a catalogue query about "this" schema. |
+| `tableColumnsQuery` | `SqlString` | *(getter)* A query answering, for the table bound as `:table` in `currentSchema`, one row per column in declaration order: `column_name`, `column_type` (with its length — `varchar(191)`, `tinyint(1)`), `is_nullable` (`YES` / `NO`) and `column_key` (`PRI` for a primary-key column). What the live framework-schema check compares a framework table against. |
 
 ##### Methods
 
@@ -431,7 +483,8 @@ fragment.
 | `text` | `SqlString text(String text)` | Renders a single-quoted string literal, escaping `\` and `'`. |
 | `intOp` | `SqlString intOp(int value)` | Renders an integer literal. |
 | `doubleOp` | `SqlString doubleOp(double value)` | Renders a double literal. |
-| `boolOp` | `SqlString boolOp(bool value)` | Renders a boolean literal. |
+| `boolOp` | `SqlString boolOp(bool value)` | Renders a boolean literal — a value compared with a truth column. |
+| `truthPredicate` | `SqlString truthPredicate(bool value)` | Renders a constant predicate — the `WHERE false` of a scope that admits nothing. The same text as `boolOp` here; a database whose truth columns are not booleans (PostgreSQL, where they are `SMALLINT`) renders the two differently. |
 | `dateTimeOp` | `SqlString dateTimeOp(DateTime value)` | Renders a timestamp literal as the single-quoted UTC `DATETIME(6)` text `sqlInstant` defines — not ISO-8601, whose `T` and `Z` a `DATETIME` column rejects. |
 | `dateOp` | `SqlString dateOp(DateTime value)` | Renders a date literal as single-quoted, zero-padded `YYYY-MM-DD`. Unlike `dateTimeOp`, the components are taken as labelled — no UTC conversion. Quotes `sqlDate` rather than restating the format, so an inlined literal and a bound value cannot spell the same day differently. |
 | `timeOp` | `SqlString timeOp(DateTime value)` | Renders a time-of-day literal as single-quoted, fixed-width `HH:MM:SS`, discarding the date half of `value` — a `TIME` column stores a position within a day, and MariaDB reads a datetime-shaped string for one as a truncation error rather than as the time it contains. Like `dateOp`, the components are taken as labelled; sub-second precision is dropped. Quotes `sqlTimeOfDay`. |
@@ -486,6 +539,31 @@ builder.
 filter different things: `WHERE` removes rows before aggregation, `HAVING`
 removes groups after it. ANDing them upstream would change the meaning of both.
 
+##### Methods — DDL and row writes
+
+The framework declares its own tables once, in a **canonical** type vocabulary —
+MariaDB's spelling: `DATETIME(6)`, `TINYINT(1)`, `LONGTEXT`, `AUTO_INCREMENT`,
+inline `KEY`s — and every database renders that declaration, and the
+framework's conflicting writes, in its own words. The defaults below render the
+canonical spelling unchanged; a dialect whose database spells a type, a key or
+a conflicting write differently overrides the method that renders it.
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `columnType` | `String columnType(String canonicalType)` | The type this database stores the canonical `canonicalType` as. Returns it unchanged here. |
+| `columnDefinition` | `SqlString columnDefinition({required String name, required String type, required bool nullable, String? defaultValue, bool autoIncrement = false, int nameWidth = 0, int typeWidth = 0})` | One column's line in a `CREATE TABLE` body — name, `columnType(type)`, `NULL` / `NOT NULL`, the `DEFAULT`, then `AUTO_INCREMENT` — with the name and type padded to `nameWidth` and `typeWidth` so a reader can scan the types in a column. |
+| `keyDefinition` | `SqlString keyDefinition(String name, List<String> columns, {required bool unique})` | An inline key's line in a `CREATE TABLE` body: `UNIQUE KEY name (…)` or `KEY name (…)`. |
+| `createIndex` | `SqlString createIndex(String name, String table, List<String> columns)` | `CREATE INDEX IF NOT EXISTS name ON table (…)` — the statement for an index the body cannot declare (`declaresIndexesInline` is `false`). |
+| `insertInto` | `SqlString insertInto(String table, Map<String, String> values, {bool ignoreConflict = false})` | A row-writing statement into `table`: the columns of `values` with the SQL text that supplies each — a `:bind` or a literal. A row whose key already exists raises the database's duplicate-key error, unless `ignoreConflict` asks for the stored row to be kept and the write to change nothing (`INSERT IGNORE` here). |
+| `replaceInto` | `List<SqlString> replaceInto(String table, Map<String, String> values, {required List<String> primaryKey, List<List<String>> uniqueKeys = const []})` | The statements writing a row over every row it supersedes — the one with its `primaryKey`, and any colliding with it on one of `uniqueKeys` — run in order, in one transaction when there is more than one. One `REPLACE INTO` here. A database without `REPLACE` deletes the superseded rows first: a key freed by a statement is free to the next statement of the same transaction, and to nothing earlier. |
+| `incrementCounter` | `SqlString incrementCounter(String table, Map<String, String> values, String counter, {required List<String> conflictKey})` | One statement that counts one more in `table`'s row whose `conflictKey` columns hold what `values` supplies, creating the row with a count of `1` when there is none, and reports the count it left in `counter` as the statement's generated id. Taken and read in one statement because a second read is wrong under concurrency: every caller of a burst would see the final total rather than its own place in it. `LAST_INSERT_ID(expr)` with `ON DUPLICATE KEY UPDATE` here. |
+| `returningKey` | `SqlString returningKey(String insert, String keyColumn)` | `insert` made to report the value of `keyColumn` it generated as the statement's generated id. Returns `insert` unchanged here — a database with a last-insert id reports the key on its own. |
+| `translateCanonical` | `List<SqlString> translateCanonical(String statement)` | `statement`, written in the canonical DDL, as the statements this database runs to the same effect. Returns `[statement]` here. A store that keeps a hand-written `CREATE TABLE`, and a test that builds a fixture table, pass it through here so one declaration serves every database. |
+| `translateCanonicalScript` | `String translateCanonicalScript(String script)` | A whole canonical `script` — a migration file — in this database's words: each statement (`TomSqlLexer.splitStatements`) through `translateCanonical`, comments kept, one `;`-terminated statement per paragraph. |
+| `createSchema` | `SqlString createSchema(String name)` | The statement creating schema `name` if it does not exist — `` CREATE DATABASE IF NOT EXISTS `name` `` here, where a schema is a database. `name` must be a plain identifier; the caller checks it. |
+| `rejectingTrigger` | `List<SqlString> rejectingTrigger({required String name, required String table, required String event, required String message})` | The statements installing trigger `name`, which refuses every `event` (`UPDATE` or `DELETE`) on `table` with `message` — a guard a deployment installs, not something the framework issues itself. One `CREATE TRIGGER … SIGNAL SQLSTATE '45000'` here. |
+| `quoteIdentifier` | `SqlString quoteIdentifier(String identifier)` | `identifier` quoted, for a name that may be a reserved word or carry characters an unquoted identifier may not — backticks here, an embedded backtick doubled. |
+
 #### MariadbSqlDialect
 
 The SQL dialect for MariaDB. Inherits standard SQL *generation* unchanged from
@@ -515,6 +593,71 @@ This is the shape a driver's own dialect should copy: recognise the cases the
 database spells differently, then `return super.typeFamily(sqlType)`. Restating
 the standard names in the override would mean a name added to the base list
 never reaches the subclass.
+
+#### PostgresSqlDialect
+
+The SQL dialect for PostgreSQL 15 and later. Like `MariadbSqlDialect`, nothing
+looks it up: `PostgresDatasource.sqlDialect` returns an instance. It renders the
+canonical DDL in PostgreSQL's words and the truth-value, regexp, conflict and
+catalogue fragments PostgreSQL spells differently.
+
+A Dart `bool` is bound as `1`/`0` on every database and a framework truth column
+is a `SMALLINT` here, so a boolean *value* renders as `1`/`0` (`boolOp`) while a
+constant *predicate* renders as `TRUE`/`FALSE` (`truthPredicate`) — a `true`
+compared with a `SMALLINT` is a type error in PostgreSQL, and a `WHERE 0` is
+one too.
+
+- **Extends:** `TomStandardSqlDialect`
+
+##### Constructors
+
+```dart
+PostgresSqlDialect()
+```
+
+##### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `backslashEscapes` | `bool` | *(override)* `false`: PostgreSQL reads a backslash in an ordinary literal as itself. |
+| `declaresIndexesInline` | `bool` | *(override)* `false`: PostgreSQL declares no index inside `CREATE TABLE`, only uniqueness. |
+| `schemaSetting` | `String` | *(override)* `schema` — the `PostgresDatasource` setting that sets the session's `search_path`. |
+| `currentSchema` | `SqlString` | *(override)* `current_schema()`. |
+| `tableColumnsQuery` | `SqlString` | *(override)* The catalogue's answer in MariaDB's column shape: `format_type` for the type with its length (`character varying(191)`, `timestamp(6) without time zone`), and `PRI` for a column of the primary key. |
+
+##### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `text` | `SqlString text(String text)` | *(override)* A string literal with single quotes doubled and nothing else: PostgreSQL reads a backslash in an ordinary literal as itself (`standard_conforming_strings`), so doubling it would store two. |
+| `boolOp` | `SqlString boolOp(bool value)` | *(override)* `1` or `0`. |
+| `truthPredicate` | `SqlString truthPredicate(bool value)` | *(override)* `TRUE` or `FALSE`: a predicate has to be a boolean. |
+| `regexp` | `SqlString regexp(TomOperator<TomDbString> text, TomOperator<TomDbString> test)` | *(override)* `<text> ~ <test>`, PostgreSQL's POSIX regular-expression match. |
+| `typeFamily` | `TomSqlTypeFamily typeFamily(String sqlType)` | *(override)* The standard families plus PostgreSQL's own names — the sized `INT` aliases, `BIGSERIAL` and `SMALLSERIAL` integer, the sized `FLOAT` aliases decimal, `BYTEA` binary, `TIMESTAMPTZ` date-time, `TIMETZ` time, `JSONB`/`CITEXT`/`BPCHAR` text — delegating everything else to `super`. |
+| `columnType` | `String columnType(String canonicalType)` | *(override)* The canonical type in PostgreSQL's words: `DATETIME(n)` → `TIMESTAMP(n)`, `TINYINT` → `SMALLINT`, `INT` / `MEDIUMINT` → `INTEGER`, `DOUBLE` → `DOUBLE PRECISION`, `FLOAT` → `REAL`, `TINYTEXT` / `MEDIUMTEXT` / `LONGTEXT` → `TEXT`, `CHAR(n)` → `VARCHAR(n)`, every `BLOB`, `VARBINARY` and `BINARY` → `BYTEA`, `ENUM(…)` → `VARCHAR(255)`; anything else unchanged. |
+| `columnDefinition` | `SqlString columnDefinition({required String name, required String type, required bool nullable, String? defaultValue, bool autoIncrement = false, int nameWidth = 0, int typeWidth = 0})` | *(override)* As the base, with `GENERATED BY DEFAULT AS IDENTITY` for an auto-increment column. |
+| `keyDefinition` | `SqlString keyDefinition(String name, List<String> columns, {required bool unique})` | *(override)* `CONSTRAINT name UNIQUE (…)` — the only key a PostgreSQL table body declares. |
+| `insertInto` | `SqlString insertInto(String table, Map<String, String> values, {bool ignoreConflict = false})` | *(override)* `INSERT INTO … VALUES (…)`, with `ON CONFLICT DO NOTHING` for an ignored conflict. |
+| `replaceInto` | `List<SqlString> replaceInto(String table, Map<String, String> values, {required List<String> primaryKey, List<List<String>> uniqueKeys = const []})` | *(override)* MariaDB's `REPLACE` as two statements: a `DELETE` of every row the new one supersedes — the one with its primary key, and any colliding on a unique key whose columns the write supplies in full — then `INSERT … ON CONFLICT (<primary key>) DO UPDATE SET` every other column (`DO NOTHING` when there is none), which absorbs a writer that inserted the same key between the two. |
+| `incrementCounter` | `SqlString incrementCounter(String table, Map<String, String> values, String counter, {required List<String> conflictKey})` | *(override)* `INSERT … VALUES (…, 1) ON CONFLICT (<conflictKey>) DO UPDATE SET counter = table.counter + 1 RETURNING counter`; the driver reports the returned count as the generated id. |
+| `returningKey` | `SqlString returningKey(String insert, String keyColumn)` | *(override)* `insert` with `RETURNING keyColumn` appended — PostgreSQL has no last-insert id, and its driver reads a single returned integer as the generated id. |
+| `createSchema` | `SqlString createSchema(String name)` | *(override)* `CREATE SCHEMA IF NOT EXISTS "name"` — a PostgreSQL schema lives inside the one database. |
+| `rejectingTrigger` | `List<SqlString> rejectingTrigger({required String name, required String table, required String event, required String message})` | *(override)* Two statements: a PL/pgSQL trigger function `<name>_reject` raising `message`, and the `BEFORE <event>` row trigger calling it. The function body is an ordinary single-quoted literal rather than dollar-quoted, so the statement splitter sees one statement in it. |
+| `quoteIdentifier` | `SqlString quoteIdentifier(String identifier)` | *(override)* `identifier` in double quotes, an embedded double quote doubled. |
+| `translateCanonical` | `List<SqlString> translateCanonical(String statement)` | *(override)* The canonical `statement` in PostgreSQL's words — see below. Leading comment lines are kept on the first statement it becomes; a statement of no kind listed below runs as written. |
+
+What `translateCanonical` rewrites:
+
+| Canonical statement | Becomes |
+| ------------------- | ------- |
+| `CREATE TABLE` | Each column's type through `columnType`; `AUTO_INCREMENT` as an identity; `UNSIGNED`, `COMMENT`, `CHARACTER SET`, `COLLATE` and `ON UPDATE CURRENT_TIMESTAMP` dropped — except a binary collation (`…_bin`), which becomes `COLLATE "C"`, both meaning case-sensitive identity and code-unit order; a `TRUE`/`FALSE` default on a truth column as `1`/`0`; an `ENUM`'s value list as a `CHECK` on the `VARCHAR`; inline `UNIQUE KEY`s as constraints; inline `KEY`/`INDEX`es as `CREATE INDEX IF NOT EXISTS` statements after the table; the table options (`ENGINE=…`, `DEFAULT CHARSET=…`) dropped. An index name is schema-wide in PostgreSQL, so one that does not already name its table is prefixed with it. |
+| `ALTER TABLE … ADD [COLUMN] …` | The column translated the same way. |
+| `ALTER TABLE … MODIFY [COLUMN] …` | PostgreSQL's two actions: `ALTER COLUMN … TYPE … USING col::type` and `SET NOT NULL` / `DROP NOT NULL`. |
+| MariaDB's refusing `CREATE TRIGGER … SIGNAL SQLSTATE` | The function and trigger `rejectingTrigger` renders. |
+| `TRUNCATE TABLE …` | `TRUNCATE TABLE … RESTART IDENTITY`, so the identity restarts as an `AUTO_INCREMENT` does. |
+
+Backtick quoting is removed throughout, and the name then folds to lower case
+exactly as every unquoted reference to it does.
 
 ### Persistence Metadata
 
@@ -939,7 +1082,7 @@ concurrent transactions only by giving each one a connection of its own.
 `TomConnectionPool` lends connections up to a bound and takes them back for
 reuse. It knows nothing about any database: a driver supplies a
 `TomConnectionFactory` for its own connection type and decides what a lease is
-held for — the MariaDB drivers pin one connection to a transaction from its
+held for — the SQL drivers (`TomSqlDatasource`) pin one connection to a transaction from its
 first statement to its end, and lend one to a statement outside a transaction
 for that statement alone. See [The Connection
 Pool](../datasources.md#the-connection-pool).
@@ -1044,13 +1187,33 @@ What a driver tells a `TomConnectionPool` about its connection type `C`. An
 | `isUsable` | `bool isUsable(C connection)` | Whether `connection` is still usable without asking the server — the driver's own record of whether its link is up. |
 | `validate` | `Future<bool> validate(C connection)` | Asks the server whether `connection` still works (a `SELECT 1`). |
 
-### The MariaDB Driver
+### The SQL Driver Base
 
-#### MariaDbDatasource
+Everything a SQL data source does that does not depend on the database lives
+once in `sql_datasource.dart`: the connection pool, the transaction a
+connection is pinned to, the statement paths, the row mapping and the settings
+binding. A driver supplies the wire — how a connection is opened, how a
+statement runs on it, how its results read as text, which words open and close a
+transaction — by extending `TomSqlDatasource`, so the two drivers cannot drift
+apart on a rule that has nothing to do with which server is on the other end.
 
-A MariaDB / MySQL `TomDataSource` driver (registered for the `"mariadb"` type).
-Connection and pool settings are filled from the configuration map by
-reflection in `initialize`, which then opens the data source.
+**Results are read as text in one convention.** A driver hands its rows over as
+`TomSqlRow`s, which answer every column as text: an instant as
+`YYYY-MM-DD HH:MM:SS.ffffff` in UTC (`sqlInstant`), a date as `YYYY-MM-DD`, a
+time as `HH:MM:SS`, a number as its decimal digits, a truth value as `1` or `0`.
+That is how the MariaDB protocol delivers values anyway; the PostgreSQL driver,
+whose protocol delivers typed values, renders them into it. The mapper then
+reads one representation, with one set of parsers and one set of failure keys,
+whichever database a row came from.
+
+#### TomSqlDatasource
+
+A pooled SQL `TomDataSource` — the driver-neutral base both SQL drivers extend.
+Connection settings (`username`, `password`, `host`, `port`, `databaseName`,
+`timeOut`) and pool settings (`poolMaxSize`, `poolMinIdle`,
+`poolAcquireTimeoutMs`, `poolIdleTimeoutMs`, `poolMaxLifetimeMs`,
+`poolValidateAfterIdleMs`) are filled from the configuration map by reflection
+in `initialize`, which then opens the data source.
 
 **Connections come from a `TomConnectionPool`.** A transaction gets a
 connection of its own: its first statement on this data source enlists the data
@@ -1065,20 +1228,21 @@ after which the statement fails with `error.datasource.pool.acquire_timeout`.
 the fields and calling `connect()` — and never by the statement that wants to
 run.** Opening creates the pool and opens its first connection, so a data
 source that cannot reach its database fails where it was opened. All execution
-entry points (`prepareStatement`, `executeQuery`, `executeCommand`,
-`withDriverConnection`) require an open data source and throw
-`MariadbDatasourceException` (`error.datasource.not_opened`, naming the entry
-point in the exception's `operation` parameter and the state that refused it in
-`state`) when reached without one. Opening on demand is not offered because it
-could not work: the pool opens connections with `host`, `port` and the
-credentials, so before they are configured it would dial `:-1`, reporting an
-unreachable database where the truth is an unconfigured one.
+entry points (`prepareStatement`, `executeQuery`, `executeCommand`, `withLink`)
+require an open data source and throw the driver's `datasourceException`
+(`error.datasource.not_opened`, naming the entry point in the `operation`
+parameter and the state that refused it in `state`) when reached without one.
+Opening on demand is not offered because it could not work: the pool opens
+connections with `host`, `port` and the credentials, so before they are
+configured it would dial `:-1`, reporting an unreachable database where the
+truth is an unconfigured one.
 
 `executeQuery` and `executeCommand` take one statement each and refuse more with
 `error.datasource.multiple_statements` (parameters `operation`, `statements`,
-`command`) before touching a connection: `mysql_client` reads only the first
+`command`) before touching a connection: MariaDB's client reads only the first
 reply of a multi-statement command and leaves the rest to answer the next calls
-on the same connection. The check is quote- and comment-aware, so a terminating
+on the same connection, and PostgreSQL's extended protocol refuses a second
+statement outright. The check is quote- and comment-aware, so a terminating
 `;` or one inside a literal is not a separator.
 
 `close()` closes the pool **and lets go of it**, so a closed data source is
@@ -1088,7 +1252,280 @@ resurrect a data source the application deliberately let go. A connection that
 drops is replaced: the pool checks a connection before lending it, discards one
 that is down and opens a new one.
 
+Members marked *(protected)* are `@protected`: they are what a driver supplies
+or calls, not part of the surface an application reaches for.
+
 - **Implements:** `TomDataSource`
+
+##### Static Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `integerSettings` | `Set<String>` | `const`: the settings a driver binds to `int` fields — `port`, `timeOut` and the six `pool…` settings. |
+
+##### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `username` | `String` | The connection user name. |
+| `password` | `String` | The connection password. |
+| `host` | `String` | The database host. |
+| `port` | `int` | The database port (`-1` until configured; a driver may set its own default). |
+| `databaseName` | `String` | The database name (empty selects no default database where the server allows that). |
+| `timeOut` | `int` | The connect timeout in milliseconds. Default `10000`. |
+| `poolMaxSize` | `int` | The most connections the pool opens at once. Default `10`. |
+| `poolMinIdle` | `int` | How many idle connections the pool keeps open past the idle timeout. Default `0`. |
+| `poolAcquireTimeoutMs` | `int` | How long a statement waits for a free connection, in milliseconds. Default `30000`. |
+| `poolIdleTimeoutMs` | `int` | How long a connection may sit idle before it is closed, in milliseconds. Default `600000`. |
+| `poolMaxLifetimeMs` | `int` | How long a connection is used at all before it is replaced, in milliseconds. Default `1800000`. |
+| `poolValidateAfterIdleMs` | `int` | How long a connection may sit idle and still be lent without a check, in milliseconds. Default `30000`. |
+| `poolSettings` | `TomConnectionPoolSettings` | *(getter)* The pool settings the six `pool…` fields describe; read when the data source is opened. |
+| `driverLabel` | `String` | *(getter, protected, abstract)* How the driver names itself in messages — `MariadbDatasource`, `PostgresDatasource`. |
+| `preparedStatementLabel` | `String` | *(getter, protected, abstract)* How the driver's prepared statements name themselves in messages. |
+| `participantPrefix` | `String` | *(getter, protected, abstract)* The prefix of `getParticipantId` — `MariaDb`, `Postgres`. |
+| `commitStatement` | `String` | *(getter, protected, abstract)* The statement committing a one-phase transaction. |
+| `rollbackStatement` | `String` | *(getter, protected, abstract)* The statement rolling a one-phase transaction back. |
+| `connected` | `bool` | *(getter)* Whether the data source is open and at least one of its connections is established. |
+| `openConnectionCount` | `int` | *(getter)* How many connections the pool holds, lent or idle; `0` when not open. |
+| `lentConnectionCount` | `int` | *(getter)* How many connections are lent out — to transactions or statements. |
+| `pooledLinks` | `Iterable<TomSqlLink>` | *(getter, protected)* Every connection of the pool, lent or idle; empty when not open. |
+
+##### Methods — what a driver supplies
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `datasourceException` | `TomServerException datasourceException(String key, String message, {Map<String, dynamic>? parameters, StackTrace? stack, Object? rootException, bool autoLog = false})` | *(protected)* The exception this driver throws, carrying `key` — a `TomSqlDatasourceException` unless the driver narrows it (`MariadbDatasourceException`, `PostgresDatasourceException`). Every refusal the base raises goes through it, so a log names the database. |
+| `connectionLostException` | `TomServerException connectionLostException(String key, String message, {Map<String, dynamic>? parameters, StackTrace? stack, Object? rootException})` | *(protected)* The retry signal this driver raises for a statement whose connection was lost; see `TomSqlConnectionLostException`. |
+| `openLink` | `Future<TomSqlLink> openLink()` | *(protected, abstract)* Opens one new connection with the configured settings. |
+| `closeLink` | `Future<void> closeLink(TomSqlLink link)` | *(protected, abstract)* Closes `link`; a failure is the driver's to log. |
+| `validateLink` | `Future<bool> validateLink(TomSqlLink link)` | *(protected, abstract)* Whether `link` still answers a trivial statement. |
+| `runPreparedOn` | `Future<TomSqlResult> runPreparedOn(TomSqlLink link, String command, List<Object?> parameters)` | *(protected, abstract)* Runs the positional `command` with `parameters` on `link` as a prepared statement, preparing it on that connection on first use. |
+| `runCommandOn` | `Future<TomSqlResult> runCommandOn(TomSqlLink link, String command, Map<String, Object?>? params)` | *(protected, abstract)* Runs the named-parameter `command` with `params` (already marshalled by `tomSqlBindParams`) on `link`. |
+| `forgetStatementOn` | `void forgetStatementOn(TomSqlLink link, String command)` | *(protected, abstract)* Forgets `command`'s server-side statement on `link`; the driver frees it when `releaseForgottenOn` runs. |
+| `releaseForgottenOn` | `Future<void> releaseForgottenOn(TomSqlLink link)` | *(protected, abstract)* Frees the statements forgotten on `link` while it was out, before it goes back to the pool. |
+| `isLostConnection` | `bool isLostConnection(Object error, TomSqlLink link)` | *(protected, abstract)* Whether `error` means `link` was lost while the statement ran, so a retry on another connection may recover it. Both drivers answer with `isLostConnectionFailure`. |
+| `beginStatement` | `String beginStatement({required bool readOnly})` | *(protected, abstract)* The statement opening a transaction, read-only when `readOnly`. |
+| `toPositional` | `(String, List<String>) toPositional(String namedSql)` | *(abstract)* Translates the generated `:name` `namedSql` into the positional form this driver's protocol binds, returning the SQL and the placeholder names in slot order. |
+| `prepareOn` | `Future<void> prepareOn(TomSqlLink link, String command)` | *(protected, abstract)* Prepares `command` on `link` without running it. |
+| `newPreparedStatement` | `TomSqlPreparedStatement<T> newPreparedStatement<T extends Object>(List<String> parameterList, Type? resultType, String command, Map<String, Type>? groupedProjection)` | *(protected)* The prepared-statement handle this driver hands out — a `TomSqlPreparedStatement` unless the driver returns its own subtype. |
+| `bindSettings` | `void bindSettings(Map<String, dynamic> settings)` | *(protected, abstract)* Binds `settings` onto the driver's fields by reflection. |
+| `normalizeSettings` | `Map<String, dynamic> normalizeSettings(Map<String, dynamic> settings)` | *(protected)* Returns `settings` with every `integerSettings` value given as a string folded to an `int`, so an environment substitution (`port: ${DB_PORT:3306}`) binds. The port is parsed by `parseConfiguredPort`; any other value that is not an integer throws `error.initialize.invalid_integer` (parameters `setting` and `value`). A map with no string-valued integer setting is returned unchanged. |
+| `parseConfiguredPort` | `int parseConfiguredPort(Object? raw)` | *(protected)* Parses a configured port value — an `int`, or a `String` holding one — into the `int` the driver binds; anything else throws `error.initialize.invalid_port`. |
+
+##### Methods — opening, running, mapping
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `connect` | `Future<void> connect()` | Opens the data source: creates the pool from `poolSettings` and opens its first connection. A server that cannot be reached or refuses the session fails the call with the driver's own error and leaves the data source unopened. Does nothing on an open data source. |
+| `withLink` | `Future<R> withLink<R>(String operation, Future<R> Function(TomSqlLink link) body)` | *(protected)* Runs `body` on the connection `operation` belongs on — the one place connections are chosen: a transaction's own lifecycle statement runs on the connection pinned to that transaction; a statement inside a running transaction first enlists this data source in it, then runs on the transaction's connection; any other statement borrows a connection for itself and hands it back, discarding it if it went down while in use. |
+| `prepareStatement` | `Future<TomPreparedStatement<T>> prepareStatement<T extends Object>(TomQuery query, [Type? resultType])` | *(override)* Renders `query` through `sqlDialect`, translates it with `toPositional`, and prepares it on the connection the current zone selects, so a statement the server cannot compile fails here. A grouped query's `projectionTypes` travel with the returned handle. |
+| `mapGroupedRow` | `TomGroupedRow mapGroupedRow(TomSqlRow row, Map<String, Type> projection)` | Maps one row of a grouped result, reading each alias as the Dart type the query declared for it. Throws `error.result_processing_grouped.unknown_type` for a declared type outside `int` / `double` / `String` / `bool` / `DateTime`. |
+| `executeQuery` | `Future<List<T>> executeQuery<T extends Object>(String command, [Map<String, dynamic>? params, Type? resultType])` | *(override)* Runs a read command with reflection-based row→object mapping. A `TomClass` result type maps by observable member — by member name without `@TomDbTable`, by `@TomDbColumn` with it — supporting `int` / `double` / `String` / `bool` / `DateTime` members whether declared as the plain or the nullable (`TomN…`) observable, with a SQL `NULL` read as `null`. The rows are mapped after the connection is handed back, so a `@TomReference` column's own query never needs a second connection while the first is held. |
+| `mapSqlResult` | `Future<List<T>> mapSqlResult<T extends Object>(TomSqlResult result, [Type? resultType, Map<String, Type>? groupedProjection])` | Maps `result` onto a list of `T`, choosing between the five row shapes: a grouped row (when `groupedProjection` is given), a table-less `TomClass` bound by member name, an annotated `TomClass` bound by `@TomDbColumn`, a plain reflected holder bound by declared field name, and an annotated entity bound by its persistent columns. A column the result does not carry is skipped on every shape. Throws `error.result_processing.unsuitable_class` for a result type the reflector does not hold. Needs no open connection — only a `@TomReference` column reaches back to the database. |
+| `initialize` | `Future<void> initialize(Map<String, dynamic> settings)` | *(override)* `bindSettings(normalizeSettings(settings))`, then `connect()`. |
+| `isOperational` | `bool isOperational()` | *(override)* Whether the data source is open and can reach its database: open, and either holding a live connection or — holding none — having opened the last one it tried. |
+| `executeCommand` | `Future<BigInt> executeCommand(String command, [Map<String, dynamic>? params])` | *(override)* Runs a write command and returns the affected-row count. |
+| `close` | `Future<void> close()` | *(override)* Closes the pool and lets go of it. Idle connections are closed at once; a connection still lent — to a transaction or a running statement — is closed when it is handed back. A connection that fails to close is logged and dropped, never thrown. A data source that was never opened has nothing to release and stays "never opened". |
+| `toString` | `String toString()` | *(override)* `<driverLabel> host:port/database` and its state: `open (N lent, M idle)` while it is open, and otherwise which of the two ways it came to hold no pool — `closed` or `never opened`. |
+| `getParticipantId` | `String getParticipantId()` | *(override)* `<participantPrefix>-<database>@<host>:@<port>` — the database this source speaks to, so two instances configured for one database enlist once. |
+
+##### Methods — transactions
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `branchOf` | `TomSqlBranch? branchOf(TomTransaction transaction)` | *(protected)* `transaction`'s branch on this data source, or `null`. |
+| `lifecycle` | `Future<BigInt> lifecycle(TomTransaction transaction, String command)` | *(protected)* Issues one of `transaction`'s own lifecycle statements on its pinned connection, without enlisting anything. Routed through `executeCommand`, so there stays one way a command reaches a connection. |
+| `refuseNestedTransaction` | `Never refuseNestedTransaction([String? transactionId])` | *(protected)* Throws `error.transaction.already_active` (parameter `participant`, and `transactionId` when a two-phase branch is open) — a second start of a transaction this data source is already in. |
+| `startTransaction` | `Future<bool> startTransaction(TomTransaction transaction)` | *(override)* Opens `transaction` on a connection of its own with `beginStatement` (read-only for a read-only transaction). Returns `false`, and hands the connection back, when the database refuses it; **throws** `error.transaction.already_active` when the same transaction starts it twice — a caller mistake no retry fixes. Another transaction is not refused. Normally reached through the data source's own enlistment at the point of use. |
+| `openBranch` | `TomSqlBranch openBranch(TomTransaction transaction, TomSqlBranch? existing)` | *(protected)* The branch `transaction` starts on: `existing`, when the transaction ran on this data source before and was concluded, keeping its connection — otherwise a new one. |
+| `abandonStart` | `Future<void> abandonStart(TomTransaction transaction, TomSqlBranch branch, TomSqlBranch? existing)` | *(protected)* Undoes a start that failed: a new branch is forgotten with its connection, a reused one is left as it was. |
+| `endTransaction` | `Future<bool> endTransaction(TomTransaction transaction)` | *(override)* Issues nothing and always succeeds: it hands `transaction`'s connection back to the pool. The coordinator calls it on every participant after either conclusion. |
+| `prepare` | `Future<bool> prepare(TomTransaction transaction)` | *(override)* Returns `true`: a one-phase transaction has no statement that makes a commit certain without performing it. |
+| `commit` | `Future<bool> commit(TomTransaction transaction)` | *(override)* Issues `commitStatement` on `transaction`'s connection. |
+| `rollback` | `Future<bool> rollback(TomTransaction transaction)` | *(override)* Issues `rollbackStatement` on `transaction`'s connection and reports whether it was undone. |
+
+Numeric columns are read from their text and parsed, never through a driver's
+typed accessor: MariaDB types `SUM`/`AVG` over an integer column — and every
+`DECIMAL` column — as `NEWDECIMAL`, which `mysql_client` will not convert to a
+number, and the text form parses losslessly on every driver. An `int`-declared
+field over a `DECIMAL` column is read when the value is exactly integral and
+refused by name (`error.result_processing.fractional_int`) when it is not —
+never silently truncated.
+
+#### TomSqlPreparedStatement&lt;T&gt;
+
+A `TomPreparedStatement` of a `TomSqlDatasource`: the compiled `command`, the
+ordered `parameterList` its placeholders expect, the owning `datasource`, and
+the optional `resultType`.
+
+The handle belongs to no connection. A server-side prepared statement lives on
+one connection, while a pooled data source runs each execution on whichever
+connection it is given — the transaction's, or one lent for the statement — so
+every pooled connection prepares `command` the first time it runs it and keeps
+the server-side statement for the next. A repository can therefore prepare a
+statement once and keep it for the life of the process.
+
+- **Extends:** `TomPreparedStatement<T>`
+- **Type Parameters:** `T extends Object` — the mapped result row type.
+
+##### Constructors
+
+```dart
+TomSqlPreparedStatement(
+  List<String> parameterList,
+  TomSqlDatasource datasource,
+  Type? resultType,
+  String command, {
+  Map<String, Type>? groupedProjection,
+})
+```
+
+##### Static Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `buildPositionalParameters` | `static List<Object?> buildPositionalParameters(List<String> parameterList, Map<String, Object?>? params)` | Maps named `params` onto the positional bind list in placeholder order, each through `tomSqlBindValue`. Values are taken raw — a Dart `null` binds SQL `NULL`, a `String` keeps its exact characters — never rendered through `objectOp`, which would double-encode them. Returns an empty list when `params` is `null`. |
+
+##### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `datasource` | `TomSqlDatasource` | The data source that prepared and runs this statement. |
+| `parameterList` | `List<String>` | The placeholder names in positional order. |
+| `resultType` | `Type?` | The type result rows are mapped to (defaults to `T`). |
+| `command` | `String` | The compiled SQL command, prepared on each connection that runs it. |
+| `groupedProjection` | `Map<String, Type>?` | For a grouped query, the Dart type of each projected result column keyed by its alias; `null` for every other statement. The types travel with the statement because a grouped row is not an entity. |
+
+##### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `execute` | `Future<List<T>> execute([Map<String, Object?>? params])` | *(override)* The rows of `run(params)`. |
+| `run` | `Future<TomStatementOutcome<T>> run([Map<String, Object?>? params])` | *(override)* Runs the statement on the connection the current zone selects, preparing it there on first use, and reports the rows, the affected-row count and the generated key — all three from this execution's own result. A connection found gone (the driver raised its `connectionLostException`) is retried once, on another connection, outside a transaction, and the outcome is the retry's; inside a transaction there is nothing to retry on, and the failure is `error.failed-to-execute.transaction_connection_lost`. |
+| `deallocate` | `Future<void> deallocate()` | *(override)* Forgets the statement on every connection that prepared it; each frees its server-side statement the next time it is handed back, so nothing is freed under a statement that is running. |
+
+#### TomSqlRow
+
+One row of a statement's result, every column read as text in the convention
+described under [The SQL Driver Base](#the-sql-driver-base).
+
+- **Kind:** `abstract interface class`
+
+##### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `text` | `String? text(String column)` | `column` as text, or `null` for SQL `NULL`. |
+| `temporalText` | `String? temporalText(String column)` | `column` as the text of a temporal value — an instant, a date or a time. Separate from `text` because a driver may have to repair what its protocol renders for a temporal column specifically (MariaDB's binary protocol writes the microsecond field as a bare integer), and must not touch a text column that only happens to look like one. |
+| `boolean` | `bool? boolean(String column)` | `column` as a truth value: `1`/`0` and `true`/`false` alike. |
+
+#### TomSqlResult
+
+What a statement produced: its rows, the rows it changed, and the key it
+generated. An interface so a driver can answer it lazily — reading its own
+result only for what the statement's caller asks — and `TomSqlResultValues` for
+one that holds the values outright.
+
+- **Kind:** `abstract interface class`
+
+##### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `columns` | `List<String>` | *(getter)* The result columns, in order. |
+| `rows` | `List<TomSqlRow>` | *(getter)* The rows. |
+| `affectedRows` | `int` | *(getter)* How many rows the statement changed. |
+| `generatedId` | `int?` | *(getter)* The key the statement generated, or `null` when it generated none. |
+
+##### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `hasColumn` | `bool hasColumn(String name)` | Whether the result carries a column called `name`. |
+
+#### TomSqlResultValues
+
+A `TomSqlResult` holding its values.
+
+- **Implements:** `TomSqlResult`
+
+##### Constructors
+
+```dart
+TomSqlResultValues({
+  List<String> columns = const [],
+  List<TomSqlRow> rows = const [],
+  int affectedRows = 0,
+  int? generatedId,
+  bool caseInsensitiveColumns = false,
+})
+```
+
+With `caseInsensitiveColumns`, `hasColumn` ignores case — for a database that
+folds unquoted identifiers, where `SELECT x AS dueAt` answers a column called
+`dueat`. The PostgreSQL driver builds its results this way.
+
+##### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `columns` | `List<String>` | *(override)* The result columns, in order. |
+| `rows` | `List<TomSqlRow>` | *(override)* The rows. |
+| `affectedRows` | `int` | *(override)* How many rows the statement changed. |
+| `generatedId` | `int?` | *(override)* The key the statement generated, or `null`. |
+| `caseInsensitiveColumns` | `bool` | Whether column names compare without regard to case. |
+
+##### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `hasColumn` | `bool hasColumn(String name)` | *(override)* Whether the result carries a column called `name`, case-insensitively when `caseInsensitiveColumns` is set. |
+
+#### TomSqlLink
+
+One pooled connection of a `TomSqlDatasource`. Each driver extends it privately
+with its own driver connection and the server-side statements prepared on it.
+
+##### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `connected` | `bool` | *(getter, abstract)* Whether the connection is still established. |
+
+#### TomSqlBranch
+
+One transaction's share of a data source: the pooled connection pinned to it,
+and — for a two-phase driver — the branch it opened. Held by the data source
+from the transaction's first statement to `endTransaction`.
+
+##### Constructors
+
+```dart
+TomSqlBranch()
+```
+
+##### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `link` | `Future<TomSqlLink>?` | The connection, acquired by the transaction's first statement and held until `TomSqlDatasource.endTransaction`. |
+| `started` | `Completer<bool>` | Completes with whether the transaction's start succeeded; a statement racing the start waits for it. |
+| `active` | `bool` | Whether the transaction is open on the connection: started, and not yet committed or rolled back. A second start is refused only while it is. |
+| `xaId` | `String?` | The two-phase branch id, quoted; `null` on a one-phase driver. |
+| `ended` | `bool` | Whether a two-phase branch has left its active state — `XA END`ed on MariaDB, `PREPARE TRANSACTION`ed on PostgreSQL. |
+
+### The MariaDB Driver
+
+#### MariaDbDatasource
+
+A MariaDB / MySQL `TomDataSource` driver (registered for the `"mariadb"` type),
+over `mysql_client`. Everything that does not depend on the database — the pool,
+the lifecycle, the statement paths, the row mapping — is inherited from
+`TomSqlDatasource`; what is declared here is the wire. Transactions are plain
+`START TRANSACTION` / `COMMIT` / `ROLLBACK`; `MariaDbXADatasource` is the
+two-phase variant.
+
+- **Extends:** `TomSqlDatasource`
 
 ##### Constructors
 
@@ -1096,88 +1533,58 @@ that is down and opens a new one.
 MariaDbDatasource()
 ```
 
-##### Static Properties
-
-| Property | Type | Description |
-| -------- | ---- | ----------- |
-| `integerSettings` | `Set<String>` | `const`: the settings this driver binds to `int` fields — `port`, `timeOut` and the six `pool…` settings. |
-
 ##### Static Methods
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `toPositionalStatement` | `static (String, List<String>) toPositionalStatement(String namedSql)` | Translates generated `:name` SQL into the positional `?` form, returning the rewritten SQL and placeholder names in order. |
-| `normalizeIntegerSettings` | `static Map<String, dynamic> normalizeIntegerSettings(Map<String, dynamic> settings)` | Returns `settings` with every `integerSettings` value given as a string folded to an `int`, so an environment substitution (`port: ${DB_PORT:3306}`) binds. A map with no string-valued integer setting is returned unchanged. The port is parsed by `parsePort`; any other value that is not an integer throws `MariadbDatasourceException` (`error.initialize.invalid_integer`, parameters `setting` and `value`). |
+| `toPositionalStatement` | `static (String, List<String>) toPositionalStatement(String namedSql)` | Translates generated `:name` SQL into the positional `?` form the MySQL binary protocol binds, returning the rewritten SQL and placeholder names in order. Delegates to `SqlPlaceholderScan.toPositional`. |
+| `normalizeIntegerSettings` | `static Map<String, dynamic> normalizeIntegerSettings(Map<String, dynamic> settings)` | Returns `settings` with every `TomSqlDatasource.integerSettings` value given as a string folded to an `int`. The port is parsed by `parsePort`; any other value that is not an integer throws `MariadbDatasourceException` (`error.initialize.invalid_integer`, parameters `setting` and `value`). A map with no string-valued integer setting is returned unchanged. |
 | `parsePort` | `static int parsePort(Object? raw)` | Parses a configured port value into the `int` the driver binds; throws `MariadbDatasourceException` (`error.initialize.invalid_port`) when unparsable. |
-| `mapGroupedRow` | `static TomGroupedRow mapGroupedRow(ResultSetRow row, Map<String, Type> projection)` | Maps one row of a grouped result, reading each alias as the Dart type the query declared for it. Throws `MariadbDatasourceException` (`error.result_processing_grouped.unknown_type`) for a declared type outside `int` / `double` / `String` / `bool` / `DateTime`. |
-
-A grouped query has no entity class and no column metadata — its shape is
-decided by the query — so `prepareStatement` copies the query's
-`projectionTypes` onto the statement and `mapGroupedRow` runs before any mirror
-is taken.
-
-Numeric columns are read as raw text and parsed, not via the driver's typed
-accessor: MariaDB types `SUM`/`AVG` over an integer column as `NEWDECIMAL`
-(protocol type 246) — as it does every `DECIMAL` column — and `mysql_client`
-converts to `double` (or to `int`) only from a whitelist of column types that
-omits it, so asking for a number there throws `MySQLProtocolException` rather
-than widening. The text form parses losslessly. This is not specific to grouped
-rows: `mapGroupedRow` and all four entity-mapping variants share the same two
-read helpers, so an entity with a `DECIMAL` money column reads on every path. An
-`int`-declared field over a `DECIMAL` column is read when the value is exactly
-integral and refused by name (`error.result_processing.fractional_int`) when it
-is not — never silently truncated.
 
 ##### Properties
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `sqlDialect` | `TomStandardSqlDialect` | *(override)* The MariaDB SQL dialect. |
-| `username` | `String` | The connection user name. |
-| `password` | `String` | The connection password. |
-| `host` | `String` | The database host. |
-| `port` | `int` | The database port (`-1` until configured). |
-| `databaseName` | `String` | The schema / database name (empty selects no default schema). |
-| `timeOut` | `int` | The connect timeout in milliseconds. |
-| `poolMaxSize` | `int` | The most connections the pool opens at once. Default `10`. |
-| `poolMinIdle` | `int` | How many idle connections the pool keeps open past the idle timeout. Default `0`. |
-| `poolAcquireTimeoutMs` | `int` | How long a statement waits for a free connection, in milliseconds. Default `30000`. |
-| `poolIdleTimeoutMs` | `int` | How long a connection may sit idle before it is closed, in milliseconds. Default `600000`. |
-| `poolMaxLifetimeMs` | `int` | How long a connection is used at all before it is replaced, in milliseconds. Default `1800000`. |
-| `poolValidateAfterIdleMs` | `int` | How long a connection may sit idle and still be lent without a `SELECT 1` check, in milliseconds. Default `30000`. |
-| `poolSettings` | `TomConnectionPoolSettings` | *(getter)* The pool settings the six `pool…` fields describe; read when the data source is opened. |
-| `connected` | `bool` | *(getter)* Whether the data source is open and at least one of its connections is established. |
-| `openConnectionCount` | `int` | *(getter)* How many connections the pool holds, lent or idle; `0` when not open. |
-| `lentConnectionCount` | `int` | *(getter)* How many connections are lent out — to transactions or statements. |
+| `sqlDialect` | `TomStandardSqlDialect` | *(override)* The MariaDB SQL dialect, a `MariadbSqlDialect`. |
+| `driverLabel` | `String` | *(override)* `MariadbDatasource`. |
+| `preparedStatementLabel` | `String` | *(override)* `MariadbPreparedStatement`. |
+| `participantPrefix` | `String` | *(override)* `MariaDb`. |
+| `commitStatement` | `String` | *(override)* `COMMIT;`. |
+| `rollbackStatement` | `String` | *(override)* `ROLLBACK;`. |
 
 ##### Methods
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `connect` | `Future<void> connect()` | Opens the data source: creates the pool from `poolSettings` and opens its first connection. A server that cannot be reached or refuses the session fails the call with the driver's own error and leaves the data source unopened. Does nothing on an open data source. |
-| `openConnection` | `Future<MySQLConnection> openConnection()` | Opens one new connection with the configured settings. The pool calls it whenever it needs a connection; a test overrides it to hand out stand-in connections. |
+| `datasourceException` | `MariadbDatasourceException datasourceException(String key, String message, {Map<String, dynamic>? parameters, StackTrace? stack, Object? rootException, bool autoLog = false})` | *(override)* Every refusal of this driver is a `MariadbDatasourceException`. |
+| `connectionLostException` | `MariadbPreparedStatementException connectionLostException(String key, String message, {Map<String, dynamic>? parameters, StackTrace? stack, Object? rootException})` | *(override)* The retry signal is a `MariadbPreparedStatementException`. |
+| `openConnection` | `Future<MySQLConnection> openConnection()` | Opens one new `MySQLConnection` with the configured settings (no default database when `databaseName` is empty). The pool calls it, through `openLink`, whenever it needs a connection; a driver test overrides it to hand out stand-in connections. |
+| `openLink` | `Future<TomSqlLink> openLink()` | *(override)* Wraps `openConnection()` as a pooled link. |
+| `closeLink` | `Future<void> closeLink(TomSqlLink link)` | *(override)* Closes the link's connection; a failure is logged, never thrown. |
+| `validateLink` | `Future<bool> validateLink(TomSqlLink link)` | *(override)* `SELECT 1` on the link's connection. |
 | `withDriverConnection` | `Future<R> withDriverConnection<R>(Future<R> Function(MySQLConnection connection) body)` | Runs `body` with the driver connection a statement would use: the running transaction's when this data source is enlisted in one, otherwise one lent for the call and handed back when `body` completes. For the driver's own API — its typed row accessors, or a session-scoped lock taken and released on one connection. The connection must not be kept beyond `body`. |
-| `prepareStatement` | `Future<TomPreparedStatement<T>> prepareStatement<T extends Object>(TomQuery query, [Type? resultType])` | *(override)* Prepares a positional statement for `query`, on the connection the current zone selects, so a statement the server cannot compile fails here. |
-| `executeQuery` | `Future<List<T>> executeQuery<T extends Object>(String command, [Map<String, dynamic>? params, Type? resultType])` | *(override)* Runs a read command with reflection-based row→object mapping. A `TomClass` result type maps by observable member — by member name without `@TomDbTable`, by `@TomDbColumn` with it — supporting `int` / `double` / `String` / `bool` / `DateTime` members whether declared as the plain or the nullable (`TomN…`) observable, with a SQL `NULL` read as `null`. The rows are mapped after the connection is handed back, so a `@TomReference` column's own query never needs a second connection while the first is held. |
-| `mapResultSet` | `Future<List<T>> mapResultSet<T extends Object>(IResultSet qResult, [Type? resultType, Map<String, Type>? groupedProjection])` | Maps a driver result set onto a list of `T`, choosing between the five row shapes: a grouped row (when `groupedProjection` is given), a table-less `TomClass` bound by member name, an annotated `TomClass` bound by `@TomDbColumn`, a plain reflected holder bound by declared field name, and an annotated entity bound by its persistent columns. A column the result does not carry is skipped on every shape. Throws `MariadbDatasourceException` (`error.result_processing.unsuitable_class`) for a result type the reflector does not hold. Needs no open connection — only a `@TomReference` column reaches back to the database. |
-| `initialize` | `Future<void> initialize(Map<String, dynamic> settings)` | *(override)* Binds `settings` by reflection, after `normalizeIntegerSettings`, and opens the data source. |
-| `isOperational` | `bool isOperational()` | *(override)* Whether the data source is open and can reach its database: open, and either holding a live connection or — holding none — having opened the last one it tried. |
-| `executeCommand` | `Future<BigInt> executeCommand(String command, [Map<String, dynamic>? params])` | *(override)* Runs a write command and returns the affected-row count. |
-| `close` | `Future<void> close()` | *(override)* Closes the pool and lets go of it. Idle connections are closed at once; a connection still lent — to a transaction or a running statement — is closed when it is handed back. A connection that fails to close is logged and dropped, never thrown. A data source that was never opened has nothing to release and stays "never opened". |
-| `toString` | `String toString()` | *(override)* Debug description of the datasource: `open (N lent, M idle)` while it is open, and otherwise which of the two ways it came to hold no pool — `closed` or `never opened`. |
-| `getParticipantId` | `String getParticipantId()` | *(override)* The transaction-participant id. |
-| `startTransaction` | `Future<bool> startTransaction(TomTransaction transaction)` | *(override)* Opens `transaction` on a connection of its own with `START TRANSACTION` (`READ ONLY` for a read-only transaction). Returns `false`, and hands the connection back, when the database refuses it; **throws** `MariadbDatasourceException` (`error.transaction.already_active`, naming the `participant`) when the same transaction starts it twice — a caller mistake no retry fixes, and so not the same answer as a failed statement. Another transaction is not refused. Normally reached through the data source's own enlistment at the point of use rather than called directly. |
-| `prepare` | `Future<bool> prepare(TomTransaction transaction)` | *(override)* Returns `true`: a one-phase `START TRANSACTION` / `COMMIT` has no statement that makes a commit certain without performing it. |
-| `commit` | `Future<bool> commit(TomTransaction transaction)` | *(override)* Issues `COMMIT` on `transaction`'s connection. |
-| `rollback` | `Future<bool> rollback(TomTransaction transaction)` | *(override)* Issues `ROLLBACK` on `transaction`'s connection and reports whether it was undone. |
-| `endTransaction` | `Future<bool> endTransaction(TomTransaction transaction)` | *(override)* Issues nothing and always succeeds: it hands `transaction`'s connection back to the pool. The coordinator calls it on every participant after either conclusion. |
+| `prepareOn` | `Future<void> prepareOn(TomSqlLink link, String command)` | *(override)* Prepares `command` on the link's connection, keeping the server-side statement for later runs. |
+| `runPreparedOn` | `Future<TomSqlResult> runPreparedOn(TomSqlLink link, String command, List<Object?> parameters)` | *(override)* Executes the link's prepared statement for `command`, preparing it on first use. A temporal value's fraction read over the binary protocol is repaired to six digits (`temporalText`). |
+| `runCommandOn` | `Future<TomSqlResult> runCommandOn(TomSqlLink link, String command, Map<String, Object?>? params)` | *(override)* Executes `command` over the text protocol with named `params`. |
+| `forgetStatementOn` | `void forgetStatementOn(TomSqlLink link, String command)` | *(override)* Moves the link's statement for `command` to its pending-deallocation list. |
+| `releaseForgottenOn` | `Future<void> releaseForgottenOn(TomSqlLink link)` | *(override)* Deallocates the link's pending statements; a failure is logged. |
+| `isLostConnection` | `bool isLostConnection(Object error, TomSqlLink link)` | *(override)* `isLostConnectionFailure(error, connected: link.connected)`. |
+| `beginStatement` | `String beginStatement({required bool readOnly})` | *(override)* `START TRANSACTION READ ONLY;` or `START TRANSACTION;`. |
+| `toPositional` | `(String, List<String>) toPositional(String namedSql)` | *(override)* `toPositionalStatement(namedSql)` — the `?` form. |
+| `mapResultSet` | `Future<List<T>> mapResultSet<T extends Object>(IResultSet qResult, [Type? resultType, Map<String, Type>? groupedProjection])` | Maps a `mysql_client` result set onto a list of `T` through `mapSqlResult` — the driver's own result type adapted to the shared mapper. Needs no open connection. |
+| `newPreparedStatement` | `TomSqlPreparedStatement<T> newPreparedStatement<T extends Object>(List<String> parameterList, Type? resultType, String command, Map<String, Type>? groupedProjection)` | *(override)* Hands out a `MariadbPreparedStatement`. |
+| `bindSettings` | `void bindSettings(Map<String, dynamic> settings)` | *(override)* Binds `settings` onto this driver's fields by reflection. |
+| `normalizeSettings` | `Map<String, dynamic> normalizeSettings(Map<String, dynamic> settings)` | *(override)* `normalizeIntegerSettings(settings)`. |
+| `parseConfiguredPort` | `int parseConfiguredPort(Object? raw)` | *(override)* `parsePort(raw)`. |
 
 #### MariaDbXADatasource
 
 A MariaDB `TomDataSource` that uses XA (distributed) transactions (registered
 for the `"mariadb_xa"` type). Inherits connection and execution behaviour from
 `MariaDbDatasource` but overrides the transaction lifecycle to issue `XA`
-commands.
+commands. `endTransaction` is the inherited one: it issues nothing and hands the
+connection back, exactly as the one-phase sibling's does, because every XA
+statement belongs to `prepare`, `commit` and `rollback`.
 
 - **Extends:** `MariaDbDatasource`
 
@@ -1191,17 +1598,16 @@ MariaDbXADatasource()
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `startTransaction` | `Future<bool> startTransaction(TomTransaction transaction)` | *(override)* Takes a connection for `transaction` as the base class does, then issues `XA START` against a fresh branch id kept with that transaction, so concurrent XA transactions are separate branches. Throws the same `error.transaction.already_active` as the base class — with the open branch in the `transactionId` parameter — if the same transaction starts it twice. Clears the id and hands the connection back when the command fails, since the database never opened that branch. |
+| `startTransaction` | `Future<bool> startTransaction(TomTransaction transaction)` | *(override)* Takes a connection for `transaction` as the base class does, then issues `XA START` against a fresh branch id kept with that transaction, so concurrent XA transactions are separate branches. Throws the same `error.transaction.already_active` as the base class — with the open branch in the `transactionId` parameter — if the same transaction starts it twice. Clears the id and hands the connection back when the command fails, since the database never opened that branch. `XA START` has no read-only form, so a read-only transaction is logged as unprotected rather than refused. |
 | `prepare` | `Future<bool> prepare(TomTransaction transaction)` | *(override)* Issues `XA END` and then `XA PREPARE` on `transaction`'s branch, as two calls. Keeps the branch id on failure, because a `false` is a veto and the rollback that follows needs the branch to name. |
 | `commit` | `Future<bool> commit(TomTransaction transaction)` | *(override)* Issues `XA COMMIT` against `transaction`'s prepared branch and clears the id. On failure the branch is in doubt, and the id is kept so it has a name. |
-| `endTransaction` | `Future<bool> endTransaction(TomTransaction transaction)` | *(override)* Issues nothing and hands the connection back, exactly as the one-phase sibling's does. Every XA statement belongs to `prepare`, `commit` and `rollback`. |
 | `rollback` | `Future<bool> rollback(TomTransaction transaction)` | *(override)* Issues `XA END` then `XA ROLLBACK` for a branch still active, and `XA ROLLBACK` alone for one already ended — idle after a refused `XA PREPARE`, or prepared — because the server refuses each statement in the other's state. Clears the branch id either way and reports whether the branch was undone. Issues nothing when there is no branch, which is the state a participant is in when it committed before someone else vetoed. |
 
 ##### Static Properties
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `maxBranchIdBytes` | `int` | `const`, `64`: the most bytes an XA `gtrid` may hold. The branch id, `<database>@<host>:<port>_<process>_<time>_<counter>`, is bounded to it by truncating the readable head and keeping the unique tail whole; characters outside `[A-Za-z0-9_.@:-]` become `_`. |
+| `maxBranchIdBytes` | `int` | `const`, `64`: the most bytes an XA `gtrid` may hold. The branch id is built by `tomSqlBranchId` and bounded to it. |
 
 Every exit clears the branch id except a failing `prepare` or `commit`. The id
 is also the guard `startTransaction` refuses a second start of the same
@@ -1218,18 +1624,11 @@ rollback with the branch left ACTIVE holding its locks.
 
 #### MariadbPreparedStatement&lt;T&gt;
 
-A MariaDB-backed `TomPreparedStatement`: the compiled `command`, the ordered
-`parameterList` its placeholders expect, the owning `datasource`, and the
-optional `resultType`.
+The MariaDB driver's `TomSqlPreparedStatement`. Execution, the retry after a
+lost connection and deallocation are the base class's; what is declared here is
+the constructor narrowed to a `MariaDbDatasource` and the two static helpers.
 
-The handle belongs to no connection. A server-side prepared statement lives on
-one connection, while a pooled data source runs each execution on whichever
-connection it is given — the transaction's, or one lent for the statement — so
-every pooled connection prepares `command` the first time it runs it and keeps
-the server-side statement for the next. A repository can therefore prepare a
-statement once and keep it for the life of the process.
-
-- **Extends:** `TomPreparedStatement<T>`
+- **Extends:** `TomSqlPreparedStatement<T>`
 - **Type Parameters:** `T extends Object` — the mapped result row type.
 
 ##### Constructors
@@ -1237,7 +1636,7 @@ statement once and keep it for the life of the process.
 ```dart
 MariadbPreparedStatement(
   List<String> parameterList,
-  MariaDbDatasource datasource,
+  MariaDbDatasource super.datasource,
   Type? resultType,
   String command, {
   Map<String, Type>? groupedProjection,
@@ -1248,26 +1647,119 @@ MariadbPreparedStatement(
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `normalizeGeneratedId` | `static int? normalizeGeneratedId(BigInt rawLastInsertId)` | Maps a driver-reported last-insert id into a generated key (`0` → `null`). |
-| `buildPositionalParameters` | `static List<Object?> buildPositionalParameters(List<String> parameterList, Map<String, Object?>? params)` | Maps named `params` onto the positional bind list in placeholder order. |
+| `normalizeGeneratedId` | `static int? normalizeGeneratedId(BigInt rawLastInsertId)` | Maps a driver-reported last-insert id into a generated key: `0` — what the driver reports when a statement generated no `AUTO_INCREMENT` value — becomes `null`, every other value passes through as an `int`. |
+| `buildPositionalParameters` | `static List<Object?> buildPositionalParameters(List<String> parameterList, Map<String, Object?>? params)` | `TomSqlPreparedStatement.buildPositionalParameters`, under this class's name. |
+
+### The PostgreSQL Driver
+
+#### PostgresDatasource
+
+A PostgreSQL 15+ `TomDataSource` driver (registered for the `"postgresql"`
+type), over `package:postgres`. Like the MariaDB driver it inherits the pool,
+the lifecycle, the statement paths and the row mapping from `TomSqlDatasource`;
+what is declared here is the wire, and the reading of PostgreSQL's typed result
+values into the text convention the shared mapper reads. Transactions are plain
+`BEGIN` / `COMMIT` / `ROLLBACK`; `PostgresXADatasource` is the two-phase
+variant.
+
+Every session runs with `TimeZone` set to `UTC`, so a server-side
+`CURRENT_TIMESTAMP` reads in the zone the framework writes instants in. Every
+bind value is sent as text with an unspecified type, so PostgreSQL infers each
+parameter's type from where it is used — the one marshalled `1` reads into a
+`SMALLINT`, a `BOOLEAN` or an `INTEGER` alike. Result column names are matched
+without regard to case, because PostgreSQL folds unquoted identifiers
+(`SELECT x AS dueAt` answers `dueat`).
+
+An `INSERT … RETURNING` that answers one row of one integer column reports that
+integer as the statement's generated id — PostgreSQL has no last-insert id, so
+the dialect's `returningKey` and `incrementCounter` ask for the key with
+`RETURNING` and the driver reads it back. A prepared statement PostgreSQL
+refuses with `cached plan must not change result type` (SQLSTATE `0A000`) — a
+table that changed shape under a long-lived `SELECT *` — is dropped and
+prepared again, once.
+
+- **Extends:** `TomSqlDatasource`
+
+##### Constructors
+
+```dart
+PostgresDatasource()
+```
+
+Sets `port` to PostgreSQL's default, `5432`.
 
 ##### Properties
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `datasource` | `MariaDbDatasource` | The data source that prepared and runs this statement. |
-| `parameterList` | `List<String>` | The placeholder names in positional order. |
-| `resultType` | `Type?` | The type result rows are mapped to (defaults to `T`). |
-| `command` | `String` | The compiled SQL command, prepared on each connection that runs it. |
-| `groupedProjection` | `Map<String, Type>?` | For a grouped query, the Dart type of each projected result column keyed by its alias; `null` for every other statement. The types travel with the statement because a grouped row is not an entity. |
+| `sqlDialect` | `TomStandardSqlDialect` | *(override)* The PostgreSQL SQL dialect, a `PostgresSqlDialect`. |
+| `schema` | `String` | The schema statements resolve unqualified names in — set as the session's `search_path` when a connection opens — or empty for the server's default (`public`). This is what a schema-isolated tenant is on PostgreSQL: one database, a schema per tenant. |
+| `sslMode` | `String` | How the connection is encrypted: `disable`, `require` (encrypt, accept any certificate) or `verifyFull` (encrypt and verify). Default `require`. Any other value fails the first connection with `error.initialize.invalid_ssl_mode` (parameter `sslMode`). |
+| `driverLabel` | `String` | *(override)* `PostgresDatasource`. |
+| `preparedStatementLabel` | `String` | *(override)* `PostgresPreparedStatement`. |
+| `participantPrefix` | `String` | *(override)* `Postgres`. |
+| `commitStatement` | `String` | *(override)* `COMMIT`. |
+| `rollbackStatement` | `String` | *(override)* `ROLLBACK`. |
 
 ##### Methods
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `execute` | `Future<List<T>> execute([Map<String, Object?>? params])` | *(override)* The rows of `run(params)`. |
-| `run` | `Future<TomStatementOutcome<T>> run([Map<String, Object?>? params])` | *(override)* Runs the statement on the connection the current zone selects, preparing it there on first use, and reports the rows, the affected-row count (`IResultSet.affectedRows`) and the generated key (`normalizeGeneratedId` of `IResultSet.lastInsertID`) — all three from this execution's own result set. A connection found gone is retried once, on another connection, outside a transaction, and the outcome is the retry's; inside a transaction there is nothing to retry on, and the failure is `MariadbDatasourceException` (`error.failed-to-execute.transaction_connection_lost`). |
-| `deallocate` | `Future<void> deallocate()` | *(override)* Forgets the statement on every connection that prepared it; each deallocates its server-side statement the next time it is handed back, so nothing is deallocated under a statement that is running. |
+| `datasourceException` | `PostgresDatasourceException datasourceException(String key, String message, {Map<String, dynamic>? parameters, StackTrace? stack, Object? rootException, bool autoLog = false})` | *(override)* Every refusal of this driver is a `PostgresDatasourceException`. |
+| `connectionLostException` | `PostgresConnectionLostException connectionLostException(String key, String message, {Map<String, dynamic>? parameters, StackTrace? stack, Object? rootException})` | *(override)* The retry signal is a `PostgresConnectionLostException`. |
+| `openLink` | `Future<TomSqlLink> openLink()` | *(override)* Opens a connection to `databaseName` (the `postgres` database when it is empty) with `sslMode`, the `timeOut` connect timeout and `TimeZone` `UTC`, then sets `search_path` to `schema` when one is configured. |
+| `closeLink` | `Future<void> closeLink(TomSqlLink link)` | *(override)* Closes the link's connection; a failure is logged, never thrown. |
+| `validateLink` | `Future<bool> validateLink(TomSqlLink link)` | *(override)* `SELECT 1` on the link's connection. |
+| `prepareOn` | `Future<void> prepareOn(TomSqlLink link, String command)` | *(override)* Prepares `command` on the link's connection, keeping the server-side statement for later runs. |
+| `runPreparedOn` | `Future<TomSqlResult> runPreparedOn(TomSqlLink link, String command, List<Object?> parameters)` | *(override)* Runs the link's prepared statement for `command`, preparing it on first use; a statement refused with SQLSTATE `0A000` (`cached plan must not change result type`) is disposed of and prepared again, once. |
+| `runCommandOn` | `Future<TomSqlResult> runCommandOn(TomSqlLink link, String command, Map<String, Object?>? params)` | *(override)* Translates `command` with `toPositional` and runs it with the named `params` bound in slot order. |
+| `forgetStatementOn` | `void forgetStatementOn(TomSqlLink link, String command)` | *(override)* Moves the link's statement for `command` to its pending-disposal list. |
+| `releaseForgottenOn` | `Future<void> releaseForgottenOn(TomSqlLink link)` | *(override)* Disposes of the link's pending statements; a failure is logged. |
+| `isLostConnection` | `bool isLostConnection(Object error, TomSqlLink link)` | *(override)* `isLostConnectionFailure(error, connected: link.connected)`. |
+| `beginStatement` | `String beginStatement({required bool readOnly})` | *(override)* `BEGIN READ ONLY` or `BEGIN`. |
+| `toPositional` | `(String, List<String>) toPositional(String namedSql)` | *(override)* `:name` placeholders to `$1`, `$2`, …, one slot per occurrence, with a backslash in a string literal read as PostgreSQL reads it — as itself. |
+| `bindSettings` | `void bindSettings(Map<String, dynamic> settings)` | *(override)* Binds `settings` onto this driver's fields by reflection. |
+
+#### PostgresXADatasource
+
+A PostgreSQL `TomDataSource` taking part in two-phase commits (registered for
+the `"postgresql_xa"` type). Inherits connection and execution behaviour from
+`PostgresDatasource` and overrides the transaction lifecycle: `startTransaction`
+issues `BEGIN`, `prepare` issues `PREPARE TRANSACTION '<id>'`, `commit` issues
+`COMMIT PREPARED '<id>'`, and `rollback` issues `ROLLBACK` while the
+transaction is still open or `ROLLBACK PREPARED '<id>'` once it has been
+prepared. A prepared transaction survives a server restart and is resolved only
+by those two statements — which is the promise the prepare phase asks every
+participant for. `endTransaction` is the inherited one.
+
+The server must allow prepared transactions: `max_prepared_transactions` above
+zero. It is `0` by default, which makes every `PREPARE TRANSACTION` fail and so
+vetoes every two-phase transaction this data source joins. Unlike MariaDB's
+`XA START`, `BEGIN` has a read-only form, so a read-only transaction is
+honoured here as on the one-phase driver.
+
+- **Extends:** `PostgresDatasource`
+
+##### Constructors
+
+```dart
+PostgresXADatasource()
+```
+
+##### Static Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `maxBranchIdBytes` | `int` | `const`, `200`: the most bytes a prepared transaction's id may hold. The id is built by `tomSqlBranchId` and bounded to it. |
+
+##### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `startTransaction` | `Future<bool> startTransaction(TomTransaction transaction)` | *(override)* Opens the transaction with `beginStatement` (read-only when it is) and names its branch. The branch id doubles as the in-transaction guard, exactly as on `MariaDbXADatasource`: a second start of the same transaction throws `error.transaction.already_active` with the open branch in `transactionId`. A start the database refused clears the id and hands the connection back. |
+| `prepare` | `Future<bool> prepare(TomTransaction transaction)` | *(override)* `PREPARE TRANSACTION '<id>'`. A failure keeps the branch for `rollback`, which the coordinator calls on every participant after a veto; PostgreSQL has already aborted the transaction, so that rollback finds an ordinary transaction-less session and only clears the branch. |
+| `commit` | `Future<bool> commit(TomTransaction transaction)` | *(override)* `COMMIT PREPARED '<id>'`, clearing the id. A failure leaves the branch in doubt, named in `pg_prepared_xacts`, for an operator to resolve. |
+| `rollback` | `Future<bool> rollback(TomTransaction transaction)` | *(override)* `ROLLBACK` while the transaction is open, `ROLLBACK PREPARED '<id>'` once it was prepared; nothing when no branch was opened or a commit cleared it. Clears the branch either way and reports whether it was undone. |
 
 ### Placeholder Scanning
 
@@ -1275,14 +1767,15 @@ MariadbPreparedStatement(
 
 Quote-aware scan of `:name` parameter placeholders in generated SQL. Walks the
 SQL character by character, copying quoted spans verbatim, and only recognises a
-`:name` placeholder in ordinary (outside-quotes) text. This is the single shared
-implementation both the MariaDB datasource and the CRUD repository use.
+`:name` placeholder in ordinary (outside-quotes) text, and never reads a `::`
+(a PostgreSQL cast) as one. This is the single shared implementation both SQL
+drivers and the CRUD repository use.
 
 ##### Static Methods
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `toPositional` | `static (String, List<String>) toPositional(String namedSql)` | Rewrites every outside-of-literal `:name` placeholder to `?`, returning the rewritten SQL and placeholder names in order (repeats included). |
+| `toPositional` | `static (String, List<String>) toPositional(String namedSql, {String Function(int index)? slot, bool backslashEscapes = true})` | Rewrites every outside-of-literal `:name` placeholder to a positional slot, returning the rewritten SQL and placeholder names in order (repeats included). `slot` renders the slot at a 0-based index — `?` when omitted, `$1`, `$2`, … for the PostgreSQL driver. `backslashEscapes` says whether a backslash escapes the next character inside a string literal: MariaDB's default mode, and not PostgreSQL's, where `'\'` is a literal backslash and the quote after it closes the literal. |
 | `extractNames` | `static List<String> extractNames(String namedSql)` | The placeholder names in textual order (repeats included), skipping any inside a string literal. |
 
 ### SQL Lexing
@@ -1290,9 +1783,9 @@ implementation both the MariaDB datasource and the CRUD repository use.
 #### TomSqlLexer
 
 The shared SQL lexing primitives — the one place this package decides where a
-quoted run ends and where one statement ends and the next begins. The MariaDB
-driver's one-statement check, `db_migration`'s applier
-(`MariadbMigrationAdaptor.applyMigration`) and its reader
+quoted run ends and where one statement ends and the next begins. The SQL
+drivers' one-statement check, `db_migration`'s appliers
+(`TomSqlMigrationAdaptor.applyScript`) and its reader
 (`TomSchemaDdlReader`) are all written on it, because a scan that disagrees with the
 server does not fail loudly: it cuts a statement in half inside a string literal,
 or swallows a closing quote and welds two statements into one.
@@ -1317,10 +1810,10 @@ implements what MariaDB actually does under the default `sql_mode`
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `endOfQuotedRun` | `static int endOfQuotedRun(String sql, int openIndex)` | The index of the closing quote of the run opened at `openIndex`, or `sql.length - 1` when the run is never closed (reported, not thrown — this is a lexer, not a validator). |
+| `endOfQuotedRun` | `static int endOfQuotedRun(String sql, int openIndex, {bool backslashEscapes = true})` | The index of the closing quote of the run opened at `openIndex` — by the database's literal rule `backslashEscapes` — or `sql.length - 1` when the run is never closed (reported, not thrown — this is a lexer, not a validator). |
 | `endOfComment` | `static int endOfComment(String sql, int startIndex)` | The index of the last character of the comment starting at `startIndex`; a line comment ends before its newline, a block comment at its `*/`. |
 | `commentOpensAt` | `static bool commentOpensAt(String sql, int index)` | Whether a comment opens at `index` — `--`, `#` or `/*`. Only meaningful outside a quoted run. |
-| `splitStatements` | `static List<String> splitStatements(String sql)` | Splits `sql` into its statements on unquoted, uncommented semicolons, trimmed, dropping whitespace-only fragments. **Comments are preserved** — `/*!40101 … */` is executable, version-gated SQL, so dropping it would silently remove a statement. |
+| `splitStatements` | `static List<String> splitStatements(String sql, {bool backslashEscapes = true})` | Splits `sql` into its statements on unquoted, uncommented semicolons, trimmed, dropping whitespace-only fragments; `backslashEscapes` is the database's literal rule (`false` for PostgreSQL, where `'C:\'` is a whole literal). **Comments are preserved** — `/*!40101 … */` is executable, version-gated SQL, so dropping it would silently remove a statement. |
 
 ### Framework-Owned Tables
 
@@ -1329,8 +1822,8 @@ call, the blob manifest/chunk pair, the audit trail — are not entities, so the
 entity-to-migration convergence check does not reach them. A
 `TomFrameworkTable` is the one declaration they get instead, and everything
 else is derived from it: the create-if-missing DDL, the column lists the
-hand-written statements interpolate, the `INSERT`/`REPLACE` shape, and the
-`TomSchemaModel` the convergence guard compares. Declared here rather than in
+hand-written statements interpolate, the `INSERT`/`REPLACE` statements in
+each database's words, and the `TomSchemaModel` the convergence guard compares. Declared here rather than in
 `db_migration/` because the stores that own these tables already depend on
 `datasources/` and must not be made to depend on the migration module — a
 deployment can run the scheduler without ever running a migration.
@@ -1374,7 +1867,8 @@ const TomFrameworkColumn(
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `ddl` | `String ddl(int nameWidth, int typeWidth)` | The column's line in a `CREATE TABLE` body, padded to the two widths so a reader can scan the types in a column. |
+| `ddl` | `String ddl(int nameWidth, int typeWidth)` | The column's line in a `CREATE TABLE` body, padded to the two widths so a reader can scan the types in a column — the canonical rendering, the type as declared. |
+| `ddlIn` | `String ddlIn(TomStandardSqlDialect dialect, int nameWidth, int typeWidth)` | The column's line as `dialect`'s database spells it (`TomStandardSqlDialect.columnDefinition`). |
 | `toString` | `String toString()` | *(override)* `"<name> <type>"`. |
 
 #### TomFrameworkKey
@@ -1405,7 +1899,7 @@ const TomFrameworkKey.unique(String suffix, List<String> columns)
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `nameOn` | `String nameOn(String table)` | The key's name on `table` — `ix_<table>_<suffix>`, or `uq_…` when unique. |
-| `ddl` | `String ddl(String table)` | The key's line in a `CREATE TABLE` body. |
+| `ddl` | `String ddl(String table)` | The key's line in a `CREATE TABLE` body, canonically rendered. |
 
 #### TomFrameworkTable
 
@@ -1443,7 +1937,7 @@ because a descriptor is built once at start-up, where the alternative is a
 | `origin` | `String` | The library-level function that declares this table, named so a divergence report says where to go and not merely what is wrong. |
 | `columnNames` | `List<String>` | The column names, in declaration order. |
 | `columnList` | `String` | Every column as a `SELECT`/`INSERT` list, in declaration order. |
-| `createTableDdl` | `String` | The `CREATE TABLE IF NOT EXISTS` statement that builds this table. `IF NOT EXISTS` because every store calls it on first use and a second process must not fail on a table the first one created. |
+| `createTableDdl` | `String` | The canonical `CREATE TABLE IF NOT EXISTS` statement of this table — the types as declared, in MariaDB's spelling — which the convergence guard reads. A store creates its table with `create`, in its own database's words. |
 
 ##### Methods
 
@@ -1452,7 +1946,11 @@ because a descriptor is built once at start-up, where the alternative is a
 | `has` | `bool has(String column)` | Whether a column called `column` exists, case-insensitively. |
 | `column` | `TomFrameworkColumn? column(String column)` | The named column, or `null`. |
 | `columnsOf` | `String columnsOf(Iterable<String> names)` | `names` as a column list, in the order given. Throws `ArgumentError` when a name is not a column — a projection that outlived the column it names fails at the first call rather than at the database. |
-| `insert` | `String insert(String verb, Map<String, String> values)` | Renders a row-writing statement. `verb` is the whole leading clause (`INSERT`, `REPLACE`, `INSERT IGNORE`); `values` maps a column name to the SQL text that supplies it, usually a `:bind` but sometimes a literal. Keyed by name rather than by position, because a positional list would let a column inserted in the descriptor silently shift every value one place along. Throws `ArgumentError` on an unknown column. |
+| `insertRow` | `String insertRow(TomStandardSqlDialect dialect, Map<String, String> values, {bool ignoreConflict = false})` | Renders a row-writing statement for `dialect`'s database (`TomStandardSqlDialect.insertInto`). `values` maps a column name to the SQL text that supplies it, usually a `:bind` but sometimes a literal. With `ignoreConflict` a row whose key already exists is kept and the write changes nothing. Keyed by name rather than by position, because a positional list would let a column inserted in the descriptor silently shift every value one place along. Throws `ArgumentError` on an unknown column. |
+| `replaceStatements` | `List<String> replaceStatements(TomStandardSqlDialect dialect, Map<String, String> values)` | The statements writing a row over every row it supersedes — the one with its primary key, and any colliding on one of this table's unique keys — in `dialect`'s database (`TomStandardSqlDialect.replaceInto`). Throws `ArgumentError` on an unknown column. |
+| `replaceRow` | `Future<void> replaceRow(TomDataSource datasource, Map<String, String> values, Map<String, dynamic> params)` | Writes a row over every row it supersedes, in `datasource`: one statement on MariaDB; a `DELETE` and an `INSERT` run in one transaction where the database has no `REPLACE`. `values` names the SQL text per column as for `insertRow`; `params` binds it. |
+| `createStatements` | `List<String> createStatements(TomStandardSqlDialect dialect)` | The statements building this table in `dialect`'s database: the `CREATE TABLE IF NOT EXISTS`, then — where the database cannot declare an index inside the table — one `CREATE INDEX IF NOT EXISTS` per index. `IF NOT EXISTS` because every store calls it on first use and a second process must not fail on a table the first one created. |
+| `create` | `Future<void> create(TomDataSource datasource)` | Creates this table in `datasource` if it does not exist, running `createStatements` in the data source's own dialect. |
 | `toString` | `String toString()` | *(override)* `"TomFrameworkTable(<name>)"`. |
 
 #### TomSchemaProvisioning
@@ -1559,11 +2057,58 @@ TomConnectionPoolException(
 | `error.datasource.pool.acquire_timeout` | `acquire` when no connection became free within `acquireTimeout`; parameters `maxSize` and `timeoutMs` |
 | `error.datasource.pool.invalid_settings` | `TomConnectionPoolSettings.validate`, run by the pool's constructor; parameter `fault` |
 
+#### TomSqlDatasourceException
+
+A SQL data-source failure: connect, execute, or result mapping. Each driver
+throws its own subtype, so a log names the database; code that handles any of
+them catches this. `TomSqlDatasource` raises every refusal through its
+`datasourceException`, which answers this type unless the driver narrows it.
+
+- **Extends:** `TomServerException`
+
+##### Constructors
+
+```dart
+TomSqlDatasourceException(
+  String key,
+  String defaultUserMessage, {
+  Map<String, Object?>? parameters,
+  StackTrace? stack,
+  Object? rootException,
+  bool autoLog = false,
+})
+```
+
+#### TomSqlConnectionLostException
+
+A prepared statement failed with no live connection to have run on, so one
+reconnect-and-retry may recover it. The type carries the whole signal:
+`TomSqlPreparedStatement.run` catches this and nothing else, so raising it *is*
+the decision to retry — outside a transaction; inside one it becomes the
+`rootException` of `error.failed-to-execute.transaction_connection_lost`. Which
+failures qualify is the driver's `isLostConnection`, which both drivers answer
+with `isLostConnectionFailure`.
+
+- **Extends:** `TomServerException`
+
+##### Constructors
+
+```dart
+TomSqlConnectionLostException(
+  String key,
+  String defaultUserMessage, {
+  Map<String, Object?>? parameters,
+  StackTrace? stack,
+  Object? rootException,
+  bool autoLog = false,
+})
+```
+
 #### MariadbDatasourceException
 
 Thrown for MariaDB data-source failures (connect, execute, result mapping).
 
-- **Extends:** `TomServerException`
+- **Extends:** `TomSqlDatasourceException`
 
 ##### Constructors
 
@@ -1580,20 +2125,58 @@ MariadbDatasourceException(
 
 #### MariadbPreparedStatementException
 
-Thrown when a MariaDB prepared statement failed with no live link to have run
-on, signalling that a single retry on another connection may recover it — outside
-a transaction; inside one it becomes the `rootException` of
-`error.failed-to-execute.transaction_connection_lost`. The type
-carries the whole signal — `MariadbPreparedStatement.execute` catches this and
-nothing else — and which failures qualify is settled by
-`isLostConnectionFailure`.
+The MariaDB driver's `TomSqlConnectionLostException`: a MariaDB prepared
+statement failed with no live link to have run on (keyed
+`error.failed-to-execute.connection_closed`).
 
-- **Extends:** `TomServerException`
+- **Extends:** `TomSqlConnectionLostException`
 
 ##### Constructors
 
 ```dart
 MariadbPreparedStatementException(
+  String key,
+  String defaultUserMessage, {
+  Map<String, Object?>? parameters,
+  StackTrace? stack,
+  Object? rootException,
+  bool autoLog = false,
+})
+```
+
+#### PostgresDatasourceException
+
+Thrown for PostgreSQL data-source failures (connect, execute, result mapping),
+among them `error.initialize.invalid_ssl_mode` for an `sslMode` that is none of
+`disable`, `require`, `verifyFull`.
+
+- **Extends:** `TomSqlDatasourceException`
+
+##### Constructors
+
+```dart
+PostgresDatasourceException(
+  String key,
+  String defaultUserMessage, {
+  Map<String, Object?>? parameters,
+  StackTrace? stack,
+  Object? rootException,
+  bool autoLog = false,
+})
+```
+
+#### PostgresConnectionLostException
+
+The PostgreSQL driver's `TomSqlConnectionLostException`: a PostgreSQL prepared
+statement failed with no live connection to have run on (keyed
+`error.failed-to-execute.connection_closed`).
+
+- **Extends:** `TomSqlConnectionLostException`
+
+##### Constructors
+
+```dart
+PostgresConnectionLostException(
   String key,
   String defaultUserMessage, {
   Map<String, Object?>? parameters,
@@ -1655,9 +2238,9 @@ Fails](../datasources.md#when-a-write-fails).
 
 | Function | Signature | Description |
 | -------- | --------- | ----------- |
-| `classifySqlFailure` | `TomSqlFailureMode classifySqlFailure(Object? error)` | Classifies the failure of a data-source write: `definite` when the chain contains a `MySQLServerException` (the server received the statement and rejected it), `ambiguous` for everything else. |
+| `classifySqlFailure` | `TomSqlFailureMode classifySqlFailure(Object? error)` | Classifies the failure of a data-source write: `definite` when the chain contains a `MySQLServerException` or a PostgreSQL `ServerException` (the server received the statement and rejected it), `ambiguous` for everything else. |
 | `sqlFailureCauses` | `Iterable<Object> sqlFailureCauses(Object? error)` | `error` and every `rootException` beneath it, outermost first — exposed so a caller that has decided a failure is ambiguous can name the driver exception several wrappers down. |
-| `isLostConnectionFailure` | `bool isLostConnectionFailure(Object? error, {required bool connected})` | Whether the statement was left with no live link to have run on, so one reconnect-and-retry is worth it: true when `connected` is false *and* the chain holds no `MySQLServerException`. Drives `MariadbPreparedStatement.execute`'s single retry. |
+| `isLostConnectionFailure` | `bool isLostConnectionFailure(Object? error, {required bool connected})` | Whether the statement was left with no live link to have run on, so one reconnect-and-retry is worth it: true when `connected` is false *and* `classifySqlFailure` finds no server answer in the chain. Both drivers answer `TomSqlDatasource.isLostConnection` with it, which drives `TomSqlPreparedStatement.run`'s single retry. |
 | `sqlInstant` | `String sqlInstant(DateTime value)` | Renders `value` as the UTC `DATETIME(6)` literal the columns bind — always UTC, always six fractional digits, so nodes that disagree about the local zone still agree about the instant and the text stays comparable in SQL as well as in Dart. |
 | `sqlDate` | `String sqlDate(DateTime value)` | Renders the calendar half of `value` as the fixed-width `YYYY-MM-DD` a `DATE` column takes. The components are read **as labelled** — the opposite choice from `sqlInstant`, and the right one for the same reason: an instant is a moment, so it is normalised to the frame every node shares, while a date names a day *in the calendar it was written in*, and converting it to UTC moves it to the previous or next day for half the world's zones. |
 | `sqlTimeOfDay` | `String sqlTimeOfDay(DateTime value)` | Renders the clock half of `value` as the fixed-width `HH:MM:SS` a `TIME` column takes — the other half of `sqlDate`, components likewise as labelled. Sub-second digits are dropped: a `TIME` with no declared precision keeps whole seconds, and text the column cannot hold compares unequal to the value stored from it. |
@@ -1665,6 +2248,9 @@ Fails](../datasources.md#when-a-write-fails).
 | `parseOptionalSqlInstant` | `DateTime? parseOptionalSqlInstant(String? value)` | Reads an optional stored `DATETIME(6)`, treating an empty column as absent — the driver reports a `NULL` instant as either `null` or `''` depending on the row mapper, and the two are collapsed here rather than at every caller. |
 | `parseSqlDate` | `TomZonedDate parseSqlDate(String value)` | Reads a stored `DATE` back as a `TomZonedDate` — the reading half of `sqlDate`, taking the components as labelled and anchoring them in UTC, because a `DATE` column has nowhere to put a zone. Tom's `@D@…` serialization is accepted too, and does carry one. The trailing midnight the driver appends when it materialises a `DATE` (`2026-07-15 00:00:00.0`) is accepted and discarded; a trailing clock reading that is not zero throws, being a timestamp read by the wrong reader. |
 | `parseSqlTimeOfDay` | `TomZonedTime parseSqlTimeOfDay(String value)` | Reads a stored `TIME` back as a `TomZonedTime` — the other half, on the same terms. Sub-second digits are accepted and dropped, matching `sqlTimeOfDay`. An hour past 23 throws: MariaDB's `TIME` spans 838 hours because it doubles as a duration type, and a duration is not a clock reading — wrapping it into the next day would turn a modelling mistake into a plausible wrong answer. |
+| `tomSqlBindValue` | `Object? tomSqlBindValue(Object? value)` | Marshals one bind value into the primitive a SQL driver binds: a `TomDbType` box is unwrapped; a Dart `bool` becomes `1`/`0`; a `TomZonedDate` becomes its `DATE` text and a `TomZonedTime` its `TIME` text; any other `DateTime` becomes its UTC instant text (`sqlInstant`); every other value is bound as-is. One encoding for every driver: MariaDB has no boolean type and rejects a bound `'false'` and an instant ending in `Z`, and PostgreSQL, sent each value as text with an unspecified type, reads the same text correctly into a `SMALLINT`, a `BOOLEAN` or a `TIMESTAMP`. |
+| `tomSqlBindParams` | `Map<String, Object?>? tomSqlBindParams(Map<String, dynamic>? params)` | `params` with every value marshalled through `tomSqlBindValue`, or `null` for `null`. Both statement paths marshal, so a hand-written store binding a `DateTime` or a `bool` gets the same encoding as a prepared statement. |
+| `tomSqlBranchId` | `String tomSqlBranchId({required String databaseName, required String host, required int port, required String processTag, required int counter, required int maxBytes})` | A process-unique two-phase branch id, `<database>@<host>:<port>_<process>_<time>_<counter>`, at most `maxBytes` long. Both servers refuse an over-long transaction id, so the unique tail is always kept whole and the readable head is truncated; characters outside `[A-Za-z0-9_.@:-]` become `_`, which keeps the id single-byte and safe to quote. |
 | `unknownFrameworkColumns` | `List<String> unknownFrameworkColumns(String sql, Iterable<TomFrameworkTable> tables)` | The identifiers in `sql` that are not a column of any of `tables`, not one of their names or index names, and not SQL. The guard for the half of a statement a column list cannot cover — the references inside `SET`, `WHERE` and `ORDER BY` — driven by passing every statement a store issued through it. String literals, `:bind` placeholders and numbers are stripped first, and anything surviving that is not a known SQL word is reported: a missing word is a noisy false positive in a test, a missed column reference is a production failure. |
 
 `SqlString` (in `sql_dialects.dart`) is a typedef alias for `String` that

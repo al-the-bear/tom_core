@@ -2,6 +2,77 @@
 
 ### Added
 
+- **PostgreSQL (15 and later) as a second database beside MariaDB.**
+  `PostgresDatasource` (`type: postgresql`) over `package:postgres`, with the
+  settings `schema` (the session's `search_path`) and `sslMode` (`disable`,
+  `require` — the default — or `verifyFull`; anything else is
+  `error.initialize.invalid_ssl_mode`), port `5432` by default and the
+  `postgres` database when `databaseName` is empty. Sessions run in UTC; `:name`
+  placeholders become `$1`, `$2`, …; every bind is sent untyped so PostgreSQL
+  infers it from its use; result columns match without regard to case; a
+  single-integer `INSERT … RETURNING` is reported as the generated id; a
+  statement refused with `cached plan must not change result type` is prepared
+  again once. `PostgresXADatasource` (`type: postgresql_xa`) takes part in
+  two-phase commits with `BEGIN` / `PREPARE TRANSACTION` / `COMMIT PREPARED` /
+  `ROLLBACK [PREPARED]`, honours read-only, and needs
+  `max_prepared_transactions > 0`. Failures are `PostgresDatasourceException` /
+  `PostgresConnectionLostException`; `classifySqlFailure` reads a PostgreSQL
+  `ServerException` as `definite`. `doc/datasources.md` § The SQL Drivers.
+- **`TomSqlDatasource`, the driver-neutral SQL base both drivers extend:** the
+  pool, a connection per transaction (`TomSqlBranch`), the statement paths, the
+  one-statement rule, the retry after a lost connection, the row mapping and the
+  settings binding, with `TomSqlPreparedStatement`, `TomSqlRow` / `TomSqlResult`
+  / `TomSqlResultValues` (every column read as text in one convention),
+  `TomSqlLink`, `TomSqlDatasourceException`, `TomSqlConnectionLostException`,
+  `tomSqlBindValue` / `tomSqlBindParams` and `tomSqlBranchId`.
+- **`PostgresSqlDialect`, and the canonical DDL in each database's words.**
+  `TomStandardSqlDialect` gains `columnType`, `columnDefinition`,
+  `declaresIndexesInline`, `keyDefinition`, `createIndex`, `insertInto` (with
+  `ignoreConflict`), `replaceInto`, `incrementCounter`, `returningKey`,
+  `translateCanonical`, `translateCanonicalScript`, `createSchema`,
+  `schemaSetting`, `currentSchema`, `tableColumnsQuery`, `rejectingTrigger`,
+  `truthPredicate` and `quoteIdentifier`; the defaults render MariaDB's spelling
+  unchanged. `PostgresSqlDialect` renders the framework's canonical types
+  (`DATETIME(n)` → `TIMESTAMP(n)`, `TINYINT(1)` → `SMALLINT`, `LONGTEXT` →
+  `TEXT`, `CHAR(n)` → `VARCHAR(n)`, blobs → `BYTEA`, `AUTO_INCREMENT` → identity
+  …), indexes as separate statements, `ON CONFLICT`, `RETURNING`, and MariaDB's
+  `REPLACE` as a `DELETE` of every superseded row followed by an upsert.
+  `doc/datasources.md` § One declaration, every database.
+- **`TomFrameworkTable` renders for the connected database:** `createStatements`
+  / `create`, `insertRow` (with `ignoreConflict`), `replaceStatements` /
+  `replaceRow` (one transaction when a database needs two statements), and
+  `TomFrameworkColumn.ddlIn`. `createTableDdl` stays the canonical rendering the
+  convergence guard reads.
+- **`PostgresMigrationAdaptor`** (`type: postgresql`) runs a script and its
+  version row in one transaction, so a failed script is rolled back and nothing
+  is recorded; its keys are prefixed `postgres_migration.` and
+  `postgres_migration_adapter.` (`PostgresMigrationException`). The shared part
+  is `TomSqlMigrationAdaptor` (with `TomSqlMigrationException`), which holds the
+  history, the rebinding, the refusal of a recorded failure and the static
+  `checksumOf` / `isWellFormedChecksum`; `TomDbVersion` lives beside it.
+  `doc/db_migration.md` § The SQL Adaptors.
+- **PostgreSQL reference migrations.** Every
+  `example/<module>/migrations/main/tomcore/*.sql` has a generated PostgreSQL
+  form in `example/<module>/migrations_postgresql/main/tomcore/`, written by
+  `dart run tool/generate_postgres_migrations.dart` and held to it by
+  `test/postgres_migrations_test.dart`.
+- **`TruthPredicate` and `TomQueryBuilder.truthPredicate`** — a constant
+  predicate, rendered through the dialect's `truthPredicate`; a data scope that
+  admits nothing renders it.
+- **`auditTrailGuardStatements(table, dialect, event:)`** — the audit trail's
+  write-once guard in a given dialect's database (a trigger function and its
+  trigger on PostgreSQL).
+- **`SqlPlaceholderScan.toPositional(slot:, backslashEscapes:)`** — the slot
+  renderer and PostgreSQL's literal rule; a `::` cast is never read as a
+  placeholder.
+- **The DB suites run against both databases.** `tool/run_db_tests_postgres.sh`
+  starts PostgreSQL 15 on port 5439 (`docker-compose.test.postgres.yaml`, its own
+  compose project, `max_prepared_transactions=20`) and runs the `db`-tagged
+  suites with `TOM_CORE_SERVER_TEST_DB_ENGINE=postgresql`; a test of a
+  MariaDB-client-only behaviour skips there with its reason stated.
+  `test/postgres_dialect_test.dart` covers the dialect and the driver's rewrite
+  and settings without a server.
+
 - **A local copy of item authorizations per signed-in user.**
   `TomItemAuthorizationClient(copiedTypes: …)` answers checks and
   accessible-item lists of those types from a copy — every item the user
@@ -428,6 +499,29 @@
   § Publishing the OpenAPI Document.
 
 ### Changed
+
+- **Breaking: the MariaDB types extend the SQL base.** `MariaDbDatasource` /
+  `MariaDbXADatasource` extend `TomSqlDatasource`; `MariadbDatasourceException`
+  extends `TomSqlDatasourceException`, `MariadbPreparedStatementException`
+  extends `TomSqlConnectionLostException`, `MariadbPreparedStatement` extends
+  `TomSqlPreparedStatement`, and `MariadbMigrationAdaptor` /
+  `MariadbMigrationException` extend `TomSqlMigrationAdaptor` /
+  `TomSqlMigrationException`. `MariaDbDatasource.integerSettings` is
+  `TomSqlDatasource.integerSettings`; `mapGroupedRow` is an instance method of
+  the base taking a `TomSqlRow`; `mapResultSet` maps through `mapSqlResult`;
+  `checksumOf` / `isWellFormedChecksum` are `TomSqlMigrationAdaptor`'s.
+- **Breaking: `TomFrameworkTable.insert(verb, values)` is gone** — use
+  `insertRow(dialect, values, ignoreConflict: …)` or `replaceRow` /
+  `replaceStatements`.
+- **The framework's stores write in their data source's dialect:** every store
+  creates its table with `TomFrameworkTable.create`, inserts with `insertRow`
+  and replaces with `replaceRow`; the rate limiter counts with
+  `incrementCounter`; repository inserts of a single surrogate key go through
+  `returningKey`; schema isolation creates and points at a schema through
+  `createSchema` / `schemaSetting` (a schema inside the one database on
+  PostgreSQL); the framework-schema `verifyLive` classifies with the connected
+  dialect and reads `tableColumnsQuery`; the audit trigger probe reads the
+  dialect's `currentSchema`.
 
 - **Per-principal rows are keyed by the tenant-qualified principal id**
   (`TomPrincipal.qualifiedId`, `tenant:<tenant>/<id>`; the bare id without

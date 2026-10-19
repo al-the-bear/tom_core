@@ -97,7 +97,7 @@ statement whose affected-row count *is* the answer:
 | Transition | Statement | Winner |
 | ---------- | --------- | ------ |
 | claim a due run | `UPDATE … WHERE id = :id AND state = 'pending'` | the one update that changes a row |
-| first acquisition of a free resource | `INSERT IGNORE` | the insert that creates the row |
+| first acquisition of a free resource | an insert that keeps a stored row on a key conflict — `INSERT IGNORE` on MariaDB, `INSERT … ON CONFLICT DO NOTHING` on PostgreSQL (`insertRow(…, ignoreConflict: true)`) | the insert that creates the row |
 | extension by the live holder | `UPDATE … WHERE resource = :r AND token = :t AND owner = :o AND released = 0` | the holder, while its token is still current |
 | takeover of a lapsed lease | `UPDATE … WHERE resource = :r AND token = :t AND version = :v` | the compare-and-set that matches |
 | renewal | `UPDATE … WHERE owner = :o AND token = :t AND released = 0 AND expires_at > :now` | the holder, while it still holds |
@@ -369,9 +369,14 @@ Quartz's answer to N nodes waking together.
 
 Each of the three tables is declared **once**, as a `TomFrameworkTable`
 descriptor in `sql_scheduling_sql.dart` — a name, an ordered column list with
-types and nullability, and its keys. The `CREATE TABLE` the store issues, the
-column list of every `SELECT`, and every `REPLACE` / `INSERT` are all derived
-from that one declaration, so a column exists in the code in exactly one place.
+types and nullability, and its keys. The `CREATE TABLE` the store issues (in
+the connected database's words), the column list of every `SELECT`, and every
+replacing write and insert are all derived from that one declaration, so a
+column exists in the code in exactly one place. A replacing write is MariaDB's
+`REPLACE` — one statement there, and on PostgreSQL a `DELETE` of every row the
+new one supersedes followed by an upsert, in one transaction
+(`TomFrameworkTable.replaceRow`, see
+[datasources.md](datasources.md#one-declaration-every-database)).
 
 The hand-written reference migrations under `example/scheduling/migrations/`
 remain the DBA-facing artifact, and `test/framework_schema_test.dart` compares
@@ -439,7 +444,7 @@ token. Retaining the row is also what lets `inspect()` distinguish an orderly
 departure from a holder that vanished.
 
 **`version`** is incremented on every write. MariaDB reports *changed* rows, not
-matched rows, so an `UPDATE` writing values already present affects zero rows — a
+matched rows (PostgreSQL reports matched ones), so an `UPDATE` writing values already present affects zero rows — a
 renewal landing in the same clock instant with the same TTL would look like a
 lost lease and fall through to takeover. That is precisely the class of bug the
 kernel's contract suite exists to catch (a self-re-acquisition that wrongly
@@ -450,8 +455,8 @@ takeovers win.
 ### tom_scheduler_node
 
 One row per node, rewritten on every check-in — a current-state table, not a
-history, which is why `REPLACE INTO` against the primary key keeps it one row per
-node however long the cluster runs.
+history, which is why a replacing write against the primary key (`REPLACE INTO`
+on MariaDB) keeps it one row per node however long the cluster runs.
 
 | Column | Type | Role |
 | ------ | ---- | ---- |
@@ -488,8 +493,8 @@ full file-name grammar, including the optional `@<env>` tag.
 ## Time
 
 Instants are stored as UTC `DATETIME(6)` and are carried through `String` fields
-in the row classes. This is deliberate: the MariaDB driver materialises a
-`DATETIME` column with `DateTime.parse`, which yields a *local* `DateTime`, and
+in the row classes. This is deliberate: a SQL driver hands every column over as
+text, and `DateTime.parse` on a `DATETIME` text yields a *local* `DateTime`, and
 `DateTime.==` compares `isUtc` as well as the instant — so a UTC value written
 would not compare equal to the value read back.
 
@@ -608,13 +613,6 @@ See [tenancy.md](tenancy.md) for where tenants come from.
   wants to answer "did the nightly export run last March" keeps its own record,
   or sets the cutoff generously and accepts the table's growth.
   <!-- unpinned: absence — no history table exists -->
-- **The stores speak MariaDB, not a dialect.** Both render SQL directly —
-  `LIMIT`, `INSERT … ON DUPLICATE KEY UPDATE`, `DATETIME(6)` — rather than
-  through `TomStandardSqlDialect`, so a second database means a second
-  implementation of `TomJobStore` and `TomLeaseLock` rather than a second
-  dialect. The interfaces are the kernel's and are small; that is what makes the
-  port tractable.
-  <!-- unpinned: absence — no second store implementation exists -->
 - **The roll call reads peers' clocks and does not compensate for skew.** It is
   the one place a node judges another by a timestamp the other wrote, so skew
   beyond a second or so makes nodes accuse each other or excuse each other — see
@@ -656,7 +654,7 @@ server, and so lives in a separate file, `test/framework_schema_db_test.dart`,
 which is what carries the `db` tag and the skip. The two are a pair, not two
 halves of one file: every suite here that needs a provisioned server is a `_db`
 sibling of a connection-free one, which is precisely why `testkit :test` runs
-green on a machine with no MariaDB. This unit is built the same way, as
+green on a machine with no database server. This unit is built the same way, as
 `test/scheduling_schema_test.dart` and `test/scheduling_db_test.dart`.
 
 `test/scheduling_cluster_test.dart` covers the six cluster questions that a real

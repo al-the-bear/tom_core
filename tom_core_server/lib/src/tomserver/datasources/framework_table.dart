@@ -47,6 +47,14 @@
 /// issues.
 library;
 
+import 'datasource_initialization.dart';
+import 'sql_dialects.dart';
+import '../transactions/transaction_manager.dart';
+
+/// The dialect the canonical renderings ([TomFrameworkColumn.ddl],
+/// [TomFrameworkTable.createTableDdl]) use: the type vocabulary as declared.
+final TomStandardSqlDialect _canonical = TomStandardSqlDialect();
+
 /// One column of a framework-owned table.
 class TomFrameworkColumn {
   /// Declares a column.
@@ -75,17 +83,23 @@ class TomFrameworkColumn {
 
   /// The column's line in a `CREATE TABLE` body, padded to [nameWidth] and
   /// [typeWidth] so a reader can scan the types in a column.
-  String ddl(int nameWidth, int typeWidth) {
-    final buffer = StringBuffer()
-      ..write(name.padRight(nameWidth))
-      ..write(' ')
-      ..write(type.padRight(typeWidth))
-      ..write(' ')
-      ..write(nullable ? 'NULL' : 'NOT NULL');
-    if (defaultValue != null) buffer.write(' DEFAULT $defaultValue');
-    if (autoIncrement) buffer.write(' AUTO_INCREMENT');
-    return buffer.toString();
-  }
+  ///
+  /// The canonical rendering — the types as declared; [ddlIn] renders it for a
+  /// database.
+  String ddl(int nameWidth, int typeWidth) =>
+      ddlIn(_canonical, nameWidth, typeWidth);
+
+  /// The column's line as [dialect]'s database spells it.
+  String ddlIn(TomStandardSqlDialect dialect, int nameWidth, int typeWidth) =>
+      dialect.columnDefinition(
+        name: name,
+        type: type,
+        nullable: nullable,
+        defaultValue: defaultValue,
+        autoIncrement: autoIncrement,
+        nameWidth: nameWidth,
+        typeWidth: typeWidth,
+      );
 
   /// The declared character capacity of a string column, or `null` when the
   /// type carries none.
@@ -138,10 +152,9 @@ class TomFrameworkKey {
   /// The key's name on [table].
   String nameOn(String table) => '${unique ? 'uq' : 'ix'}_${table}_$suffix';
 
-  /// The key's line in a `CREATE TABLE` body.
+  /// The key's line in a `CREATE TABLE` body, canonically rendered.
   String ddl(String table) =>
-      '${unique ? 'UNIQUE KEY' : 'KEY'} ${nameOn(table)} '
-      '(${columns.join(', ')})';
+      _canonical.keyDefinition(nameOn(table), columns, unique: unique);
 }
 
 /// A table the framework owns, declared once.
@@ -245,55 +258,131 @@ class TomFrameworkTable {
     return names.join(', ');
   }
 
-  /// Renders a row-writing statement.
+  /// Renders a row-writing statement for [dialect]'s database.
   ///
-  /// [verb] is the whole leading clause — `INSERT`, `REPLACE`, `INSERT IGNORE`.
   /// [values] maps a column name to the SQL text that supplies it, which is
   /// usually a `:bind` but may be a literal: the lease lock's first acquisition
   /// writes `token` and `version` as `1` and `released` as `0` in the same
-  /// statement it binds the rest of.
+  /// statement it binds the rest of. With [ignoreConflict] a row whose key
+  /// already exists is kept and the write changes nothing.
   ///
   /// Keying by column name rather than by position is deliberate. A positional
   /// list would put the column list and the value list in lock-step order, so
   /// inserting a column in the descriptor would silently shift every value one
   /// place along — which is a worse failure than the one this whole file exists
   /// to remove, because it type-checks.
-  String insert(String verb, Map<String, String> values) {
+  String insertRow(
+    TomStandardSqlDialect dialect,
+    Map<String, String> values, {
+    bool ignoreConflict = false,
+  }) {
+    _refuseUnknown(values.keys, 'values');
+    return dialect.insertInto(name, values, ignoreConflict: ignoreConflict);
+  }
+
+  /// The statements writing a row over every row it supersedes — the one with
+  /// its primary key, and any colliding on one of this table's unique keys —
+  /// in [dialect]'s database; see [TomStandardSqlDialect.replaceInto].
+  List<String> replaceStatements(
+    TomStandardSqlDialect dialect,
+    Map<String, String> values,
+  ) {
+    _refuseUnknown(values.keys, 'values');
+    return dialect.replaceInto(
+      name,
+      values,
+      primaryKey: primaryKey,
+      uniqueKeys: [
+        for (final key in keys)
+          if (key.unique) key.columns,
+      ],
+    );
+  }
+
+  /// Writes a row over every row it supersedes, in [datasource] — one
+  /// statement on MariaDB, a `DELETE` and an `INSERT` in one transaction where
+  /// the database has no `REPLACE`. [values] names the SQL text per column as
+  /// for [insertRow]; [params] binds it.
+  Future<void> replaceRow(
+    TomDataSource datasource,
+    Map<String, String> values,
+    Map<String, dynamic> params,
+  ) async {
+    final statements = replaceStatements(datasource.sqlDialect, values);
+    if (statements.length == 1) {
+      await datasource.executeCommand(statements.single, params);
+      return;
+    }
+    await TomTransactionManager.runInTransaction((_) async {
+      for (final statement in statements) {
+        await datasource.executeCommand(statement, params);
+      }
+    });
+  }
+
+  void _refuseUnknown(Iterable<String> names, String argument) {
     final unknown = [
-      for (final n in values.keys)
+      for (final n in names)
         if (!has(n)) n,
     ];
     if (unknown.isNotEmpty) {
       // throws-outside-family: programmer error — as columnsOf.
       throw ArgumentError.value(
         unknown.join(', '),
-        'values',
+        argument,
         'are not columns of "$name" (has: $columnList)',
       );
     }
-    return '$verb INTO $name (${values.keys.join(', ')}) '
-        'VALUES (${values.values.join(', ')})';
   }
 
   /// The `CREATE TABLE IF NOT EXISTS` statement that builds this table.
   ///
   /// `IF NOT EXISTS` because every store calls it on first use and a second
   /// process must not fail on a table the first one created.
-  String get createTableDdl {
+  ///
+  /// The canonical rendering, which the convergence guard reads; a store
+  /// creates its table with [create], in its own database's words.
+  String get createTableDdl => createStatements(_canonical).first;
+
+  /// The statements building this table in [dialect]'s database: the
+  /// `CREATE TABLE IF NOT EXISTS`, then — where the database cannot declare an
+  /// index inside the table — one `CREATE INDEX IF NOT EXISTS` per index.
+  List<String> createStatements(TomStandardSqlDialect dialect) {
     final nameWidth = columns
         .map((c) => c.name.length)
         .reduce((a, b) => a > b ? a : b);
     final typeWidth = columns
-        .map((c) => c.type.length)
+        .map((c) => dialect.columnType(c.type).length)
         .reduce((a, b) => a > b ? a : b);
+    final inline = dialect.declaresIndexesInline;
     final lines = <String>[
-      for (final column in columns) column.ddl(nameWidth, typeWidth),
+      for (final column in columns) column.ddlIn(dialect, nameWidth, typeWidth),
       if (primaryKey.isNotEmpty) 'PRIMARY KEY (${primaryKey.join(', ')})',
-      for (final key in keys) key.ddl(name),
+      for (final key in keys)
+        if (key.unique || inline)
+          dialect.keyDefinition(
+            key.nameOn(name),
+            key.columns,
+            unique: key.unique,
+          ),
     ];
-    return 'CREATE TABLE IF NOT EXISTS $name (\n'
-        '${lines.map((line) => '  $line').join(',\n')}\n'
-        ')';
+    return [
+      'CREATE TABLE IF NOT EXISTS $name (\n'
+          '${lines.map((line) => '  $line').join(',\n')}\n'
+          ')',
+      if (!inline)
+        for (final key in keys)
+          if (!key.unique)
+            dialect.createIndex(key.nameOn(name), name, key.columns),
+    ];
+  }
+
+  /// Creates this table in [datasource] if it does not exist, in the
+  /// datasource's own dialect.
+  Future<void> create(TomDataSource datasource) async {
+    for (final statement in createStatements(datasource.sqlDialect)) {
+      await datasource.executeCommand(statement);
+    }
   }
 
   @override

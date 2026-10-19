@@ -153,6 +153,11 @@ mixin TomQueryBuilder {
     return BoolLiteral(value);
   }
 
+  /// A constant predicate: one that admits every row, or none.
+  TomOperator<TomDbBool> truthPredicate(bool value) {
+    return TruthPredicate(value);
+  }
+
   /// A timestamp literal.
   TomOperator<TomDbDateTime> dateTimeOp(DateTime value) {
     return DateTimeLiteral(value);

@@ -4,8 +4,10 @@ Versioned, file-driven schema migrations. A directory tree describes the
 migrations for each data source and schema; the orchestrator
 (`TomDbMigrations`) walks it and applies each script through a
 database-specific migrator (`TomDbMigrator`), which records what it applied so
-re-runs are idempotent and edits to past migrations are detected. A MariaDB
-implementation (`MariadbMigrationAdaptor`) is provided.
+re-runs are idempotent and edits to past migrations are detected. Two SQL
+implementations are provided on one database-neutral base
+(`TomSqlMigrationAdaptor`): MariaDB (`MariadbMigrationAdaptor`) and PostgreSQL
+(`PostgresMigrationAdaptor`).
 
 ## Table of Contents
 
@@ -22,8 +24,10 @@ implementation (`MariadbMigrationAdaptor`) is provided.
 - [Running Migrations](#running-migrations)
   - [Per-tenant migrations](#per-tenant-migrations)
 - [Adaptor Discovery](#adaptor-discovery)
-- [The MariaDB Adaptor](#the-mariadb-adaptor)
+- [The SQL Adaptors](#the-sql-adaptors)
   - [The outcome row is written with bound parameters](#the-outcome-row-is-written-with-bound-parameters)
+  - [A failed script: recorded on MariaDB, rolled back on PostgreSQL](#a-failed-script-recorded-on-mariadb-rolled-back-on-postgresql)
+  - [Reference migrations for PostgreSQL](#reference-migrations-for-postgresql)
 - [Idempotency and Stability](#idempotency-and-stability)
   - [A recorded failure stops the next run](#a-recorded-failure-stops-the-next-run)
   - [The checksum has to outlive the process that wrote it](#the-checksum-has-to-outlive-the-process-that-wrote-it)
@@ -69,10 +73,13 @@ them run against a live server.
 | `TomDbMigrator` | abstract class | The per-database migrator contract (`initializeMigration` / `applyMigration` / `reset`) |
 | `TomDbMigrationAdaptor` | class | Binds a migrator to a data-source type for reflection discovery |
 | `TomMigrationFileName` | class | A migration file name parsed into version, description and environment tags |
+| `TomSqlMigrationAdaptor` | abstract class | Everything a SQL migrator does that does not depend on the database: the versioning history, checksum stability, rebinding per schema |
 | `MariadbMigrationAdaptor` | class | The MariaDB migrator |
+| `PostgresMigrationAdaptor` | class | The PostgreSQL migrator — a script and its version row in one transaction |
 | `TomDbVersion` | class | One row of a `<schema>_versioning` table |
 | `TomDbMigrationException` | class | Orchestration / discovery / parsing failures |
-| `MariadbMigrationException` | class | MariaDB migration failures |
+| `TomSqlMigrationException` | class | SQL migration failures, whichever adaptor raised them |
+| `MariadbMigrationException` / `PostgresMigrationException` | class | Its MariaDB and PostgreSQL subtypes |
 
 ### The convergence checks
 
@@ -448,7 +455,7 @@ one data source routinely holds several schemas, and each keeps its own
 `<schema>_versioning` history, so two schemas may legitimately both be at
 version 1. A migrator that carried the first schema's history into the second
 would read the second's version 1 as already applied and skip it silently. The
-MariaDB adaptor enforces the same invariant from its own side — see below.
+SQL adaptors enforce the same invariant from their own side — see below.
 
 ### Per-tenant migrations
 
@@ -499,9 +506,25 @@ read alike from the outside — and this runs at startup, over a registry
 assembled by reflection, which is the worst position from which to reconstruct
 a cause by hand.
 
-## The MariaDB Adaptor
+## The SQL Adaptors
 
-`MariadbMigrationAdaptor` keeps a `<schema>_versioning` table per schema:
+Two adaptors ship, one per database, and everything they have in common lives
+once in `TomSqlMigrationAdaptor`: the versioning table and its history, the
+checksum, the rebinding, and the refusal of a history that records a failure.
+What differs is the versioning table's DDL (`versioningTableDdl`) and how a
+script runs (`applyScript`):
+
+| `type` | Adaptor | A script runs | A failed script |
+| ------ | ------- | ------------- | --------------- |
+| `mariadb` | `MariadbMigrationAdaptor` | statement by statement | its statements so far stay applied, and it is recorded with `success = 0` |
+| `postgresql` | `PostgresMigrationAdaptor` | statement by statement, with the version row, inside one transaction | rolled back entirely, and nothing is recorded |
+
+Each raises its keys under its own prefixes, so a key names the database it came
+from — `mariadb_migration.` / `mariadb_migration_adapter.` for MariaDB,
+`postgres_migration.` / `postgres_migration_adapter.` for PostgreSQL. Below,
+`<apply>` stands for the first of each pair and `<initialize>` for the second.
+
+Each keeps a `<schema>_versioning` table per schema:
 
 | Column | Meaning |
 | ------ | ------- |
@@ -516,16 +539,27 @@ a cause by hand.
 
 Every column is mapped onto a `TomDbVersion` field, so everything the table
 records is readable from the loaded history rather than only by querying the
-table by hand.
+table by hand. The PostgreSQL table is the same, column for column, in
+PostgreSQL's words (`installedRank` an identity, `script` a `TEXT`, `success` a
+`SMALLINT`); its camel-case column names fold to lower case and read back under
+the same names, because PostgreSQL results are matched without regard to
+case.
 
 `initializeMigration` binds the instance to one `(data source, schema)` pair,
 creates that pair's table if absent and loads its applied versions (mapped onto
 `TomDbVersion`); a failure to create the table is
-`mariadb_migration_adapter.initialize.schema_creation_failed`, and a failure to
-read the history `mariadb_migration_adapter.initialize.version_query_failed`. Because one instance serves every `"mariadb"` schema in turn,
+`<initialize>.initialize.schema_creation_failed`
+(`mariadb_migration_adapter.initialize.schema_creation_failed`,
+`postgres_migration_adapter.initialize.schema_creation_failed`), and a failure
+to read the history `<initialize>.initialize.version_query_failed`
+(`mariadb_migration_adapter.initialize.version_query_failed`,
+`postgres_migration_adapter.initialize.version_query_failed`). Because one
+instance serves every schema of its type in turn,
 binding is a **rebind**: the loaded version list is *replaced*, never extended,
 so it always describes the schema currently in hand. `applyMigration` refuses —
-with `mariadb_migration.apply_migration.not_initialized_for_schema` — to run
+with `<apply>.apply_migration.not_initialized_for_schema`
+(`mariadb_migration.apply_migration.not_initialized_for_schema`,
+`postgres_migration.apply_migration.not_initialized_for_schema`) — to run
 against any pair the instance is not currently bound to, rather than judging a
 migration against another schema's history.
 
@@ -541,15 +575,22 @@ history `3, 1, 2`. Sort a copy by `version` if version order is what you need.
 `applyMigration` then, per script:
 
 - if the `version` is already recorded, verifies the **description matches**
-  (`mariadb_migration.apply_migration.description_mismatch`), the
-  recorded **checksum is readable**, and the **checksum matches**
-  (`mariadb_migration.apply_migration.checksum_mismatch` — a mismatch
-  means a past migration was edited) and skips;
-- otherwise runs the script, records the outcome — including a failed script
-  with `success = 0` — and on failure throws
-  `mariadb_migration.apply_migration.failed`, carrying the script's error as its
-  root cause. A failure to write that outcome row is reported instead as
-  `mariadb_migration.apply_migration.update_version_table_failed`.
+  (`<apply>.apply_migration.description_mismatch` —
+  `mariadb_migration.apply_migration.description_mismatch`,
+  `postgres_migration.apply_migration.description_mismatch`), the recorded
+  **checksum is readable**, and the **checksum matches**
+  (`<apply>.apply_migration.checksum_mismatch` —
+  `mariadb_migration.apply_migration.checksum_mismatch`,
+  `postgres_migration.apply_migration.checksum_mismatch`; a mismatch means a
+  past migration was edited) and skips;
+- otherwise hands the script to `applyScript`, which runs it and records the
+  outcome, and on failure throws `<apply>.apply_migration.failed`
+  (`mariadb_migration.apply_migration.failed`,
+  `postgres_migration.apply_migration.failed`), carrying the script's error as
+  its root cause. A failure to write the outcome row is reported instead as
+  `<apply>.apply_migration.update_version_table_failed`
+  (`mariadb_migration.apply_migration.update_version_table_failed`,
+  `postgres_migration.apply_migration.update_version_table_failed`).
 
 ### The outcome row is written with bound parameters
 
@@ -572,6 +613,56 @@ in all three of the adaptor's statements), because an identifier cannot be a
 bound parameter. It is not migration content: it is the schema directory's name,
 taken from the tree the deployment ships and fixed before any script is read.
 
+### A failed script: recorded on MariaDB, rolled back on PostgreSQL
+
+**MariaDB does not roll DDL back.** Each DDL statement commits on its own, so a
+script that fails at its third statement has applied the first two, and nothing
+can take them back. `MariadbMigrationAdaptor` therefore runs the script
+statement by statement, times it, and records the outcome whichever way it
+went: a failed script gets a row with `success = 0` and the time spent before
+the failure, and then the error is rethrown. That row is what makes the next run
+stop — see [A recorded failure stops the next run](#a-recorded-failure-stops-the-next-run).
+
+**PostgreSQL rolls DDL back, and its adaptor relies on it.**
+`PostgresMigrationAdaptor` runs the script's statements and the row recording
+it inside one `TomTransactionManager.runInTransaction`. A script that fails
+part-way is undone entirely — its first `CREATE TABLE` included — nothing is
+recorded, and the error is thrown as `postgres_migration.apply_migration.failed`
+with a message saying it was rolled back. The next run applies the script again
+from the start, against a schema exactly as it was before the attempt, so a
+failure on PostgreSQL never needs the human repair a MariaDB failure does.
+
+The one kind of statement that cannot ride along is one PostgreSQL refuses
+inside a transaction — `CREATE INDEX CONCURRENTLY`, `CREATE DATABASE`,
+`VACUUM`. A script containing one fails with the server's own message naming the
+statement. Such a statement belongs outside the migration chain, as a separate
+single-statement operation.
+
+### Reference migrations for PostgreSQL
+
+Every module that owns framework tables ships its reference migrations under
+`example/<module>/migrations/main/tomcore/`, written in the framework's
+canonical DDL — MariaDB's spelling, which is also what the convergence guard
+reads ([The Framework's Own Tables](#the-frameworks-own-tables)). Beside each
+such tree sits its PostgreSQL form, `example/<module>/migrations_postgresql/main/tomcore/`,
+under the same file names: the canonical script put through
+`PostgresSqlDialect.translateCanonicalScript` (see
+[datasources.md](datasources.md#one-declaration-every-database)) under a
+three-line header naming the file it came from. A PostgreSQL deployment copies
+that tree the way a MariaDB one copies the other.
+
+The PostgreSQL files are **generated, never edited**: change the canonical file
+and regenerate them all.
+
+```bash
+dart run tool/generate_postgres_migrations.dart
+```
+
+`test/postgres_migrations_test.dart` requires every canonical reference
+migration to have a PostgreSQL form and each form to be exactly what the
+generator writes for its source, so a canonical migration changed without
+regenerating fails the suite rather than a PostgreSQL deployment.
+
 ## Idempotency and Stability
 
 Recording every applied version makes re-running `migrateDatabases` safe: only
@@ -584,8 +675,13 @@ hard error rather than a silent divergence between environments.
 The outcome row is written on both paths: a script that raised is recorded with
 `success = 0` before the error is rethrown. That row is read back.
 `initializeMigration` refuses to bind to a schema whose history holds one,
-raising `mariadb_migration_adapter.initialize.failed_migration_recorded` and
-naming the version, the description, the schema and the repair.
+raising `<initialize>.initialize.failed_migration_recorded`
+(`mariadb_migration_adapter.initialize.failed_migration_recorded`,
+`postgres_migration_adapter.initialize.failed_migration_recorded`) and naming
+the version, the description, the schema and the repair. Only the MariaDB
+adaptor writes such a row; the PostgreSQL adaptor reads the same history and
+refuses the same way when it holds one — a row a hand-written repair or an
+imported history left behind.
 
 Read back, because for a long time it was not, and the consequence is the reason
 this section exists at all. A failed version is *present* in the history, and its
@@ -612,7 +708,7 @@ again.
 The checksum is written once, when a migration is applied, and read back on
 every startup thereafter — by a different process, quite possibly on a different
 machine, a different platform and a different SDK. So it can only be a value
-that means the same thing everywhere: `MariadbMigrationAdaptor.checksumOf`
+that means the same thing everywhere: `TomSqlMigrationAdaptor.checksumOf`
 returns the lowercase hex **SHA-256 of the script's UTF-8 bytes**, and the
 comparison is a string comparison of that text.
 
@@ -644,10 +740,12 @@ nor the migration.
 ### An unreadable checksum is not an edited migration
 
 Before the two checksums are compared, the stored one is checked for *shape*:
-`MariadbMigrationAdaptor.isWellFormedChecksum` — the counterpart of `checksumOf`
+`TomSqlMigrationAdaptor.isWellFormedChecksum` — the counterpart of `checksumOf`
 — accepts exactly 64 lowercase hex characters, anchored at both ends. A value
 that fails it is rejected with its own key,
-`mariadb_migration.apply_migration.checksum_unreadable`, and never reaches the
+`<apply>.apply_migration.checksum_unreadable`
+(`mariadb_migration.apply_migration.checksum_unreadable`,
+`postgres_migration.apply_migration.checksum_unreadable`), and never reaches the
 comparison.
 
 The distinction is not pedantry: the two facts call for opposite responses.
@@ -815,11 +913,12 @@ and nullability, and its keys. Everything else is derived from it:
 
 | Derived from the descriptor | By |
 | --------------------------- | -- |
-| The `CREATE TABLE IF NOT EXISTS` each store issues on first use | `createTableDdl` |
+| The `CREATE TABLE IF NOT EXISTS` each store issues on first use, in the connected database's words | `create(datasource)` / `createStatements(dialect)` |
+| The canonical `CREATE TABLE` this check reads | `createTableDdl` |
 | The column list of every `SELECT` the store issues | `columnList` / `columnsOf([…])` |
-| Every `INSERT` / `REPLACE` / `INSERT IGNORE` the store issues | `insert(verb, {column: bind})` |
+| Every insert and replacing write the store issues | `insertRow(dialect, {column: bind}, ignoreConflict: …)` / `replaceRow(datasource, …)` |
 
-`insert` is keyed by **column name**, not position. A positional list would put
+The row writes are keyed by **column name**, not position. A positional list would put
 the column list and the value list in lock-step, so adding a column would shift
 every value one place along — a worse failure than the one this design removes,
 because it type-checks.
@@ -861,8 +960,8 @@ could survive is closed by a check, and each check has a negative test in
    Dart type can hold the declared SQL type (mismatch → error). A descriptor
    column that no row type maps is a warning, not an error — a table may
    legitimately carry a column the mapper does not need. `String` fields are
-   exempt from the type comparison: the MariaDB driver decodes every column value
-   to a Dart `String`, so a `String` field is the driver's raw form and claims
+   exempt from the type comparison: every SQL driver hands the mapper each
+   column value as text, so a `String` field is the driver's raw form and claims
    nothing, which is exactly why the scheduling row types read `DATETIME(6)` as
    text and parse it with `parseSqlInstant`. A non-`String` field *is* a coercion
    claim, and is checked.
@@ -879,12 +978,20 @@ of a deployment whose database was provisioned correctly once and then edited by
 hand: the drop of a "redundant" index, the widening of a column, the `ALTER`
 applied outside the chain.
 
-`verifyLive(datasource, tables)` reads `information_schema` and compares what is
-actually there with the descriptors. `test/framework_schema_db_test.dart` runs it
-against both provisioning routes — the stores' create-on-first-use and the
-shipped migration files, which must not diverge — and then hand-edits a column to
-prove the comparison reports something. It is tagged `db` and skips when no
-server is reachable; bring one up with `tool/run_db_tests.sh`.
+`verifyLive(datasource, tables)` reads the catalogue through the data source's
+dialect (`tableColumnsQuery` — `information_schema.COLUMNS` on MariaDB, the
+same view joined to `pg_attribute` on PostgreSQL, both in MariaDB's column
+shape) and compares what is actually there with the descriptors. Both sides are
+classified in the connected database's dialect: the descriptors' canonical
+`TINYINT(1)` is a truth value to MariaDB, and the `smallint` PostgreSQL stores
+it as is an integer to PostgreSQL, so each side is read the way the other one
+will be. `test/framework_schema_db_test.dart` runs it against both provisioning
+routes — the stores' create-on-first-use and the shipped migration files (on
+PostgreSQL, the generated `migrations_postgresql` ones), which must not diverge
+— and then hand-edits a column to prove the comparison reports something. It is
+tagged `db` and skips when no server is reachable; bring one up with
+`tool/run_db_tests.sh` (MariaDB) or `tool/run_db_tests_postgres.sh`
+(PostgreSQL).
 
 ### Pinning the Entity-Owned Migrations
 
@@ -945,9 +1052,9 @@ quote and welds two statements into one.
 a quoted run closes; `splitStatements` is built on it and is the package's one
 statement splitter, used by the applier directly and by the reader through
 `TomSchemaDdlReader.splitStatements`. It lives one layer down, in
-[datasources](datasources.md) (`sql_lexer.dart`), because the MariaDB driver
-needs the same answer — it refuses a multi-statement command — and a module
-below this one cannot import from it.
+[datasources](datasources.md) (`sql_lexer.dart`), because the SQL drivers need
+the same answer — they refuse a multi-statement command — and a module below
+this one cannot import from it.
 
 The escaping rules it implements are the ones MariaDB actually has, which are
 not uniform across the three quote characters:
@@ -962,6 +1069,13 @@ A backslash is an ordinary character inside a backtick identifier:
 ``CREATE TABLE `bs\` (id INT)`` creates a table genuinely named ``bs\`` and
 terminates at that second backtick. Both backslash columns assume the default
 `sql_mode` (`NO_BACKSLASH_ESCAPES` off), which is the mode migrations run under.
+PostgreSQL reads a backslash in an ordinary literal as itself, so `'C:\'` is a
+complete literal there. The lexer takes the database's rule as
+`backslashEscapes` — a dialect states it as
+`TomStandardSqlDialect.backslashEscapes`, `false` for PostgreSQL — and the
+PostgreSQL adaptor splits its scripts, and the SQL drivers check for a second
+statement, by their own database's rule. The driver's placeholder scan reads the
+same rule (`SqlPlaceholderScan.toPositional(backslashEscapes: false)`).
 
 **The splitter keeps comments.** They are not noise that can be dropped on the
 way to the server: `/*!40101 SET NAMES utf8 */` is a MariaDB *executable*
@@ -1039,7 +1153,8 @@ Value](#a-version-column-must-hold-a-value): an `ADD COLUMN … NOT NULL DEFAULT
 migration converges, a nullable one is reported as `nullableVersionColumn`, and
 a chain that never adds the column is a `missingColumn`.
 `test/optimistic_locking_db_test.dart` applies that migration through the
-MariaDB adaptor to a table that already holds a row.
+adaptor of the database the DB suites run against to a table that already holds
+a row.
 
 `test/framework_schema_test.dart` covers the framework-table check against the
 shipped migrations, the reflected row types and the statements the stores issue,
@@ -1047,7 +1162,12 @@ and `test/reference_migrations_test.dart` pins the seven entity-owned
 migrations; both are described under [Schema
 Convergence](#schema-convergence).
 
-`test/db_migration_db_test.dart` is what only a real server can substantiate:
+`test/postgres_migrations_test.dart` holds the generated PostgreSQL reference
+migrations to the generator's output for their canonical sources — see
+[Reference migrations for PostgreSQL](#reference-migrations-for-postgresql).
+
+`test/db_migration_db_test.dart` is what only a real server can substantiate, on
+whichever database the DB suites run against:
 `migrateDatabases` walking the committed tree under `test/fixtures/migrations/`,
 the adaptor creating the `<schema>_versioning` table, running the script and
 recording the row — then skipping it idempotently on a second run. It carries
@@ -1056,10 +1176,14 @@ succeeding and the failing path, an unreadable stored checksum, a script full of
 quote characters going in and coming back out intact, and **two schemas under
 one data source**, which is the only arrangement that can tell a migrator whose
 applied-version state is per `(data source, schema)` pair from one whose state
-is per data source. `test/framework_schema_db_test.dart` adds the live
-`information_schema` comparison. Both are tagged `db` and skip themselves when
-no server is reachable, so the default `testkit :test` run stays green without
-one; bring a server up with `tool/run_db_tests.sh`.
+is per data source. The failure path is asserted per database: on MariaDB a
+failed script is recorded with `success = 0` and the next run refuses the
+schema; on PostgreSQL a failed script leaves neither its first statement's table
+nor a history row behind. `test/framework_schema_db_test.dart` adds the live
+catalogue comparison. Both are tagged `db` and skip themselves when no server is
+reachable, so the default `testkit :test` run stays green without one; bring a
+server up with `tool/run_db_tests.sh` (MariaDB) or
+`tool/run_db_tests_postgres.sh` (PostgreSQL).
 
 `example/db_migration/db_migration_example.dart` shows the connection-free
 surface a caller touches — the `TomDbMigrationAdaptor` type binding, a
@@ -1084,9 +1208,13 @@ here it cannot drift silently.
   discovery; `migrateDatabases`.
 - **`TomDbMigrator`** (+ the `TomDbMigrationAdaptor` annotation) — the migrator
   contract.
-- **`MariadbMigrationAdaptor`** and **`TomDbVersion`** — the MariaDB
-  implementation and its versioning-row type.
-- **`TomDbMigrationException` / `MariadbMigrationException`** — the error types.
+- **`TomSqlMigrationAdaptor`**, **`MariadbMigrationAdaptor`**,
+  **`PostgresMigrationAdaptor`** and **`TomDbVersion`** — the database-neutral
+  SQL migrator, its MariaDB and PostgreSQL implementations, and the
+  versioning-row type.
+- **`TomDbMigrationException` / `TomSqlMigrationException` /
+  `MariadbMigrationException` / `PostgresMigrationException`** — the error
+  types.
 - **`TomSchemaConvergenceCheck`** — the application-entity guard, plus
   `TomSchemaModel` / `TomSchemaDdlReader`, the model and the DDL parser both
   guards share.
@@ -1097,7 +1225,7 @@ here it cannot drift silently.
 
 ## Not Yet Implemented
 
-- **A failed migration is not repaired, only refused.** `initializeMigration`
+- **A failed MariaDB migration is not repaired, only refused.** `initializeMigration`
   reads the history and stops the run when it holds a `success = 0` row, naming
   the version, the description and the table to correct — see
   [Idempotency and Stability](#idempotency-and-stability). That is the whole of
@@ -1105,8 +1233,11 @@ here it cannot drift silently.
   failed migration wedges the schema until a human finishes or reverses the
   part-applied change and then sets `success = 1` or deletes the row.
 
-  Refusing is the answer rather than retrying because **MariaDB does not roll
-  DDL back**: a script that failed halfway has already applied the statements
+  On PostgreSQL the case does not arise: a failed script is rolled back with
+  its version row and is simply applied again on the next run (see
+  [A failed script](#a-failed-script-recorded-on-mariadb-rolled-back-on-postgresql)).
+  On MariaDB, refusing is the answer rather than retrying because **MariaDB does
+  not roll DDL back**: a script that failed halfway has already applied the statements
   before the failure, so a blind re-run meets its own `CREATE TABLE` on a table
   that now exists and fails again, every time. And the refusal is not
   conditional on the node caring about that migration — a schema whose middle is
@@ -1125,12 +1256,6 @@ here it cannot drift silently.
   apply. What saves an ordinary deployment is that the versioning table's insert
   is the only write either of them makes to shared state, not any guard here.
   <!-- unpinned: absence — no migration lock exists -->
-- **One adaptor ships.** `MariadbMigrationAdaptor` is the only implementation of
-  `TomDbMigrator` in the package. The annotation-driven discovery described
-  under [Adaptor Discovery](#adaptor-discovery) is a real seam — a second
-  adaptor needs no change here — but it has never been exercised by a second
-  implementation.
-  <!-- unpinned: absence — a second adaptor has never been written -->
 - **The application-entity check never reads a live database.**
   `TomFrameworkSchemaCheck` has [a live half](#what-the-live-check-adds);
   `TomSchemaConvergenceCheck` has no counterpart. It compares the entity model
@@ -1144,18 +1269,20 @@ here it cannot drift silently.
 
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
-| `dart:async` | dart | `mariadb_migration_adapter.dart` | `Future` |
-| `dart:convert` | dart | `mariadb_migration_adapter.dart` | `utf8` |
+| `dart:async` | dart | `sql_migration_adaptor.dart` | `Future` |
+| `dart:convert` | dart | `sql_migration_adaptor.dart` | `utf8` |
 | `dart:io` | dart | `db_migration.dart`, `schema_convergence.dart` | walking the migration directory tree |
-| `crypto` | package | `mariadb_migration_adapter.dart` | `sha256`, for the checksum that pins a migration's SQL to the row recording it |
+| `crypto` | package | `sql_migration_adaptor.dart` | `sha256`, for the checksum that pins a migration's SQL to the row recording it |
+| `meta` | package | `sql_migration_adaptor.dart` | `@protected` on the members an adaptor supplies or calls |
 | `path` | package | `db_migration.dart`, `schema_convergence.dart` | migration-file name parsing |
-| `tom_core_kernel` | package | `db_migration.dart`, `framework_convergence.dart`, `mariadb_migration_adapter.dart`, `schema_convergence.dart` | `tomReflector` (adaptor discovery, row mapping), `tomLog` |
+| `tom_core_kernel` | package | `db_migration.dart`, `framework_convergence.dart`, `mariadb_migration_adapter.dart`, `postgres_migration_adapter.dart`, `sql_migration_adaptor.dart`, `schema_convergence.dart` | `tomReflector` (adaptor discovery, row mapping), `tomLog` |
 | [audit](audit.md) | module | `framework_convergence.dart` | `auditTrailTable`, `defaultAuditTrailTable` |
 | [authentication](authentication.md) | module | `framework_convergence.dart` | `defaultOAuthStateTable`, `defaultScimResourceTable`, `oauthStateTable`, `scimResourceTable` |
 | [cache](cache.md) | module | `framework_convergence.dart` | `defaultInvalidationTable`, `invalidationTable` |
-| [datasources](datasources.md) | module | `db_migration.dart`, `framework_convergence.dart`, `mariadb_migration_adapter.dart`, `schema_convergence.dart`, `schema_ddl_reader.dart`, `schema_model.dart` | `TomDataSourceInfo` (named data sources) and its `executeCommand` / `executeQuery`; `TomSqlLexer`, the statement splitter and quote scanner |
+| [datasources](datasources.md) | module | 8 of 8 files | `TomDataSourceInfo` (named data sources) and its `executeCommand` / `executeQuery`; `TomSqlLexer`, the statement splitter and quote scanner; the connected data source's dialect, which `verifyLive` classifies and queries the catalogue with |
 | [file_storage](file_storage.md) | module | `framework_convergence.dart` | `blobChunkTable`, `blobManifestTable`, `defaultBlobChunkTable`, `defaultBlobManifestTable` |
-| [little_things](little_things.md) | module | `db_migration.dart`, `mariadb_migration_adapter.dart` | `TomServerException` |
+| [little_things](little_things.md) | module | `db_migration.dart`, `mariadb_migration_adapter.dart`, `postgres_migration_adapter.dart`, `sql_migration_adaptor.dart` | `TomServerException` |
 | [messaging](messaging.md) | module | `framework_convergence.dart` | `defaultDeliveryReportTable`, `deliveryReportTable` |
-| [object_persistence](object_persistence.md) | module | `framework_convergence.dart`, `mariadb_migration_adapter.dart`, `schema_convergence.dart` | `TomDbTable` / `TomDbColumn` on `TomDbVersion` |
+| [object_persistence](object_persistence.md) | module | `framework_convergence.dart`, `sql_migration_adaptor.dart`, `schema_convergence.dart` | `TomDbTable` / `TomDbColumn` on `TomDbVersion` |
 | [scheduling](scheduling.md) | module | `framework_convergence.dart` | `defaultJobRunTable`, `defaultLeaseTable`, `defaultSchedulerNodeTable`, `jobRunTable`, `leaseTable`, `schedulerNodeTable` |
+| [transactions](transactions.md) | module | `postgres_migration_adapter.dart` | `TomTransactionManager.runInTransaction`, which runs a PostgreSQL script and its version row as one transaction |

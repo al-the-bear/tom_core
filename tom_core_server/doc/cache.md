@@ -1075,7 +1075,7 @@ tenant, published and received; local copies kept apart per tenant and
 dropped by type, subject, `*` for a user, and tenant; the webhook's signature, rotation, tolerance,
 payload and group subjects; and the feed follower's position, pages, expired
 cursor and failed read. `test/cache_invalidation_db_test.dart`,
-tagged `db`, runs `TomSqlInvalidationChannel` against MariaDB: own-origin rows
+tagged `db`, runs `TomSqlInvalidationChannel` against MariaDB or PostgreSQL: own-origin rows
 skipped, the start-up catch-up of revocations in force, retention pruning, and
 a revoked item share that drops the cached answer on the reading node, and a
 grant revoked on one node refused on a second — a spawned isolate, whose

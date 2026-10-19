@@ -11,7 +11,7 @@
 /// table by the route a deployment would, reads the result back out of
 /// `information_schema`, and compares it with the descriptor. It needs a server,
 /// so it is `@Tags(['db'])` and skips itself when none is reachable; bring one up
-/// with `tool/run_db_tests.sh`.
+/// with `tool/run_db_tests.sh` (MariaDB) or `tool/run_db_tests_postgres.sh`.
 ///
 /// Both provisioning routes are covered, because a deployment may take either
 /// and they must not diverge: the stores' own create-on-first-use, and the
@@ -51,8 +51,10 @@ const String _migrationSchema = 'tomframework';
 List<String> _migrationChains() {
   final chains = [
     for (final module in Directory('example').listSync().whereType<Directory>())
-      if (Directory('${module.path}/migrations/main/tomcore').existsSync())
-        '${module.path}/migrations/main/tomcore',
+      if (Directory(
+        '${module.path}/${TestDatabase.referenceMigrations}/main/tomcore',
+      ).existsSync())
+        '${module.path}/${TestDatabase.referenceMigrations}/main/tomcore',
   ]..sort();
   // The discovery is the point of failure if `example/` is ever restructured,
   // and an empty list would make the migration half of this suite assert
@@ -97,8 +99,9 @@ void main() async {
   final reachable = await TestDatabase.isReachable();
   final skip = reachable
       ? null
-      : 'No MariaDB reachable at ${TestDatabase.host}:${TestDatabase.port} — '
-            'start one with tool/run_db_tests.sh.';
+      : 'No ${TestDatabase.engine} server reachable at '
+            '${TestDatabase.host}:${TestDatabase.port} — start one with '
+            'tool/run_db_tests.sh or tool/run_db_tests_postgres.sh.';
 
   group('the provisioned schema is the schema the descriptors declare', () {
     late TomDataSourceInfo dsi;
@@ -172,7 +175,8 @@ void main() async {
       // a table that was provisioned correctly and then altered outside the
       // chain. Without this test the two above would pass equally well against
       // a comparison that reported nothing.
-      await dsi.datasource.executeCommand(
+      await TestDatabase.execute(
+        dsi.datasource,
         'ALTER TABLE $defaultSchedulerNodeTable '
         'MODIFY COLUMN checkin_interval VARCHAR(32) NOT NULL',
       );

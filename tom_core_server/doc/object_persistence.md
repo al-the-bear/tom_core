@@ -79,7 +79,7 @@ be expressed three ways — a parsed *query sentence*, a programmatically built
 | `TomDartType` | class | Wraps a `Type` so it can be carried as a value, where a bare `Type` literal is awkward to pass |
 | `TomRepository<T, K>` | abstract class | The CRUD + query contract for entity `T` keyed by `K` |
 | `TomSqlDatasourceRepository<T, K>` | abstract class | SQL implementation of the contract |
-| `MariadbRepository<T, K>` | class | MariaDB binding — constructed directly, and the only thing it adds is `MariadbSqlDialect` |
+| `MariadbRepository<T, K>` | class | MariaDB binding — constructed directly, and the only thing it adds is a pinned `MariadbSqlDialect` |
 | `TomCompositeKey` | final class | The `K` of an entity whose primary key spans several fields, keyed by field name |
 | `TomPageRequest` | class | One page of a query. The repository appends the primary-key fields as final sort terms, because "page 2" of an unordered query is otherwise not the complement of "page 1" |
 | `TomSortField` / `TomSortDirection` | class / enum | One sort term — a declared field name where the caller writes it, a rendered column expression by the time SQL is generated |
@@ -128,6 +128,7 @@ query built the other:
 | `DbCol<R>` | abstract class | A column reference, typed by what the column holds |
 | `BoolCol` / `IntCol` / `DoubleCol` / `StringCol` / `DateCol` / `DateTimeCol` / `TimeCol` | class | The seven concrete column references |
 | `BoolLiteral` / `IntegerLiteral` / `DoubleLiteral` / `StringLiteral` / `DateLiteral` / `DateTimeLiteral` / `TimeLiteral` | class | The seven inline literals |
+| `TruthPredicate` | class | A constant predicate — one that admits every row or none — rendered through the dialect's `truthPredicate` rather than as a literal value |
 | `Parameter<T>` | class | A bound placeholder — what a value becomes when it is not written inline |
 | `CountAll` / `Count` / `Sum` / `Avg` / `Min` / `Max` | class | The six aggregates `TomGroupedSelect` projects |
 
@@ -160,6 +161,12 @@ assigns its own ids, and treating it as "unsaved" would make the row with id `0`
 unsavable. The consequence is worth stating plainly, because it fails silently —
 an entity declared `int id = 0` takes the *update* arm on its very first save,
 issuing an `UPDATE` that matches no row and persisting nothing.
+
+The key the database assigns is read back from the insert's own result. The
+insert asks for it through the dialect's `returningKey`, which leaves the
+statement unchanged on MariaDB — whose last-insert id reports the key on its
+own — and appends `RETURNING <key column>` on PostgreSQL, which has none. A
+composite key is supplied by the caller and asked for nothing.
 
 `@TomDbColumn` can mark a column `isReadOnly` (skipped on insert/update),
 `noLoad` (skipped on select), or `isJson`, and can carry `fromDbConverter` /
@@ -1157,8 +1164,12 @@ into a `TomDataScopePredicate` — a boolean operator plus the bind values it
 references:
 
 - **`null`** from the resolver means *opt out* — no predicate, every row visible;
-- **an empty result** denies every row, rendering a bare `FALSE` (`IN ()` is not
-  valid SQL, and an allowed-value set of no values matches no rows);
+- **an empty result** denies every row, rendering a constant false predicate
+  (`TruthPredicate`, through the dialect's `truthPredicate`: `false` on
+  MariaDB, `FALSE` on PostgreSQL) — `IN ()` is not valid SQL, and an allowed-value set of no values
+  matches no rows. It is a predicate rather than a `BoolLiteral` because the two
+  differ on PostgreSQL, where a truth *value* is the `1`/`0` a `SMALLINT` truth
+  column holds and a `WHERE 0` is a type error;
 - otherwise `<col> IN (:__tomscope_0, …)`, **one bound parameter per value**, so
   no scope value is ever concatenated into the SQL text (C-7).
 
@@ -1737,7 +1748,7 @@ here than on the row-returning paths:
 ### Value types across drivers
 
 The value type is the one the **projection declared**, not the one the driver
-happens to hand back. `MariaDbDatasource.mapGroupedRow` reads each alias as the
+happens to hand back. `TomSqlDatasource.mapGroupedRow` reads each alias as the
 declared type, which is the only type information a grouped row has.
 
 That mapping is load-bearing for `SUM` and `AVG`. MariaDB types `SUM(<int
@@ -1749,7 +1760,7 @@ nothing is given up. A caller sees a `double` either way and does not need to
 know. The same applies to every entity-mapping path, not only to grouped rows:
 `DECIMAL` is the correct SQL type for money, so a plain entity with a money
 column meets the identical gap on its first select. See
-[`datasources.md`](datasources.md#the-mariadb-driver) for the shared read
+[`datasources.md`](datasources.md#reading-rows) for the shared read
 helpers and for the rule governing an `int`-declared field over a `DECIMAL`
 column (exactly integral values are read; fractional ones are refused by name,
 never truncated).
@@ -1868,8 +1879,14 @@ survive.
 ## SQL Dialects
 
 Every operator renders itself through a `TomStandardSqlDialect` (see
-`doc/datasources.md`). A driver subclasses the dialect to override any fragment;
-`MariadbRepository` uses `MariadbSqlDialect`.
+`doc/datasources.md`). A driver subclasses the dialect to override any fragment.
+A `TomSqlDatasourceRepository` renders through its data source's dialect
+(`sqlDialect` defaults to `datasourceInfo.datasource.sqlDialect`), so one
+repository class serves MariaDB and PostgreSQL alike — which is how every
+repository in the package's own test fixtures is declared.
+`MariadbRepository` pins `MariadbSqlDialect` and is therefore for MariaDB only;
+on PostgreSQL extend `TomSqlDatasourceRepository` directly, or override
+`sqlDialect`.
 
 A repository is **constructed, not discovered**: `MariadbRepository<User,
 int>([User])`, as every example above does. There is no registry keyed on a
@@ -1895,7 +1912,8 @@ that a repository is constructed rather than discovered.
 
 `test/object_persistence_db_test.dart` is tagged `db` and skips when no server
 is reachable, so the default run stays green without one. It covers CRUD through
-a repository against a real MariaDB, which is the half that cannot be settled by
+a repository against a real database — MariaDB or PostgreSQL, whichever the DB
+suites run against — which is the half that cannot be settled by
 reading generated SQL — including the one claim in
 [Matching literal text](#matching-literal-text) that is about what the
 *database* does with a pattern rather than about what the query says.
@@ -1940,7 +1958,8 @@ its own result, and `test/examples_test.dart` runs it.
 version, the versioned `UPDATE` and its bind names, the values a save binds and
 the refusals a scripted data source's `0`-row answer produces, and the
 migration shapes the convergence check accepts and reports.
-`test/optimistic_locking_db_test.dart`, tagged `db`, runs it against MariaDB —
+`test/optimistic_locking_db_test.dart`, tagged `db`, runs it against a live
+database — MariaDB or PostgreSQL —
 two saves of one loaded row with the second refused, six saves of one row at
 the same instant with exactly one winning, a refused editor reloading and
 saving on top of the winner, a versioned delete, and a table that gains the

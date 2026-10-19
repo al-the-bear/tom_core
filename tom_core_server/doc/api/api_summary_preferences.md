@@ -96,7 +96,7 @@ fills it column by column when mapping a result.
 
 | Method | Returns | Description |
 | ------ | ------- | ----------- |
-| `toDto()` | `TomUserPreferenceDto` | The row as the wire DTO, with `updatedAt` normalised to UTC — MariaDB's `DATETIME` carries no zone, so a read-back instant arrives flagged local, which is the wrong convention at the server's edge. |
+| `toDto()` | `TomUserPreferenceDto` | The row as the wire DTO, with `updatedAt` normalised to UTC — MariaDB's `DATETIME` (PostgreSQL's `TIMESTAMP`) carries no zone, so a read-back instant arrives flagged local, which is the wrong convention at the server's edge. |
 
 #### Static Constants
 

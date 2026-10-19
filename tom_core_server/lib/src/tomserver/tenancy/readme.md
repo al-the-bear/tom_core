@@ -61,7 +61,7 @@ deployment-wide, and
 resolution, token binding, caches, revocations, jobs and the outbox, checking
 its own results. `test/tenancy_test.dart` covers the module without a database
 and `test/tenancy_db_test.dart` (tagged `db`) runs it under all three isolation
-models against MariaDB. `test/examples_test.dart` runs the example.
+models against MariaDB or PostgreSQL. `test/examples_test.dart` runs the example.
 
 ---
 

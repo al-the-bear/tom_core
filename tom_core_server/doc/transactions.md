@@ -54,14 +54,15 @@ abstract class TomTransactionParticipant {
 
 Every hook is handed the transaction it concerns, the same one
 `startTransaction` received. A participant serving several transactions at
-once needs that to know which of them a call concludes: `MariaDbDatasource`
-holds a connection per transaction, and `commit(transaction)` is what tells it
+once needs that to know which of them a call concludes: a SQL data source
+(`TomSqlDatasource`, the base of the MariaDB and PostgreSQL drivers) holds a
+connection per transaction, and `commit(transaction)` is what tells it
 which connection to issue `COMMIT` on.
 
-`TomDataSource` implements this contract, and `MariaDbDatasource` enlists
+`TomDataSource` implements this contract, and a SQL data source enlists
 itself **at the point of use**: the first statement it runs while a transaction
 is running — `executeCommand`, `executeQuery`, a prepared statement's
-`execute` — calls `registerParticipant` first. No call site asks for it, and
+`execute` or `run` — calls `registerParticipant` first. No call site asks for it, and
 none can be forgotten. That is what gives `@TomTransactional` its meaning: the
 endpoint pipeline opens and concludes the transaction, but it cannot know which
 data sources the endpoint will touch, and the data source is the one place that
@@ -92,14 +93,26 @@ back a peer whose commit succeeded would discard work the transaction decided to
 keep. No coordinator can repair that; the repair is at the named resources.
 
 A participant with nothing to prepare returns `true` and does its work in
-`commit`. `MariaDbDatasource` is that participant — a plain
-`START TRANSACTION` / `COMMIT` has no statement that makes a commit certain
-without performing it — so enlisting one beside an XA data source weakens the
-guarantee to "atomic unless the one-phase participant's commit fails". Use
-`MariaDbXADatasource` for every resource in a transaction that has to be atomic
-across them: it maps `prepare` onto `XA END` + `XA PREPARE` and `commit`
-onto `XA COMMIT`, and a prepared XA branch is one the server has undertaken to
-be able to commit.
+`commit`. The one-phase SQL drivers are that participant — `MariaDbDatasource`
+(`"mariadb"`) and `PostgresDatasource` (`"postgresql"`): a plain
+`START TRANSACTION` / `BEGIN` … `COMMIT` has no statement that makes a commit
+certain without performing it — so enlisting one beside a two-phase data source
+weakens the guarantee to "atomic unless the one-phase participant's commit
+fails". Use a two-phase data source for every resource in a transaction that
+has to be atomic across them:
+
+| `type` | Data source | `prepare` | `commit` | `rollback` |
+| ------ | ----------- | --------- | -------- | ---------- |
+| `mariadb_xa` | `MariaDbXADatasource` | `XA END` + `XA PREPARE` | `XA COMMIT` | `XA END` (if still active) + `XA ROLLBACK` |
+| `postgresql_xa` | `PostgresXADatasource` | `PREPARE TRANSACTION '<id>'` | `COMMIT PREPARED '<id>'` | `ROLLBACK` while open, `ROLLBACK PREPARED '<id>'` once prepared |
+
+A prepared branch is one the server has undertaken to be able to commit — a
+PostgreSQL prepared transaction survives a server restart. PostgreSQL allows
+none until `max_prepared_transactions` is raised above its default of `0`; with
+`0`, every `PREPARE TRANSACTION` fails, which vetoes every transaction a
+`postgresql_xa` data source joins. See
+[datasources.md](datasources.md#transactions) for how the drivers name and
+track a branch.
 
 ## The Transaction Lifecycle
 
@@ -111,7 +124,8 @@ Enlisting after the transaction has concluded throws `TomTransactionException`.
 
 **An id belongs to one object.** `getParticipantId()` names a *resource* rather
 than an object — `MariaDbDatasource` answers
-`"MariaDb-<database>@<host>:@<port>"` — so two instances configured for one
+`"MariaDb-<database>@<host>:@<port>"`, `PostgresDatasource`
+`"Postgres-<database>@<host>:@<port>"` — so two instances configured for one
 database share an id by construction. Registering the second is not a
 re-registration and is refused with `…duplicate_id`, because the two are two
 data sources, each with its own connection and transaction, and only one of them
@@ -365,6 +379,7 @@ flag means is therefore decided by each participant:
 | ----------- | -------------------- |
 | `MariaDbDatasource` | Opens `START TRANSACTION READ ONLY`, so the server refuses every write on that connection until the transaction ends (`ER_CANT_EXECUTE_IN_READ_ONLY_TRANSACTION`). |
 | `MariaDbXADatasource` | Cannot honour it — `XA START` has no `READ ONLY` form — and logs a warning saying so rather than appearing to. |
+| `PostgresDatasource` / `PostgresXADatasource` | Open `BEGIN READ ONLY`, so the server refuses every write until the transaction ends (SQLSTATE `25006`, `read_only_sql_transaction`). The two-phase variant honours it too: its branch begins with the same `BEGIN`. |
 | Anything else | Whatever it chooses; the flag is an argument, not an instruction. |
 
 The transaction is **handed over, not looked up**. A participant could in
@@ -380,8 +395,8 @@ differ in what that costs:
 
 | Phase | What one participant does | Sequential cost |
 | ----- | ------------------------- | --------------- |
-| prepare | `XA END` then `XA PREPARE` for an XA source, as two calls; nothing for a one-phase one | two round trips per XA participant |
-| commit / rollback | `COMMIT` / `ROLLBACK`, or the XA forms | a round trip per participant |
+| prepare | `XA END` then `XA PREPARE` for a MariaDB XA source, as two calls; `PREPARE TRANSACTION` for a PostgreSQL two-phase one; nothing for a one-phase one | two round trips per MariaDB XA participant, one per PostgreSQL one |
+| commit / rollback | `COMMIT` / `ROLLBACK`, or the two-phase forms | a round trip per participant |
 | end | hands the connection back to the pool — issues no statement, unless the connection has a forgotten prepared statement to deallocate or is due to be retired | microseconds, measured below |
 
 So a transaction spanning *n* resources pays *n* sequential round trips on the
@@ -398,7 +413,8 @@ an arbitrary subset.
 **And the latency is the wrong thing to optimise first.** A transaction spanning
 enough resources for the sum to matter is a design problem before it is a
 performance one — the framework's own answer to "this must be atomic across two
-databases" is `MariaDbXADatasource`, not more of them. Nobody has reported this
+databases" is a two-phase data source (`MariaDbXADatasource`,
+`PostgresXADatasource`), not more of them. Nobody has reported this
 latency; weakening a guarantee two suites enforce, to buy an unmeasured
 improvement, is the wrong trade.
 
@@ -433,7 +449,7 @@ transactional block cannot let a second request conclude the first one's
 transaction.
 
 Concurrent transactions do not wait for each other on a shared data source.
-`MariaDbDatasource` gives each transaction it is enlisted in a connection of
+A SQL data source gives each transaction it is enlisted in a connection of
 its own from its pool, pinned from the transaction's first statement on it to
 `endTransaction`, so two requests' transactions on one database run side by side
 and one slow transaction stalls nobody else. A transaction waits only when every
@@ -466,7 +482,9 @@ a `finally`, so it clears it whatever happens on the way.
   down between the phases and nothing replays afterwards. A crash after the
   prepare phase leaves every participant's work prepared and unresolved — for
   `MariaDbXADatasource`, XA branches holding their locks until somebody issues
-  `XA RECOVER`, which nothing here does. The prepare phase is what makes those
+  `XA RECOVER`; for `PostgresXADatasource`, prepared transactions listed in
+  `pg_prepared_xacts` until somebody commits or rolls them back. Nothing here
+  does either. The prepare phase is what makes those
   branches *recoverable*; recovering them is the operator's.
   <!-- unpinned: absence — no transaction log exists -->
 - **A conclusion has no deadline.** Participants are awaited with no timeout, so

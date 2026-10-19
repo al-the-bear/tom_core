@@ -56,7 +56,7 @@ class _StatementLog extends TomLogOutput {
     String? origin,
   ]) {
     final text = convertToString(message);
-    if (text.contains('MariaDbDatasourceExecuting SQL:')) {
+    if (text.contains(' executing SQL: ')) {
       statements.add(text);
     }
   }
@@ -66,17 +66,17 @@ void main() async {
   final reachable = await TestDatabase.isReachable();
   final String? skipReason = reachable
       ? null
-      : 'MariaDB not reachable on ${TestDatabase.host}:${TestDatabase.port} — '
-            'start one with tool/run_db_tests.sh';
+      : 'No ${TestDatabase.engine} server reachable on ${TestDatabase.host}:${TestDatabase.port} — '
+            'start one with tool/run_db_tests.sh or tool/run_db_tests_postgres.sh';
 
   group('@TomReference association loading (DB-backed)', () {
     late TomDataSourceInfo dsi;
-    late MariaDbDatasource ds;
+    late TomSqlDatasource ds;
 
     setUpAll(() async {
       initializeReflection();
       dsi = await TestDatabase.register();
-      ds = dsi.datasource as MariaDbDatasource;
+      ds = dsi.datasource as TomSqlDatasource;
       await TestDatabase.ensureFixtureAssociationTables(dsi);
     });
 
@@ -238,7 +238,7 @@ void main() async {
           'SELECT id, label FROM fixture_tagged ORDER BY id',
         ),
         throwsA(
-          isA<MariadbDatasourceException>()
+          isA<TomSqlDatasourceException>()
               .having(
                 (e) => e.key,
                 'key',

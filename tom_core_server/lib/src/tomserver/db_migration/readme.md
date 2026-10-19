@@ -12,7 +12,11 @@ a directory tree of scripts laid out per data source and schema, a
 `TomDbMigrator` applies the pending ones, and each is recorded as a
 `TomDbVersion` row (version, description, checksum, who/when, duration, success)
 so re-runs are idempotent and edited scripts are caught by checksum.
-`MariadbMigrationAdaptor` is the MariaDB/MySQL implementation.
+`TomSqlMigrationAdaptor` is that history, written once for every SQL database;
+`MariadbMigrationAdaptor` (MariaDB/MySQL) and `PostgresMigrationAdaptor`
+(PostgreSQL) differ only in how a script runs — statement by statement with a
+failure recorded on MariaDB, which does not roll DDL back, and in one
+transaction with the version row on PostgreSQL, which does.
 
 The **checks** answer *does this chain build what we say it builds* — and answer
 it **with no database at all**, by replaying the chain's DDL text into an
@@ -30,10 +34,13 @@ optimisation: a check that needs a live server cannot gate code generation.
 | `TomDbMigrator` | The contract a database-specific migrator implements. One instance serves one `(data source, schema)` pair at a time. |
 | `TomDbMigrationAdaptor` | A `const` annotation binding a migrator class to a data-source **type** string (e.g. `"mariadb"`) so reflection can find it. It adapts nothing itself. |
 | `TomMigrationFileName` | A parsed migration file name: `version`, `description`, and an optional environment tag. |
-| `MariadbMigrationAdaptor` | The MariaDB/MySQL `TomDbMigrator`, registered for the `"mariadb"` type. |
+| `TomSqlMigrationAdaptor` | The database-neutral SQL `TomDbMigrator`: the `<schema>_versioning` history, checksum stability (`checksumOf`), rebinding per schema, and the refusal of a history that records a failed script. |
+| `MariadbMigrationAdaptor` | The MariaDB/MySQL migrator, registered for the `"mariadb"` type. Records a failed script with `success = 0`. |
+| `PostgresMigrationAdaptor` | The PostgreSQL migrator, registered for the `"postgresql"` type. Runs a script and its version row in one transaction, so a failure leaves nothing behind. |
 | `TomDbVersion` | One row of a `<schema>_versioning` table — the record of a single applied (or attempted) migration. |
 | `TomDbMigrationException` | Thrown when a migration cannot be discovered, parsed or applied. |
-| `MariadbMigrationException` | Thrown for MariaDB-specific migration failures, including a changed description or checksum on an already-applied version. |
+| `TomSqlMigrationException` | The SQL migrators' failure type, including a changed description or checksum on an already-applied version. |
+| `MariadbMigrationException` · `PostgresMigrationException` | Its two subtypes; their keys are prefixed `mariadb_migration…` and `postgres_migration…`. |
 
 ### The convergence checks
 
@@ -89,8 +96,9 @@ adaptor discovery, idempotency and checksum stability, the whole
 schema-convergence chapter, and what returns a `Future` and why. The connection-free surface runs
 in `example/db_migration/db_migration_example.dart`; `test/db_migration_test.dart`
 and `test/schema_convergence_test.dart` cover the two halves, and
-`test/db_migration_db_test.dart` covers the MariaDB adaptor against a live
-server.
+`test/db_migration_db_test.dart` covers the adaptor of whichever database the
+DB suites run against — MariaDB through `tool/run_db_tests.sh`, PostgreSQL
+through `tool/run_db_tests_postgres.sh`.
 
 ---
 

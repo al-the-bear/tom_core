@@ -24,7 +24,8 @@ observable state, security, resources) and adds everything a service needs:
   mapping wrapped around a declarative **endpoint router**;
 - an **ORM-style persistence layer** — repositories with type-safe queries
   built from expression operators, persistence annotations, and a query
-  builder, over pluggable **datasources** (MariaDB/MySQL driver included);
+  builder, over pluggable **datasources** (MariaDB/MySQL and PostgreSQL
+  drivers included);
 - **versioned schema migrations** — with a convergence check that the entities,
   the migration chain and the live database still agree — and **local/XA
   transaction** coordination;
@@ -59,8 +60,8 @@ dependencies:
 ```
 
 Then import the single barrel — it re-exports `tom_core_kernel`,
-`tom_basics_console`, and the MariaDB client, so you rarely import those
-directly:
+`tom_basics_console`, and the MariaDB client (`mysql_client`), so you rarely
+import those directly:
 
 ```dart
 import 'package:tom_core_server/tom_core_server.dart';
@@ -68,9 +69,12 @@ import 'package:tom_core_server/tom_core_server.dart';
 
 **SDK:** Dart `^3.10.0`. Modules that use reflection (persistence entities,
 endpoint services) require `dart run build_runner build` to generate
-`*.reflection.dart`. The relational layer targets **MariaDB/MySQL** via
-`mysql_client`; the datasource, dialect, migration, and repository contracts are
-abstract, so other backends can be added.
+`*.reflection.dart`. The relational layer targets two databases:
+**MariaDB/MySQL** via `mysql_client` and **PostgreSQL 15+** via `postgres`. Both
+drivers share one driver-neutral base, and the framework's own tables are
+declared once and rendered in each database's words; the datasource, dialect,
+migration, and repository contracts are abstract, so other backends can be
+added.
 
 ## Features
 
@@ -100,17 +104,20 @@ abstract, so other backends can be added.
 | `TomPageRequest` / `TomSortField` / `TomSortDirection` | The row window and the per-field sort a caller passes to `findAll`, `findAllById`, `findByQuery` and `findByQuerySentence` — cut out of the *scoped* rows, so `count()` reports the scoped total beside it |
 | `TomVersion` / `TomOptimisticLockException` | Optimistic locking — a versioned entity's update and `delete(entity)` match the row only at the version the caller loaded, so a second save of one loaded row is refused rather than silently overwriting the first |
 | `TomDataScope` / `TomDataScopeRegistry` / `TomColumnAuthorization` | Row scoping ANDed into every query — `owner`, `group` and the grant-driven `resource` kind, the last applied automatically to any entity with a `resource_key` column — and per-column read/write rights enforced by the repository |
-| `TomDataSource` / `MariaDbDatasource` / `MariaDbXADatasource` | Connection drivers (MariaDB/MySQL) |
-| `TomDbType` family / `TomStandardSqlDialect` | Typed columns and SQL rendering |
+| `TomDataSource` / `TomSqlDatasource` | The data-source contract, and the driver-neutral SQL base both drivers extend: pool, a connection per transaction, statement paths, row mapping |
+| `MariaDbDatasource` / `MariaDbXADatasource` | MariaDB/MySQL drivers (`mariadb`, `mariadb_xa`) |
+| `PostgresDatasource` / `PostgresXADatasource` | PostgreSQL 15+ drivers (`postgresql`, `postgresql_xa`) |
+| `TomDbType` family / `TomStandardSqlDialect` / `MariadbSqlDialect` / `PostgresSqlDialect` | Typed columns and SQL rendering, including the framework's canonical DDL in each database's words |
 | `TomSelect` / `TomCount` / `TomDelete` / `TomGroupedSelect` / `TomLiteralSelect` | Generated query objects, plus the raw-SQL escape hatch |
 
 ### Schema & transactions (`db_migration`, `transactions`)
 
 | Type | Responsibility |
 | ---- | -------------- |
-| `TomDbMigrator` / `TomDbMigrations` / `TomDbVersion` | Versioned schema migrations (MariaDB adapter) |
+| `TomDbMigrator` / `TomDbMigrations` / `TomDbVersion` | Versioned schema migrations |
+| `MariadbMigrationAdaptor` / `PostgresMigrationAdaptor` | The MariaDB and PostgreSQL migrators — on PostgreSQL a script and its version row run as one transaction |
 | `TomSchemaConvergenceCheck` / `TomSchemaModel` / `TomEntitySchemaReader` / `TomSchemaDivergence` | Checks that the entities, the migrations and the live database still describe the same schema, and names each divergence |
-| `TomTransactionManager` / `TomTransaction` / `TomTransactionParticipant` | Local/XA transaction coordination |
+| `TomTransactionManager` / `TomTransaction` / `TomTransactionParticipant` | Local and two-phase transaction coordination (XA on MariaDB, prepared transactions on PostgreSQL) |
 
 ### Platform services (`configuration`, `cache`, `authentication`, `authorization`, `item_authorization`, `tenancy`, `ratelimit`, `audit`, `messaging`, `resources`, `export`, `file_storage`, `scheduling`, `preferences`, `healthcheck`, `cmdline`, `little_things`)
 
@@ -227,10 +234,10 @@ than quietly not being on the tour.
 
 ## Usage
 
-### Connecting a datasource (MariaDB/MySQL)
+### Connecting a datasource (MariaDB/MySQL or PostgreSQL)
 
-The MariaDB driver is configured by its connection fields, then `connect()`
-opens the live connection:
+A driver is configured by its connection fields, then `connect()` opens the
+live connection:
 
 ```dart
 final ds = MariaDbDatasource()
@@ -242,11 +249,29 @@ final ds = MariaDbDatasource()
 await ds.connect(); // throws MariadbDatasourceException on failure
 ```
 
+The PostgreSQL driver takes the same fields, plus the schema its connections
+work in and how they are encrypted:
+
+```dart
+final pg = PostgresDatasource() // port defaults to 5432
+  ..host = 'localhost'
+  ..username = 'tom'
+  ..password = 'secret'
+  ..databaseName = 'tomdb'
+  ..schema = 'app' // the session's search_path; empty keeps `public`
+  ..sslMode = 'verifyFull'; // disable | require (default) | verifyFull
+await pg.connect();
+```
+
+In configuration a data source names its driver by `type` — `mariadb`,
+`mariadb_xa`, `postgresql` or `postgresql_xa` — see
+[`doc/datasources.md`](doc/datasources.md#the-sql-drivers).
+
 > **MySQL-in-Docker.** The runnable end-to-end story — a Docker Compose MySQL
 > plus bootstrap and migrations — ships with the
 > [`tom_core_samples/core_server_sample`](../tom_core_samples/core_server_sample/README.md)
 > project (see the [samples map](../tom_core_samples/README.md)). This package
-> provides the abstract contracts and the MariaDB driver it builds on.
+> provides the abstract contracts and the two drivers it builds on.
 
 ### Repositories and type-safe queries
 
@@ -387,7 +412,7 @@ See [`doc/authentication.md`](doc/authentication.md).
    object_persistence   transactions        services
    (TomRepository)   (TomTransactionMgr)  (auth · cache · health)
          │
-     datasources  →  MariaDbDatasource / MariaDbXADatasource (MySQL)
+     datasources  →  TomSqlDatasource → MariaDbDatasource / PostgresDatasource (+ XA variants)
          │
      db_migration  →  TomDbMigrator (versioned schema)
 ```
@@ -397,10 +422,10 @@ See [`doc/authentication.md`](doc/authentication.md).
 | `TomServer` | HTTP host + middleware pipeline |
 | `TomEndpointRouting` | Maps requests to endpoint handlers |
 | `TomRepository` | CRUD + type-safe query repository |
-| `TomDataSource` / `MariaDbDatasource` | Database connection driver |
+| `TomDataSource` / `MariaDbDatasource` / `PostgresDatasource` | Database connection drivers |
 | `TomQueryBuilder` | Builds type-safe queries from expression operators |
 | `TomDbMigrator` | Applies versioned schema migrations |
-| `TomTransactionManager` | Coordinates local/XA transactions |
+| `TomTransactionManager` | Coordinates local and two-phase transactions |
 | `TomBaseServerConfiguration` | Server configuration root |
 
 ## Ecosystem
@@ -438,8 +463,12 @@ apps get the full kernel API through one dependency. See the
 
 - **Version:** 1.3.0
 - **Tests:** run with `testkit :test` or `dart test`. Part of the suite is
-  tagged `db` and skips unless a live MySQL is reachable — bring one up with
-  `tool/run_db_tests.sh`, and the tagged tests then run too. The single sign-on
+  tagged `db` and skips unless a live database is reachable. The same suites
+  run against both databases: `tool/run_db_tests.sh` brings up a throwaway
+  MariaDB (port 3309) and `tool/run_db_tests_postgres.sh` a throwaway
+  PostgreSQL 15 (port 5439, `TOM_CORE_SERVER_TEST_DB_ENGINE=postgresql`), and
+  each runs the tagged tests against it; the two compose projects can run side
+  by side. The single sign-on
   interoperability suite is tagged `sso` and skips unless a Keycloak is
   reachable; `tool/run_sso_tests.sh` starts one and runs it.
 

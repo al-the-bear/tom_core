@@ -1,6 +1,7 @@
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 import '../object_persistence/operators_expressions.dart';
 import 'sql_instant.dart';
+import 'sql_lexer.dart';
 import 'types_operator.dart';
 
 /// A SQL fragment. An alias for `String` that documents intent at call sites.
@@ -357,6 +358,11 @@ class TomStandardSqlDialect {
     return "$value";
   }
 
+  /// Renders a constant predicate — `WHERE false` for a scope that admits
+  /// nothing. The same text as [boolOp] here; a database whose truth columns
+  /// are not booleans (PostgreSQL) renders the two differently.
+  SqlString truthPredicate(bool value) => boolOp(value);
+
   /// Renders a timestamp literal as the single-quoted UTC `DATETIME(6)` text
   /// [sqlInstant] defines.
   ///
@@ -525,4 +531,190 @@ class TomStandardSqlDialect {
   SqlString timeF(String fieldName, DbCol column, Type dbType) {
     return "${column.columnInformation.table.table}.${column.columnInformation.getQueryFieldName()}";
   }
+  // ---------------------------------------------------------------------------
+  // DDL and row writes
+  //
+  // The framework declares its own tables once, in the canonical type
+  // vocabulary below (MariaDB's spelling: `DATETIME(6)`, `TINYINT(1)`,
+  // `LONGTEXT`, `AUTO_INCREMENT`), and every database renders that declaration
+  // in its own words. The defaults render it unchanged; a dialect whose
+  // database spells a type, a key or a conflicting write differently overrides
+  // the method that renders it.
+  // ---------------------------------------------------------------------------
+
+  /// The type this database stores the canonical [canonicalType] as.
+  String columnType(String canonicalType) => canonicalType;
+
+  /// One column's line in a `CREATE TABLE` body, its name and type padded to
+  /// [nameWidth] and [typeWidth] so a reader can scan the types in a column.
+  SqlString columnDefinition({
+    required String name,
+    required String type,
+    required bool nullable,
+    String? defaultValue,
+    bool autoIncrement = false,
+    int nameWidth = 0,
+    int typeWidth = 0,
+  }) {
+    final buffer = StringBuffer()
+      ..write(name.padRight(nameWidth))
+      ..write(' ')
+      ..write(columnType(type).padRight(typeWidth))
+      ..write(' ')
+      ..write(nullable ? 'NULL' : 'NOT NULL');
+    if (defaultValue != null) buffer.write(' DEFAULT $defaultValue');
+    if (autoIncrement) buffer.write(' AUTO_INCREMENT');
+    return buffer.toString();
+  }
+
+  /// Whether a `CREATE TABLE` body may declare a non-unique index inline
+  /// (`KEY name (columns)`). Where it may not, [createIndex] renders one
+  /// statement per index after the table.
+  bool get declaresIndexesInline => true;
+
+  /// An inline key's line in a `CREATE TABLE` body.
+  SqlString keyDefinition(
+    String name,
+    List<String> columns, {
+    required bool unique,
+  }) => '${unique ? 'UNIQUE KEY' : 'KEY'} $name (${columns.join(', ')})';
+
+  /// The statement creating index [name] on [table] when the body cannot
+  /// declare it ([declaresIndexesInline] is `false`).
+  SqlString createIndex(String name, String table, List<String> columns) =>
+      'CREATE INDEX IF NOT EXISTS $name ON $table (${columns.join(', ')})';
+
+  /// A row-writing statement into [table]: the columns of [values] with the SQL
+  /// text that supplies each — a `:bind` or a literal.
+  ///
+  /// A row whose key already exists raises the database's duplicate-key error,
+  /// unless [ignoreConflict] asks for the stored row to be kept and the write to
+  /// change nothing.
+  SqlString insertInto(
+    String table,
+    Map<String, String> values, {
+    bool ignoreConflict = false,
+  }) =>
+      '${ignoreConflict ? 'INSERT IGNORE' : 'INSERT'} INTO $table '
+      '(${values.keys.join(', ')}) VALUES (${values.values.join(', ')})';
+
+  /// The statements writing a row into [table] over every row it supersedes —
+  /// the one with its [primaryKey], and any that collides with it on one of
+  /// [uniqueKeys] — run in order, in one transaction when there is more than
+  /// one.
+  ///
+  /// MariaDB's `REPLACE` is all of that in one statement. A database without it
+  /// deletes the superseded rows first: a key freed by a statement is free to
+  /// the next statement of the same transaction, and to nothing earlier.
+  List<SqlString> replaceInto(
+    String table,
+    Map<String, String> values, {
+    required List<String> primaryKey,
+    List<List<String>> uniqueKeys = const [],
+  }) => [
+    'REPLACE INTO $table (${values.keys.join(', ')}) '
+        'VALUES (${values.values.join(', ')})',
+  ];
+
+  /// One statement that counts one more in [table]'s row whose [conflictKey]
+  /// columns hold the values [values] supplies, creating the row with a count
+  /// of `1` when there is none — and reports the count it left in [counter] as
+  /// the statement's generated id.
+  ///
+  /// Taken and read in one statement because the alternative is wrong under
+  /// concurrency: read with a second statement, every caller of a burst sees
+  /// the final total rather than its own place in it. MariaDB reports it
+  /// through `LAST_INSERT_ID(expr)`; a database with no last-insert id returns
+  /// it with `RETURNING` instead.
+  SqlString incrementCounter(
+    String table,
+    Map<String, String> values,
+    String counter, {
+    required List<String> conflictKey,
+  }) =>
+      'INSERT INTO $table (${[...values.keys, counter].join(', ')}) '
+      'VALUES (${[...values.values, 'LAST_INSERT_ID(1)'].join(', ')}) '
+      'ON DUPLICATE KEY UPDATE $counter = LAST_INSERT_ID($counter + 1)';
+
+  /// [insert] made to report the value of [keyColumn] it generated as the
+  /// statement's generated id.
+  ///
+  /// The default needs nothing: a database with a last-insert id reports the
+  /// key on its own. One without (PostgreSQL) appends `RETURNING`, which its
+  /// driver reads back as the generated id.
+  SqlString returningKey(String insert, String keyColumn) => insert;
+
+  /// Whether a backslash escapes the next character inside a string literal —
+  /// MariaDB's default mode. A statement splitter has to know: in a database
+  /// that reads it literally, `'C:\'` is a whole literal.
+  bool get backslashEscapes => true;
+
+  /// [statement], written in the framework's canonical DDL — MariaDB's
+  /// spelling: `AUTO_INCREMENT`, `DATETIME(6)`, inline `KEY`s, table options —
+  /// as the statements this database runs to the same effect.
+  ///
+  /// The default runs it unchanged. A store that keeps a hand-written
+  /// `CREATE TABLE`, and a test that builds a fixture table, pass it through
+  /// here so one declaration serves every database.
+  List<SqlString> translateCanonical(String statement) => [statement];
+
+  /// A whole canonical [script] — a migration file — in this database's
+  /// words: each statement through [translateCanonical], comments kept, one
+  /// statement per `;`-terminated paragraph.
+  String translateCanonicalScript(String script) => [
+    // The script is canonical, so it is split by MariaDB's literal rule.
+    for (final statement in TomSqlLexer.splitStatements(script))
+      for (final translated in translateCanonical(statement)) '$translated;',
+  ].join('\n\n');
+
+  /// The statement creating schema [name] if it does not exist — a database,
+  /// in MariaDB, where a schema and a database are one thing.
+  ///
+  /// [name] must be a plain identifier; the caller checks it.
+  SqlString createSchema(String name) =>
+      'CREATE DATABASE IF NOT EXISTS ${quoteIdentifier(name)}';
+
+  /// The data-source setting that points a connection at a schema — the
+  /// database name, in MariaDB. A schema-isolated tenant's data source is its
+  /// base data source with this one setting changed.
+  String get schemaSetting => 'databaseName';
+
+  /// The expression naming the schema the connection works in — MariaDB's
+  /// `DATABASE()` — for a query of the catalogue about "this" schema.
+  SqlString get currentSchema => 'DATABASE()';
+
+  /// A query answering, for the table bound as `:table` in [currentSchema],
+  /// one row per column in declaration order: `column_name`, `column_type`
+  /// (with its length — `varchar(191)`, `tinyint(1)`), `is_nullable` (`YES`
+  /// or `NO`) and `column_key` (`PRI` for a primary-key column).
+  ///
+  /// What the live schema check compares a framework table against.
+  SqlString get tableColumnsQuery =>
+      'SELECT COLUMN_NAME AS column_name, COLUMN_TYPE AS column_type, '
+      'IS_NULLABLE AS is_nullable, COLUMN_KEY AS column_key '
+      'FROM information_schema.COLUMNS '
+      'WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = :table '
+      'ORDER BY ORDINAL_POSITION';
+
+  /// The statements installing trigger [name], which refuses every [event]
+  /// (`UPDATE` or `DELETE`) on [table] with [message] — a guard a deployment
+  /// installs, not something the framework issues itself.
+  List<SqlString> rejectingTrigger({
+    required String name,
+    required String table,
+    required String event,
+    required String message,
+  }) => [
+    '''
+CREATE TRIGGER IF NOT EXISTS $name
+BEFORE $event ON $table
+FOR EACH ROW
+  SIGNAL SQLSTATE '45000'
+  SET MESSAGE_TEXT = '$message' ''',
+  ];
+
+  /// [identifier] quoted, for a name that may be a reserved word or carry
+  /// characters an unquoted identifier may not.
+  SqlString quoteIdentifier(String identifier) =>
+      '`${identifier.replaceAll('`', '``')}`';
 }

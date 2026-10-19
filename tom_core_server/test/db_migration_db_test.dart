@@ -49,8 +49,8 @@ void main() async {
   final reachable = await TestDatabase.isReachable();
   final String? skipReason = reachable
       ? null
-      : 'MariaDB not reachable on ${TestDatabase.host}:${TestDatabase.port} — '
-            'start one with tool/run_db_tests.sh';
+      : 'No ${TestDatabase.engine} server reachable on ${TestDatabase.host}:${TestDatabase.port} — '
+            'start one with tool/run_db_tests.sh or tool/run_db_tests_postgres.sh';
 
   group('TomDbMigrations.migrateDatabases (DB-backed)', () {
     late TomDataSourceInfo dsi;
@@ -101,8 +101,9 @@ void main() async {
     Future<bool> tableExists(String table) async {
       final rows = await dsi.datasource.executeQuery<TomCountResult>(
         'SELECT COUNT(*) AS count FROM information_schema.tables '
-        'WHERE table_schema = :schema AND table_name = :table',
-        {'schema': TestDatabase.databaseName, 'table': table},
+        'WHERE table_schema = ${dsi.datasource.sqlDialect.currentSchema} '
+        'AND table_name = :table',
+        {'table': table},
       );
       return rows.single.count == 1;
     }
@@ -149,7 +150,7 @@ void main() async {
           'UPDATE ${_schemaName}_versioning SET executionTimeMs = 4242',
         );
 
-        final adaptor = MariadbMigrationAdaptor();
+        final adaptor = TestDatabase.migrationAdaptor();
         await adaptor.initializeMigration(dsi, _schemaName);
         // Read through the adaptor's own loaded history, not just the test's
         // helper query — that is the list every caller sees.
@@ -170,43 +171,89 @@ void main() async {
         expect(recorded.executionTimeMs, lessThan(60000));
       });
 
-      test('a failed script records the time spent before it failed', () async {
-        await TomDbMigrations.migrateDatabases(p.normalize(_migrationsDir));
-        final adaptor = MariadbMigrationAdaptor();
-        await adaptor.initializeMigration(dsi, _schemaName);
+      test(
+        'a failed script records the time spent before it failed',
+        () async {
+          await TomDbMigrations.migrateDatabases(p.normalize(_migrationsDir));
+          final adaptor = TestDatabase.migrationAdaptor();
+          await adaptor.initializeMigration(dsi, _schemaName);
 
-        // Two statements: one that takes a known, non-trivial amount of time,
-        // then one the server rejects. A migration that spent time and *then*
-        // failed is the case where "how long did it take" matters most, and the
-        // one a stopwatch read inside the `try`, after the loop, records
-        // nothing for: the catch path never reaches it and the duration stays
-        // at its initial 0. The sleep makes that falsifiable without depending
-        // on how fast the server rejects bad syntax.
-        await expectLater(
-          adaptor.applyMigration(
+          // Two statements: one that takes a known, non-trivial amount of time,
+          // then one the server rejects. A migration that spent time and *then*
+          // failed is the case where "how long did it take" matters most, and the
+          // one a stopwatch read inside the `try`, after the loop, records
+          // nothing for: the catch path never reaches it and the duration stays
+          // at its initial 0. The sleep makes that falsifiable without depending
+          // on how fast the server rejects bad syntax.
+          await expectLater(
+            adaptor.applyMigration(
+              dsi,
+              _schemaName,
+              99,
+              'deliberately_broken',
+              'SELECT SLEEP(0.2); THIS IS NOT VALID SQL;',
+            ),
+            throwsA(isA<TomSqlMigrationException>()),
+          );
+
+          final recorded = (await appliedVersions()).firstWhere(
+            (v) => v.version == 99,
+          );
+          // Recorded as failed — the row exists precisely so the failure is
+          // visible in the table and not only in a log.
+          expect(recorded.success, 0);
+          expect(recorded.executionTimeMs, greaterThanOrEqualTo(200));
+          // The known sleep is what makes the *unit* checkable: the true elapsed
+          // time is a fifth of a second, so a stopwatch read in microseconds
+          // would land around 200000 and fail here. Without a duration we
+          // control, any upper bound loose enough to be safe is also loose
+          // enough to accept the wrong unit.
+          expect(recorded.executionTimeMs, lessThan(60000));
+        },
+        skip: TestDatabase.onlyOnMariaDb(
+          'MariaDB records a failed script; PostgreSQL rolls it back',
+        ),
+      );
+
+      test(
+        'on PostgreSQL a failed script is rolled back and not recorded',
+        () async {
+          // PostgreSQL runs DDL in the transaction, and the adaptor runs a
+          // script and its version row in one: a script that fails part-way
+          // leaves neither its first statement's table nor a history row behind,
+          // so the next run applies it again from the start.
+          await TomDbMigrations.migrateDatabases(p.normalize(_migrationsDir));
+          final adaptor = TestDatabase.migrationAdaptor();
+          await adaptor.initializeMigration(dsi, _schemaName);
+          await expectLater(
+            adaptor.applyMigration(
+              dsi,
+              _schemaName,
+              99,
+              'deliberately_broken',
+              'CREATE TABLE fixture_half (id BIGINT); THIS IS NOT VALID SQL;',
+            ),
+            throwsA(
+              isA<TomSqlMigrationException>().having(
+                (e) => e.key,
+                'key',
+                TestDatabase.migrationKey('apply_migration.failed'),
+              ),
+            ),
+          );
+          expect(
+            (await appliedVersions()).where((v) => v.version == 99),
+            isEmpty,
+          );
+          expect(await tableExists('fixture_half'), isFalse);
+          // Nothing recorded as failed, so nothing refuses the next run.
+          await TestDatabase.migrationAdaptor().initializeMigration(
             dsi,
             _schemaName,
-            99,
-            'deliberately_broken',
-            'SELECT SLEEP(0.2); THIS IS NOT VALID SQL;',
-          ),
-          throwsA(isA<MariadbMigrationException>()),
-        );
-
-        final recorded = (await appliedVersions()).firstWhere(
-          (v) => v.version == 99,
-        );
-        // Recorded as failed — the row exists precisely so the failure is
-        // visible in the table and not only in a log.
-        expect(recorded.success, 0);
-        expect(recorded.executionTimeMs, greaterThanOrEqualTo(200));
-        // The known sleep is what makes the *unit* checkable: the true elapsed
-        // time is a fifth of a second, so a stopwatch read in microseconds
-        // would land around 200000 and fail here. Without a duration we
-        // control, any upper bound loose enough to be safe is also loose
-        // enough to accept the wrong unit.
-        expect(recorded.executionTimeMs, lessThan(60000));
-      });
+          );
+        },
+        skip: TestDatabase.isPostgres ? null : 'PostgreSQL only',
+      );
     });
 
     // The stability guard, end to end. `checksumOf` itself is pinned to a
@@ -225,7 +272,26 @@ void main() async {
       /// exactly the one a failure leaves.
       Future<void> leaveAFailedRow() async {
         await TomDbMigrations.migrateDatabases(p.normalize(_migrationsDir));
-        final adaptor = MariadbMigrationAdaptor();
+        if (TestDatabase.isPostgres) {
+          // PostgreSQL's adaptor never records a failure — it rolls the
+          // script back — so the row is the one a history carried over from
+          // elsewhere, or repaired by hand, would hold. The refusal is the
+          // shared adaptor's rule, and holds for it all the same.
+          await dsi.datasource.executeCommand(
+            'INSERT INTO ${_schemaName}_versioning '
+            '(version, description, script, checksum, executionTimeMs, success) '
+            'VALUES (99, :description, :script, :checksum, 0, 0)',
+            {
+              'description': 'deliberately_broken',
+              'script': 'THIS IS NOT VALID SQL;',
+              'checksum': TomSqlMigrationAdaptor.checksumOf(
+                'THIS IS NOT VALID SQL;',
+              ),
+            },
+          );
+          return;
+        }
+        final adaptor = TestDatabase.migrationAdaptor();
         await adaptor.initializeMigration(dsi, _schemaName);
         await expectLater(
           adaptor.applyMigration(
@@ -235,7 +301,7 @@ void main() async {
             'deliberately_broken',
             'THIS IS NOT VALID SQL;',
           ),
-          throwsA(isA<MariadbMigrationException>()),
+          throwsA(isA<TomSqlMigrationException>()),
         );
         expect(
           (await appliedVersions()).firstWhere((v) => v.version == 99).success,
@@ -243,21 +309,22 @@ void main() async {
         );
       }
 
-      Matcher refusesTheHistory(
-        List<int> versions,
-      ) => isA<MariadbMigrationException>()
-          .having(
-            (e) => e.key,
-            'key',
-            'mariadb_migration_adapter.initialize.failed_migration_recorded',
-          )
-          .having((e) => e.parameters?['versions'], 'versions', versions)
-          .having((e) => e.parameters?['schema'], 'schema', _schemaName);
+      Matcher refusesTheHistory(List<int> versions) =>
+          isA<TomSqlMigrationException>()
+              .having(
+                (e) => e.key,
+                'key',
+                TestDatabase.migrationKey(
+                  'initialize.failed_migration_recorded',
+                ),
+              )
+              .having((e) => e.parameters?['versions'], 'versions', versions)
+              .having((e) => e.parameters?['schema'], 'schema', _schemaName);
 
       test('is not treated as applied on the next run', () async {
         await leaveAFailedRow();
         await expectLater(
-          MariadbMigrationAdaptor().initializeMigration(dsi, _schemaName),
+          TestDatabase.migrationAdaptor().initializeMigration(dsi, _schemaName),
           throwsA(refusesTheHistory([99])),
         );
       });
@@ -269,7 +336,7 @@ void main() async {
         await leaveAFailedRow();
         await expectLater(
           TomDbMigrations.migrateDatabases(p.normalize(_migrationsDir)),
-          throwsA(isA<MariadbMigrationException>()),
+          throwsA(isA<TomSqlMigrationException>()),
         );
       });
 
@@ -278,9 +345,12 @@ void main() async {
         // which one, in a table they may not know the name of.
         await leaveAFailedRow();
         try {
-          await MariadbMigrationAdaptor().initializeMigration(dsi, _schemaName);
+          await TestDatabase.migrationAdaptor().initializeMigration(
+            dsi,
+            _schemaName,
+          );
           fail('the history holds a failed row and was accepted');
-        } on MariadbMigrationException catch (e) {
+        } on TomSqlMigrationException catch (e) {
           expect(e.defaultUserMessage, contains('99'));
           expect(e.defaultUserMessage, contains('deliberately_broken'));
           expect(e.defaultUserMessage, contains('${_schemaName}_versioning'));
@@ -292,7 +362,7 @@ void main() async {
         // binding is set, so a caller that swallowed the exception cannot go on
         // to apply migrations judged against a history that never loaded.
         await leaveAFailedRow();
-        final adaptor = MariadbMigrationAdaptor();
+        final adaptor = TestDatabase.migrationAdaptor();
         await expectLater(
           adaptor.initializeMigration(dsi, _schemaName),
           throwsA(refusesTheHistory([99])),
@@ -301,10 +371,12 @@ void main() async {
         await expectLater(
           adaptor.applyMigration(dsi, _schemaName, 1, 'anything', 'SELECT 1;'),
           throwsA(
-            isA<MariadbMigrationException>().having(
+            isA<TomSqlMigrationException>().having(
               (e) => e.key,
               'key',
-              'mariadb_migration.apply_migration.not_initialized_for_schema',
+              TestDatabase.migrationKey(
+                'apply_migration.not_initialized_for_schema',
+              ),
             ),
           ),
         );
@@ -318,7 +390,7 @@ void main() async {
         await dsi.datasource.executeCommand(
           'UPDATE ${_schemaName}_versioning SET success = 1 WHERE version = 99',
         );
-        final adaptor = MariadbMigrationAdaptor();
+        final adaptor = TestDatabase.migrationAdaptor();
         await adaptor.initializeMigration(dsi, _schemaName);
         expect(adaptor.versions.map((v) => v.version), contains(99));
       });
@@ -330,7 +402,7 @@ void main() async {
         await dsi.datasource.executeCommand(
           'DELETE FROM ${_schemaName}_versioning WHERE version = 99',
         );
-        final adaptor = MariadbMigrationAdaptor();
+        final adaptor = TestDatabase.migrationAdaptor();
         await adaptor.initializeMigration(dsi, _schemaName);
         expect(adaptor.versions.map((v) => v.version), isNot(contains(99)));
       });
@@ -346,7 +418,7 @@ void main() async {
         // and the read ever disagreed about what is hashed.
         expect(
           recorded.checksum,
-          MariadbMigrationAdaptor.checksumOf(recorded.script),
+          TomSqlMigrationAdaptor.checksumOf(recorded.script),
         );
         // Asserted as a digest, not merely as "some string": the defect being
         // fixed wrote a decimal `String.hashCode`, which is also a non-empty
@@ -358,7 +430,7 @@ void main() async {
         await TomDbMigrations.migrateDatabases(p.normalize(_migrationsDir));
         final recorded = (await appliedVersions()).single;
 
-        final adaptor = MariadbMigrationAdaptor();
+        final adaptor = TestDatabase.migrationAdaptor();
         await adaptor.initializeMigration(dsi, _schemaName);
         // The row was written by a previous `MariadbMigrationAdaptor`; this is
         // a fresh one reading it back. Re-presenting the same script must be
@@ -378,7 +450,7 @@ void main() async {
         await TomDbMigrations.migrateDatabases(p.normalize(_migrationsDir));
         final recorded = (await appliedVersions()).single;
 
-        final adaptor = MariadbMigrationAdaptor();
+        final adaptor = TestDatabase.migrationAdaptor();
         await adaptor.initializeMigration(dsi, _schemaName);
         await expectLater(
           adaptor.applyMigration(
@@ -390,10 +462,10 @@ void main() async {
             '${recorded.script}\n-- edited after the fact',
           ),
           throwsA(
-            isA<MariadbMigrationException>().having(
+            isA<TomSqlMigrationException>().having(
               (e) => e.key,
               'key',
-              'mariadb_migration.apply_migration.checksum_mismatch',
+              TestDatabase.migrationKey('apply_migration.checksum_mismatch'),
             ),
           ),
         );
@@ -421,7 +493,7 @@ void main() async {
         // UPDATE would make every assertion below vacuous.
         expect(recorded.checksum, checksum);
 
-        final adaptor = MariadbMigrationAdaptor();
+        final adaptor = TestDatabase.migrationAdaptor();
         await adaptor.initializeMigration(dsi, _schemaName);
         await expectLater(
           adaptor.applyMigration(
@@ -432,7 +504,7 @@ void main() async {
             recorded.script,
           ),
           throwsA(
-            isA<MariadbMigrationException>().having((e) => e.key, 'key', key),
+            isA<TomSqlMigrationException>().having((e) => e.key, 'key', key),
           ),
         );
       }
@@ -444,14 +516,14 @@ void main() async {
         // neither the schema nor the migration.
         await expectRejectedWithKey(
           '',
-          'mariadb_migration.apply_migration.checksum_unreadable',
+          TestDatabase.migrationKey('apply_migration.checksum_unreadable'),
         );
       });
 
       test('a non-numeric value is refused', () async {
         await expectRejectedWithKey(
           'not-a-digest',
-          'mariadb_migration.apply_migration.checksum_unreadable',
+          TestDatabase.migrationKey('apply_migration.checksum_unreadable'),
         );
       });
 
@@ -462,7 +534,7 @@ void main() async {
         // stale, not tampered with.
         await expectRejectedWithKey(
           '-1234567890',
-          'mariadb_migration.apply_migration.checksum_unreadable',
+          TestDatabase.migrationKey('apply_migration.checksum_unreadable'),
         );
       });
 
@@ -474,7 +546,7 @@ void main() async {
         );
         final recorded = (await appliedVersions()).single;
 
-        final adaptor = MariadbMigrationAdaptor();
+        final adaptor = TestDatabase.migrationAdaptor();
         await adaptor.initializeMigration(dsi, _schemaName);
         try {
           await adaptor.applyMigration(
@@ -485,13 +557,13 @@ void main() async {
             recorded.script,
           );
           fail('an unreadable checksum must not be accepted');
-        } on MariadbMigrationException catch (e) {
+        } on TomSqlMigrationException catch (e) {
           // Pinned to the key as well as the text: the mismatch message names
           // the schema and version too, so without this the assertions below
           // would still hold if the readability guard were removed entirely.
           expect(
             e.key,
-            'mariadb_migration.apply_migration.checksum_unreadable',
+            TestDatabase.migrationKey('apply_migration.checksum_unreadable'),
           );
           // One migrator instance walks every schema of every data source, so a
           // message naming only the version cannot be acted on: "version 0 is
@@ -551,7 +623,7 @@ void main() async {
         // would hold two rows after the second initialisation rather than one.
         await TomDbMigrations.migrateDatabases(p.normalize(_migrationsDir));
 
-        final adaptor = MariadbMigrationAdaptor();
+        final adaptor = TestDatabase.migrationAdaptor();
         await adaptor.initializeMigration(dsi, _schemaName);
         expect(adaptor.versions.map((v) => v.description), [
           'create_fixture_widget',
@@ -569,7 +641,7 @@ void main() async {
 
       test('refuses to apply a migration against another schema\'s '
           'history', () async {
-        final adaptor = MariadbMigrationAdaptor();
+        final adaptor = TestDatabase.migrationAdaptor();
         await adaptor.initializeMigration(dsi, _schemaName);
 
         // Bound to the first schema, asked about the second: the version list
@@ -584,10 +656,12 @@ void main() async {
             'SELECT 1',
           ),
           throwsA(
-            isA<MariadbMigrationException>().having(
+            isA<TomSqlMigrationException>().having(
               (e) => e.key,
               'key',
-              'mariadb_migration.apply_migration.not_initialized_for_schema',
+              TestDatabase.migrationKey(
+                'apply_migration.not_initialized_for_schema',
+              ),
             ),
           ),
         );
@@ -600,8 +674,9 @@ void main() async {
     // the order is whatever the server felt like, and nothing else in the suite
     // would notice.
     group('the loaded history', () {
-      /// Creates the versioning table and records [versions] in that order,
-      /// letting `installedRank` AUTO_INCREMENT assign install order.
+      /// Creates the versioning table — the adaptor's own DDL — and records
+      /// [versions] in that order, letting the `installedRank` identity assign
+      /// install order.
       ///
       /// Written directly rather than driven through `migrateDatabases`,
       /// because the orchestrator applies files in ascending version order by
@@ -609,16 +684,7 @@ void main() async {
       /// from version order is the only one it can produce.
       Future<void> recordInstallOrder(List<int> versions) async {
         await dsi.datasource.executeCommand(
-          'CREATE TABLE IF NOT EXISTS ${_schemaName}_versioning ('
-          '  installedRank INTEGER(11) AUTO_INCREMENT PRIMARY KEY,'
-          '  version INTEGER(11) NOT NULL DEFAULT -1,'
-          '  description VARCHAR(500) NOT NULL DEFAULT \'\','
-          '  script MEDIUMTEXT NOT NULL DEFAULT \'\','
-          '  checksum VARCHAR(200) NOT NULL DEFAULT \'\','
-          '  installedBy VARCHAR(30) NOT NULL DEFAULT CURRENT_USER,'
-          '  installedOn TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,'
-          '  executionTimeMs INTEGER(11) NOT NULL DEFAULT 0,'
-          '  success INTEGER(1) NOT NULL DEFAULT 0)',
+          TestDatabase.migrationAdaptor().versioningTableDdl(_schemaName),
         );
         for (final version in versions) {
           await dsi.datasource.executeCommand(
@@ -637,7 +703,7 @@ void main() async {
         // version order — or in whatever order the server chose — fails here.
         await recordInstallOrder([3, 1, 2]);
 
-        final adaptor = MariadbMigrationAdaptor();
+        final adaptor = TestDatabase.migrationAdaptor();
         await adaptor.initializeMigration(dsi, _schemaName);
 
         expect(adaptor.versions.map((v) => v.version), [3, 1, 2]);
@@ -653,7 +719,7 @@ void main() async {
       test('is empty, not absent, for a schema with no history', () async {
         await recordInstallOrder([]);
 
-        final adaptor = MariadbMigrationAdaptor();
+        final adaptor = TestDatabase.migrationAdaptor();
         await adaptor.initializeMigration(dsi, _schemaName);
 
         // An empty history binds like any other: the next `applyMigration`
@@ -695,7 +761,19 @@ void main() async {
       // and — inside a quoted run — a semicolon, which is also the statement
       // separator. Interpolating this text produces a syntax error; splitting
       // it with anything less than a lexer cuts it in half mid-literal.
-      const script = '''
+      // PostgreSQL reads a double-quoted run as an identifier, not a string,
+      // so its variant quotes the apostrophe by doubling it; both keep every
+      // hazard the recording has to survive.
+      final script = TestDatabase.isPostgres
+          ? '''
+-- The operator's seed row, with a JSON payload.
+CREATE TABLE IF NOT EXISTS fixture_quoted (
+  id      BIGINT       NOT NULL,
+  payload VARCHAR(255) NOT NULL DEFAULT '["a;b","c\\\\d"]',
+  label   VARCHAR(255) NOT NULL DEFAULT 'it''s fine',
+  PRIMARY KEY (id)
+);'''
+          : '''
 -- The operator's seed row, with a JSON payload.
 CREATE TABLE IF NOT EXISTS fixture_quoted (
   id      BIGINT       NOT NULL AUTO_INCREMENT,
@@ -705,7 +783,7 @@ CREATE TABLE IF NOT EXISTS fixture_quoted (
 );''';
 
       test('runs and records instead of failing on the recording', () async {
-        final adaptor = MariadbMigrationAdaptor();
+        final adaptor = TestDatabase.migrationAdaptor();
         await adaptor.initializeMigration(dsi, _schemaName);
 
         await adaptor.applyMigration(
@@ -727,7 +805,7 @@ CREATE TABLE IF NOT EXISTS fixture_quoted (
       });
 
       test('stores the script byte-for-byte, with no escaping applied', () async {
-        final adaptor = MariadbMigrationAdaptor();
+        final adaptor = TestDatabase.migrationAdaptor();
         await adaptor.initializeMigration(dsi, _schemaName);
         await adaptor.applyMigration(
           dsi,
@@ -746,7 +824,7 @@ CREATE TABLE IF NOT EXISTS fixture_quoted (
         expect(recorded.script, script);
         expect(
           recorded.checksum,
-          MariadbMigrationAdaptor.checksumOf(script),
+          TomSqlMigrationAdaptor.checksumOf(script),
           reason:
               'the stored script must still hash to what the adaptor recorded, '
               'or the next run reads this migration as edited',
@@ -774,7 +852,7 @@ CREATE TABLE IF NOT EXISTS fixture_quoted (
       test(
         'applyMigration does not extend the snapshot it decides from',
         () async {
-          final adaptor = MariadbMigrationAdaptor();
+          final adaptor = TestDatabase.migrationAdaptor();
           await adaptor.initializeMigration(dsi, _schemaName);
           expect(adaptor.versions, isEmpty);
 
@@ -800,7 +878,7 @@ CREATE TABLE IF NOT EXISTS fixture_quoted (
       );
 
       test('so one version offered twice in a run is applied twice', () async {
-        final adaptor = MariadbMigrationAdaptor();
+        final adaptor = TestDatabase.migrationAdaptor();
         await adaptor.initializeMigration(dsi, _schemaName);
 
         await adaptor.applyMigration(dsi, _schemaName, 1, 'schema', createSql);
@@ -822,7 +900,7 @@ CREATE TABLE IF NOT EXISTS fixture_quoted (
       });
 
       test('and the run after that cannot tell the two rows apart', () async {
-        final adaptor = MariadbMigrationAdaptor();
+        final adaptor = TestDatabase.migrationAdaptor();
         await adaptor.initializeMigration(dsi, _schemaName);
         await adaptor.applyMigration(dsi, _schemaName, 1, 'schema', createSql);
         await adaptor.applyMigration(
@@ -836,7 +914,7 @@ CREATE TABLE IF NOT EXISTS fixture_quoted (
         // A fresh run over the same tree: the history now holds two rows for
         // version 1, and the skip check stops at the first one whatever it is
         // offered.
-        final next = MariadbMigrationAdaptor();
+        final next = TestDatabase.migrationAdaptor();
         await next.initializeMigration(dsi, _schemaName);
         expect(next.versions, hasLength(2));
 
@@ -853,10 +931,10 @@ CREATE TABLE IF NOT EXISTS fixture_quoted (
             'INSERT INTO fixture_dupe VALUES (1);',
           ),
           throwsA(
-            isA<MariadbMigrationException>().having(
+            isA<TomSqlMigrationException>().having(
               (e) => e.key,
               'key',
-              'mariadb_migration.apply_migration.description_mismatch',
+              TestDatabase.migrationKey('apply_migration.description_mismatch'),
             ),
           ),
         );

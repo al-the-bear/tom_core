@@ -148,6 +148,7 @@ TomOperator<R>  (types_operator)
     │       │       └── BoolCol / DateTimeCol / DateCol / TimeCol
     │       ├── StringLiteral / IntegerLiteral / DoubleLiteral
     │       ├── BoolLiteral / DateTimeLiteral / DateLiteral / TimeLiteral
+    │       ├── TruthPredicate
     │       ├── Not / IsNull<T> / IsNotNull<T>
     │       ├── And / Or
     │       └── Group<T>
@@ -606,7 +607,10 @@ scoping and C-4 column masking/enforcement on the SQL data source.
 
 #### MariadbRepository&lt;T, K&gt;
 
-A `TomSqlDatasourceRepository` for MariaDB-backed entities. Constructed
+A `TomSqlDatasourceRepository` for MariaDB-backed entities, pinned to
+`MariadbSqlDialect`; a repository extending `TomSqlDatasourceRepository`
+directly renders through its data source's dialect and serves MariaDB and
+PostgreSQL alike. Constructed
 directly — `MariadbRepository<User, int>([User])` — there being no repository
 registry to resolve it from a data-source name: the type argument is what makes
 a repository the repository *for an entity*, and a lookup keyed on a string
@@ -757,7 +761,8 @@ return the matching SQL-typed operator.
 | `text` | `TomOperator<TomDbString> text(String text)` | A string literal. |
 | `intOp` | `TomOperator<TomDbInt> intOp(int value)` | An integer literal. |
 | `doubleOp` | `TomOperator<TomDbDouble> doubleOp(double value)` | A double literal. |
-| `boolOp` | `TomOperator<TomDbBool> boolOp(bool value)` | A boolean literal. |
+| `boolOp` | `TomOperator<TomDbBool> boolOp(bool value)` | A boolean literal — a value compared with a truth column. |
+| `truthPredicate` | `TomOperator<TomDbBool> truthPredicate(bool value)` | A constant predicate, one that admits every row or none (`TruthPredicate`) — what a data scope that admits nothing renders as its `WHERE`. |
 | `dateTimeOp` | `TomOperator<TomDbDateTime> dateTimeOp(DateTime value)` | A timestamp literal. |
 | `dateOp` | `TomOperator<TomDbDate> dateOp(DateTime value)` | A date literal. |
 | `timeOp` | `TomOperator<TomDbTime> timeOp(DateTime value)` | A time-of-day literal — only the clock components of `value` are used. |
@@ -1065,7 +1070,8 @@ Each literal wraps a Dart value and renders it through the dialect.
 | `StringLiteral` | `TomUnaryOperator<String, TomDbString>` | `StringLiteral(String operant1)` | A single-quoted string literal. |
 | `IntegerLiteral` | `TomUnaryOperator<int, TomDbInt>` | `IntegerLiteral(int operant1)` | An integer literal. |
 | `DoubleLiteral` | `TomUnaryOperator<double, TomDbDouble>` | `DoubleLiteral(double operant1)` | A double literal. |
-| `BoolLiteral` | `TomUnaryOperator<bool, TomDbBool>` | `BoolLiteral(bool operant1)` | A boolean literal. |
+| `BoolLiteral` | `TomUnaryOperator<bool, TomDbBool>` | `BoolLiteral(bool operant1)` | A boolean literal: a value compared with a truth column, through `boolOp`. |
+| `TruthPredicate` | `TomUnaryOperator<bool, TomDbBool>` | `TruthPredicate(bool operant1)` | A constant truth value used as a predicate in its own right, through the dialect's `truthPredicate` — the `WHERE` of a scope that admits nothing. Distinct from `BoolLiteral` because the two read alike on MariaDB and differently on PostgreSQL, where a truth column is a `SMALLINT` (a value is `1`/`0`) and a predicate has to be a boolean (`TRUE`/`FALSE`). |
 | `DateTimeLiteral` | `TomUnaryOperator<DateTime, TomDbDateTime>` | `DateTimeLiteral(DateTime operant1)` | A timestamp literal. |
 | `DateLiteral` | `TomUnaryOperator<DateTime, TomDbDate>` | `DateLiteral(DateTime operant1)` | A date literal. |
 | `TimeLiteral` | `TomUnaryOperator<DateTime, TomDbTime>` | `TimeLiteral(DateTime operant1)` | A time-of-day literal. Holds a `DateTime` rather than a `TomZonedTime`, as `DateLiteral` does: a `TomZonedTime` *is* a `DateTime`, so the wider operand accepts both a kernel time value and a plain one built for the epoch day, and only the clock components are read out when it renders. |

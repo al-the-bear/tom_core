@@ -198,21 +198,25 @@ both, so a preference moving in from the device could lose a sibling with
 nothing reported. The binary collation also makes `ORDER BY preference_key` the
 code-unit order the contract promises, uppercase before lowercase, which is the
 order the device store answers too. `value_type` holds a Dart type name, which is
-equally case-significant. Schema convergence does not compare collations, so
+equally case-significant. On PostgreSQL the translated DDL carries the same
+guarantee as `COLLATE "C"`, which `PostgresSqlDialect.translateCanonical` writes
+for a binary collation. Schema convergence does not compare collations, so
 this is guaranteed by the DDL alone: a table created some other way has to state
 it as well.
 
 The DDL ships as the framework migration
 `migrations/main/tomcore/[1]-create_tom_user_preference.sql`, reproduced verbatim
 from `TomUserPreference.createTableSql` so the two cannot drift —
-`test/reference_migrations_test.dart` fails if they do. The filename is
+`test/reference_migrations_test.dart` fails if they do. Its PostgreSQL form,
+generated from it, is `migrations_postgresql/main/tomcore/[1]-create_tom_user_preference.sql`
+(see [db_migration.md](db_migration.md#reference-migrations-for-postgresql)). The filename is
 **untagged**, so it applies in every environment — a preference table that
 existed only in production would fail every test that touched it, and one that
 existed only in test would fail in production.
 
 `updated_at` is the server's clock, never the caller's, which is why the write
 DTO carries no timestamp. It is stored and read as an instant: MariaDB's
-`DATETIME` carries no zone, so the datasource writes every `TomDbDateTime`
+`DATETIME` (PostgreSQL's `TIMESTAMP`) carries no zone, so the datasource writes every `TomDbDateTime`
 column as UTC text and reads it back UTC-flagged (`datasources/sql_instant.dart`
 states the convention). `toDto()` normalises to UTC again on the way out, which
 is a no-op for a loaded row and the guard for a DTO built any other way — at the
@@ -241,7 +245,7 @@ racing for the last place can both pass and leave the caller one or two over;
 the ceiling exists to keep the list small, not to be exact.
 
 The value ceiling sits well inside the column: `value_json` is `TEXT`, 64 KiB in
-MariaDB. So an oversized value is refused as the caller's mistake, by the codec,
+MariaDB and unbounded in PostgreSQL. So an oversized value is refused as the caller's mistake, by the codec,
 before the statement is built — rather than failing inside the database as a
 fault of the server's, or, under a lax SQL mode, being truncated into text that
 is no longer JSON.
@@ -530,9 +534,10 @@ block every login.
 ## Verification
 
 Six suites, split by what each needs. Four run everywhere; two are
-`@Tags(['db'])` and skip themselves when no MariaDB is reachable, so the default
-`testkit :test` run stays green — bring a server up with `tool/run_db_tests.sh`
-to include them.
+`@Tags(['db'])` and skip themselves when no database is reachable, so the
+default `testkit :test` run stays green — bring a server up with
+`tool/run_db_tests.sh` (MariaDB) or `tool/run_db_tests_postgres.sh`
+(PostgreSQL) to include them.
 
 `test/preferences_service_test.dart` covers the service without a database: how
 `TomUserPreferences.resolve` answers in a deployment that never installed a

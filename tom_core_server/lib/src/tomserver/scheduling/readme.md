@@ -60,7 +60,7 @@ Future<void> main() async {
   //    entity-backed modules, which need their migration applied first. A
   //    deployment that does not let its application run DDL passes
   //    `createSchema: false` and applies `example/scheduling/migrations/`
-  //    instead; see [Schema](#schema).
+  //    (`migrations_postgresql/` on PostgreSQL) instead; see [Schema](#schema).
   final store = TomSqlJobStore.named('main');
 
   final now = DateTime.now().toUtc();
@@ -91,7 +91,7 @@ Future<void> main() async {
 > reflection registration gets as far as enqueueing the run and fails on reading
 > it back.
 
-The same sequence runs against a live MariaDB in
+The same sequence runs against a live MariaDB or PostgreSQL in
 `test/scheduling_db_test.dart`, which also runs both implementations through the
 kernel's own parameterised contract suite.
 
@@ -115,7 +115,7 @@ The database decides, never the application. Every transition is a conditional
 statement whose affected-row count is the answer:
 
 - a claim is `UPDATE ... WHERE id = :id AND state = 'pending' AND claim_token = :current`, raising `claim_token` as it goes;
-- a first acquisition is `INSERT IGNORE`;
+- a first acquisition is an insert that keeps a stored row on a conflict — `INSERT IGNORE` on MariaDB, `ON CONFLICT DO NOTHING` on PostgreSQL;
 - a takeover is `UPDATE ... WHERE resource = :r AND token = :t AND version = :v`.
 
 Reads exist only to nominate candidates; the write revalidates every condition
@@ -203,7 +203,7 @@ descriptor, and everything else is derived from it:
 | Declaration | What it gives |
 | ----------- | ------------- |
 | `jobRunTable(table)` · `leaseTable(table)` · `schedulerNodeTable(table)` | The descriptor for one table under a caller-chosen name — the columns, their families, and the keys. |
-| `jobRunTableDdl(table)` · `leaseTableDdl(table)` · `schedulerNodeTableDdl(table)` | That descriptor rendered as `CREATE TABLE`, which is what `createSchema: true` runs and what the shipped migration contains. |
+| `jobRunTableDdl(table)` · `leaseTableDdl(table)` · `schedulerNodeTableDdl(table)` | That descriptor rendered as canonical (MariaDB-spelled) `CREATE TABLE` — what the shipped MariaDB migration contains. `createSchema: true` runs the descriptor's `create`, which renders it in the connected database's dialect. |
 | `defaultJobRunTable` · `defaultLeaseTable` · `defaultSchedulerNodeTable` | The names used when a deployment chooses none: `tom_job_run`, `tom_lease`, `tom_scheduler_node`. |
 
 The table name is a parameter rather than a constant so two deployments can
@@ -219,7 +219,7 @@ Three constraints carry the design:
   idempotence key — one run per job per window, per tenant — a database
   invariant rather than a convention. `tenant` is `''` for a run of no tenant.
 - **`tom_lease.version`**, incremented on every write, exists because MariaDB
-  reports *changed* rows, not matched rows. Without it a renewal landing in the
+  reports *changed* rows, not matched rows (PostgreSQL reports matched ones). Without it a renewal landing in the
   same clock instant with the same TTL would report zero affected rows, look
   like a lost lease, and fall through to takeover.
 - **`tom_scheduler_node.node_id`** is the primary key *and* the same string a
@@ -240,7 +240,7 @@ still precedes any statement.
 ## Time
 
 Instants are stored as UTC `DATETIME(6)` and carried through `String` columns.
-The MariaDB driver materialises a `DATETIME` column with `DateTime.parse`, which
+A SQL driver hands a `DATETIME` column over as text, and `DateTime.parse` on it
 yields a *local* `DateTime`; since `DateTime.==` compares `isUtc` as well as the
 instant, a UTC value would not compare equal to the value read back. A caller
 that writes a local `DateTime` gets a UTC one back — the same instant,

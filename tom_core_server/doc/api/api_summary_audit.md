@@ -100,8 +100,9 @@ are the reflected row types its queries materialise. `verifyWriteOnce` observes
 what the connected credential and the table's triggers actually permit and
 reports a `TomAuditWriteOnceCheck`; `open()` warns on a rewritable table, or
 refuses to start when `requireWriteOnce` is set. The two guard triggers
-(`auditTrailNoUpdateTriggerDdl`, `auditTrailNoDeleteTriggerDdl`) are defence in
-depth for a deployment that cannot separate credentials.
+(`auditTrailGuardStatements`, with `auditTrailNoUpdateTriggerDdl` and
+`auditTrailNoDeleteTriggerDdl` as their MariaDB text) are defence in depth for a
+deployment that cannot separate credentials.
 
 A hash chain proves internal consistency only, so a wholesale rewrite or a
 truncation survives it. `TomAuditAnchor` closes both: a claim that chain
@@ -1300,8 +1301,9 @@ deployment that wants the run to fail throws from `onFinding`.
 What a deployment's audit table actually permits, as observed rather than as
 configured. Two independent observations, because neither alone is conclusive: a
 privilege probe (a zero-row `UPDATE`/`DELETE`, which still fails at
-permission-check time) and a trigger probe of `information_schema.TRIGGERS`,
-since a zero-row statement fires no `FOR EACH ROW` trigger.
+permission-check time) and a trigger probe of `information_schema.TRIGGERS` in
+the connection's current schema (the dialect's `currentSchema`), since a
+zero-row statement fires no `FOR EACH ROW` trigger.
 
 #### Constructors
 
@@ -1509,7 +1511,8 @@ TomAuditTriggerRow()
 | `auditTrailTableDdl` | `String auditTrailTableDdl(String table)` | The `CREATE TABLE` DDL for `table`, derived from `auditTrailTable`. |
 | `auditTrailNoUpdateTriggerName` | `String auditTrailNoUpdateTriggerName(String table)` | The name of the trigger that rejects `UPDATE` on `table` (`trg_<table>_no_update`). |
 | `auditTrailNoDeleteTriggerName` | `String auditTrailNoDeleteTriggerName(String table)` | The name of the trigger that rejects `DELETE` on `table` (`trg_<table>_no_delete`). |
-| `auditTrailNoUpdateTriggerDdl` | `String auditTrailNoUpdateTriggerDdl(String table)` | A `BEFORE UPDATE` trigger that signals SQLSTATE `45000` on every update. The recommended guard, with no operational cost since nothing in the framework updates an audit row. |
+| `auditTrailNoUpdateTriggerDdl` | `String auditTrailNoUpdateTriggerDdl(String table)` | The MariaDB `BEFORE UPDATE` trigger that signals SQLSTATE `45000` on every update — `auditTrailGuardStatements` for `UPDATE` in `MariadbSqlDialect`. The recommended guard, with no operational cost since nothing in the framework updates an audit row. |
 | `filterAuditEntries` | `TomAuditQueryResult filterAuditEntries(Iterable<TomAuditEntry> entries, TomAuditQuery query)` | Answers `query` from entries already read back — for `TomMemoryAuditSink.entries` and `TomFileAuditSink.readAll()`, which are synchronous because there is nothing to wait for. `TomSqlAuditSink.query` is separate rather than reading everything and calling this: pushing the filter into the database is the point of that table's indexes. `rejectedByProjection` is always zero here — nothing was projected, so nothing can have been matched lossily. |
 | `auditProjectionPrefix` | `String? auditProjectionPrefix(String? value, int? maxCharacters)` | `value` cut to what a column of `maxCharacters` can store. Used at both ends by the relational sink: it trims the projection columns on write and narrows a search term on read. One function rather than two call sites doing the same arithmetic, because the two agreeing is why a search over a truncated column finds anything — a reader comparing the full term against a column the writer shortened matches nothing and reports it as "no such entry". |
-| `auditTrailNoDeleteTriggerDdl` | `String auditTrailNoDeleteTriggerDdl(String table)` | A `BEFORE DELETE` trigger that signals SQLSTATE `45000` on every delete. Only for deployments that never prune: it blocks retention as well as tampering. |
+| `auditTrailNoDeleteTriggerDdl` | `String auditTrailNoDeleteTriggerDdl(String table)` | The MariaDB `BEFORE DELETE` trigger that signals SQLSTATE `45000` on every delete — `auditTrailGuardStatements` for `DELETE` in `MariadbSqlDialect`. Only for deployments that never prune: it blocks retention as well as tampering. |
+| `auditTrailGuardStatements` | `List<String> auditTrailGuardStatements(String table, TomStandardSqlDialect dialect, {required String event})` | The statements installing the guard against `event` (`UPDATE` or `DELETE`) on `table` in `dialect`'s database (`TomStandardSqlDialect.rejectingTrigger`): the one trigger on MariaDB; on PostgreSQL a PL/pgSQL trigger function raising the message and the trigger calling it. The message is `audit trail is append-only: <event> is not permitted` on both. |

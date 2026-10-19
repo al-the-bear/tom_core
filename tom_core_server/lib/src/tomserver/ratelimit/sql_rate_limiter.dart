@@ -68,7 +68,7 @@ class TomSqlRateLimiter implements TomRateLimiter {
 
   /// Creates the table when [createSchema] asks for it; once per limiter.
   Future<void> ensureSchema() => _schema.ensure(() async {
-    if (createSchema) await datasource.executeCommand(_counters.createTableDdl);
+    if (createSchema) await _counters.create(datasource);
   });
 
   @override
@@ -80,18 +80,24 @@ class TomSqlRateLimiter implements TomRateLimiter {
     // The window index is per rule (each rule has its own window length), and
     // the bucket already names the rule, so one table serves every rule.
     //
-    // The count is taken and read in one statement: `LAST_INSERT_ID(expr)`
-    // hands the new value back as this execution's generated id. Reading it
-    // with a second statement would be wrong under concurrency — every
-    // request would see the final total rather than its own place in it, and
-    // a burst would be refused almost whole.
+    // The count is taken and read in one statement, which reports the new
+    // value as its generated id (`TomStandardSqlDialect.incrementCounter`).
+    // Reading it with a second statement would be wrong under concurrency —
+    // every request would see the final total rather than its own place in
+    // it, and a burst would be refused almost whole.
     _increment ??= await datasource.prepareStatement<TomRateLimitRow>(
       TomLiteralSelect(
         [TomRateLimitRow],
-        query:
-            'INSERT INTO $table (bucket, rule, window_index, hits) '
-            'VALUES (:bucket, :rule, :index, LAST_INSERT_ID(1)) '
-            'ON DUPLICATE KEY UPDATE hits = LAST_INSERT_ID(hits + 1)',
+        query: datasource.sqlDialect.incrementCounter(
+          table,
+          const {
+            'bucket': ':bucket',
+            'rule': ':rule',
+            'window_index': ':index',
+          },
+          'hits',
+          conflictKey: _counters.primaryKey,
+        ),
         parameters: const ['bucket', 'rule', 'index'],
       ),
     );

@@ -401,7 +401,7 @@ class TomDataScope {
     List<List<Object?>> groups,
   ) {
     if (groups.isEmpty) {
-      return TomDataScopePredicate(builder.boolOp(false), const {});
+      return TomDataScopePredicate(builder.truthPredicate(false), const {});
     }
     final predicates = <TomOperator<TomDbBool>>[];
     final parameters = <String, Object?>{};
@@ -456,7 +456,7 @@ class TomDataScope {
           ]
         : values.toList();
     if (list.isEmpty) {
-      return TomDataScopePredicate(builder.boolOp(false), const {});
+      return TomDataScopePredicate(builder.truthPredicate(false), const {});
     }
     final parameters = <String, Object?>{};
     final names = <String>[];

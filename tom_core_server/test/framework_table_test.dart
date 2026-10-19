@@ -297,16 +297,33 @@ void main() {
   group('a table renders a row-writing statement', () {
     final table = thingTable();
 
-    test('the verb is the whole leading clause', () {
-      // `INSERT IGNORE` and `REPLACE` are single arguments rather than flags,
-      // so a store that needs one writes it rather than asking for a variant
-      // this type would have to know about.
-      for (final verb in const ['INSERT', 'REPLACE', 'INSERT IGNORE']) {
-        expect(
-          table.insert(verb, const {'name': ':name'}),
-          '$verb INTO thing (name) VALUES (:name)',
-        );
-      }
+    test('a conflict policy is rendered in each database\'s words', () {
+      // The descriptor names the policy; the dialect names the statements.
+      final maria = TomStandardSqlDialect();
+      final postgres = PostgresSqlDialect();
+      const values = {'id': ':id', 'name': ':name'};
+      const insert = 'INSERT INTO thing (id, name) VALUES (:id, :name)';
+      expect(table.insertRow(maria, values), insert);
+      expect(table.insertRow(postgres, values), insert);
+      expect(
+        table.insertRow(maria, values, ignoreConflict: true),
+        'INSERT IGNORE INTO thing (id, name) VALUES (:id, :name)',
+      );
+      expect(
+        table.insertRow(postgres, values, ignoreConflict: true),
+        '$insert ON CONFLICT DO NOTHING',
+      );
+      // A replace supersedes the row with the primary key and any colliding
+      // on another unique key — `thing` keys `name` uniquely. One `REPLACE` on
+      // MariaDB; on PostgreSQL the superseded rows are deleted first, because
+      // a key is only free to a later statement.
+      expect(table.replaceStatements(maria, values), [
+        'REPLACE INTO thing (id, name) VALUES (:id, :name)',
+      ]);
+      expect(table.replaceStatements(postgres, values), [
+        'DELETE FROM thing WHERE (id = :id) OR (name = :name)',
+        '$insert ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name',
+      ]);
     });
 
     test('columns and values stay paired in the order given', () {
@@ -314,7 +331,7 @@ void main() {
       // column in the descriptor cannot shift every value one place along —
       // a failure that would type-check.
       expect(
-        table.insert('INSERT', const {
+        table.insertRow(TomStandardSqlDialect(), const {
           'name': ':name',
           'note': ':note',
           'created_at': 'NOW(6)',
@@ -328,14 +345,20 @@ void main() {
       // The lease lock's first acquisition writes `token` and `version` as
       // literals in the same statement it binds the rest of.
       expect(
-        table.insert('INSERT', const {'id': '1', 'name': ':name'}),
+        table.insertRow(TomStandardSqlDialect(), const {
+          'id': '1',
+          'name': ':name',
+        }),
         'INSERT INTO thing (id, name) VALUES (1, :name)',
       );
     });
 
     test('a value for a column the table does not have is refused', () {
       expect(
-        () => table.insert('INSERT', const {'name': ':name', 'age': ':age'}),
+        () => table.insertRow(TomStandardSqlDialect(), const {
+          'name': ':name',
+          'age': ':age',
+        }),
         throwsA(
           isA<ArgumentError>().having(
             (e) => e.toString(),

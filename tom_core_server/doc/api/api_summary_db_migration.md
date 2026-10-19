@@ -4,8 +4,9 @@ Versioned, file-driven schema migrations. A directory tree describes the
 migrations for each data source and schema; the orchestrator (`TomDbMigrations`)
 walks it and applies each script through a database-specific migrator
 (`TomDbMigrator`), which records what it applied so re-runs are idempotent and
-edits to past migrations are detected. A MariaDB implementation
-(`MariadbMigrationAdaptor`) is provided.
+edits to past migrations are detected. Two SQL implementations are provided,
+both on one database-neutral base (`TomSqlMigrationAdaptor`): MariaDB
+(`MariadbMigrationAdaptor`) and PostgreSQL (`PostgresMigrationAdaptor`).
 
 ## Table of Contents
 
@@ -16,7 +17,9 @@ edits to past migrations are detected. A MariaDB implementation
   - [TomDbMigrator](#tomdbmigrator)
   - [TomDbMigrationAdaptor](#tomdbmigrationadaptor)
   - [TomMigrationFileName](#tommigrationfilename)
+  - [TomSqlMigrationAdaptor](#tomsqlmigrationadaptor)
   - [MariadbMigrationAdaptor](#mariadbmigrationadaptor)
+  - [PostgresMigrationAdaptor](#postgresmigrationadaptor)
   - [TomDbVersion](#tomdbversion)
   - [TomSchemaColumn](#tomschemacolumn)
   - [TomSchemaTable](#tomschematable)
@@ -34,7 +37,9 @@ edits to past migrations are detected. A MariaDB implementation
   - [TomInformationSchemaColumnRow](#tominformationschemacolumnrow)
   - [Exceptions](#exceptions)
     - [TomDbMigrationException](#tomdbmigrationexception)
+    - [TomSqlMigrationException](#tomsqlmigrationexception)
     - [MariadbMigrationException](#mariadbmigrationexception)
+    - [PostgresMigrationException](#postgresmigrationexception)
 - [Enums](#enums)
   - [TomSchemaDivergenceKind](#tomschemadivergencekind)
 - [Extensions](#extensions)
@@ -46,9 +51,11 @@ edits to past migrations are detected. A MariaDB implementation
 Sources: `lib/src/tomserver/db_migration/db_migration.dart`,
 `lib/src/tomserver/db_migration/framework_convergence.dart`,
 `lib/src/tomserver/db_migration/mariadb_migration_adapter.dart`,
+`lib/src/tomserver/db_migration/postgres_migration_adapter.dart`,
 `lib/src/tomserver/db_migration/schema_convergence.dart`,
 `lib/src/tomserver/db_migration/schema_ddl_reader.dart`,
-`lib/src/tomserver/db_migration/schema_model.dart`. The SQL lexer both the
+`lib/src/tomserver/db_migration/schema_model.dart`,
+`lib/src/tomserver/db_migration/sql_migration_adaptor.dart`. The SQL lexer both the
 applier and the reader are written on, `TomSqlLexer`, is documented with the
 [datasources](api_summary_datasources.md#tomsqllexer) module, where it lives.
 
@@ -63,10 +70,16 @@ is the per-data-source half of that walk, taking the migrator as a parameter.
 pair at a time** — the orchestrator resets and re-initialises it once per schema,
 because each schema keeps its own applied-version history. A migration file
 name is parsed into a `TomMigrationFileName` (version, description, optional
-environment tag). The MariaDB implementation, `MariadbMigrationAdaptor`,
-maintains a `<schema>_versioning` table whose rows are `TomDbVersion` records,
-verifying description/checksum stability of already-applied versions. The
-checksum is a content digest (`MariadbMigrationAdaptor.checksumOf`), because it
+environment tag). `TomSqlMigrationAdaptor` is everything a SQL migrator does
+that does not depend on the database: it maintains a `<schema>_versioning`
+table whose rows are `TomDbVersion` records, verifies description/checksum
+stability of already-applied versions, and refuses a schema whose history
+records a failed script. The two adaptors differ in how a script runs.
+`MariadbMigrationAdaptor` runs it statement by statement and records a failure
+(`success = 0`), because MariaDB does not roll DDL back;
+`PostgresMigrationAdaptor` runs the script and its version row in one
+transaction, so a failure is rolled back completely and nothing is recorded. The
+checksum is a content digest (`TomSqlMigrationAdaptor.checksumOf`), because it
 is written by one process and read back by every later one; a stored value that
 is not such a digest (`isWellFormedChecksum`) is reported as unreadable rather
 than as an edit.
@@ -101,7 +114,9 @@ directly, and refuse directly. Only `migrateDatabases`, `migrateDataSource`,
 
 ```
 TomDbMigrator  (abstract)
-    └── MariadbMigrationAdaptor
+    └── TomSqlMigrationAdaptor  (implements)
+            ├── MariadbMigrationAdaptor
+            └── PostgresMigrationAdaptor
 
 TomDbMigrations
 TomDbMigrationAdaptor  (annotation)
@@ -221,24 +236,39 @@ const TomMigrationFileName(
 | ------ | --------- | ----------- |
 | `appliesInEnvironment` | `bool appliesInEnvironment(String environmentName)` | Whether this migration applies when the active environment is `environmentName`. |
 
-### MariadbMigrationAdaptor
+### TomSqlMigrationAdaptor
 
-The MariaDB `TomDbMigrator` (registered for the `"mariadb"` type). Per schema it
-maintains a `<schema>_versioning` table recording every applied migration and
-verifies description/checksum stability of already-applied versions.
+The part of a SQL `TomDbMigrator` that does not depend on the database. Per
+schema it maintains a `<schema>_versioning` table recording every applied
+migration and verifies description/checksum stability of already-applied
+versions. `initializeMigration` binds the instance to one `(data source,
+schema)` pair, creates that table if absent and loads the applied `versions`;
+`applyMigration` skips a version already present — after verifying its
+description and script checksum are unchanged — and otherwise hands the script
+to the database's `applyScript`. `initializeMigration` refuses to run against a
+schema whose history records a failed script, because a recorded failure left
+a part-applied schema behind.
+
+One instance serves every schema of every data source of its type in turn, so
+`initializeMigration` **rebinds**: it replaces the loaded `versions` rather than
+adding to them, and `applyMigration` refuses to run against a pair the instance
+is not currently bound to.
+
+Every key it raises carries the adaptor's prefix — `applyKeyPrefix` for
+`applyMigration` and `recordMigration`, `initializeKeyPrefix` for
+`initializeMigration` — so a key names the database it came from:
+`mariadb_migration.apply_migration.checksum_mismatch`,
+`postgres_migration_adapter.initialize.version_query_failed`.
 
 - **Implements:** `TomDbMigrator`
-
-#### Constructors
-
-```dart
-MariadbMigrationAdaptor()
-```
 
 #### Properties
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
+| `adaptorLabel` | `String` | *(getter, protected, abstract)* How the adaptor names itself in messages — `MariadbMigrationAdaptor`, `PostgresMigrationAdaptor`. |
+| `applyKeyPrefix` | `String` | *(getter, protected, abstract)* The prefix of the keys `applyMigration` raises — `mariadb_migration`, `postgres_migration`. |
+| `initializeKeyPrefix` | `String` | *(getter, protected, abstract)* The prefix of the keys `initializeMigration` raises — `mariadb_migration_adapter`, `postgres_migration_adapter`. |
 | `versions` | `List<TomDbVersion>` | The migrations already applied to the schema this instance is bound to — a snapshot taken by `initializeMigration`, **not** extended as `applyMigration` runs (an applied migration is written to the table, not added here). Ordered by **installation order, oldest first** (`installedRank`), which differs from version order whenever migrations were applied out of numeric order — ordinary once environment tags (C-16) are in play. Sort a copy by `version` if version order is what you need. |
 
 #### Static Methods
@@ -252,9 +282,80 @@ MariadbMigrationAdaptor()
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
+| `migrationException` | `TomServerException migrationException(String key, String message, {Map<String, dynamic>? parameters, Object? rootException, bool autoLog = false})` | *(protected, abstract)* The exception this adaptor throws, carrying `key` — its own `TomSqlMigrationException` subtype. |
+| `versioningTableDdl` | `String versioningTableDdl(String schemaName)` | *(abstract)* The `CREATE TABLE IF NOT EXISTS` of `schemaName`'s versioning table, in this database's words. |
+| `applyScript` | `Future<void> applyScript(TomDataSourceInfo dsi, String schemaName, int version, String description, String sql)` | *(protected, abstract)* Runs `sql` — migration `version` of `schemaName` — and records it in the versioning table, or throws `<applyKeyPrefix>.apply_migration.failed`, carrying the script's error as its root cause. |
+| `recordMigration` | `Future<void> recordMigration(TomDataSourceInfo dsi, String schemaName, int version, String description, String sql, {required bool success, required int elapsedMs})` | *(protected)* Inserts migration `version`'s row — every value a bound parameter, since a script routinely contains quote characters. A failure is `<applyKeyPrefix>.apply_migration.update_version_table_failed`. |
 | `reset` | `void reset()` | *(override)* Drops the `(data source, schema)` binding and the applied-versions list. |
-| `applyMigration` | `Future<void> applyMigration(TomDataSourceInfo dsi, String schemaName, int version, String description, String sql)` | *(override)* Throws `mariadb_migration.apply_migration.not_initialized_for_schema` unless bound to this exact pair; then skips (after verifying) an applied version, otherwise runs the script and records the outcome. Verification of an applied version fails with `description_mismatch`, `checksum_unreadable` (the stored value is not a digest this adaptor could have written) or `checksum_mismatch` (it is a digest, but a different one) — each message naming the data source, schema and version, since one instance walks them all. |
-| `initializeMigration` | `Future<void> initializeMigration(TomDataSourceInfo dsi, String schemaName)` | *(override)* Rebinds to `(dsi, schemaName)`, creating the versioning table if absent and **replacing** `versions` with that schema's history, read `ORDER BY installedRank`. `versions` is its whole output. |
+| `applyMigration` | `Future<void> applyMigration(TomDataSourceInfo dsi, String schemaName, int version, String description, String sql)` | *(override)* Throws `<applyKeyPrefix>.apply_migration.not_initialized_for_schema` unless bound to this exact pair; then skips (after verifying) an applied version, otherwise runs `applyScript`. Verification of an applied version fails with `description_mismatch`, `checksum_unreadable` (the stored value is not a digest this adaptor could have written) or `checksum_mismatch` (it is a digest, but a different one) — each message naming the data source, schema and version, since one instance walks them all. |
+| `initializeMigration` | `Future<void> initializeMigration(TomDataSourceInfo dsi, String schemaName)` | *(override)* Rebinds to `(dsi, schemaName)`, creating the versioning table if absent (`<initializeKeyPrefix>.initialize.schema_creation_failed`) and **replacing** `versions` with that schema's history, read `ORDER BY installedRank` (`<initializeKeyPrefix>.initialize.version_query_failed`). A history holding a row with `success` other than `1` is refused with `<initializeKeyPrefix>.initialize.failed_migration_recorded`, naming the versions, before any script is offered. `versions` is its whole output. |
+
+### MariadbMigrationAdaptor
+
+The MariaDB `TomDbMigrator` (registered for the `"mariadb"` type). **MariaDB
+does not roll DDL back**, so a script runs statement by statement and a failed
+one is still recorded (with `success = 0`) before the error is rethrown — that
+row is what makes `initializeMigration` refuse a schema the failure left
+part-applied.
+
+- **Extends:** `TomSqlMigrationAdaptor`
+
+#### Constructors
+
+```dart
+MariadbMigrationAdaptor()
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `adaptorLabel` | `String` | *(override)* `MariadbMigrationAdaptor`. |
+| `applyKeyPrefix` | `String` | *(override)* `mariadb_migration`. |
+| `initializeKeyPrefix` | `String` | *(override)* `mariadb_migration_adapter`. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `migrationException` | `TomServerException migrationException(String key, String message, {Map<String, dynamic>? parameters, Object? rootException, bool autoLog = false})` | *(override)* A `MariadbMigrationException`. |
+| `versioningTableDdl` | `String versioningTableDdl(String schemaName)` | *(override)* The versioning table in MariaDB's words: `installedRank INTEGER(11) AUTO_INCREMENT PRIMARY KEY`, `script MEDIUMTEXT`, `success INTEGER(1)`. |
+| `applyScript` | `Future<void> applyScript(TomDataSourceInfo dsi, String schemaName, int version, String description, String sql)` | *(override)* Runs each statement of `sql` (`TomSqlLexer.splitStatements`), times it, and records the outcome — `success = 0` for a script that raised, with the time spent before the failure — before throwing `mariadb_migration.apply_migration.failed`. |
+
+### PostgresMigrationAdaptor
+
+The PostgreSQL `TomDbMigrator` (registered for the `"postgresql"` type).
+**PostgreSQL rolls DDL back, and this adaptor relies on it:** a migration's
+statements and the row recording it run in one transaction, so a script that
+fails part-way is undone entirely, nothing is recorded, and the next run applies
+it again from the start. A statement PostgreSQL refuses inside a transaction —
+`CREATE INDEX CONCURRENTLY`, `CREATE DATABASE`, `VACUUM` — fails such a script
+with the server's own message; it belongs in a separate, single-statement
+operation outside the migration chain.
+
+- **Extends:** `TomSqlMigrationAdaptor`
+
+#### Constructors
+
+```dart
+PostgresMigrationAdaptor()
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `adaptorLabel` | `String` | *(override)* `PostgresMigrationAdaptor`. |
+| `applyKeyPrefix` | `String` | *(override)* `postgres_migration`. |
+| `initializeKeyPrefix` | `String` | *(override)* `postgres_migration_adapter`. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `migrationException` | `TomServerException migrationException(String key, String message, {Map<String, dynamic>? parameters, Object? rootException, bool autoLog = false})` | *(override)* A `PostgresMigrationException`. |
+| `versioningTableDdl` | `String versioningTableDdl(String schemaName)` | *(override)* The versioning table, column for column the MariaDB one, in PostgreSQL's words: `installedRank INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY`, `script TEXT`, `installedBy VARCHAR(63)`, `success SMALLINT`. The camel-case column names fold to lower case and read back under the same names, because PostgreSQL results are matched without regard to case. |
+| `applyScript` | `Future<void> applyScript(TomDataSourceInfo dsi, String schemaName, int version, String description, String sql)` | *(override)* Runs each statement of `sql` and `recordMigration` inside one `TomTransactionManager.runInTransaction`; any failure rolls all of it back and is thrown as `postgres_migration.apply_migration.failed`. |
 
 ### TomDbVersion
 
@@ -276,7 +377,7 @@ TomDbVersion()
 | `version` | `int` | The migration version number. |
 | `description` | `String` | The migration description (from the file name). |
 | `script` | `String` | The full migration script text. |
-| `checksum` | `String` | The script's content digest — lowercase hex SHA-256, as produced by `MariadbMigrationAdaptor.checksumOf` — used to detect later edits. |
+| `checksum` | `String` | The script's content digest — lowercase hex SHA-256, as produced by `TomSqlMigrationAdaptor.checksumOf` — used to detect later edits. |
 | `installedBy` | `String` | The database user that applied the migration. |
 | `installedOn` | `DateTime` | When the migration was applied. |
 | `executionTimeMs` | `int` | How long the script took, in milliseconds, as measured by `applyMigration`. Covers the script's statements only — the clock stops before this row is inserted — and a row recorded for a failed script carries the time spent before the failure. |
@@ -721,7 +822,7 @@ TomFrameworkSchemaCheck({TomStandardSqlDialect? dialect})
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `dialect` | `TomStandardSqlDialect` | The dialect column types are classified with; defaults to `MariadbSqlDialect`, the only dialect these tables ship for and the one whose `TINYINT(1)` spelling of a truth value the classification has to know about. |
+| `dialect` | `TomStandardSqlDialect` | The dialect column types are classified with in `modelOf`, `verifyChain` and `verifyRowTypes`; defaults to `MariadbSqlDialect`, the dialect of the canonical DDL the descriptors are declared in, whose `TINYINT(1)` spelling of a truth value the classification has to know about. `verifyLive` classifies with the connected data source's own dialect instead. |
 
 #### Methods
 
@@ -729,8 +830,8 @@ TomFrameworkSchemaCheck({TomStandardSqlDialect? dialect})
 | ------ | --------- | ----------- |
 | `modelOf` | `TomSchemaModel modelOf(Iterable<TomFrameworkTable> tables)` | The schema `tables` declare, in the vocabulary the diff compares in — rendered as DDL and replayed through `TomSchemaDdlReader`, so the descriptors are classified by the same reader as everything else rather than by a second, drifting one. A descriptor that will not replay is a defect in the framework's own DDL rendering, so it **throws** a `StateError` rather than being reported as a divergence of the subject under test. |
 | `verifyChain` | `TomSchemaConvergenceReport verifyChain({required String datasource, required String schema, required Iterable<TomFrameworkTable> tables, required List<TomMigrationArtifact> chain})` | Checks `tables` against the migration `chain` that also builds them. The chain is narrowed to the descriptors' tables before the diff, so a chain that legitimately creates others — an application's own, or the engine's version table — does not produce a warning per table. |
-| `verifyRowTypes` | `List<TomSchemaDivergence> verifyRowTypes(TomFrameworkTable table, Iterable<Type> rowTypes)` | Checks the reflected row types that read `table` against the columns it declares: a column a row type maps but the table does not declare is an **error**, a column the table declares that no row type maps is a **warning**. A `String` field is exempt from the type check — the MariaDB driver decodes every column value to `String` before the mapper sees it, so a `String` field is the driver's raw form and claims nothing; a field of any other type *is* a coercion claim, and is checked. |
-| `verifyLive` | `Future<TomSchemaConvergenceReport> verifyLive(TomDataSource datasource, Iterable<TomFrameworkTable> tables, {String datasourceName = 'live', String schema = 'DATABASE()'})` | Checks `tables` against the schema `datasource` is actually connected to, reading `information_schema.COLUMNS` into `TomInformationSchemaColumnRow`s. The only variant that needs a server, and the only one that catches a database whose schema was applied correctly once and then edited outside the migration chain. Defaults to `DATABASE()` so the check asks the connection what it is connected to instead of being told, and cannot be pointed at the wrong schema by a stale setting. It reads `COLUMN_TYPE`, not `DATA_TYPE`, because only the former carries the length that distinguishes `tinyint(1)` from `tinyint(4)`. |
+| `verifyRowTypes` | `List<TomSchemaDivergence> verifyRowTypes(TomFrameworkTable table, Iterable<Type> rowTypes)` | Checks the reflected row types that read `table` against the columns it declares: a column a row type maps but the table does not declare is an **error**, a column the table declares that no row type maps is a **warning**. A `String` field is exempt from the type check — every SQL driver hands the mapper each column value as text, so a `String` field is the driver's raw form and claims nothing; a field of any other type *is* a coercion claim, and is checked. |
+| `verifyLive` | `Future<TomSchemaConvergenceReport> verifyLive(TomDataSource datasource, Iterable<TomFrameworkTable> tables, {String datasourceName = 'live', String schema = 'DATABASE()'})` | Checks `tables` against the schema `datasource` is actually connected to, reading the data source's `sqlDialect.tableColumnsQuery` into `TomInformationSchemaColumnRow`s. Both sides are classified in that dialect: the descriptors' canonical `TINYINT(1)` is a truth value to MariaDB, and the `smallint` PostgreSQL stores it as is an integer to PostgreSQL, so each side is read the way the other one will be. The only variant that needs a server, and the only one that catches a database whose schema was applied correctly once and then edited outside the migration chain. The catalogue query asks the connection which schema it is in (`currentSchema`) instead of being told, so it cannot be pointed at the wrong schema by a stale setting; `schema` only labels the report. The column type is read with its length, which distinguishes `tinyint(1)` from `tinyint(4)`. |
 
 ### TomInformationSchemaColumnRow
 
@@ -778,18 +879,58 @@ TomDbMigrationException(
 })
 ```
 
-#### MariadbMigrationException
+#### TomSqlMigrationException
 
-Thrown for MariaDB migration failures (versioning-table creation, version query,
-a changed description/checksum for an already-applied version, or a failed
-migration script).
+Thrown for SQL migration failures — versioning-table creation, version query, a
+changed description/checksum for an already-applied version, a recorded failed
+script, or a failed migration script. Each adaptor throws its own subtype.
 
 - **Extends:** `TomServerException`
 
 #### Constructors
 
 ```dart
+TomSqlMigrationException(
+  String key,
+  String defaultUserMessage, {
+  Map<String, Object?>? parameters,
+  StackTrace? stack,
+  Object? rootException,
+  bool autoLog = false,
+})
+```
+
+#### MariadbMigrationException
+
+Thrown for MariaDB migration failures; its keys are prefixed
+`mariadb_migration.` and `mariadb_migration_adapter.`.
+
+- **Extends:** `TomSqlMigrationException`
+
+#### Constructors
+
+```dart
 MariadbMigrationException(
+  String key,
+  String defaultUserMessage, {
+  Map<String, Object?>? parameters,
+  StackTrace? stack,
+  Object? rootException,
+  bool autoLog = false,
+})
+```
+
+#### PostgresMigrationException
+
+Thrown for PostgreSQL migration failures; its keys are prefixed
+`postgres_migration.` and `postgres_migration_adapter.`.
+
+- **Extends:** `TomSqlMigrationException`
+
+#### Constructors
+
+```dart
+PostgresMigrationException(
   String key,
   String defaultUserMessage, {
   Map<String, Object?>? parameters,

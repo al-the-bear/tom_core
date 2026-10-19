@@ -174,7 +174,7 @@ reads as a tenancy with no tenants. Throws `tenancy.config.not_a_map`,
 | `datasources` | `Set<String>` | The data sources routed per tenant (final). |
 | `resolvers` | `List<TomTenantResolver>` | How a request without a token claim names its tenant, in order (final). |
 | `defaultIsolation` | `TomTenantIsolation` | The isolation of a tenant that names none (final). |
-| `createSchemas` | `bool` | Whether schema isolation creates the tenant's schema (`CREATE DATABASE IF NOT EXISTS`) when it is provisioned (final). |
+| `createSchemas` | `bool` | Whether schema isolation creates the tenant's schema when it is provisioned — the base data source dialect's `createSchema`: `CREATE DATABASE IF NOT EXISTS` on MariaDB, `CREATE SCHEMA IF NOT EXISTS` on PostgreSQL (final). |
 
 #### Methods
 
@@ -192,7 +192,8 @@ reads as a tenancy with no tenants. Throws `tenancy.config.not_a_map`,
 | `resolveRequest` | `TomTenantResolution resolveRequest(Request request, {String? claim})` | The tenant `request` is for, or the rejection to answer it with; `claim` is the verified token's `tenant` claim. The claim is authoritative: a host or header naming another tenant is refused (`tenancy.resolution.conflict`, 403). Without a claim, the `resolvers` are asked in order. An unknown tenant is refused (`tenancy.tenant.unknown`, 404), as is an id that is not one (`tenancy.id.invalid`, 400). No answer is not a rejection: the request proceeds with no tenant. |
 
 A routed data source is opened over a schema tenant's schema with the base data
-source's settings and `databaseName` replaced, and registered under
+source's settings and the dialect's `schemaSetting` replaced — `databaseName` on
+MariaDB, `schema` (the `search_path`) on PostgreSQL — and registered under
 `<name>@<tenant>`; a database tenant's is opened from its configured settings
 under the same name, or is the registered data source it names.
 

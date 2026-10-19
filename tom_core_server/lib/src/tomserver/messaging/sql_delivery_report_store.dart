@@ -101,7 +101,7 @@ class TomSqlDeliveryReportStore extends TomDeliveryReportStore {
   /// start-up sequence can provision the schema before serving traffic.
   Future<void> ensureSchema() => _schema.ensure(() async {
     if (createSchema) {
-      await datasource.executeCommand(_rows.createTableDdl);
+      await _rows.create(datasource);
     }
   });
 
@@ -113,10 +113,7 @@ class TomSqlDeliveryReportStore extends TomDeliveryReportStore {
     // once — the at-least-once delivery the outbox states plainly — can hand
     // back an id already on file. The later send is the one worth keeping, and
     // an insert that failed would turn a documented duplicate into an error.
-    await datasource.executeCommand(
-      _rows.insert('REPLACE', _writeColumns),
-      _bindOf(correlation),
-    );
+    await _rows.replaceRow(datasource, _writeColumns, _bindOf(correlation));
   }
 
   @override

@@ -236,10 +236,13 @@ void run() {
   print('9. framework-owned tables');
   print(leases.createTableDdl.split('\n').map((l) => '   $l').join('\n'));
   print('   columnsOf -> ${leases.columnsOf(['name', 'owner'])}');
-  print(
-    '   insert    -> '
-    '${leases.insert('REPLACE', {'name': ':name', 'version': '1'})}',
-  );
+  // A write that replaces a row keyed like this one is a policy; each
+  // database's dialect words it.
+  final mariadb = MariadbSqlDialect();
+  final postgres = PostgresSqlDialect();
+  const values = {'name': ':name', 'version': '1'};
+  print('   replace   -> ${leases.replaceStatements(mariadb, values)}');
+  print('   (postgres)   ${leases.replaceStatements(postgres, values)}');
   check(
     leases.columnList == 'name, owner, expires_at, version',
     'the column list is the declaration order',
@@ -249,9 +252,15 @@ void run() {
     'an index is named from the table, so two stores cannot collide',
   );
   check(
-    leases.insert('REPLACE', {'name': ':name', 'version': '1'}) ==
+    leases.replaceStatements(mariadb, values).single ==
         'REPLACE INTO demo_lease (name, version) VALUES (:name, 1)',
-    'an insert is keyed by column name, never by position',
+    'a write is keyed by column name, never by position',
+  );
+  check(
+    leases.replaceStatements(postgres, values).last ==
+        'INSERT INTO demo_lease (name, version) VALUES (:name, 1) '
+            'ON CONFLICT (name) DO UPDATE SET version = EXCLUDED.version',
+    'PostgreSQL deletes what a row supersedes, then upserts on the key',
   );
   // The half a column *list* cannot cover: a reference inside SET or WHERE.
   // Those stay written out and are audited instead.

@@ -557,13 +557,13 @@ void main() {
     });
   });
 
-  group('MariadbMigrationAdaptor.checksumOf', () {
+  group('TomSqlMigrationAdaptor.checksumOf', () {
     test('a known script produces a known constant digest', () {
       // The constant is the whole point: it is the contract between a row
       // written last year and the code reading it today. `String.hashCode`
       // could not be written down like this — that is what made it wrong.
       expect(
-        MariadbMigrationAdaptor.checksumOf(
+        TomSqlMigrationAdaptor.checksumOf(
           'CREATE TABLE orders (id INT PRIMARY KEY);',
         ),
         '9ad9167cb37c929c8f439bcc29682d4f4b6a963310c983d1bdd35ebc21634483',
@@ -575,14 +575,14 @@ void main() {
       // bytes, so an implementation that hashed a quoted or padded form of the
       // script would not land here.
       expect(
-        MariadbMigrationAdaptor.checksumOf(''),
+        TomSqlMigrationAdaptor.checksumOf(''),
         'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
       );
     });
 
     test('the digest is 64 lowercase hex characters', () {
       expect(
-        MariadbMigrationAdaptor.checksumOf('SELECT 1'),
+        TomSqlMigrationAdaptor.checksumOf('SELECT 1'),
         matches(RegExp(r'^[0-9a-f]{64}$')),
       );
     });
@@ -590,8 +590,8 @@ void main() {
     test('a one-character edit changes the digest', () {
       // The guard exists to catch edits, so an edit must move the value.
       expect(
-        MariadbMigrationAdaptor.checksumOf('SELECT 1'),
-        isNot(MariadbMigrationAdaptor.checksumOf('SELECT 2')),
+        TomSqlMigrationAdaptor.checksumOf('SELECT 1'),
+        isNot(TomSqlMigrationAdaptor.checksumOf('SELECT 2')),
       );
     });
 
@@ -599,8 +599,8 @@ void main() {
       // A seed migration carrying accented data is ordinary; the digest must
       // not depend on how the string happens to be represented in memory.
       expect(
-        MariadbMigrationAdaptor.checksumOf("INSERT INTO t VALUES ('é');"),
-        MariadbMigrationAdaptor.checksumOf("INSERT INTO t VALUES ('é');"),
+        TomSqlMigrationAdaptor.checksumOf("INSERT INTO t VALUES ('é');"),
+        TomSqlMigrationAdaptor.checksumOf("INSERT INTO t VALUES ('é');"),
       );
     });
 
@@ -609,8 +609,8 @@ void main() {
       // guard must accept, or the adaptor would reject its own rows.
       for (final script in ['', 'SELECT 1', 'CREATE TABLE t (id INT);', 'é']) {
         expect(
-          MariadbMigrationAdaptor.isWellFormedChecksum(
-            MariadbMigrationAdaptor.checksumOf(script),
+          TomSqlMigrationAdaptor.isWellFormedChecksum(
+            TomSqlMigrationAdaptor.checksumOf(script),
           ),
           isTrue,
           reason: 'checksumOf($script) must be readable back',
@@ -622,7 +622,7 @@ void main() {
       // The column is VARCHAR(200); a digest longer than that would be
       // truncated on write and mismatch on every later read.
       expect(
-        MariadbMigrationAdaptor.checksumOf('SELECT 1').length,
+        TomSqlMigrationAdaptor.checksumOf('SELECT 1').length,
         lessThanOrEqualTo(200),
       );
     });
@@ -633,10 +633,10 @@ void main() {
   // "find the edit", an unreadable value says "this row was not written by this
   // adaptor — repair it". Conflating them sends the operator looking for an edit
   // that never happened, so the shape is decided here, once.
-  group('MariadbMigrationAdaptor.isWellFormedChecksum', () {
+  group('TomSqlMigrationAdaptor.isWellFormedChecksum', () {
     test('accepts a 64-character lowercase hex digest', () {
       expect(
-        MariadbMigrationAdaptor.isWellFormedChecksum(
+        TomSqlMigrationAdaptor.isWellFormedChecksum(
           '9ad9167cb37c929c8f439bcc29682d4f4b6a963310c983d1bdd35ebc21634483',
         ),
         isTrue,
@@ -646,7 +646,7 @@ void main() {
     test('rejects the empty string the column defaults to', () {
       // `checksum VARCHAR(200) NOT NULL DEFAULT ''` — so any row inserted by
       // anything other than applyMigration carries exactly this.
-      expect(MariadbMigrationAdaptor.isWellFormedChecksum(''), isFalse);
+      expect(TomSqlMigrationAdaptor.isWellFormedChecksum(''), isFalse);
     });
 
     test('rejects a decimal hash code — the format this module used to '
@@ -654,9 +654,9 @@ void main() {
       // The realistic case: a versioning table written before the checksum
       // became a content digest. It has to be reported as unreadable, not as a
       // mismatch, or every such row accuses someone of an edit.
-      expect(MariadbMigrationAdaptor.isWellFormedChecksum('12345'), isFalse);
+      expect(TomSqlMigrationAdaptor.isWellFormedChecksum('12345'), isFalse);
       expect(
-        MariadbMigrationAdaptor.isWellFormedChecksum('-1234567890'),
+        TomSqlMigrationAdaptor.isWellFormedChecksum('-1234567890'),
         isFalse,
       );
     });
@@ -667,7 +667,7 @@ void main() {
       // the lowercase digest anyway, reporting a mismatch for a row that is
       // really just in the wrong format.
       expect(
-        MariadbMigrationAdaptor.isWellFormedChecksum(
+        TomSqlMigrationAdaptor.isWellFormedChecksum(
           '9AD9167CB37C929C8F439BCC29682D4F4B6A963310C983D1BDD35EBC21634483',
         ),
         isFalse,
@@ -675,34 +675,31 @@ void main() {
     });
 
     test('rejects a digest one character short or long', () {
-      final digest = MariadbMigrationAdaptor.checksumOf('SELECT 1');
+      final digest = TomSqlMigrationAdaptor.checksumOf('SELECT 1');
       expect(
-        MariadbMigrationAdaptor.isWellFormedChecksum(
+        TomSqlMigrationAdaptor.isWellFormedChecksum(
           digest.substring(0, digest.length - 1),
         ),
         isFalse,
       );
-      expect(MariadbMigrationAdaptor.isWellFormedChecksum('${digest}a'), false);
+      expect(TomSqlMigrationAdaptor.isWellFormedChecksum('${digest}a'), false);
     });
 
     test('rejects a digest with surrounding whitespace or text', () {
       // The check must be anchored: an unanchored pattern would accept a
       // padded or commented value that no comparison could ever match.
-      final digest = MariadbMigrationAdaptor.checksumOf('SELECT 1');
-      expect(MariadbMigrationAdaptor.isWellFormedChecksum(' $digest'), isFalse);
+      final digest = TomSqlMigrationAdaptor.checksumOf('SELECT 1');
+      expect(TomSqlMigrationAdaptor.isWellFormedChecksum(' $digest'), isFalse);
+      expect(TomSqlMigrationAdaptor.isWellFormedChecksum('$digest\n'), isFalse);
       expect(
-        MariadbMigrationAdaptor.isWellFormedChecksum('$digest\n'),
-        isFalse,
-      );
-      expect(
-        MariadbMigrationAdaptor.isWellFormedChecksum('sha256:$digest'),
+        TomSqlMigrationAdaptor.isWellFormedChecksum('sha256:$digest'),
         isFalse,
       );
     });
 
     test('rejects 64 characters that are not all hex', () {
       expect(
-        MariadbMigrationAdaptor.isWellFormedChecksum('z' * 64),
+        TomSqlMigrationAdaptor.isWellFormedChecksum('z' * 64),
         isFalse,
         reason: 'a length-only check would accept this',
       );
@@ -1462,7 +1459,7 @@ void main() {
       for (final type in const [
         'TomDbMigrationAdaptor',
         'TomDbVersion',
-        'MariadbMigrationAdaptor',
+        'TomSqlMigrationAdaptor',
         'TomDbMigrations',
         'TomMigrationFileName',
         'TomSchemaBuilder',

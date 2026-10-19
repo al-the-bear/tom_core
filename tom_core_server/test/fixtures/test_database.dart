@@ -34,6 +34,7 @@ library;
 import 'dart:io';
 import 'dart:math';
 
+import 'package:postgres/postgres.dart' as pg;
 import 'package:test/test.dart' show addTearDown;
 import 'package:tom_core_server/tom_core_server.dart';
 
@@ -58,15 +59,82 @@ class TestDatabase {
       ? Platform.environment[key]!.trim()
       : fallback;
 
+  /// The database the suites run against (`TOM_CORE_SERVER_TEST_DB_ENGINE`):
+  /// `mariadb` (the default, `docker-compose.test.yaml`) or `postgresql`
+  /// (`docker-compose.test.postgres.yaml`). The same suites run against both;
+  /// `tool/run_db_tests.sh` and `tool/run_db_tests_postgres.sh` start the one
+  /// each needs.
+  static String get engine => _env('TOM_CORE_SERVER_TEST_DB_ENGINE', 'mariadb');
+
+  /// Whether the suites run against PostgreSQL.
+  static bool get isPostgres => engine == 'postgresql';
+
+  /// Why a test of a MariaDB-only behaviour does not run here, or `null` on
+  /// MariaDB — for the `skip:` of a test that exercises the MariaDB client's
+  /// own protocol rather than anything the framework does on every database.
+  static String? onlyOnMariaDb(String why) =>
+      isPostgres ? 'MariaDB only — $why' : null;
+
+  /// The directory a module keeps its reference migrations in for this
+  /// engine: `migrations` (the canonical, MariaDB form) or
+  /// `migrations_postgresql` (generated from it by
+  /// `tool/generate_postgres_migrations.dart`).
+  static String get referenceMigrations =>
+      isPostgres ? 'migrations_postgresql' : 'migrations';
+
+  /// A new migration adaptor for this engine.
+  static TomSqlMigrationAdaptor migrationAdaptor() =>
+      isPostgres ? PostgresMigrationAdaptor() : MariadbMigrationAdaptor();
+
+  /// The full key this engine's migration adaptor raises for [suffix] —
+  /// `initialize.…` under its initialize prefix, anything else under its
+  /// apply prefix.
+  static String migrationKey(String suffix) {
+    final prefix = suffix.startsWith('initialize.')
+        ? (isPostgres
+              ? 'postgres_migration_adapter'
+              : 'mariadb_migration_adapter')
+        : (isPostgres ? 'postgres_migration' : 'mariadb_migration');
+    return '$prefix.$suffix';
+  }
+
+  /// Why the two-phase (XA) suites cannot run against this server, or `null`
+  /// when they can.
+  ///
+  /// PostgreSQL allows no prepared transaction until `max_prepared_transactions`
+  /// is raised from its default of `0` — the bundled compose file raises it —
+  /// and with `0` every `PREPARE TRANSACTION` fails. A server configured that
+  /// way is a reason to skip, said as such, rather than a failure.
+  static Future<String?> twoPhaseSkipReason() async {
+    if (!isPostgres) return null;
+    String? reason;
+    await _withPostgresServer((connection) async {
+      final result = await connection.execute('SHOW max_prepared_transactions');
+      if ('${result.first.first}' == '0') {
+        reason =
+            'the PostgreSQL server allows no prepared transactions '
+            '(max_prepared_transactions = 0); start it with '
+            'docker-compose.test.postgres.yaml';
+      }
+    });
+    return reason;
+  }
+
   /// Database host (`TOM_CORE_SERVER_TEST_DB_HOST`, default `127.0.0.1`).
   static String get host => _env('TOM_CORE_SERVER_TEST_DB_HOST', '127.0.0.1');
 
   /// Database port (`TOM_CORE_SERVER_TEST_DB_PORT`, default `3309`).
-  static int get port =>
-      int.parse(_env('TOM_CORE_SERVER_TEST_DB_PORT', '3309'));
+  ///
+  /// `5439` when the engine is PostgreSQL.
+  static int get port => int.parse(
+    _env('TOM_CORE_SERVER_TEST_DB_PORT', isPostgres ? '5439' : '3309'),
+  );
 
   /// Connection user (`TOM_CORE_SERVER_TEST_DB_USER`, default `root`).
-  static String get username => _env('TOM_CORE_SERVER_TEST_DB_USER', 'root');
+  ///
+  /// `postgres` when the engine is PostgreSQL.
+  static String get username =>
+      _env('TOM_CORE_SERVER_TEST_DB_USER', isPostgres ? 'postgres' : 'root');
 
   /// Connection password (`TOM_CORE_SERVER_TEST_DB_PASSWORD`, default
   /// `password`).
@@ -101,12 +169,13 @@ class TestDatabase {
   /// [TomDataSourceInfo.initializeDatasourceInfo] consumes.
   static Map<String, dynamic> get datasourceConfig => <String, dynamic>{
     datasourceName: <String, dynamic>{
-      'type': 'mariadb',
+      'type': isPostgres ? 'postgresql' : 'mariadb',
       'username': username,
       'password': password,
       'host': host,
       'port': port,
       'databaseName': databaseName,
+      if (isPostgres) 'sslMode': 'disable',
     },
   };
 
@@ -155,6 +224,21 @@ class TestDatabase {
   /// from [databaseName] instead of calling [register] calls this directly.
   /// Also sweeps suite databases older than [staleAfter], once per isolate.
   static Future<void> provision() async {
+    if (isPostgres) {
+      await _withPostgresServer((connection) async {
+        _swept ??= _sweepStalePostgresDatabases(connection);
+        await _swept;
+        await connection.execute('CREATE DATABASE "$databaseName"');
+      });
+      addTearDown(
+        () => _withPostgresServer(
+          (connection) => connection.execute(
+            'DROP DATABASE IF EXISTS "$databaseName" WITH (FORCE)',
+          ),
+        ),
+      );
+      return;
+    }
     await _withServerConnection((connection) async {
       _swept ??= _sweepStaleDatabases(connection);
       await _swept;
@@ -169,22 +253,39 @@ class TestDatabase {
 
   static Future<void>? _swept;
 
+  /// The suite-database name shape a sweep recognises, and the cut-off before
+  /// which one is stale.
+  static (RegExp, int) _staleShape() => (
+    RegExp('^${RegExp.escape(baseDatabaseName)}_(\\d+)_[0-9a-f]{6}\$'),
+    DateTime.now().subtract(staleAfter).millisecondsSinceEpoch ~/ 60000,
+  );
+
   /// Drops every suite database named from [baseDatabaseName] whose timestamp
   /// is older than [staleAfter]. Names that do not have the suite shape — the
   /// base database itself, or anything else sharing its prefix — are left
   /// alone.
   static Future<void> _sweepStaleDatabases(MySQLConnection connection) async {
-    final shape = RegExp(
-      '^${RegExp.escape(baseDatabaseName)}_(\\d+)_[0-9a-f]{6}\$',
-    );
-    final cutoff =
-        DateTime.now().subtract(staleAfter).millisecondsSinceEpoch ~/ 60000;
+    final (shape, cutoff) = _staleShape();
     final result = await connection.execute('SHOW DATABASES');
     for (final row in result.rows) {
       final name = row.colAt(0);
       final match = name == null ? null : shape.firstMatch(name);
       if (match == null || int.parse(match.group(1)!) >= cutoff) continue;
       await connection.execute('DROP DATABASE IF EXISTS `$name`');
+    }
+  }
+
+  /// The PostgreSQL face of [_sweepStaleDatabases].
+  static Future<void> _sweepStalePostgresDatabases(
+    pg.Connection connection,
+  ) async {
+    final (shape, cutoff) = _staleShape();
+    final result = await connection.execute('SELECT datname FROM pg_database');
+    for (final row in result) {
+      final name = row.first as String;
+      final match = shape.firstMatch(name);
+      if (match == null || int.parse(match.group(1)!) >= cutoff) continue;
+      await connection.execute('DROP DATABASE IF EXISTS "$name" WITH (FORCE)');
     }
   }
 
@@ -208,6 +309,65 @@ class TestDatabase {
     }
   }
 
+  /// The PostgreSQL face of [_withServerConnection], on the server's
+  /// maintenance database.
+  static Future<void> _withPostgresServer(
+    Future<void> Function(pg.Connection connection) action,
+  ) async {
+    final connection = await pg.Connection.open(
+      pg.Endpoint(
+        host: host,
+        port: port,
+        database: 'postgres',
+        username: username,
+        password: password,
+      ),
+      settings: const pg.ConnectionSettings(sslMode: pg.SslMode.disable),
+    );
+    try {
+      await action(connection);
+    } finally {
+      await connection.close();
+    }
+  }
+
+  /// Creates the database [name] beside the suite's own, through
+  /// [datasource] — for a test of tenants isolated by database.
+  static Future<void> createDatabase(TomDataSource datasource, String name) =>
+      datasource.executeCommand(
+        isPostgres
+            ? 'CREATE DATABASE "$name"'
+            : 'CREATE DATABASE IF NOT EXISTS `$name`',
+      );
+
+  /// Drops the database [name] [createDatabase] made.
+  static Future<void> dropDatabase(TomDataSource datasource, String name) =>
+      datasource.executeCommand(
+        isPostgres
+            ? 'DROP DATABASE IF EXISTS "$name" WITH (FORCE)'
+            : 'DROP DATABASE IF EXISTS `$name`',
+      );
+
+  /// Drops the tenant schema [name] — a database on MariaDB, where the two are
+  /// one thing, and a schema inside the suite's database on PostgreSQL.
+  static Future<void> dropSchema(TomDataSource datasource, String name) =>
+      datasource.executeCommand(
+        isPostgres
+            ? 'DROP SCHEMA IF EXISTS "$name" CASCADE'
+            : 'DROP DATABASE IF EXISTS `$name`',
+      );
+
+  /// Runs [sql] — written in the framework's canonical DDL, MariaDB's spelling
+  /// — on [datasource], as the statements its database runs to the same
+  /// effect (`TomStandardSqlDialect.translateCanonical`). Every DDL statement a
+  /// suite issues goes through here, so one fixture declaration serves both
+  /// databases.
+  static Future<void> execute(TomDataSource datasource, String sql) async {
+    for (final statement in datasource.sqlDialect.translateCanonical(sql)) {
+      await datasource.executeCommand(statement);
+    }
+  }
+
   /// The fixture entity's table DDL, matching [FixtureTaskRecord]'s
   /// `@TomDbColumn` mappings (an AUTO_INCREMENT surrogate key, a text column, an
   /// int column, and a `TINYINT(1)` boolean).
@@ -223,7 +383,7 @@ CREATE TABLE IF NOT EXISTS fixture_task (
 
   /// Creates the `fixture_task` table if it does not already exist.
   static Future<void> ensureFixtureTaskTable(TomDataSourceInfo dsi) async {
-    await dsi.datasource.executeCommand(_fixtureTaskDdl);
+    await execute(dsi.datasource, _fixtureTaskDdl);
   }
 
   /// Empties the `fixture_task` table so each test starts from a known state.
@@ -231,7 +391,7 @@ CREATE TABLE IF NOT EXISTS fixture_task (
   /// Uses `TRUNCATE` so the AUTO_INCREMENT counter resets too, keeping the
   /// generated-key assertions independent of test ordering.
   static Future<void> truncateFixtureTask(TomDataSourceInfo dsi) async {
-    await dsi.datasource.executeCommand('TRUNCATE TABLE fixture_task');
+    await execute(dsi.datasource, 'TRUNCATE TABLE fixture_task');
   }
 
   /// The three tables the `@TomReference` fixture needs: the owner, the target
@@ -271,7 +431,7 @@ CREATE TABLE IF NOT EXISTS fixture_tag_link (
     TomDataSourceInfo dsi,
   ) async {
     for (final ddl in _fixtureAssociationDdl) {
-      await dsi.datasource.executeCommand(ddl);
+      await execute(dsi.datasource, ddl);
     }
   }
 
@@ -284,7 +444,7 @@ CREATE TABLE IF NOT EXISTS fixture_tag_link (
       'fixture_tagged',
       'fixture_tag',
     ]) {
-      await dsi.datasource.executeCommand('TRUNCATE TABLE $table');
+      await execute(dsi.datasource, 'TRUNCATE TABLE $table');
     }
   }
 
@@ -301,13 +461,13 @@ CREATE TABLE IF NOT EXISTS fixture_task_label (
 
   /// Creates the `fixture_task_label` table if it does not already exist.
   static Future<void> ensureFixtureTaskLabelTable(TomDataSourceInfo dsi) async {
-    await dsi.datasource.executeCommand(_fixtureTaskLabelDdl);
+    await execute(dsi.datasource, _fixtureTaskLabelDdl);
   }
 
   /// Empties the `fixture_task_label` table so each test starts from a known
   /// state.
   static Future<void> truncateFixtureTaskLabel(TomDataSourceInfo dsi) async {
-    await dsi.datasource.executeCommand('TRUNCATE TABLE fixture_task_label');
+    await execute(dsi.datasource, 'TRUNCATE TABLE fixture_task_label');
   }
 
   /// The DDL for `FixtureSecretRecord`, the entity carrying a column that the
@@ -323,12 +483,12 @@ CREATE TABLE IF NOT EXISTS fixture_secret (
 
   /// Creates the `fixture_secret` table if it does not already exist.
   static Future<void> ensureFixtureSecretTable(TomDataSourceInfo dsi) async {
-    await dsi.datasource.executeCommand(_fixtureSecretDdl);
+    await execute(dsi.datasource, _fixtureSecretDdl);
   }
 
   /// Empties the `fixture_secret` table so each test starts from a known state.
   static Future<void> truncateFixtureSecret(TomDataSourceInfo dsi) async {
-    await dsi.datasource.executeCommand('TRUNCATE TABLE fixture_secret');
+    await execute(dsi.datasource, 'TRUNCATE TABLE fixture_secret');
   }
 
   /// The DDL for `FixtureDocumentRecord`, the entity whose two columns hold
@@ -345,13 +505,13 @@ CREATE TABLE IF NOT EXISTS fixture_document (
 
   /// Creates the `fixture_document` table if it does not already exist.
   static Future<void> ensureFixtureDocumentTable(TomDataSourceInfo dsi) async {
-    await dsi.datasource.executeCommand(_fixtureDocumentDdl);
+    await execute(dsi.datasource, _fixtureDocumentDdl);
   }
 
   /// Empties the `fixture_document` table so each test starts from a known
   /// state.
   static Future<void> truncateFixtureDocument(TomDataSourceInfo dsi) async {
-    await dsi.datasource.executeCommand('TRUNCATE TABLE fixture_document');
+    await execute(dsi.datasource, 'TRUNCATE TABLE fixture_document');
   }
 
   /// The DDL for `FixtureScopedDocumentRecord`, the row-scoped counterpart of
@@ -371,7 +531,7 @@ CREATE TABLE IF NOT EXISTS fixture_scoped_document (
   static Future<void> ensureFixtureScopedDocumentTable(
     TomDataSourceInfo dsi,
   ) async {
-    await dsi.datasource.executeCommand(_fixtureScopedDocumentDdl);
+    await execute(dsi.datasource, _fixtureScopedDocumentDdl);
   }
 
   /// Empties the `fixture_scoped_document` table so each test starts from a
@@ -379,9 +539,7 @@ CREATE TABLE IF NOT EXISTS fixture_scoped_document (
   static Future<void> truncateFixtureScopedDocument(
     TomDataSourceInfo dsi,
   ) async {
-    await dsi.datasource.executeCommand(
-      'TRUNCATE TABLE fixture_scoped_document',
-    );
+    await execute(dsi.datasource, 'TRUNCATE TABLE fixture_scoped_document');
   }
 
   /// The DDL for `FixtureResourceRecord`, the entity the grant-driven row scope
@@ -399,15 +557,13 @@ CREATE TABLE IF NOT EXISTS fixture_resource_document (
   /// Creates the `fixture_resource_document` table if it does not already
   /// exist.
   static Future<void> ensureFixtureResourceTable(TomDataSourceInfo dsi) async {
-    await dsi.datasource.executeCommand(_fixtureResourceDdl);
+    await execute(dsi.datasource, _fixtureResourceDdl);
   }
 
   /// Empties the `fixture_resource_document` table so each test starts from a
   /// known state.
   static Future<void> truncateFixtureResource(TomDataSourceInfo dsi) async {
-    await dsi.datasource.executeCommand(
-      'TRUNCATE TABLE fixture_resource_document',
-    );
+    await execute(dsi.datasource, 'TRUNCATE TABLE fixture_resource_document');
   }
 
   /// The DDL for `FixtureAmountRecord`, the entity whose numeric columns are
@@ -448,23 +604,23 @@ CREATE TABLE IF NOT EXISTS fixture_temporal (
 
   /// Creates the `fixture_temporal` table if it does not already exist.
   static Future<void> ensureFixtureTemporalTable(TomDataSourceInfo dsi) async {
-    await dsi.datasource.executeCommand(_fixtureTemporalDdl);
+    await execute(dsi.datasource, _fixtureTemporalDdl);
   }
 
   /// Empties the `fixture_temporal` table so each test starts from a known
   /// state.
   static Future<void> truncateFixtureTemporal(TomDataSourceInfo dsi) async {
-    await dsi.datasource.executeCommand('TRUNCATE TABLE fixture_temporal');
+    await execute(dsi.datasource, 'TRUNCATE TABLE fixture_temporal');
   }
 
   /// Creates the `fixture_amount` table if it does not already exist.
   static Future<void> ensureFixtureAmountTable(TomDataSourceInfo dsi) async {
-    await dsi.datasource.executeCommand(_fixtureAmountDdl);
+    await execute(dsi.datasource, _fixtureAmountDdl);
   }
 
   /// Empties the `fixture_amount` table so each test starts from a known state.
   static Future<void> truncateFixtureAmount(TomDataSourceInfo dsi) async {
-    await dsi.datasource.executeCommand('TRUNCATE TABLE fixture_amount');
+    await execute(dsi.datasource, 'TRUNCATE TABLE fixture_amount');
   }
 
   /// The DDL for the nullable-observable fixtures.
@@ -496,13 +652,13 @@ CREATE TABLE IF NOT EXISTS fixture_nullable (
 
   /// Creates the `fixture_nullable` table if it does not already exist.
   static Future<void> ensureFixtureNullableTable(TomDataSourceInfo dsi) async {
-    await dsi.datasource.executeCommand(_fixtureNullableDdl);
+    await execute(dsi.datasource, _fixtureNullableDdl);
   }
 
   /// Empties the `fixture_nullable` table so each test starts from a known
   /// state.
   static Future<void> truncateFixtureNullable(TomDataSourceInfo dsi) async {
-    await dsi.datasource.executeCommand('TRUNCATE TABLE fixture_nullable');
+    await execute(dsi.datasource, 'TRUNCATE TABLE fixture_nullable');
   }
 
   /// Drops the blob store's two tables, so a `TomDatabaseBlobStore` test starts
@@ -515,8 +671,8 @@ CREATE TABLE IF NOT EXISTS fixture_nullable (
     String manifestTable = defaultBlobManifestTable,
     String chunkTable = defaultBlobChunkTable,
   }) async {
-    await dsi.datasource.executeCommand('DROP TABLE IF EXISTS $chunkTable');
-    await dsi.datasource.executeCommand('DROP TABLE IF EXISTS $manifestTable');
+    await execute(dsi.datasource, 'DROP TABLE IF EXISTS $chunkTable');
+    await execute(dsi.datasource, 'DROP TABLE IF EXISTS $manifestTable');
   }
 
   /// Whether [table] currently exists in the fixture schema.
@@ -533,7 +689,7 @@ CREATE TABLE IF NOT EXISTS fixture_nullable (
   /// evidence for that is the database still not having the table afterwards.
   static Future<bool> tableExists(TomDataSourceInfo dsi, String table) async {
     try {
-      await dsi.datasource.executeCommand('SELECT 1 FROM $table WHERE 1 = 0');
+      await execute(dsi.datasource, 'SELECT 1 FROM $table WHERE 1 = 0');
       return true;
     } on Object {
       return false;
@@ -552,8 +708,8 @@ CREATE TABLE IF NOT EXISTS fixture_nullable (
     String manifestTable = defaultBlobManifestTable,
     String chunkTable = defaultBlobChunkTable,
   }) async {
-    await dsi.datasource.executeCommand(blobManifestTableDdl(manifestTable));
-    await dsi.datasource.executeCommand(blobChunkTableDdl(chunkTable));
+    await execute(dsi.datasource, blobManifestTableDdl(manifestTable));
+    await execute(dsi.datasource, blobChunkTableDdl(chunkTable));
   }
 
   /// Drops the relational scheduler's tables.
@@ -569,9 +725,9 @@ CREATE TABLE IF NOT EXISTS fixture_nullable (
     String leaseTable = defaultLeaseTable,
     String nodeTable = defaultSchedulerNodeTable,
   }) async {
-    await dsi.datasource.executeCommand('DROP TABLE IF EXISTS $jobRunTable');
-    await dsi.datasource.executeCommand('DROP TABLE IF EXISTS $leaseTable');
-    await dsi.datasource.executeCommand('DROP TABLE IF EXISTS $nodeTable');
+    await execute(dsi.datasource, 'DROP TABLE IF EXISTS $jobRunTable');
+    await execute(dsi.datasource, 'DROP TABLE IF EXISTS $leaseTable');
+    await execute(dsi.datasource, 'DROP TABLE IF EXISTS $nodeTable');
   }
 
   /// Drops the relational audit trail's table and its optional guard triggers.
@@ -584,13 +740,30 @@ CREATE TABLE IF NOT EXISTS fixture_nullable (
     TomDataSourceInfo dsi, {
     String table = defaultAuditTrailTable,
   }) async {
-    await dsi.datasource.executeCommand(
+    if (isPostgres) {
+      // A PostgreSQL trigger goes with its table; the function each guard
+      // calls does not, and is dropped by name.
+      await execute(dsi.datasource, 'DROP TABLE IF EXISTS $table CASCADE');
+      for (final trigger in [
+        auditTrailNoUpdateTriggerName(table),
+        auditTrailNoDeleteTriggerName(table),
+      ]) {
+        await execute(
+          dsi.datasource,
+          'DROP FUNCTION IF EXISTS ${trigger}_reject()',
+        );
+      }
+      return;
+    }
+    await execute(
+      dsi.datasource,
       'DROP TRIGGER IF EXISTS ${auditTrailNoUpdateTriggerName(table)}',
     );
-    await dsi.datasource.executeCommand(
+    await execute(
+      dsi.datasource,
       'DROP TRIGGER IF EXISTS ${auditTrailNoDeleteTriggerName(table)}',
     );
-    await dsi.datasource.executeCommand('DROP TABLE IF EXISTS $table');
+    await execute(dsi.datasource, 'DROP TABLE IF EXISTS $table');
   }
 
   /// Drops the relational OAuth state store's table.
@@ -602,7 +775,7 @@ CREATE TABLE IF NOT EXISTS fixture_nullable (
     TomDataSourceInfo dsi, {
     String table = defaultOAuthStateTable,
   }) async {
-    await dsi.datasource.executeCommand('DROP TABLE IF EXISTS $table');
+    await execute(dsi.datasource, 'DROP TABLE IF EXISTS $table');
   }
 
   /// Drops the delivery-correlation table, for the same reason.
@@ -610,7 +783,7 @@ CREATE TABLE IF NOT EXISTS fixture_nullable (
     TomDataSourceInfo dsi, {
     String table = defaultDeliveryReportTable,
   }) async {
-    await dsi.datasource.executeCommand('DROP TABLE IF EXISTS $table');
+    await execute(dsi.datasource, 'DROP TABLE IF EXISTS $table');
   }
 
   /// Drops the `<schemaName>_versioning` table the migration orchestrator keeps.
@@ -624,7 +797,8 @@ CREATE TABLE IF NOT EXISTS fixture_nullable (
     TomDataSourceInfo dsi,
     String schemaName,
   ) async {
-    await dsi.datasource.executeCommand(
+    await execute(
+      dsi.datasource,
       'DROP TABLE IF EXISTS ${schemaName}_versioning',
     );
   }
@@ -656,7 +830,8 @@ CREATE TABLE IF NOT EXISTS fixture_nullable (
     String createTableSql,
   ) async {
     final ddl = createTableSql.trim();
-    await dsi.datasource.executeCommand(
+    await execute(
+      dsi.datasource,
       ddl.endsWith(';') ? ddl.substring(0, ddl.length - 1) : ddl,
     );
   }
@@ -669,7 +844,8 @@ CREATE TABLE IF NOT EXISTS fixture_nullable (
 
   /// Empties `tom_user_two_factor_enrolment` between tests.
   static Future<void> truncateTwoFactorEnrolment(TomDataSourceInfo dsi) async {
-    await dsi.datasource.executeCommand(
+    await execute(
+      dsi.datasource,
       'TRUNCATE TABLE tom_user_two_factor_enrolment',
     );
   }
@@ -680,7 +856,7 @@ CREATE TABLE IF NOT EXISTS fixture_nullable (
 
   /// Empties `tom_user_preference` between tests.
   static Future<void> truncateUserPreference(TomDataSourceInfo dsi) async {
-    await dsi.datasource.executeCommand('TRUNCATE TABLE tom_user_preference');
+    await execute(dsi.datasource, 'TRUNCATE TABLE tom_user_preference');
   }
 
   /// Creates the `tom_external_identity` link table from the entity's own DDL.
@@ -690,7 +866,7 @@ CREATE TABLE IF NOT EXISTS fixture_nullable (
 
   /// Empties `tom_external_identity` between tests.
   static Future<void> truncateExternalIdentity(TomDataSourceInfo dsi) async {
-    await dsi.datasource.executeCommand('TRUNCATE TABLE tom_external_identity');
+    await execute(dsi.datasource, 'TRUNCATE TABLE tom_external_identity');
   }
 
   /// Creates the `tom_external_identity_token` table from the entity's own DDL.
@@ -702,9 +878,7 @@ CREATE TABLE IF NOT EXISTS fixture_nullable (
   static Future<void> truncateExternalIdentityToken(
     TomDataSourceInfo dsi,
   ) async {
-    await dsi.datasource.executeCommand(
-      'TRUNCATE TABLE tom_external_identity_token',
-    );
+    await execute(dsi.datasource, 'TRUNCATE TABLE tom_external_identity_token');
   }
 
   /// Closes every registered data source and clears the process-wide registry,

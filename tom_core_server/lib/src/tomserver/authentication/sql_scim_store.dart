@@ -113,7 +113,7 @@ class TomSqlScimStore implements TomScimStore {
     return _schemas.putIfAbsent(target, TomSchemaProvisioning.new).ensure(
       () async {
         if (createSchema) {
-          await target.executeCommand(_resources.createTableDdl);
+          await _resources.create(target);
         }
       },
     );
@@ -127,7 +127,7 @@ class TomSqlScimStore implements TomScimStore {
     await ensureSchema();
     final now = sqlInstant(DateTime.now().toUtc());
     final rows = await datasource.executeQuery<TomScimResourceRow>(
-      '${_resources.insert('INSERT', const {'resource_type': ':type', 'name_key': ':nameKey', 'external_id': ':externalId', 'document': ':document', 'tenant': ':tenant', 'created_at': ':now', 'last_modified': ':now', 'version': '1'})} RETURNING ${_resources.columnList}',
+      '${_resources.insertRow(datasource.sqlDialect, const {'resource_type': ':type', 'name_key': ':nameKey', 'external_id': ':externalId', 'document': ':document', 'tenant': ':tenant', 'created_at': ':now', 'last_modified': ':now', 'version': '1'})} RETURNING ${_resources.columnList}',
       _bind(type, document)..['now'] = now,
     );
     return _resourceOf(rows.single);

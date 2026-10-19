@@ -54,7 +54,9 @@ Directory _migrationDirectory() {
   final target = Directory(
     '${root.path}/${TestDatabase.datasourceName}/$_migrationSchema',
   )..createSync(recursive: true);
-  final source = Directory('example/scheduling/migrations/main/tomcore');
+  final source = Directory(
+    'example/scheduling/${TestDatabase.referenceMigrations}/main/tomcore',
+  );
   for (final file in source.listSync().whereType<File>()) {
     file.copySync('${target.path}/${file.uri.pathSegments.last}');
   }
@@ -71,10 +73,10 @@ void main() async {
   final reachable = await TestDatabase.isReachable();
   final String? skipReason = reachable
       ? null
-      : 'MariaDB not reachable on ${TestDatabase.host}:${TestDatabase.port} — '
-            'start one with tool/run_db_tests.sh';
+      : 'No ${TestDatabase.engine} server reachable on ${TestDatabase.host}:${TestDatabase.port} — '
+            'start one with tool/run_db_tests.sh or tool/run_db_tests_postgres.sh';
 
-  group('relational scheduling over MariaDB', () {
+  group('relational scheduling over a SQL database', () {
     late TomDataSourceInfo dsi;
 
     setUpAll(() async {

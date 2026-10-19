@@ -47,8 +47,8 @@ void main() async {
   final reachable = await TestDatabase.isReachable();
   final String? skipReason = reachable
       ? null
-      : 'MariaDB not reachable on ${TestDatabase.host}:${TestDatabase.port} — '
-            'start one with tool/run_db_tests.sh';
+      : 'No ${TestDatabase.engine} server reachable on ${TestDatabase.host}:${TestDatabase.port} — '
+            'start one with tool/run_db_tests.sh or tool/run_db_tests_postgres.sh';
 
   group('the relational audit sink', () {
     late TomDataSourceInfo dsi;
@@ -285,7 +285,8 @@ void main() async {
         );
         await expectLater(sink.open(), throwsA(isA<Object>()));
 
-        await dsi.datasource.executeCommand(
+        await TestDatabase.execute(
+          dsi.datasource,
           auditTrailTableDdl(defaultAuditTrailTable),
         );
 
@@ -1001,9 +1002,7 @@ void main() async {
           // table would be reported as perfectly mutable.
           final sink = sinkFor('node-a');
           await sink.open();
-          await dsi.datasource.executeCommand(
-            auditTrailNoUpdateTriggerDdl(defaultAuditTrailTable),
-          );
+          await _installGuard(dsi.datasource, 'UPDATE');
 
           final check = await sink.verifyWriteOnce();
           expect(check.grantsUpdate, isTrue);
@@ -1020,12 +1019,8 @@ void main() async {
       test('both guards installed make the table append-only', () async {
         final sink = sinkFor('node-a');
         await sink.open();
-        await dsi.datasource.executeCommand(
-          auditTrailNoUpdateTriggerDdl(defaultAuditTrailTable),
-        );
-        await dsi.datasource.executeCommand(
-          auditTrailNoDeleteTriggerDdl(defaultAuditTrailTable),
-        );
+        await _installGuard(dsi.datasource, 'UPDATE');
+        await _installGuard(dsi.datasource, 'DELETE');
 
         expect((await sink.verifyWriteOnce()).isAppendOnly, isTrue);
         await sink.close();
@@ -1036,12 +1031,8 @@ void main() async {
         () async {
           final sink = sinkFor('node-a');
           await sink.write(_record(1));
-          await dsi.datasource.executeCommand(
-            auditTrailNoUpdateTriggerDdl(defaultAuditTrailTable),
-          );
-          await dsi.datasource.executeCommand(
-            auditTrailNoDeleteTriggerDdl(defaultAuditTrailTable),
-          );
+          await _installGuard(dsi.datasource, 'UPDATE');
+          await _installGuard(dsi.datasource, 'DELETE');
 
           // A SIGNAL, not a silent no-op: an attacker's UPDATE fails loudly.
           await expectLater(
@@ -1078,20 +1069,30 @@ void main() async {
       Future<TomDataSource?> restrictedDatasourceOrNull() async {
         final db = TestDatabase.databaseName;
         try {
-          await dsi.datasource.executeCommand(
-            "DROP USER IF EXISTS '$restrictedUser'@'%'",
-          );
-          await dsi.datasource.executeCommand(
-            "CREATE USER '$restrictedUser'@'%' "
-            "IDENTIFIED BY '$restrictedPassword'",
-          );
-          // The whole write-once story, in one statement: the serving user may
-          // add rows and read them back, and has no way to change or remove
-          // one.
-          await dsi.datasource.executeCommand(
-            'GRANT INSERT, SELECT ON $db.$defaultAuditTrailTable '
-            "TO '$restrictedUser'@'%'",
-          );
+          await _dropRestrictedUser(dsi.datasource, restrictedUser);
+          // The whole write-once story, in one grant: the serving user may add
+          // rows and read them back, and has no way to change or remove one.
+          if (TestDatabase.isPostgres) {
+            await dsi.datasource.executeCommand(
+              "CREATE USER $restrictedUser PASSWORD '$restrictedPassword'",
+            );
+            await dsi.datasource.executeCommand(
+              'GRANT USAGE ON SCHEMA public TO $restrictedUser',
+            );
+            await dsi.datasource.executeCommand(
+              'GRANT INSERT, SELECT ON $defaultAuditTrailTable '
+              'TO $restrictedUser',
+            );
+          } else {
+            await dsi.datasource.executeCommand(
+              "CREATE USER '$restrictedUser'@'%' "
+              "IDENTIFIED BY '$restrictedPassword'",
+            );
+            await dsi.datasource.executeCommand(
+              'GRANT INSERT, SELECT ON $db.$defaultAuditTrailTable '
+              "TO '$restrictedUser'@'%'",
+            );
+          }
         } catch (e) {
           // Only a *privilege* failure means "this deployment cannot show the
           // story"; anything else is a broken test and must surface as one.
@@ -1100,7 +1101,8 @@ void main() async {
         }
         await TomDataSourceInfo.initializeDatasourceInfo({
           restrictedDatasource: {
-            'type': 'mariadb',
+            'type': TestDatabase.isPostgres ? 'postgresql' : 'mariadb',
+            if (TestDatabase.isPostgres) 'sslMode': 'disable',
             'username': restrictedUser,
             'password': restrictedPassword,
             'host': TestDatabase.host,
@@ -1118,16 +1120,15 @@ void main() async {
           restrictedDatasource,
         );
         await registered?.datasource.close();
-        await dsi.datasource.executeCommand(
-          "DROP USER IF EXISTS '$restrictedUser'@'%'",
-        );
+        await _dropRestrictedUser(dsi.datasource, restrictedUser);
       });
 
       test('an INSERT+SELECT credential makes the table append-only', () async {
         // The table is owned by the privileged credential; the serving one is
         // deliberately not given DDL rights, which is why `createSchema` is off
         // below.
-        await dsi.datasource.executeCommand(
+        await TestDatabase.execute(
+          dsi.datasource,
           auditTrailTableDdl(defaultAuditTrailTable),
         );
 
@@ -1167,7 +1168,8 @@ void main() async {
       test(
         'the restricted credential cannot rewrite or remove an entry',
         () async {
-          await dsi.datasource.executeCommand(
+          await TestDatabase.execute(
+            dsi.datasource,
             auditTrailTableDdl(defaultAuditTrailTable),
           );
 
@@ -1210,7 +1212,8 @@ void main() async {
       test(
         'retention needs a credential the serving one does not have',
         () async {
-          await dsi.datasource.executeCommand(
+          await TestDatabase.execute(
+            dsi.datasource,
             auditTrailTableDdl(defaultAuditTrailTable),
           );
 
@@ -1249,4 +1252,32 @@ void main() async {
       );
     });
   }, skip: skipReason);
+}
+
+/// Installs the audit trail's guard against [event] in [datasource]'s own
+/// database — one trigger on MariaDB, a function and a trigger on PostgreSQL.
+Future<void> _installGuard(TomDataSource datasource, String event) async {
+  for (final statement in auditTrailGuardStatements(
+    defaultAuditTrailTable,
+    datasource.sqlDialect,
+    event: event,
+  )) {
+    await datasource.executeCommand(statement);
+  }
+}
+
+/// Drops the restricted test user, and on PostgreSQL first what it was
+/// granted, which a role cannot be dropped while holding.
+Future<void> _dropRestrictedUser(TomDataSource datasource, String user) async {
+  if (!TestDatabase.isPostgres) {
+    await datasource.executeCommand("DROP USER IF EXISTS '$user'@'%'");
+    return;
+  }
+  final exists = await datasource.executeQuery<TomCountResult>(
+    'SELECT COUNT(*) AS count FROM pg_roles WHERE rolname = :user',
+    {'user': user},
+  );
+  if (exists.single.count == 0) return;
+  await datasource.executeCommand('DROP OWNED BY $user');
+  await datasource.executeCommand('DROP USER $user');
 }

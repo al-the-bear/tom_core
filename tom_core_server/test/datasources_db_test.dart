@@ -38,7 +38,7 @@ import 'fixtures/test_database.dart';
 
 /// Reads every `fixture_task` row through the driver's reflection row mapper,
 /// so the tests can assert on persisted state without repeating the SELECT.
-Future<List<FixtureTaskRecord>> _allTasks(MariaDbDatasource ds) =>
+Future<List<FixtureTaskRecord>> _allTasks(TomSqlDatasource ds) =>
     ds.executeQuery<FixtureTaskRecord>(
       'SELECT id, title, priority, done FROM fixture_task ORDER BY id',
     );
@@ -60,19 +60,19 @@ void main() async {
   final reachable = await TestDatabase.isReachable();
   final String? skipReason = reachable
       ? null
-      : 'MariaDB not reachable on ${TestDatabase.host}:${TestDatabase.port} — '
-            'start one with tool/run_db_tests.sh';
+      : 'No ${TestDatabase.engine} server reachable on ${TestDatabase.host}:${TestDatabase.port} — '
+            'start one with tool/run_db_tests.sh or tool/run_db_tests_postgres.sh';
 
   group('MariaDbDatasource (DB-backed)', () {
     late TomDataSourceInfo dsi;
-    late MariaDbDatasource ds;
+    late TomSqlDatasource ds;
 
     setUpAll(() async {
       // Reflection first: the row mapper resolves the result type by mirror and
       // the driver is discovered by scanning @TomDatasourceDriver metadata.
       initializeReflection();
       dsi = await TestDatabase.register();
-      ds = dsi.datasource as MariaDbDatasource;
+      ds = dsi.datasource as TomSqlDatasource;
       await TestDatabase.ensureFixtureTaskTable(dsi);
     });
 
@@ -193,7 +193,9 @@ void main() async {
           "INSERT INTO fixture_task (title) VALUES ('slow')",
         );
         slowStarted.complete();
-        await ds.executeQuery<Object>('SELECT SLEEP(1)');
+        await ds.executeQuery<Object>(
+          TestDatabase.isPostgres ? 'SELECT pg_sleep(1)' : 'SELECT SLEEP(1)',
+        );
       });
       await slowStarted.future;
 
@@ -227,7 +229,7 @@ void main() async {
       await expectLater(
         () => ds.startTransaction(_aTransaction()),
         throwsA(
-          isA<MariadbDatasourceException>().having(
+          isA<TomSqlDatasourceException>().having(
             (e) => e.key,
             'key',
             'error.transaction.already_active',

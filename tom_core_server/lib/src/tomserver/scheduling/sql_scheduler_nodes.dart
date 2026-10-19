@@ -247,14 +247,14 @@ class TomSqlSchedulerNodes {
   /// Creates the roll-call table if it does not exist.
   Future<void> ensureSchema() => _schema.ensure(() async {
     if (createSchema) {
-      await datasource.executeCommand(_roll.createTableDdl);
+      await _roll.create(datasource);
     }
   });
 
   /// Announces this node as alive at [now].
   Future<void> checkIn(DateTime now) async {
     await ensureSchema();
-    await datasource.executeCommand(_roll.insert('REPLACE', _checkInColumns), {
+    await _roll.replaceRow(datasource, _checkInColumns, {
       'nodeId': nodeId,
       'checkinAt': sqlInstant(now),
       'checkinInterval': checkinInterval.inMilliseconds,

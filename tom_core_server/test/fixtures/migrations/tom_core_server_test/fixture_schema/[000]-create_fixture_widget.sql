@@ -6,7 +6,7 @@
 -- table itself is incidental — the test asserts on the `fixture_schema_versioning`
 -- bookkeeping the migrator maintains, not on this table's contents.
 CREATE TABLE IF NOT EXISTS fixture_widget (
-  id    BIGINT       NOT NULL AUTO_INCREMENT,
+  id    BIGINT       NOT NULL,
   label VARCHAR(255) NULL,
   PRIMARY KEY (id)
 );

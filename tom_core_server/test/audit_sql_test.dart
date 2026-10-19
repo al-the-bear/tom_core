@@ -285,6 +285,9 @@ TomAuditRecord _record() => TomAuditRecord(
 /// answering emptily.
 class _UnusedDataSource implements TomDataSource {
   @override
+  TomStandardSqlDialect get sqlDialect => MariadbSqlDialect();
+
+  @override
   dynamic noSuchMethod(Invocation invocation) => throw StateError(
     'A closed audit sink reached its data source for '
     '${invocation.memberName}.',

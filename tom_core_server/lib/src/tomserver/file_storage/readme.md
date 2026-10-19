@@ -75,7 +75,7 @@ serving a file over HTTP, and how exports ride the same API.
 no database, bucket or credential; `test/file_storage_test.dart` and
 `test/file_storage_schema_test.dart` cover it without a server, and
 `test/file_storage_db_test.dart` covers the database backend against a live
-MariaDB.
+MariaDB or PostgreSQL.
 
 ---
 

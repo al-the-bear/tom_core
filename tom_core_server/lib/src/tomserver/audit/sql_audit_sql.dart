@@ -12,6 +12,8 @@
 library;
 
 import '../datasources/framework_table.dart';
+import '../datasources/mariadb_sql_dialect.dart';
+import '../datasources/sql_dialects.dart';
 
 /// The default name of the audit trail table.
 const String defaultAuditTrailTable = 'tom_audit_trail';
@@ -107,13 +109,11 @@ String auditTrailNoDeleteTriggerName(String table) => 'trg_${table}_no_delete';
 /// primary mechanism — a connection with `SUPER`/`TRIGGER` can drop it — but it
 /// closes the case the grant cannot, namely a deployment that has to serve the
 /// trail through a credential which already holds `UPDATE` on the schema.
-String auditTrailNoUpdateTriggerDdl(String table) =>
-    '''
-CREATE TRIGGER IF NOT EXISTS ${auditTrailNoUpdateTriggerName(table)}
-BEFORE UPDATE ON $table
-FOR EACH ROW
-  SIGNAL SQLSTATE '45000'
-  SET MESSAGE_TEXT = 'audit trail is append-only: UPDATE is not permitted' ''';
+String auditTrailNoUpdateTriggerDdl(String table) => auditTrailGuardStatements(
+  table,
+  MariadbSqlDialect(),
+  event: 'UPDATE',
+).single;
 
 /// A `BEFORE DELETE` trigger that refuses every delete of [table].
 ///
@@ -121,10 +121,25 @@ FOR EACH ROW
 /// tampering — `TomSqlAuditSink.purgeBefore` and `purgeToMaxEntries` both issue
 /// `DELETE` — so installing it is a decision to keep the trail forever, which
 /// is why it is separate from the update guard rather than bundled with it.
-String auditTrailNoDeleteTriggerDdl(String table) =>
-    '''
-CREATE TRIGGER IF NOT EXISTS ${auditTrailNoDeleteTriggerName(table)}
-BEFORE DELETE ON $table
-FOR EACH ROW
-  SIGNAL SQLSTATE '45000'
-  SET MESSAGE_TEXT = 'audit trail is append-only: DELETE is not permitted' ''';
+String auditTrailNoDeleteTriggerDdl(String table) => auditTrailGuardStatements(
+  table,
+  MariadbSqlDialect(),
+  event: 'DELETE',
+).single;
+
+/// The statements installing the guard against [event] (`UPDATE` or `DELETE`)
+/// on [table] in [dialect]'s database — the one trigger on MariaDB, a trigger
+/// function and its trigger on PostgreSQL. [auditTrailNoUpdateTriggerDdl] and
+/// [auditTrailNoDeleteTriggerDdl] are the MariaDB text of the two.
+List<String> auditTrailGuardStatements(
+  String table,
+  TomStandardSqlDialect dialect, {
+  required String event,
+}) => dialect.rejectingTrigger(
+  name: event == 'UPDATE'
+      ? auditTrailNoUpdateTriggerName(table)
+      : auditTrailNoDeleteTriggerName(table),
+  table: table,
+  event: event,
+  message: 'audit trail is append-only: $event is not permitted',
+);

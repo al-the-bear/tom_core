@@ -324,7 +324,7 @@ class TomSqlAuditSink implements TomAuditSink {
 
   Future<void> _open() async {
     if (createSchema) {
-      await datasource.executeCommand(_trail.createTableDdl);
+      await _trail.create(datasource);
     }
     final check = await verifyWriteOnce();
     _writeOnceCheck = check;
@@ -399,7 +399,7 @@ class TomSqlAuditSink implements TomAuditSink {
     final entry = TomAuditEntry.chain(record, _headHash, index: _entryCount);
     try {
       await datasource.executeCommand(
-        _trail.insert('INSERT', _insertColumns),
+        _trail.insertRow(datasource.sqlDialect, _insertColumns),
         _bindOf(entry),
       );
     } catch (e, stack) {
@@ -648,7 +648,7 @@ class TomSqlAuditSink implements TomAuditSink {
       'SELECT TRIGGER_NAME AS trigger_name, '
       'EVENT_MANIPULATION AS event_manipulation '
       'FROM information_schema.TRIGGERS '
-      'WHERE EVENT_OBJECT_SCHEMA = DATABASE() '
+      'WHERE EVENT_OBJECT_SCHEMA = ${datasource.sqlDialect.currentSchema} '
       'AND EVENT_OBJECT_TABLE = :table AND ACTION_TIMING = :timing',
       {'table': table, 'timing': 'BEFORE'},
     );

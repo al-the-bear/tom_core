@@ -221,7 +221,7 @@ class TomSqlJobStore implements TomJobStore {
   /// start-up sequence can provision the schema before serving traffic.
   Future<void> ensureSchema() => _schema.ensure(() async {
     if (createSchema) {
-      await datasource.executeCommand(_queue.createTableDdl);
+      await _queue.create(datasource);
     }
   });
 
@@ -233,10 +233,7 @@ class TomSqlJobStore implements TomJobStore {
     // unique key on (job_name, scheduled_for) is what keeps the idempotence key
     // a database invariant rather than a convention, so a second row for the
     // same window cannot exist even if a peer races this one.
-    await datasource.executeCommand(
-      _queue.insert('REPLACE', _writeColumns),
-      _bindOf(run),
-    );
+    await _queue.replaceRow(datasource, _writeColumns, _bindOf(run));
   }
 
   @override

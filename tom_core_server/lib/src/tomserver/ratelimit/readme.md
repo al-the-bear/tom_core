@@ -68,7 +68,7 @@ client address behind proxies, the response headers and starting values, and
 counted, refused, rotated and revoked through the server's own middlewares,
 checking its own results. `test/ratelimit_test.dart` covers the module without
 a database and `test/ratelimit_api_keys_db_test.dart` (tagged `db`) runs the
-shared limiter across two nodes against MariaDB. `test/examples_test.dart` runs
+shared limiter across two nodes against MariaDB or PostgreSQL. `test/examples_test.dart` runs
 the example.
 
 ---

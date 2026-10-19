@@ -1,0 +1,34 @@
+# Ephemeral PostgreSQL for the `tom_core_server` DB-backed test surfaces —
+# the second database the same suites run against (the first is MariaDB, in
+# docker-compose.test.yaml).
+#
+# Host port 5439, clear of the stock 5432. `max_prepared_transactions` is
+# raised from its default of 0 so the two-phase (`postgresql_xa`) data source
+# can prepare transactions; with 0 every `PREPARE TRANSACTION` fails.
+#
+# The DB-tagged tests probe reachability first and `skip:` when nothing is
+# listening. To run the DB surfaces against PostgreSQL, use
+# `tool/run_db_tests_postgres.sh` (which drives this file), or:
+#
+#   docker compose -f docker-compose.test.postgres.yaml up -d
+#   TOM_CORE_SERVER_TEST_DB_ENGINE=postgresql testkit :test --test-args="--tags db"
+#   docker compose -f docker-compose.test.postgres.yaml down -v
+#
+# The project has a name of its own: both test compose files live in this
+# directory, and without one they would be one project, so bringing one
+# database up would replace the other's container mid-run.
+name: tom-core-server-test-postgres
+services:
+  db:
+    image: ${TOM_CORE_SERVER_TEST_PG_IMAGE:-postgres:15}
+    container_name: tom-core-server-test-pg
+    command: ["postgres", "-c", "max_prepared_transactions=20"]
+    ports:
+      - "${TOM_CORE_SERVER_TEST_DB_PORT:-5439}:5432"
+    environment:
+      POSTGRES_PASSWORD: "${TOM_CORE_SERVER_TEST_DB_PASSWORD:-password}"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 20

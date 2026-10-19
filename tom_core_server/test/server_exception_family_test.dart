@@ -686,6 +686,17 @@ void main() {
         expect(site.verdict, _Verdict.family);
       });
 
+      test('a method called on a value resolves to its declared type', () {
+        final site = auditOf(
+          'class D {\n'
+          '  TomXException failure(String k) => TomXException(k, k);\n'
+          '}\n'
+          "f(D d) { throw d.failure('k'); }",
+        ).sites().firstWhere((s) => s.callee == 'd.failure');
+        expect(site.thrownType, 'TomXException');
+        expect(site.verdict, _Verdict.family);
+      });
+
       test('a core error without a marker is an offender', () {
         final site = auditOf(
           "f() { throw FormatException('bad'); }",
@@ -900,8 +911,19 @@ class _RaiseAudit {
   /// method of the same name on an unrelated class must not answer for it.
   /// With no static method of that name, `member` is a named constructor or
   /// factory of `Type`. A bare function is looked up in its own file first.
+  /// `value.member(…)` — a method called on a value, such as a statement
+  /// raising through the data source that owns it — resolves to the return
+  /// type the method is declared with.
   String _resolve(String file, String head, String? member) {
     final isType = head.startsWith(RegExp('[A-Z]'));
+    if (!isType && member != null) {
+      return _returnTypeOf(sources[file]!, member) ??
+          sources.values
+              .map((s) => _returnTypeOf(s, member))
+              .nonNulls
+              .firstOrNull ??
+          '<unresolved $head.$member>';
+    }
     if (isType) {
       if (member == null) return head;
       final owner = sources.values.where(

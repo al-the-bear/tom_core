@@ -85,7 +85,8 @@ surface documented here.
 | `tomAuditGenesisHash` / `tomAuditRedactedPlaceholder` | top-level | The chain start hash; the redaction placeholder. |
 | `defaultAuditTrailTable` / `auditTrailTable` / `auditTrailTableDdl` | top-level | The trail table's name, descriptor and DDL. |
 | `auditTrailNoUpdateTriggerName` / `auditTrailNoDeleteTriggerName` | top-level | Names of the write-once guard triggers. |
-| `auditTrailNoUpdateTriggerDdl` / `auditTrailNoDeleteTriggerDdl` | top-level | DDL for the write-once guard triggers. |
+| `auditTrailNoUpdateTriggerDdl` / `auditTrailNoDeleteTriggerDdl` | top-level | MariaDB DDL for the write-once guard triggers. |
+| `auditTrailGuardStatements` | top-level | The statements installing one write-once guard in a given dialect's database. |
 
 ### Authentication (`lib/src/tomserver/authentication/`)
 
@@ -343,6 +344,7 @@ surface documented here.
 | `TomOperator<R>` | abstract class | Base of the SQL expression tree. |
 | `TomStandardSqlDialect` | class | Standard-SQL dialect. |
 | `MariadbSqlDialect` | class | MariaDB dialect. |
+| `PostgresSqlDialect` | class | PostgreSQL dialect: canonical DDL translated, truth values, `ON CONFLICT`, `RETURNING`. |
 | `TomQuery` / `TomGeneratedQuery` | abstract class | Query base types. |
 | `TomSelect` / `TomLiteralSelect` / `TomCount` / `TomDelete` | class | Concrete queries. |
 | `TomTypePersistenceInfo` | class | Type persistence metadata. |
@@ -352,9 +354,18 @@ surface documented here.
 | `TomStatementOutcome<T>` | class | What one execution of a prepared statement reported — its rows, the rows it changed and the key it generated — returned by that execution rather than kept on the shared handle. |
 | `TomDataSourceInfo` | class | Datasource descriptor. |
 | `TomDatasourceDriver` | class | Annotation tagging a driver. |
+| `TomSqlDatasource` | abstract class | The driver-neutral SQL data source: pool, transaction branches, statement paths, row mapping, settings binding. |
+| `TomSqlPreparedStatement<T>` | class | A prepared statement of a `TomSqlDatasource`, prepared on each pooled connection that runs it. |
+| `TomSqlRow` | abstract interface class | One result row, every column read as text in one convention. |
+| `TomSqlResult` | abstract interface class | What a statement produced: rows, affected-row count, generated key. |
+| `TomSqlResultValues` | class | A `TomSqlResult` holding its values. |
+| `TomSqlLink` | abstract class | One pooled connection of a `TomSqlDatasource`. |
+| `TomSqlBranch` | class | One transaction's share of a data source: its pinned connection and two-phase branch. |
 | `MariaDbDatasource` | class | MariaDB datasource over a connection pool. |
 | `MariaDbXADatasource` | class | XA-capable MariaDB datasource. |
 | `MariadbPreparedStatement<T>` | class | MariaDB prepared statement, prepared on each pooled connection that runs it. |
+| `PostgresDatasource` | class | PostgreSQL 15+ datasource over a connection pool. |
+| `PostgresXADatasource` | class | PostgreSQL datasource taking part in two-phase commits. |
 | `TomConnectionPool<C>` | class | A bounded pool of connections of any driver's type; a connection per transaction. |
 | `TomConnectionPoolSettings` | class | How a pool sizes itself and when it retires a connection. |
 | `TomConnectionFactory<C>` | abstract interface class | What a driver tells the pool about its connection type: open, close, check, validate. |
@@ -365,8 +376,12 @@ surface documented here.
 | `TomFrameworkKey` | class | One index or unique constraint of a framework-owned table. |
 | `TomSchemaProvisioning` | class | Creates a store's tables at most once, however many first calls arrive together. |
 | `TomDatasourceInitException` | class | Init error (extends `TomServerException`). |
-| `MariadbDatasourceException` | class | MariaDB error (extends `TomServerException`). |
-| `MariadbPreparedStatementException` | class | Prepared-statement error. |
+| `TomSqlDatasourceException` | class | A SQL data-source failure (extends `TomServerException`). |
+| `TomSqlConnectionLostException` | class | A statement lost its connection; raising it is the decision to retry once (extends `TomServerException`). |
+| `MariadbDatasourceException` | class | MariaDB error (extends `TomSqlDatasourceException`). |
+| `MariadbPreparedStatementException` | class | MariaDB lost-connection signal (extends `TomSqlConnectionLostException`). |
+| `PostgresDatasourceException` | class | PostgreSQL error (extends `TomSqlDatasourceException`). |
+| `PostgresConnectionLostException` | class | PostgreSQL lost-connection signal (extends `TomSqlConnectionLostException`). |
 | `TomConnectionPoolException` | class | The pool is closed, timed out waiting, or misconfigured (extends `TomServerException`). |
 | `TomAggregateFunction` | enum | The aggregate functions the typed query layer can express. |
 | `TomSqlTypeFamily` | enum | The coarse type class a stored column belongs to. |
@@ -383,6 +398,9 @@ surface documented here.
 | `parseSqlInstant` | function | Reads a stored `DATETIME(6)` back as a UTC `DateTime`. |
 | `parseOptionalSqlInstant` | function | The same, treating an empty column as absent. |
 | `unknownFrameworkColumns` | function | Audits a statement for column references no framework table declares. |
+| `tomSqlBindValue` | function | Marshals one bind value into the primitive every SQL driver binds. |
+| `tomSqlBindParams` | function | A parameter map with every value marshalled through `tomSqlBindValue`. |
+| `tomSqlBranchId` | function | A bounded, process-unique two-phase branch id. |
 
 ### Database Migration (`lib/src/tomserver/db_migration/`)
 
@@ -391,7 +409,9 @@ surface documented here.
 | `TomDbMigrations` | class | Migration runner/registry. |
 | `TomDbMigrator` | abstract class | Migrator contract. |
 | `TomDbMigrationAdaptor` | class | Annotation tagging a migration adaptor. |
+| `TomSqlMigrationAdaptor` | abstract class | The database-neutral SQL migrator: versioning history, checksums, rebinding. |
 | `MariadbMigrationAdaptor` | class | MariaDB migration adaptor. |
+| `PostgresMigrationAdaptor` | class | PostgreSQL migration adaptor; a script and its version row in one transaction. |
 | `TomMigrationFileName` | class | Parses/validates migration file names. |
 | `TomDbVersion` | class | A schema version. |
 | `TomSchemaColumn` | class | One column, in the vocabulary the convergence check compares in. |
@@ -412,7 +432,9 @@ surface documented here.
 | `TomSqlTypeFamilyCompatibility` | extension | How tolerantly two type families still count as agreeing. |
 | `frameworkOwnedTables` | function | Every table the framework owns, at its default name. |
 | `TomDbMigrationException` | class | Migration error (extends `TomServerException`). |
-| `MariadbMigrationException` | class | MariaDB migration error. |
+| `TomSqlMigrationException` | class | SQL migration error (extends `TomServerException`). |
+| `MariadbMigrationException` | class | MariaDB migration error (extends `TomSqlMigrationException`). |
+| `PostgresMigrationException` | class | PostgreSQL migration error (extends `TomSqlMigrationException`). |
 
 ### Endpoints (`lib/src/tomserver/endpoints/`)
 
@@ -640,7 +662,7 @@ surface documented here.
 | `TomCountResult` | class | Count query result. |
 | `TomQueryBuilder` | mixin | Fluent query building. |
 | `TomQuerySentenceCompiler` | class | Compiles query sentences to SQL. |
-| `TomOperator` / `TomUnaryOperator` / `TomBinaryOperator` / `Parameter` | abstract class | The expression tree: a node, its one- and two-operand bases, and a bound parameter. The concrete nodes are `DbCol`/`IntCol`/`StringCol`/`DoubleCol`/`BoolCol`/`DateTimeCol`/`DateCol`/`TimeCol`, the `*Literal` set, and `And`/`Or`/`Not`/`Eq`/`Neq`/`Lt`/`Gt`/`Lte`/`Gte`/`Like`/`NotLike`/`In`/`Group`/`Between`/`Regexp`/`IsNull`/`IsNotNull`. |
+| `TomOperator` / `TomUnaryOperator` / `TomBinaryOperator` / `Parameter` | abstract class | The expression tree: a node, its one- and two-operand bases, and a bound parameter. The concrete nodes are `DbCol`/`IntCol`/`StringCol`/`DoubleCol`/`BoolCol`/`DateTimeCol`/`DateCol`/`TimeCol`, the `*Literal` set, the constant predicate `TruthPredicate`, and `And`/`Or`/`Not`/`Eq`/`Neq`/`Lt`/`Gt`/`Lte`/`Gte`/`Like`/`NotLike`/`In`/`Group`/`Between`/`Regexp`/`IsNull`/`IsNotNull`. |
 | `TomAggregate<R, V>` | abstract class | An aggregate function applied to a group: `COUNT(*)`, `SUM(t.amount)`, `MAX(t.created)`. |
 | `CountAll` / `Count<T>` / `Sum<T>` / `Avg<T>` / `Min<R, V>` / `Max<R, V>` | class | The concrete aggregate nodes. |
 | `TomGroupedSelect` | class | A `SELECT … GROUP BY …` over the entity types, with `WHERE` and `HAVING`. |
@@ -775,6 +797,7 @@ surface documented here.
 | `applyExternalRoles` | Authentication |
 | `auditDiff` | Audit |
 | `auditProjectionPrefix` | Audit |
+| `auditTrailGuardStatements` | Audit |
 | `auditTrailNoDeleteTriggerDdl` | Audit |
 | `auditTrailNoDeleteTriggerName` | Audit |
 | `auditTrailNoUpdateTriggerDdl` | Audit |
@@ -867,6 +890,13 @@ surface documented here.
 | `parseSqlDate` | Datasources |
 | `parseSqlInstant` | Datasources |
 | `parseSqlTimeOfDay` | Datasources |
+| `PostgresConnectionLostException` | Datasources |
+| `PostgresDatasource` | Datasources |
+| `PostgresDatasourceException` | Datasources |
+| `PostgresMigrationAdaptor` | Database Migration |
+| `PostgresMigrationException` | Database Migration |
+| `PostgresSqlDialect` | Datasources |
+| `PostgresXADatasource` | Datasources |
 | `PrincipalDelegationStore` | Authorization |
 | `PrincipalResourceGrantStore` | Authorization |
 | `rateLimitTable` | Rate Limiting |
@@ -1399,6 +1429,13 @@ surface documented here.
 | `TomSortField` | Object Persistence |
 | `TomSqlApiKeyStore` | Authentication |
 | `TomSqlAuditSink` | Audit |
+| `tomSqlBindParams` | Datasources |
+| `tomSqlBindValue` | Datasources |
+| `TomSqlBranch` | Datasources |
+| `tomSqlBranchId` | Datasources |
+| `TomSqlConnectionLostException` | Datasources |
+| `TomSqlDatasource` | Datasources |
+| `TomSqlDatasourceException` | Datasources |
 | `TomSqlDatasourceRepository` | Object Persistence |
 | `TomSqlDeliveryReportStore` | Messaging |
 | `TomSqlFailureMode` | Datasources |
@@ -1406,8 +1443,15 @@ surface documented here.
 | `TomSqlJobStore` | Scheduling |
 | `TomSqlLeaseLock` | Scheduling |
 | `TomSqlLexer` | Datasources |
+| `TomSqlLink` | Datasources |
+| `TomSqlMigrationAdaptor` | Database Migration |
+| `TomSqlMigrationException` | Database Migration |
 | `TomSqlOAuthStateStore` | Authentication |
+| `TomSqlPreparedStatement` | Datasources |
 | `TomSqlRateLimiter` | Rate Limiting |
+| `TomSqlResult` | Datasources |
+| `TomSqlResultValues` | Datasources |
+| `TomSqlRow` | Datasources |
 | `TomSqlSchedulerNodes` | Scheduling |
 | `TomSqlScimStore` | Authentication |
 | `TomSqlTypeFamily` | Datasources |
@@ -1475,6 +1519,7 @@ surface documented here.
 | `TomXmlDsig` | Authentication |
 | `TomXmlSignatureVerifier` | Authentication |
 | `TomYaml` | Configuration |
+| `TruthPredicate` | Object Persistence |
 | `unknownFrameworkColumns` | Datasources |
 | `verifyAgainstAnchor` | Audit |
 | `verifyAuditChain` | Audit |

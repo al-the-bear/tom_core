@@ -104,7 +104,7 @@ class TomSqlInvalidationChannel implements TomInvalidationChannel {
   /// Creates the log table if it does not exist. Idempotent.
   Future<void> ensureSchema() => _schema.ensure(() async {
     if (createSchema) {
-      await datasource.executeCommand(_rows.createTableDdl);
+      await _rows.create(datasource);
     }
   });
 
@@ -184,7 +184,7 @@ class TomSqlInvalidationChannel implements TomInvalidationChannel {
   Future<void> publish(TomCacheInvalidation invalidation) async {
     await ensureSchema();
     await datasource.executeCommand(
-      _rows.insert('INSERT', const {
+      _rows.insertRow(datasource.sqlDialect, const {
         'kind': ':kind',
         'target': ':target',
         'entry_key': ':entryKey',

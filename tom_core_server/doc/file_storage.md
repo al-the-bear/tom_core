@@ -630,8 +630,8 @@ Three design points, each forced rather than chosen:
 - **Chunks, not one `LONGBLOB`.** A single column would have to be read whole to
   be read at all, which is exactly the failure the streaming API exists to
   avoid. Chunk rows make `get` incremental.
-- **base64 text, not `BLOB`.** The MariaDB driver in use decodes every column
-  value into a Dart `String` before the mapper sees it (`ResultSetRow` holds
+- **base64 text, not `BLOB`.** Every SQL driver hands the mapper each column
+  value as a Dart `String` (`TomSqlRow`; MariaDB's `ResultSetRow` holds
   `List<String?>`), so raw bytes do not survive a round trip. base64 in
   `LONGTEXT` is therefore the only *correct* representation available. It costs
   33 % in storage — the honest price of this backend, and one more reason a
@@ -657,7 +657,7 @@ moment at which a deployment can be told.
 
 The other bound is real and belongs to the server. A chunk is stored as base64,
 so its wire size is ~4/3 of `chunkSize` and the statement carrying it is larger
-again; all of it has to fit inside MariaDB's `max_allowed_packet`. That is a
+again; on MariaDB all of it has to fit inside `max_allowed_packet`. That is a
 server variable, not a protocol constant — a deployment may raise it, and a
 constructor that guessed its value would refuse a configuration that works. So
 this bound is a sizing note rather than a check: the 256 KiB default sits well
@@ -665,9 +665,10 @@ inside the usual 16 MiB, and a store configured far above it will fail its first
 upload with a driver-level packet error.
 
 Both tables are declared **once**, as `TomFrameworkTable` descriptors in
-`database_blob_sql.dart`. The `CREATE TABLE` `ensureSchema()` issues, the chunk
-`INSERT`, the manifest `REPLACE` and the column list of every read are all
-derived from those two declarations, so a column exists in the code in exactly
+`database_blob_sql.dart`. The `CREATE TABLE` `ensureSchema()` issues (in the
+connected database's words), the chunk `INSERT`, the manifest's replacing write
+(`replaceRow`) and the column list of every read are all derived from those two
+declarations, so a column exists in the code in exactly
 one place.
 
 A deployment whose database user may not run DDL applies that schema itself and

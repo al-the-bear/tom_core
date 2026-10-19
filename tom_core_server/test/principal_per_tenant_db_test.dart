@@ -31,19 +31,12 @@ TomPrincipal _alice(String tenant) => TomPrincipal(
   aci: TomAccessControlInformation(roles: const ['user']),
 );
 
-/// Strips a framework DDL's statement terminator; the driver takes one
-/// statement and rejects the trailing `;`.
-String _ddl(String createTableSql) {
-  final ddl = createTableSql.trim();
-  return ddl.endsWith(';') ? ddl.substring(0, ddl.length - 1) : ddl;
-}
-
 void main() async {
   final reachable = await TestDatabase.isReachable();
   final String? skipReason = reachable
       ? null
-      : 'MariaDB not reachable on ${TestDatabase.host}:${TestDatabase.port} — '
-            'start one with tool/run_db_tests.sh';
+      : 'No ${TestDatabase.engine} server reachable on ${TestDatabase.host}:${TestDatabase.port} — '
+            'start one with tool/run_db_tests.sh or tool/run_db_tests_postgres.sh';
 
   group('one principal id in two tenants', () {
     late TomDataSourceInfo base;
@@ -101,9 +94,7 @@ void main() async {
           }
           for (final database in extraDatabases) {
             if (isolation == TomTenantIsolation.database) {
-              await base.datasource.executeCommand(
-                'CREATE DATABASE IF NOT EXISTS `$database`',
-              );
+              await TestDatabase.createDatabase(base.datasource, database);
             }
           }
           tenancy = TomTenancy(
@@ -113,11 +104,13 @@ void main() async {
           );
           await TomTenancy.install(tenancy);
           await tenancy.forEachTenant((_) async {
-            await main().datasource.executeCommand(
-              _ddl(TomUserTwoFactorEnrolment.createTableSql),
+            await TestDatabase.execute(
+              main().datasource,
+              TomUserTwoFactorEnrolment.createTableSql,
             );
-            await main().datasource.executeCommand(
-              _ddl(TomUserPreference.createTableSql),
+            await TestDatabase.execute(
+              main().datasource,
+              TomUserPreference.createTableSql,
             );
           });
         });
@@ -125,9 +118,11 @@ void main() async {
         tearDownAll(() async {
           await TomTenancy.reset();
           for (final database in extraDatabases) {
-            await base.datasource.executeCommand(
-              'DROP DATABASE IF EXISTS `$database`',
-            );
+            if (isolation == TomTenantIsolation.database) {
+              await TestDatabase.dropDatabase(base.datasource, database);
+            } else {
+              await TestDatabase.dropSchema(base.datasource, database);
+            }
           }
         });
 

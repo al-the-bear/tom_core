@@ -77,8 +77,8 @@ void main() async {
   final reachable = await TestDatabase.isReachable();
   final String? skipReason = reachable
       ? null
-      : 'MariaDB not reachable on ${TestDatabase.host}:${TestDatabase.port} — '
-            'start one with tool/run_db_tests.sh';
+      : 'No ${TestDatabase.engine} server reachable on ${TestDatabase.host}:${TestDatabase.port} — '
+            'start one with tool/run_db_tests.sh or tool/run_db_tests_postgres.sh';
 
   final b = _Builder();
 
@@ -135,7 +135,7 @@ void main() async {
       return {for (final row in rows) row.stringValue('title')!: row};
     }
 
-    group('the round trip through MariaDB', () {
+    group('the round trip through the database', () {
       test('a GROUP BY over a text key returns one row per group', () async {
         final query = TomGroupedSelect(
           [FixtureTaskRecord],
@@ -401,46 +401,52 @@ void main() async {
         expect(byDone[false]!.stringValue('last'), 'gamma');
       });
 
-      test('the driver refuses to widen a SUM column to double itself', () async {
-        // The reason `mapGroupedRow` parses the raw text for a `double`-typed
-        // alias instead of calling `typedColByName<double>`, pinned against the
-        // real driver rather than assumed.
-        //
-        // MariaDB types `SUM(<int column>)` as NEWDECIMAL (protocol type 246).
-        // mysql_client converts to `double` only from a fixed whitelist of
-        // column types — TINY/SHORT/LONG/LONGLONG/INT24/FLOAT/DOUBLE — which
-        // does not include NEWDECIMAL, so the typed accessor throws rather than
-        // widening. Since `Sum` and `Avg` declare their value type as `double`
-        // precisely to absorb that widening, going through the typed accessor
-        // made every SUM and AVG unusable against a real server.
-        //
-        // If a future driver adds NEWDECIMAL to that whitelist this test fails,
-        // which is the point: the special-case in `mapGroupedRow` then becomes
-        // a choice to re-justify rather than a silent no-op.
-        final datasource = dsi.datasource as MariaDbDatasource;
-        final result = await datasource.withDriverConnection(
-          (connection) => connection.execute(
-            'SELECT SUM(priority) AS total FROM fixture_task '
-            'WHERE title = "alpha"',
-          ),
-        );
-        final driverRow = result.rows.first;
+      test(
+        'the driver refuses to widen a SUM column to double itself',
+        () async {
+          // The reason `mapGroupedRow` parses the raw text for a `double`-typed
+          // alias instead of calling `typedColByName<double>`, pinned against the
+          // real driver rather than assumed.
+          //
+          // MariaDB types `SUM(<int column>)` as NEWDECIMAL (protocol type 246).
+          // mysql_client converts to `double` only from a fixed whitelist of
+          // column types — TINY/SHORT/LONG/LONGLONG/INT24/FLOAT/DOUBLE — which
+          // does not include NEWDECIMAL, so the typed accessor throws rather than
+          // widening. Since `Sum` and `Avg` declare their value type as `double`
+          // precisely to absorb that widening, going through the typed accessor
+          // made every SUM and AVG unusable against a real server.
+          //
+          // If a future driver adds NEWDECIMAL to that whitelist this test fails,
+          // which is the point: the special-case in `mapGroupedRow` then becomes
+          // a choice to re-justify rather than a silent no-op.
+          final datasource = dsi.datasource as MariaDbDatasource;
+          final result = await datasource.withDriverConnection(
+            (connection) => connection.execute(
+              'SELECT SUM(priority) AS total FROM fixture_task '
+              'WHERE title = "alpha"',
+            ),
+          );
+          final driverRow = result.rows.first;
 
-        expect(
-          () => driverRow.typedColByName<double>('total'),
-          throwsA(isA<Exception>()),
-          reason:
-              'the driver cannot convert NEWDECIMAL to double — this is '
-              'the failure mapGroupedRow works around',
-        );
-        expect(
-          double.parse(driverRow.colByName('total')!),
-          6.0,
-          reason:
-              'the raw text form carries the value losslessly, which is '
-              'why parsing it is a safe workaround rather than a guess',
-        );
-      });
+          expect(
+            () => driverRow.typedColByName<double>('total'),
+            throwsA(isA<Exception>()),
+            reason:
+                'the driver cannot convert NEWDECIMAL to double — this is '
+                'the failure mapGroupedRow works around',
+          );
+          expect(
+            double.parse(driverRow.colByName('total')!),
+            6.0,
+            reason:
+                'the raw text form carries the value losslessly, which is '
+                'why parsing it is a safe workaround rather than a guess',
+          );
+        },
+        skip: TestDatabase.onlyOnMariaDb(
+          'pins a limit of the MariaDB client\'s typed accessor',
+        ),
+      );
     });
 
     group('HAVING filters groups after aggregation', () {
