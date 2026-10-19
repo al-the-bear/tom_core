@@ -247,8 +247,8 @@ job all want a server that composes messages and never delivers them. A field
 that is **set but unusable** is the opposite case and throws when the settings
 are built — someone meant to send.
 
-Four fields are **secret-bearing**: `serviceAccountCredential`, `smtpPassword`,
-`smsApiKey` and `smsApiSecret`, under the same rule as `privateKey` and the JWT
+Five fields are **secret-bearing**: `serviceAccountCredential`, `smtpPassword`,
+`smsApiKey`, `smsApiSecret` and `metricsToken`, under the same rule as `privateKey` and the JWT
 keys. Their *declaration* lives here so the shape and the source key are known;
 their **value is never authored**. It is supplied out-of-band at deploy time
 through the ordinary precedence chain — OS environment, `.env`, or command line

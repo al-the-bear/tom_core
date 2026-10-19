@@ -369,11 +369,11 @@ to guess from and an intermediary free to sniff it as anything it likes.
 ## Metrics
 
 **The server records metrics, and exposes them for Prometheus and over OTLP.**
-This reverses the earlier position that the module has no metrics facility and
-that a metrics route is an ordinary endpoint: an enterprise operator expects
-request rates, latencies and pool usage out of the box, and a series a module
-records about itself — a statement's duration, a pool's waiters, a job's lag —
-cannot be recorded from an endpoint an application declares.
+This is a facility of the framework rather than an endpoint an application
+declares: an enterprise operator expects request rates, latencies and pool
+usage out of the box, and a series a module records about itself — a
+statement's duration, a pool's waiters, a job's lag — cannot be recorded from
+an endpoint.
 
 The instruments live in `tom_core_kernel`'s `metrics` module, where the
 scheduler records its job series; the server records its requests, statements,
