@@ -299,8 +299,8 @@ rather than firing.
 
 **Per-kind argument slots.** Three markers select a kind and then carry that
 kind's own attributes: `CsTrigger` (its five `CsTriggerKind` arms), `CsAuthorize`
-(its ten `CsAuthRequirement` arms) and `CsJob` (its three `CsJobTrigger` arms —
-`cron` / `calendar` / `event`). Dart annotations have no sum types,
+(its ten `CsAuthRequirement` arms) and `CsJob` (its four `CsJobTrigger` arms —
+`cron` / `calendar` / `event` / `interval`). Dart annotations have no sum types,
 so each kind's attributes are **separate optional arguments**, and a validator
 asserts that only the slots belonging to the declared kind are non-null. This is
 the annotation-level rendering of `codespecs_mapping.md` §8.2's `@OneOf`/`@Case` closed-choice design.

@@ -1,6 +1,6 @@
 name: tom_core_codespecs
 description: CodeSpecs-only gap-filler for tom_core — structures needed by CodeSpecs but not mandatory for a general tom_core project.
-version: 0.13.1
+version: 0.13.2
 
 repository: https://github.com/al-the-bear/tom_core
 homepage: https://github.com/al-the-bear/tom_core/tree/main/tom_core_codespecs

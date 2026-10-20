@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.13.2
+
+- Documentation only: the derivation contract's per-kind slot paragraph names
+  `CsJob`'s four trigger arms (`interval` included).
+
 ## 0.13.1
 
 - Documentation only: the CodeSpecs mapping and derivation contract name the
