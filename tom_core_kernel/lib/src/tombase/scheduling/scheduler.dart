@@ -447,10 +447,21 @@ class TomScheduler implements TomClosable {
   Future<void> start() async {
     _requireOpen();
     if (_timer != null) return;
+    _started.add(this);
     _observeBacklog();
     _scheduleNextTick();
     await tick();
   }
+
+  static final Set<TomScheduler> _started = {};
+
+  /// The schedulers of this isolate that were started and not yet closed.
+  ///
+  /// A process shutting down gracefully walks it: [stop] every one so no new
+  /// run starts, [drain] them within its deadline, then [close] them so their
+  /// leases go back to the cluster at once — `tom_core_server`'s
+  /// `TomServer.shutdown` does exactly that.
+  static Set<TomScheduler> get started => Set.unmodifiable(_started);
 
   /// The backlog gauges of this scheduler's jobs, registered by [start] and
   /// cancelled by [close].
@@ -577,6 +588,7 @@ class TomScheduler implements TomClosable {
   @override
   Future<void> close() async {
     _closed = true;
+    _started.remove(this);
     stop();
     for (final observation in _backlogObservations) {
       observation.cancel();

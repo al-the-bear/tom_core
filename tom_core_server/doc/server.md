@@ -26,6 +26,10 @@ base that reads it; see [little_things.md](little_things.md#tomrequestid).
 - [Error Mapping](#error-mapping)
 - [Extending the Pipeline](#extending-the-pipeline)
 - [Metrics](#metrics)
+- [Graceful Shutdown](#graceful-shutdown)
+  - [What it waits for](#what-it-waits-for)
+  - [Configuration](#configuration)
+  - [Kubernetes](#kubernetes)
 - [Verification](#verification)
 - [Not Yet Implemented](#not-yet-implemented)
   - [What this module does not do at all](#what-this-module-does-not-do-at-all)
@@ -38,6 +42,8 @@ base that reads it; see [little_things.md](little_things.md#tomrequestid).
 | Symbol | Kind | Purpose |
 | ------ | ---- | ------- |
 | `TomServer` | class | Composes the pipeline and binds the socket |
+| `TomGracefulShutdown` | class | What the server does between SIGTERM and exiting: readiness off, new requests refused, work in flight finished, leases released, pools closed |
+| `tomProbePaths` | const Set<String> | `health` and `ready`, the paths a draining server keeps answering |
 | `TomRequestLogInfo` | class | Per-request logging state in the request context |
 | `TomCredentialOutcome` | enum | Why a request carries the credentials it does |
 | `TomEndpointCredentials` | abstract final class | The path prefixes whose `Authorization` header belongs to the endpoint, which `extractAuthentication` leaves unread. Statics only |
@@ -74,6 +80,11 @@ certificate, a malformed private key — rejects the returned future instead of
 surfacing as an unhandled asynchronous error; a caller can tell *listening* from
 *called*, which is what a test or a supervisor needs before it sends the first
 request; and the socket can be closed by whoever opened it.
+
+Once the socket is bound, `start()` hands it to the server's graceful shutdown
+and registers that with the kernel's `tomShutdownCleanup` for SIGTERM and
+SIGINT, so a signal stops the server in order rather than mid-request — see
+[Graceful Shutdown](#graceful-shutdown).
 
 Awaiting is optional. A caller that ignores the future gets the fire-and-forget
 behaviour a `void` return used to give, because the bound socket keeps the
@@ -115,20 +126,28 @@ and the login flow itself.
 `start()` composes a shelf `Pipeline` in front of the endpoint `Router`, in this
 order:
 
-1. **`tomRequestLogInfoMiddleware`** — seeds a new `TomRequestLogInfo` into
+1. **Shutdown gate** — `TomServer.gracefulShutdown.middleware()`, the outermost
+   layer: it counts the requests in flight, which is what the shutdown waits
+   for, and once the shutdown is draining answers every new request `503` with
+   `Connection: close` and `Retry-After: 1`, before anything below sees it. The
+   probe paths (`tomProbePaths`) are passed through. Outermost, so every
+   request the server does any work for is counted — a metrics scrape included
+   — and a refused one costs nothing below: it is not logged, counted in the
+   request metrics or authenticated. See [Graceful Shutdown](#graceful-shutdown).
+2. **`tomRequestLogInfoMiddleware`** — seeds a new `TomRequestLogInfo` into
    each request's context under `TomRequestLogInfo.contextName`. One instance
    per request, because the record is mutated per request: the logging
    middleware marks it logged and the endpoint pipeline sets whether it should
    be. `contextSetupMiddleware` is not used for it — the entries it seeds are
    the same objects for every request.
-2. **Metrics endpoint** — `tomMetricsEndpointMiddleware`, present when the
+3. **Metrics endpoint** — `tomMetricsEndpointMiddleware`, present when the
    `metricsEndpoint` configuration key is on: answers a Prometheus scrape of
    `metricsPath` (default `/metrics`), checking the `metricsToken` bearer token
    when one is set, and passes every other request on. A scrape is answered
    here, before anything below sees it — it is infrastructure like a probe, so
    it is not counted, logged, authenticated or rate-limited. See
    [metrics.md](metrics.md).
-3. **Request context** — `tomRequestContextMiddleware`, which mints the
+4. **Request context** — `tomRequestContextMiddleware`, which mints the
    request's `TomRequestId`, continues the caller's W3C trace from its
    `traceparent` header (or starts one), and runs everything below in a zone
    carrying both. Its place is what makes the ids complete: it is outside the
@@ -136,13 +155,13 @@ order:
    writes for the request carries the same `request_id`, `trace_id` and
    `span_id`. A metrics scrape is answered above it and gets no ids. See
    [Correlation Ids and Structured Logs](#correlation-ids-and-structured-logs).
-4. **Request metrics** — `tomRequestMetricsMiddleware`, recording
+5. **Request metrics** — `tomRequestMetricsMiddleware`, recording
    `tom_http_server_requests` and `tom_http_server_request_duration_seconds`
    for every request, labelled by the route pattern the endpoint pipeline
    writes into `TomRequestLogInfo.route` (`unmatched` when no endpoint matched,
    which includes a request refused before routing). It sits outside both error
    layers, so a request is counted with the status the client received.
-5. **Logging middleware** — `loggingMiddleware` (defaults to
+6. **Logging middleware** — `loggingMiddleware` (defaults to
    `tomLoggingMiddleware`), which emits one line per served request:
 
    ```text
@@ -155,19 +174,19 @@ order:
    the requested URI carries a port, but that only separates them while they are
    separate ports on one host. A deployment that configures no `appId` sees the
    line without the prefix.
-6. **Outer error handler** — catches errors from the authentication phase using
+7. **Outer error handler** — catches errors from the authentication phase using
    the `authenticationErrorHandler`.
-7. **Authentication middleware** — the configuration's `authenticationMiddleware`
+8. **Authentication middleware** — the configuration's `authenticationMiddleware`
    or `tomDefaultAuthenticationMiddleware`.
-8. **Rate-limiting middleware** — `tomRateLimitMiddleware()`, directly inside
+9. **Rate-limiting middleware** — `tomRateLimitMiddleware()`, directly inside
    authentication, where the request's principal and the API key it
    authenticated with are in the zone. A no-op while no limits are installed;
    otherwise a request over a limit is answered `429` here, before any handler
    runs. `start()` installs the limits the `rateLimits` configuration key
    describes when no limits were installed before it. See
    [ratelimit.md](ratelimit.md).
-9. **Inner error handler** — catches errors from handling using `errorHandler`.
-10. **Router** — optionally wrapped in a `Cascade` with the configuration's
+10. **Inner error handler** — catches errors from handling using `errorHandler`.
+11. **Router** — optionally wrapped in a `Cascade` with the configuration's
     `preExecutionHandler` / `postExecutionHandler`.
 
 **Logging sits above both error layers**, and that is what makes the access log
@@ -468,12 +487,179 @@ The series, their labels and the exporter are described in
 [metrics.md](metrics.md).
 <!-- pinned: test/metrics_test.dart › exposes the request, cache, rate-limit and job series -->
 
+## Graceful Shutdown
+
+An orchestrator stopping a server sends SIGTERM, waits its grace period, then
+kills the process. What the server does in between decides three things: whether
+the requests in flight are answered, whether the scheduled work it holds is
+taken over by another node at once or only after its lease expires, and whether
+its database connections are closed or simply dropped.
+
+`start()` hands the bound socket to `TomServer.gracefulShutdown`, a
+`TomGracefulShutdown` built from the configuration, and registers it with the
+kernel's `tomShutdownCleanup` as a signal handler for **SIGTERM and SIGINT**
+(SIGTERM where the platform can watch it — not on Windows). Either signal runs
+the shutdown, in this order:
+
+1. **Not ready.** `GET /ready` answers `503 shutting down`
+   (`TomHealthServer.markShuttingDown`), so a load balancer stops sending new
+   traffic. `GET /health` still asks its liveness analyzer: a draining process is
+   alive, and restarting it would cut off the requests it is finishing. See
+   [healthcheck.md](healthcheck.md#while-the-server-shuts-down).
+2. **Readiness delay.** Requests are still accepted for
+   `shutdownReadinessDelaySeconds` — zero by default — the time a load balancer
+   needs to notice the `503`.
+3. **Stop accepting.** The listener closes, so no new connection is accepted.
+   A request arriving on a connection kept alive from before is answered `503`
+   with `Connection: close` and `Retry-After: 1` by the shutdown gate, the
+   outermost layer of [the pipeline](#the-pipeline); a client or proxy retries
+   it elsewhere. The probe paths (`tomProbePaths`: `health`, `ready`) still
+   pass, so on such a connection the orchestrator sees a live, unready process.
+4. **Drain.** Every started scheduler (`TomScheduler.started`) — the message
+   outbox's own scheduler included — is stopped, so no new run begins. The
+   requests in flight and the runs already started get until the deadline,
+   `shutdownGracePeriodSeconds` after this step began, to finish.
+5. **Hand back.** Once the responses of the answered requests are written, every
+   started outbox (`TomMessageOutbox.started`) and scheduler is closed, which
+   releases their leases, so another node takes the work at once rather than
+   after the lease's time-to-live. A run still going at the deadline is not
+   waited for any further, and its lease is released with the others — so a
+   peer may take that work on while this process is still ending. Connections
+   still open at the deadline are closed.
+6. **Close the pools** of every registered data source
+   (`TomDataSourceInfo.closeAll`).
+
+A closing step that fails — an outbox, a scheduler, the listener, the pools —
+is logged as a warning and the next one runs, so one broken outbox does not
+keep the pools open. The shutdown logs one line when it starts, with the number
+of requests in flight, and one when it finishes, with how long it took; running
+out of the grace period is a warning.
+
+After the signal-handler phase, `tomShutdownCleanup` runs the closables and
+disposables registered with it — the OTLP exporter's final push among them —
+and then, with `exitOnShutdownSignal` on (the default), ends the process with
+exit code `0`. An orchestrator waits for the process to exit; one that lingered
+after its shutdown would be killed at the end of the grace period instead. With
+the setting off the process is left to end once nothing keeps it alive.
+`start()` raises the cleanup's phase timeout to the readiness delay plus the
+grace period plus five seconds, because the whole shutdown runs inside the
+signal-handler phase, which would otherwise be abandoned after its default ten
+seconds.
+
+`TomServer.shutdown()` runs the same steps without a signal — for a supervisor
+or a test that embeds a server. It never ends the process, and it is
+idempotent: a second call, or a signal after the call, is handed the shutdown
+already under way.
+
+```dart
+final server = TomServer(configuration);
+await server.start();
+// … later, from a supervisor rather than a signal:
+await server.shutdown();   // readiness off, drained, leases released, pools closed
+```
+
+### What it waits for
+
+**Requests, by count.** The shutdown gate counts every request that passes it
+and the drain waits for that count to reach zero. A handler returning is not its
+response written, though — shelf writes the response afterwards — so the
+shutdown then waits for the socket's open connections to reach zero: once the
+listener is closed an idle connection is closed at once and an answered one
+after its response, so the last connection closing is the last response
+written. A metrics scrape is a request like any other here: counted while it
+runs and refused once the server is draining.
+
+**Scheduled runs, by scheduler.** A scheduler's runs are drained through
+`TomScheduler.drain` after `stop`, and closing it afterwards is what releases
+the leases it holds — `close` before the run had finished would hand the work
+to another node while this one is still doing it.
+
+**The grace period is one deadline, not one per step.** Requests, runs and
+connections share it. What is unfinished at the deadline is not waited for any
+further: the outboxes and schedulers are closed regardless, releasing every
+lease they hold, the listener is force-closed, and the pools are closed.
+
+### Configuration
+
+| Key | Default | Effect |
+| --- | ------- | ------ |
+| `shutdownGracePeriodSeconds` | `20` | How long the requests in flight and the running scheduled work get to finish once the listener is closed. Environment name `SHUTDOWN_GRACE_PERIOD_SECONDS` |
+| `shutdownReadinessDelaySeconds` | `0` | How long requests are still accepted after `/ready` turned to `503`. Environment name `SHUTDOWN_READINESS_DELAY_SECONDS` |
+| `exitOnShutdownSignal` | `true` | Whether a SIGTERM or SIGINT ends the process once the shutdown and every cleanup phase after it have run. Environment name `EXIT_ON_SHUTDOWN_SIGNAL` |
+
+See [configuration.md](configuration.md#graceful-shutdown).
+
+### Kubernetes
+
+Deleting a pod starts two things at once: the kubelet sends SIGTERM (after a
+`preStop` hook, when one is declared), and the pod is removed from its
+Service's endpoints. The second takes a moment to reach every proxy and load
+balancer, so for that moment new connections still arrive. Three settings
+decide what happens to them and to the work in flight.
+
+**`terminationGracePeriodSeconds`** (30 by default) is the orchestrator's own
+deadline, counted from the start of termination; after it the process is
+killed whatever it is doing, and no lease is released and no pool closed. The
+server's own budget has to fit inside it with room to exit:
+
+```text
+preStop sleep + shutdownReadinessDelaySeconds + shutdownGracePeriodSeconds + ~5 s  <  terminationGracePeriodSeconds
+```
+
+The defaults — no delay, a twenty-second grace period — fit the default thirty.
+
+**The readiness delay or a `preStop` sleep** covers the moment the endpoint
+removal takes to arrive; use one, not both. A `preStop` hook that sleeps holds
+SIGTERM back, so the server serves normally until the traffic has moved, but it
+needs a `sleep` in the image or the `sleep` action of newer Kubernetes
+versions. `shutdownReadinessDelaySeconds` does the same inside the server
+after SIGTERM, with `/ready` already answering `503` — which also takes the pod
+out of any load balancer that routes by probing `/ready` itself — and needs
+nothing in the image. Behind a Service set it to the readiness probe's
+`periodSeconds` plus its `timeoutSeconds`. A server that is reached directly
+rather than through a load balancer needs neither, which is why the delay
+defaults to zero.
+
+**The probes.** Readiness turns to `503` at the first step, and liveness keeps
+answering `200`, so the drain is never mistaken for a hung process. Once the
+listener has closed, though, a probe arriving on a *new* connection is refused
+— the kubelet opens one per probe — so a liveness probe would start failing
+then. Keep its `failureThreshold` × `periodSeconds` above the grace period: the
+probe configuration in [healthcheck.md](healthcheck.md#kubernetes) allows thirty
+seconds against the default twenty.
+
+```yaml
+spec:
+  terminationGracePeriodSeconds: 45     # 15 + 20 + margin to exit
+  containers:
+    - name: server
+      env:
+        - name: SHUTDOWN_READINESS_DELAY_SECONDS
+          value: "15"                   # readiness periodSeconds 5 + timeoutSeconds 10
+        - name: SHUTDOWN_GRACE_PERIOD_SECONDS
+          value: "20"
+      readinessProbe:
+        httpGet: { path: /ready, port: 8080 }
+        periodSeconds: 5
+        timeoutSeconds: 10
+        failureThreshold: 2
+      livenessProbe:
+        httpGet: { path: /health, port: 8080 }
+        periodSeconds: 10
+        timeoutSeconds: 10
+        failureThreshold: 3             # 30 s, above the 20 s grace period
+```
+
+Run the server as the container's main process (`exec` in an entrypoint
+script, not a shell that forwards nothing), so SIGTERM reaches the Dart
+process at all.
+
 ## Verification
 
 Three suites cover this module, a fourth covers its endpoint-owned
 credentials, a fifth its tenant resolution, a sixth the API keys and rate
-limits it reads, a seventh the metrics middlewares it installs, and an eighth
-its correlation ids and log format.
+limits it reads, a seventh the metrics middlewares it installs, an eighth
+its correlation ids and log format, and a ninth its graceful shutdown.
 
 `test/server_test.dart` covers the pipeline as composed functions:
 `TomRequestLogInfo`, `extractAuthentication` reading a credential off a request
@@ -544,8 +730,23 @@ stacked as `start()` stacks them: an API key authenticating its request and
 counted per key, a refused key proceeding anonymous and counted by its address,
 and no limits installed leaving every response unannotated.
 
+`test/graceful_shutdown_test.dart` covers the graceful shutdown. Its group
+`SIGTERM to a server process` starts `test/fixtures/graceful_shutdown_server.dart`
+— a `TomServer` with a slow path and a scheduler whose job holds a file lease —
+and sends it a real SIGTERM during a slow request: the request completes with
+`200`, a new request is refused or finds the port closed, the process exits
+with `0`, and the lease is released rather than left to its ten-minute
+time-to-live. That group is skipped on Windows, where SIGTERM cannot be sent.
+The group `TomGracefulShutdown in process` drives the same shutdown in-process,
+one step at a time: a request in flight drained while a new one is refused with
+`503` and `Connection: close` and the probe paths pass, readiness answering
+`503` while liveness answers `200`; a scheduler stopped, its run waited for and
+its lease released only afterwards; a run past the grace period abandoned and
+its lease released; and a second call handed the first shutdown.
+
 ```bash
 dart run example/server/server_example.dart
+dart run example/server/graceful_shutdown_example.dart
 ```
 
 `example/server/server_example.dart` exercises the socket-free surface the
@@ -553,8 +754,13 @@ server is composed from — the per-request log state, the credential reader
 (including the three outcomes that answer `(null, null)` alike and are still
 told apart), and two middlewares. It binds no socket: an example is read as much
 as run, and a listening port in one is a process a reader has to know to stop.
-The bind is covered by the suite instead. Every step checks its own result, and
-`test/examples_test.dart` runs it.
+The bind is covered by the suite instead.
+`example/server/graceful_shutdown_example.dart` runs a graceful shutdown step by
+step around a handler and a scheduler of its own — a request in flight,
+readiness turning to `503`, a new request refused, a probe passed, the scheduler
+stopped and its run drained, the lease released — without a socket or a
+signal, which the suite covers. Every step of both checks its own result, and
+`test/examples_test.dart` runs them.
 
 ## Not Yet Implemented
 
@@ -601,19 +807,21 @@ and an application that needs one builds it today rather than waiting:
 
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
-| `dart:async` | dart | every file | `Future`, `FutureOr` |
-| `dart:convert` | dart | every file | `json`, `jsonEncode`, `utf8` |
-| `dart:io` | dart | every file | `HttpServer`, `InternetAddress`, `SecurityContext` |
+| `dart:async` | dart | every file | `Future`, `FutureOr`, `unawaited`, and the `Completer` and `TimeoutException` the shutdown waits with |
+| `dart:convert` | dart | `server.dart` | `json`, `jsonEncode`, `utf8` |
+| `dart:io` | dart | every file | `HttpServer`, `InternetAddress`, `SecurityContext`, `ProcessSignal` (SIGTERM, SIGINT), `HttpHeaders` |
 | `shelf` | package | every file | the HTTP pipeline, `Request`/`Response`/`Handler`/ `Middleware`/`Router`/`Cascade`, and `serve` |
-| `shelf_router` | package | every file | the HTTP pipeline, `Request`/`Response`/`Handler`/ `Middleware`/`Router`/`Cascade`, and `serve` |
-| `tom_core_kernel` | package | every file | `TomPrincipal`, `TomClientJwtToken`, `TomBearerAuthentication`, `TomExecutionContext`/`tomExecutionContext`, `TomZoneValues`, `tomLog`, `tomPrintStackTrace`, `TomException`, `TomTraceContext` and `TomLogContext` (the request's trace and the `request_id` log field), `TomJsonLogOutput` / `TomConsoleLogOutput` (`logFormat`) |
-| [authentication](authentication.md) | module | every file | `TomServerSelfLogin`, `TomServerSelfLoginException`, `TomApiKeys` and `TomApiKeyIdentity` (a service account's API key) |
-| [authorization](authorization.md) | module | every file | `TomAuthorizationCache` (principal resolution) |
-| [configuration](configuration.md) | module | every file | `TomBaseServerConfiguration` |
-| [endpoints](endpoints.md) | module | every file | `TomEndpointRouting` (router initialisation), `TomOpenApiServer` (the OpenAPI document path, set from `openApiDocument`) |
-| [healthcheck](healthcheck.md) | module | every file | `TomFrameworkReadinessAnalyzer`, installed on `GET /ready` by `start()` when `frameworkReadiness` is on, and `TomHealthServer` / `TomDefaultHealthAnalyzer` to see whether the application installed its own |
-| [little_things](little_things.md) | module | every file | `TomServerException` (its `clientThrow` flag feeds the error response) and `TomRequestId` (minted by `tomRequestContextMiddleware`, carried into every request zone) |
-| [metrics](metrics.md) | module | every file | `tomMetricsEndpointMiddleware` and `tomRequestMetricsMiddleware` (the outer edge of the pipeline), `TomOtlpHttpTransport` and `TomOtlpMetricsExporter` (`metricsExporter`) |
-| [ratelimit](ratelimit.md) | module | every file | `TomRateLimits` (installed from configuration at start) and `tomRateLimitMiddleware` |
-| [tenancy](tenancy.md) | module | every file | `TomTenancy` and `TomTenantResolution` — the request's tenant, or the refusal to answer it with |
-| [transactions](transactions.md) | module | every file | `TomTransactionManager` |
+| `shelf_router` | package | `server.dart` | the HTTP pipeline, `Request`/`Response`/`Handler`/ `Middleware`/`Router`/`Cascade`, and `serve` |
+| `tom_core_kernel` | package | every file | `TomPrincipal`, `TomClientJwtToken`, `TomBearerAuthentication`, `TomExecutionContext`/`tomExecutionContext`, `TomZoneValues`, `tomLog`, `tomPrintStackTrace`, `TomException`, `TomTraceContext` and `TomLogContext` (the request's trace and the `request_id` log field), `TomJsonLogOutput` / `TomConsoleLogOutput` (`logFormat`), `tomShutdownCleanup` (the signals the graceful shutdown runs on) and `TomScheduler.started` (the schedulers it drains) |
+| [authentication](authentication.md) | module | `server.dart` | `TomServerSelfLogin`, `TomServerSelfLoginException`, `TomApiKeys` and `TomApiKeyIdentity` (a service account's API key) |
+| [authorization](authorization.md) | module | `server.dart` | `TomAuthorizationCache` (principal resolution) |
+| [configuration](configuration.md) | module | `server.dart` | `TomBaseServerConfiguration` |
+| [datasources](datasources.md) | module | `graceful_shutdown.dart` | `TomDataSourceInfo.closeAll`, the graceful shutdown's last step |
+| [endpoints](endpoints.md) | module | `server.dart` | `TomEndpointRouting` (router initialisation), `TomOpenApiServer` (the OpenAPI document path, set from `openApiDocument`) |
+| [healthcheck](healthcheck.md) | module | every file | `TomFrameworkReadinessAnalyzer`, installed on `GET /ready` by `start()` when `frameworkReadiness` is on, `TomHealthServer` / `TomDefaultHealthAnalyzer` to see whether the application installed its own, and `TomHealthServer.markShuttingDown`, the graceful shutdown's first step |
+| [little_things](little_things.md) | module | `server.dart` | `TomServerException` (its `clientThrow` flag feeds the error response) and `TomRequestId` (minted by `tomRequestContextMiddleware`, carried into every request zone) |
+| [messaging](messaging.md) | module | `graceful_shutdown.dart` | `TomMessageOutbox.started`, the outboxes the graceful shutdown closes |
+| [metrics](metrics.md) | module | `server.dart` | `tomMetricsEndpointMiddleware` and `tomRequestMetricsMiddleware` (the outer edge of the pipeline), `TomOtlpHttpTransport` and `TomOtlpMetricsExporter` (`metricsExporter`) |
+| [ratelimit](ratelimit.md) | module | `server.dart` | `TomRateLimits` (installed from configuration at start) and `tomRateLimitMiddleware` |
+| [tenancy](tenancy.md) | module | `server.dart` | `TomTenancy` and `TomTenantResolution` — the request's tenant, or the refusal to answer it with |
+| [transactions](transactions.md) | module | `server.dart` | `TomTransactionManager` |

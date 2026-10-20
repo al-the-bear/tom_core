@@ -703,6 +703,29 @@ actually needs. `tick()` then `drain()` is a completed pass; `stop()` then
 `drain()` quiesces the scheduler. In that order — draining one that is still
 ticking races the timer for what "idle" means.
 
+A process shutting down does not need to have kept every scheduler it built.
+`TomScheduler.started` lists the schedulers of the isolate that were started
+and not yet closed: `start()` adds one, `close()` removes it, and `stop()`
+leaves it listed — a stopped scheduler still holds leases and may still have
+runs in flight. A graceful shutdown walks it in three steps: stop every one so
+no new run starts, drain them within its deadline, then close them so their
+leases go back to the cluster at once instead of waiting out `leaseTtl`:
+
+```dart
+final schedulers = TomScheduler.started;
+for (final scheduler in schedulers) {
+  scheduler.stop();
+}
+await Future.wait(schedulers.map((s) => s.drain()))
+    .timeout(deadline, onTimeout: () => const []);
+for (final scheduler in schedulers) {
+  await scheduler.close();
+}
+```
+
+`started` answers a snapshot, so closing the schedulers while walking it is
+safe. `TomServer.shutdown` in `tom_core_server` does exactly this.
+
 Two settings shape the rhythm rather than the semantics, and both exist because
 several nodes share one queue:
 

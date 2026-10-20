@@ -23,6 +23,9 @@
 ///   abandoned, and the next phase still runs
 /// - Nesting: a coordinator is a [TomDisposable], registered on another and
 ///   run from its handler
+/// - [TomShutdownCleanup.exitAfterSignalShutdown]: a signal-started shutdown
+///   ends the process through [TomShutdownCleanup.exitProcess]; a called one
+///   never does
 ///
 /// To run this file on its own:
 /// ```bash
@@ -324,6 +327,31 @@ Future<void> run() async {
   print('   - Session spent:    ${session.hasShutDown}\n');
 
   // ---------------------------------------------------------------------------
+  // Example 11: exiting once a signal-started shutdown has run
+  // ---------------------------------------------------------------------------
+  print('11. Exit after a signal shutdown:');
+
+  // exitProcess is replaced so the sample observes the exit instead of ending.
+  final exitTrace = <String>[];
+  final exiting = TomShutdownCleanup()
+    ..silent = true
+    ..exitAfterSignalShutdown = true
+    ..exitProcess = (code) => exitTrace.add('exit $code');
+  exiting.addClosable(CountingClosable(exitTrace));
+  await exiting.performShutdown(fromSignal: true);
+  await Future<void>.delayed(Duration.zero); // the exit follows the shutdown
+
+  final calledExits = <int>[];
+  final called = TomShutdownCleanup()
+    ..exitAfterSignalShutdown = true
+    ..exitProcess = calledExits.add;
+  await called.performShutdown(); // a called shutdown never exits
+  await Future<void>.delayed(Duration.zero);
+
+  print('   - Signal path trace:  $exitTrace');
+  print('   - Called path exits:  $calledExits\n');
+
+  // ---------------------------------------------------------------------------
   // Teardown for the instances the examples above created
   // ---------------------------------------------------------------------------
   // Running a cleanup is not the same as disposing it: `performShutdown()`
@@ -342,6 +370,8 @@ Future<void> run() async {
     asyncCleanup,
     bounded,
     host,
+    exiting,
+    called,
   ]) {
     await cleanup.dispose();
   }
@@ -398,6 +428,13 @@ Future<void> run() async {
   assert(nestedTrace[0] == 'closable');
   assert(nestedTrace[1] == 'disposable');
   assert(session.hasShutDown);
+
+  // Example 11: the signal path exited with 0 after the closable ran; the
+  // called path did not exit.
+  assert(exitTrace.length == 2);
+  assert(exitTrace[0] == 'closable');
+  assert(exitTrace[1] == 'exit 0');
+  assert(calledExits.isEmpty);
 }
 
 /// Standalone entry point.

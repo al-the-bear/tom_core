@@ -337,6 +337,7 @@ class TomHealthServer implements TomHealthService {
   /// It logs like any other installation, because it is one: a reset that went
   /// unrecorded would be the one replacement the log could not account for.
   static void resetHealthChecks() {
+    _shuttingDown = false;
     installLivenessAnalyzer(TomDefaultHealthAnalyzer());
     installReadinessAnalyzer(TomDefaultHealthAnalyzer());
     installHealthTimeout(defaultHealthTimeout);
@@ -361,8 +362,29 @@ class TomHealthServer implements TomHealthService {
       responseFor(await verdictOf(_livenessAnalyzer, 'liveness'));
 
   @override
-  Future<Response> ready() async =>
-      responseFor(await verdictOf(_readinessAnalyzer, 'readiness'));
+  Future<Response> ready() async => responseFor(
+    _shuttingDown
+        ? const TomHealthStatus.unhealthy('shutting down')
+        : await verdictOf(_readinessAnalyzer, 'readiness'),
+  );
+
+  static bool _shuttingDown = false;
+
+  /// Whether the process is shutting down — see [markShuttingDown].
+  static bool get isShuttingDown => _shuttingDown;
+
+  /// Answers every later `GET /ready` with `503 shutting down`, without asking
+  /// the readiness analyzer, and leaves liveness alone.
+  ///
+  /// The first step of a graceful shutdown (`TomServer.shutdown`): the load
+  /// balancer stops sending new traffic while the requests already accepted
+  /// finish. Liveness is not affected, because a process that is
+  /// draining is alive, and restarting it would cut those requests off.
+  static void markShuttingDown() {
+    if (_shuttingDown) return;
+    _shuttingDown = true;
+    tomLog.info('TomHealthServer: readiness now answers 503 shutting down');
+  }
 
   /// Runs [analyzer] under the [healthTimeout] deadline and turns every way it
   /// can fail to produce a verdict into one.

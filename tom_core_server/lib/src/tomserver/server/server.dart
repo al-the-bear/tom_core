@@ -17,6 +17,7 @@ import '../endpoints/endpoint_pipeline.dart';
 import '../endpoints/openapi_document_endpoint.dart';
 import '../healthcheck/framework_readiness.dart';
 import '../healthcheck/health_check.dart';
+import 'graceful_shutdown.dart';
 import '../metrics/metrics_middleware.dart';
 import '../metrics/otlp_exporter.dart';
 import '../authorization/authorization_cache.dart';
@@ -55,8 +56,8 @@ Middleware contextSetupMiddleware(String id, [Map<String, Object>? context]) =>
 ///
 /// One instance per request, because the record is mutated per request:
 /// [tomLoggingMiddleware] marks it logged, and the endpoint pipeline sets
-/// whether it should be. The default pipeline installs it outermost (see
-/// [TomServer.start]).
+/// whether it should be. The default pipeline installs it directly inside
+/// the graceful-shutdown gate (see [TomServer.start]).
 Middleware tomRequestLogInfoMiddleware() => (innerHandler) {
   return (request) => innerHandler(
     request.change(
@@ -785,6 +786,7 @@ class TomServer {
     // other request is measured around everything, so its status is the one
     // the client received.
     final handler = Pipeline()
+        .addMiddleware(gracefulShutdown.middleware())
         .addMiddleware(tomRequestLogInfoMiddleware())
         .addMiddleware(
           configuration.metricsEndpoint
@@ -849,7 +851,48 @@ class TomServer {
     tomLog.info(
       'Server listening on port ${server.port} ${server.address} ${securityContext != null ? "SSL" : "no SSL"} at ${DateTime.now()}',
     );
+    _hookShutdown(server);
     return server;
+  }
+
+  /// The graceful shutdown of this server; [start] hands it the bound socket
+  /// and runs it on SIGTERM and SIGINT. See `graceful_shutdown.dart`.
+  late final TomGracefulShutdown gracefulShutdown = TomGracefulShutdown(
+    gracePeriod: Duration(seconds: configuration.shutdownGracePeriodSeconds),
+    readinessDelay: Duration(
+      seconds: configuration.shutdownReadinessDelaySeconds,
+    ),
+  );
+
+  /// Shuts this server down gracefully: readiness off, no new requests, the
+  /// requests and scheduled work in flight finished within the grace period,
+  /// leases released and pools closed. Idempotent. A signal runs it through
+  /// `tomShutdownCleanup`; calling it directly never ends the process.
+  Future<void> shutdown() => gracefulShutdown.shutdown();
+
+  /// Hands [server] to [gracefulShutdown] and registers it with
+  /// `tomShutdownCleanup` for SIGTERM (where the platform can watch it) and
+  /// SIGINT.
+  ///
+  /// The cleanup's phase timeout is raised to cover the readiness delay and
+  /// the grace period, since the whole shutdown runs inside its signal-handler
+  /// phase and would otherwise be abandoned after the default ten seconds.
+  void _hookShutdown(HttpServer server) {
+    gracefulShutdown.httpServer = server;
+    if (!Platform.isWindows) {
+      tomShutdownCleanup.addSignal(ProcessSignal.sigterm);
+    }
+    tomShutdownCleanup.addSignalHandler((_) => shutdown());
+    final needed =
+        gracefulShutdown.readinessDelay +
+        gracefulShutdown.gracePeriod +
+        const Duration(seconds: 5);
+    if (tomShutdownCleanup.phaseTimeout < needed) {
+      tomShutdownCleanup.phaseTimeout = needed;
+    }
+    if (configuration.exitOnShutdownSignal) {
+      tomShutdownCleanup.exitAfterSignalShutdown = true;
+    }
   }
 
   /// Applies [TomBaseServerConfiguration.logFormat]; see [applyLogFormat].

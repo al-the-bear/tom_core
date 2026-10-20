@@ -165,6 +165,8 @@ TomShutdownCleanup()
 | `paused` | `bool` | When true, signal handling is paused and signals are ignored (for REPLs with their own CTRL-C handling) (default `false`). |
 | `silent` | `bool` | When true, suppresses output messages during shutdown — every line `output` would receive: status messages, failure reports and phase-timeout reports (default `false`). |
 | `output` | `void Function(String line)` | The one sink every line goes to — status messages, failure reports (with their stack frames in the same call), phase-timeout reports. Default `print`. A sink that throws does not fail the shutdown; that line goes to `print` with the reason. |
+| `exitAfterSignalShutdown` | `bool` | When true, a shutdown started by a signal ends the process with `exitProcess(0)` once every phase has run (finished or abandoned). A shutdown started by calling `performShutdown` never exits. Off by default — a library cannot know nothing else in the process still has work; a server sets it so SIGTERM ends in a clean exit rather than a kill at the end of the grace period (default `false`). |
+| `exitProcess` | `void Function(int code)` | How the process is ended when `exitAfterSignalShutdown` applies. Default `dart:io`'s `exit`; replaceable so a test can observe the exit instead of performing it. |
 | `hasShutDown` | `bool` *(read-only)* | Whether the shutdown has run to its end, every phase finished or abandoned. `false` while it is still running; once `true` it never turns back — the instance is single-use, and an entry registered afterwards never runs. Unaffected by a signal ignored under `paused` and by `dispose`. |
 
 #### Methods

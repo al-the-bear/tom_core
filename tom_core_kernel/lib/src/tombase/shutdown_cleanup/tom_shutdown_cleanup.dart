@@ -506,6 +506,21 @@ class TomShutdownCleanup implements TomDisposable {
   /// instead, together with the reason. [silent] silences the sink as a whole.
   void Function(String line) output = print;
 
+  /// Whether a shutdown a signal started ends the process once every phase
+  /// has run, with exit code 0.
+  ///
+  /// Off by default: a library cannot know that nothing else in the process
+  /// still has work. A server sets it, because after its listener, schedulers
+  /// and pools are closed nothing is left to keep — and a process that
+  /// lingers after SIGTERM is killed by its orchestrator at the end of the
+  /// grace period instead of reporting a clean exit. A shutdown started by
+  /// calling [performShutdown] never exits.
+  bool exitAfterSignalShutdown = false;
+
+  /// How the process is ended when [exitAfterSignalShutdown] applies —
+  /// `dart:io`'s `exit`. Replaceable so a test can observe it.
+  void Function(int code) exitProcess = exit;
+
   /// Whether this instance's shutdown has run to its end — every phase
   /// finished or abandoned.
   ///
@@ -604,7 +619,11 @@ class TomShutdownCleanup implements TomDisposable {
       }
       return running;
     }
-    return _shutdown = _executeCleanup(signal, announce: announce);
+    final shutdown = _shutdown = _executeCleanup(signal, announce: announce);
+    if (fromSignal && exitAfterSignalShutdown) {
+      unawaited(shutdown.then((_) => exitProcess(0)));
+    }
+    return shutdown;
   }
 
   /// Runs the three cleanup phases in order — signal handlers, then closables,

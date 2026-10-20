@@ -351,9 +351,19 @@ Future<void> main(List<String> args) async {
   // load-bearing: `exit(0)` does not wait for pending work, so calling this
   // without it would take the process down with the last audit records still
   // queued, which is the shutdown the trail most needs to survive.
-  ProcessSignal.sigint.watch().listen((_) async {
-    tomLog.info('Advanced ops server stopping.');
+  //
+  // SIGTERM as well as SIGINT: SIGTERM is what an orchestrator sends, and a
+  // process that ignores it is killed at the end of the grace period with the
+  // runs and the trail exactly as unfinished as this handler exists to avoid.
+  var stopping = false;
+  Future<void> stop(ProcessSignal signal) async {
+    if (stopping) return;
+    stopping = true;
+    tomLog.info('Advanced ops server stopping on $signal.');
     await runtime.close();
     exit(0);
-  });
+  }
+
+  ProcessSignal.sigint.watch().listen(stop);
+  if (!Platform.isWindows) ProcessSignal.sigterm.watch().listen(stop);
 }

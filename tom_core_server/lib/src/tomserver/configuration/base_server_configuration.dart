@@ -952,6 +952,42 @@ utj3flRQDLaDAl91lySpAjUp9aM8
   /// Environment name: `FRAMEWORK_READINESS`.
   bool frameworkReadiness = true;
 
+  /// How long a graceful shutdown waits for the requests already accepted and
+  /// the scheduled work already running — the outbox included — before it
+  /// closes what is left, in seconds.
+  ///
+  /// Keep it below the orchestrator's own grace period (Kubernetes'
+  /// `terminationGracePeriodSeconds`, 30 by default), less
+  /// [shutdownReadinessDelaySeconds]: after that the process is killed
+  /// whatever it is doing, and the leases and pools are never handed back.
+  ///
+  /// Environment name: `SHUTDOWN_GRACE_PERIOD_SECONDS`.
+  int shutdownGracePeriodSeconds = 20;
+
+  /// How long a graceful shutdown keeps accepting requests after readiness
+  /// has turned to 503, in seconds, so a load balancer that has not yet
+  /// noticed sends nothing into a closed socket.
+  ///
+  /// Zero by default, which suits a server reached directly. Behind a
+  /// Kubernetes Service a terminating pod is removed from the endpoints at
+  /// once, but the change takes a moment to reach every proxy and load
+  /// balancer; a few seconds — the readiness probe's period plus its timeout
+  /// is a safe value — keeps the requests still routed here from meeting a
+  /// closed socket.
+  ///
+  /// Environment name: `SHUTDOWN_READINESS_DELAY_SECONDS`.
+  int shutdownReadinessDelaySeconds = 0;
+
+  /// Whether a SIGTERM or SIGINT ends the process once the graceful shutdown
+  /// and every shutdown-cleanup phase after it have run.
+  ///
+  /// On by default, because an orchestrator waits for the process to exit: one
+  /// that lingers is killed at the end of the grace period instead of exiting
+  /// cleanly. A shutdown started by calling `TomServer.shutdown` never exits.
+  ///
+  /// Environment name: `EXIT_ON_SHUTDOWN_SIGNAL`.
+  bool exitOnShutdownSignal = true;
+
   /// The directory `TomDbMigrations.migrateDatabases` reads, relative to the
   /// working directory unless absolute.
   ///

@@ -1048,6 +1048,7 @@ the interval is defaulted from it.
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `maxCatchUpScan` | `int` | Hard ceiling (`100000`) on windows examined in one catch-up scan. |
+| `started` | `Set<TomScheduler>` | The schedulers of this isolate that were started and not yet closed, as an unmodifiable snapshot (getter). `start` adds a scheduler, `close` removes it; `stop` leaves it listed. A graceful shutdown walks it: `stop` every one, `drain` them within its deadline, then `close` them so their leases go back to the cluster at once — `TomServer.shutdown` in `tom_core_server` does exactly that. |
 
 #### Properties
 
@@ -1079,9 +1080,9 @@ the interval is defaulted from it.
 | ------ | --------- | ----------- |
 | `register` | `void register(TomJobDefinition job)` | Adds a job; subscribes its stream for an event schedule. |
 | `deregister` | `void deregister(String name)` | Removes a job and cancels any subscription. |
-| `start` | `Future<void> start()` | Runs one `tick` immediately — which is what recovers abandoned leases and catches up on restart — then repeats roughly every `tickInterval`. Registers the `tom_job_backlog` and `tom_job_backlog_age_seconds` observations on `TomMetrics.registry` (once per scheduler). |
-| `stop` | `void stop()` | Stops the timer; in-flight runs are left to finish. |
-| `close` | `Future<void> close()` | *(override)* Shutdown: stops, cancels subscriptions, closes the dispatcher, and releases held leases so peers can take the work at once instead of waiting out `leaseTtl`; completes once the releases have landed. A release that fails is logged and left to expire. Cancels the backlog observations `start` registered. |
+| `start` | `Future<void> start()` | Adds the scheduler to `started`, then runs one `tick` immediately — which is what recovers abandoned leases and catches up on restart — then repeats roughly every `tickInterval`. Registers the `tom_job_backlog` and `tom_job_backlog_age_seconds` observations on `TomMetrics.registry` (once per scheduler). |
+| `stop` | `void stop()` | Stops the timer; in-flight runs are left to finish. The scheduler stays in `started`. |
+| `close` | `Future<void> close()` | *(override)* Shutdown: removes the scheduler from `started`, stops, cancels subscriptions, closes the dispatcher, and releases held leases so peers can take the work at once instead of waiting out `leaseTtl`; completes once the releases have landed. A release that fails is logged and left to expire. Cancels the backlog observations `start` registered. |
 | `tick` | `Future<void> tick()` | One complete pass — recover, plan, claim, dispatch. Safe to call directly (this is what tests drive); overlapping calls are collapsed rather than re-entered. Awaiting it awaits the pass, not the runs it started — for that, follow with `drain`. |
 | `drain` | `Future<void> drain()` | Completes once every run in flight has finished and written its outcome to the store — success, scheduled retry, or terminal failure. The affordance a test asserting an effect, or a shutdown emptying its queue, needs; `stop()` then `await drain()` quiesces the scheduler. A body that outlived its timeout is not waited for — its attempt finished at the timeout, and it may never settle — see `overrunningCount`. |
 

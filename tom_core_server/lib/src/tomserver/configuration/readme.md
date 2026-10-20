@@ -56,6 +56,12 @@ void main() {
 `otlpHeaders` and `otlpMetricsIntervalSeconds` decide whether the series leave
 the process as a Prometheus scrape, an OTLP push, or both — see [`doc/metrics.md`](../../../../doc/metrics.md).
 
+**Graceful shutdown.** `shutdownGracePeriodSeconds` (20), `shutdownReadinessDelaySeconds`
+(0) and `exitOnShutdownSignal` (on) decide how the server stops on SIGTERM or
+SIGINT: how long the work in flight gets, how long requests are still taken
+after readiness turned to `503`, and whether the process then exits — see
+[`doc/server.md`](../../../../doc/server.md#graceful-shutdown).
+
 See [`doc/configuration.md`](../../../../doc/configuration.md) for the source
 precedence, the typed key wrappers and the loader hook, and
 `example/configuration/configuration_example.dart` for a twelve-step walkthrough

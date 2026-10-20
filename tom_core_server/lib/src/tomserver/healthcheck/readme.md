@@ -23,12 +23,18 @@ and answering `SELECT 1`, no database migration running or failed, every started
 message outbox delivering. The body is `ready` or `not ready` followed by one
 line per check. Liveness is left alone.
 
+A graceful shutdown (`TomServer.shutdown`, run on SIGTERM and SIGINT) begins
+with `TomHealthServer.markShuttingDown()`: from then on `/ready` answers
+`503 shutting down` without asking its analyzer, so the load balancer stops
+sending traffic, while `/health` still asks its liveness analyzer — a draining process is
+alive.
+
 ## Key types
 
 | Type | Responsibility |
 | ---- | -------------- |
 | `TomHealthService` | Abstract contract: `Future<Response> health()` and `ready()` — a `Response` because the status code is part of the answer. |
-| `TomHealthServer` | Default service; runs `livenessAnalyzer` for `/health` and `readinessAnalyzer` for `/ready`, turning each verdict into the response. Both are read-only; install through `installLivenessAnalyzer` / `installReadinessAnalyzer`, which log the replacement, and `resetHealthChecks()` to go back to the defaults. Each analyzer runs under `healthTimeout` (five seconds by default, `installHealthTimeout` to change it), so one that hangs or throws still yields an unhealthy verdict rather than stopping the probe from answering — a throw would otherwise reach the pipeline's error envelope, a 500 carrying JSON where the probe expects plain text. |
+| `TomHealthServer` | Default service; runs `livenessAnalyzer` for `/health` and `readinessAnalyzer` for `/ready`, turning each verdict into the response. Both are read-only; install through `installLivenessAnalyzer` / `installReadinessAnalyzer`, which log the replacement, and `resetHealthChecks()` to go back to the defaults. `markShuttingDown()` turns readiness to `503 shutting down` for a graceful shutdown; `isShuttingDown` reads it. Each analyzer runs under `healthTimeout` (five seconds by default, `installHealthTimeout` to change it), so one that hangs or throws still yields an unhealthy verdict rather than stopping the probe from answering — a throw would otherwise reach the pipeline's error envelope, a 500 carrying JSON where the probe expects plain text. |
 | `TomHealthAnalyzer` | Abstract probe that decides the health verdict. |
 | `TomHealthStatus` · `TomHealthVerdict` | What an analyzer concludes: the verdict a probe acts on, and the message a person reads. Two verdicts, because HTTP offers a probe two answers. |
 | `TomDefaultHealthAnalyzer` | Always-healthy analyzer used when no custom probe is supplied. |
@@ -63,7 +69,8 @@ checks and the JSON log line of a request. `test/healthcheck_test.dart` covers t
 `healthcheck GET /health route` — the analyzer is reachable in-process, but the
 path a load balancer polls is only a fact once something serves it.
 `test/structured_logs_readiness_test.dart` and its `db`-tagged sibling cover the
-framework readiness checks. `test/examples_test.dart` runs the examples and
+framework readiness checks, and `test/graceful_shutdown_test.dart` readiness
+during a shutdown. `test/examples_test.dart` runs the examples and
 `test/readme_quick_start_test.dart` runs the snippet above, so neither can drift
 away from the code.
 

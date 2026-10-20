@@ -1915,6 +1915,25 @@ void main() {
       alerts = [];
     });
 
+    test(
+      'a started scheduler is listed in started until it is closed',
+      () async {
+        final scheduler = TomScheduler(
+          store: store,
+          dispatcher: const TomInlineJobDispatcher(),
+          clock: clock.call,
+        );
+        expect(TomScheduler.started, isNot(contains(scheduler)));
+        await scheduler.start();
+        expect(TomScheduler.started, contains(scheduler));
+        scheduler.stop();
+        // Stopped is not closed: it may start again, so it is still listed.
+        expect(TomScheduler.started, contains(scheduler));
+        await scheduler.close();
+        expect(TomScheduler.started, isNot(contains(scheduler)));
+      },
+    );
+
     TomJobDefinition dailyJob({
       TomCommand Function(TomJobRun run)? body,
       TomMissedWindowPolicy policy = TomMissedWindowPolicy.runOnce,

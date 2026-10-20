@@ -83,8 +83,9 @@ start and stop in. The audit sink must be installed before the first job body
 runs, uninstalled after the last one stops, and **drained** after that — a
 record the sink has accepted but not yet written is still in its queue, and
 `TomAuditSink.close()` stores it before it completes. That is why
-`close()` returns a `Future`: the signal handler awaits it before `exit(0)`,
-which does not wait for pending work. Four independent `start()` calls in a
+`close()` returns a `Future`: the signal handler — on SIGTERM, which is what an
+orchestrator sends, and on SIGINT — awaits it before `exit(0)`, which does not
+wait for pending work. Four independent `start()` calls in a
 `main` are four chances to get that order wrong with the constraint living only
 in a comment.
 
@@ -168,6 +169,10 @@ unset, digests are written as `.eml` files under `OPS_MAIL_DIR`
 (`./ztmp/ops_mail`) where they can be opened and read. That is the honest sample
 default — a discarding transport would make a green run and an undelivered
 digest look identical.
+
+The process stops on SIGTERM or SIGINT (Ctrl-C), closing the runtime before it
+exits; a second signal while it closes is ignored. SIGTERM is not watched on
+Windows, where Dart cannot watch it, so there only Ctrl-C stops it cleanly.
 
 | Variable | Default | Purpose |
 | --- | --- | --- |

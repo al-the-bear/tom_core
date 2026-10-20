@@ -365,6 +365,37 @@ tomShutdownCleanup.addSignalHandler((signal) {
 });
 ```
 
+Or the instance does it itself: with `exitAfterSignalShutdown` set, a shutdown
+a signal started calls `exitProcess(0)` once every phase has run — finished or
+abandoned.
+
+```dart
+tomShutdownCleanup.exitAfterSignalShutdown = true;
+```
+
+Only the signal path exits. A shutdown started by calling `performShutdown()`
+never does, so a test or a hosted runtime that runs the cleanup keeps its
+process. The flag is off by default because a library cannot know that nothing
+else in the process still has work; a server whose listener, schedulers and
+pools are all registered sets it, since a process that lingers after SIGTERM is
+killed by its orchestrator at the end of the grace period instead of reporting a
+clean exit. `tom_core_server`'s `TomServer.start` sets it when its
+`exitOnShutdownSignal` configuration is on, and raises `phaseTimeout` so the
+budget covers its own shutdown, which runs as a signal handler.
+
+`exitProcess` defaults to `dart:io`'s `exit` and is replaceable, so a test can
+observe the exit rather than end the test run:
+
+```dart
+final exits = <int>[];
+final cleanup = TomShutdownCleanup()
+  ..exitAfterSignalShutdown = true
+  ..exitProcess = exits.add;
+await cleanup.performShutdown(fromSignal: true);
+await Future<void>.delayed(Duration.zero); // the exit follows the shutdown
+// exits == [0]
+```
+
 #### Taking a registration back
 
 `addSignalHandler`, `addClosable` and `addDisposable` each return a
@@ -533,9 +564,7 @@ Future<void> main() async {
     ..addClosable(ServerCloser(server))
     ..addClosable(database)
     // Exit once the whole shutdown has finished — see "Exiting after a signal".
-    ..addSignalHandler((signal) {
-      unawaited(tomShutdownCleanup.performShutdown().then((_) => exit(0)));
-    });
+    ..exitAfterSignalShutdown = true;
 
   await for (final request in server) {
     handleRequest(request);
@@ -667,7 +696,7 @@ tomShutdownCleanup.addClosable(TomCloseAdaptor(store, config.teardownMethod));
 ## Limitations
 
 - A phase that overruns [`phaseTimeout`](#phasetimeout) is abandoned: the entry it was waiting on is left running and the entries behind it are not called. A synchronous entry cannot be interrupted at all
-- A handled signal does not terminate the process; the application exits when the shutdown has finished — see [Exiting after a signal](#exiting-after-a-signal)
+- A handled signal does not terminate the process; the application exits when the shutdown has finished — by itself, or through `exitAfterSignalShutdown` — see [Exiting after a signal](#exiting-after-a-signal)
 - Every line goes through one sink, [`output`](#output), which defaults to `print` rather than the logging system so the record survives a logger that is already closed; a host routes it into its log by supplying the sink, and a sink that throws falls back to `print` for that line
 - `silent` suppresses the failure diagnostics along with the status messages, so a silent instance says nothing when a cleanup throws — the cleanup still continues, but the reason it failed is gone
 - A failure's stack trace is cut to its top ten frames, enough to identify the failing `close()`/`dispose()` but not to follow a deep call chain

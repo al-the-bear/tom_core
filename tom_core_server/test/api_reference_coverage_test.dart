@@ -8804,6 +8804,7 @@ class After {}
         'errorHandler',
         'authenticationErrorHandler',
         'loggingMiddleware',
+        'gracefulShutdown',
         'metricsExporter',
       ]);
       // Methods are declarations at the same indentation as fields; a parser

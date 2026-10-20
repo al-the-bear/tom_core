@@ -32,6 +32,7 @@ store before the configuration is built.
 - [Publishing the OpenAPI Document](#publishing-the-openapi-document)
 - [Publishing Metrics](#publishing-metrics)
 - [Log Format and Readiness](#log-format-and-readiness)
+- [Graceful Shutdown](#graceful-shutdown)
 - [Source Precedence](#source-precedence)
   - [A `SCREAMING_SNAKE_CASE` variable names a `lowerCamelCase` field](#a-screaming_snake_case-variable-names-a-lowercamelcase-field)
 - [Secret References](#secret-references)
@@ -818,6 +819,30 @@ The JSON line and the correlation ids it carries are described in
 [server.md](server.md#correlation-ids-and-structured-logs); the readiness checks,
 their body and how to compose them into an application's own analyzer, in
 [healthcheck.md](healthcheck.md#the-framework-readiness-checks).
+
+## Graceful Shutdown
+
+Three settings decide how the server stops on SIGTERM or SIGINT: how long the
+work in flight gets to finish, how long requests are still taken after readiness
+turned to `503`, and whether the process exits afterwards. `TomServer` reads
+them when it builds `TomServer.gracefulShutdown`, and `start()` applies the
+exit setting when it registers the shutdown for the signals.
+
+| Setting | Type | Default | What it decides |
+| ------- | ---- | ------- | --------------- |
+| `shutdownGracePeriodSeconds` | `int` | `20` | How long a graceful shutdown waits for the requests already accepted and the scheduled work already running — the outbox included — before it closes what is left. Keep it below the orchestrator's own grace period (Kubernetes' `terminationGracePeriodSeconds`, 30 by default) less `shutdownReadinessDelaySeconds`: after that the process is killed whatever it is doing, and the leases and pools are never handed back. Environment name `SHUTDOWN_GRACE_PERIOD_SECONDS`. |
+| `shutdownReadinessDelaySeconds` | `int` | `0` | How long requests are still accepted after `GET /ready` turned to `503`, so a load balancer that has not yet noticed sends nothing into a closed socket. Zero suits a server reached directly; behind a Kubernetes Service set it to the readiness probe's period plus its timeout. Environment name `SHUTDOWN_READINESS_DELAY_SECONDS`. |
+| `exitOnShutdownSignal` | `bool` | `true` | Whether a SIGTERM or SIGINT ends the process — exit code `0` — once the graceful shutdown and every shutdown-cleanup phase after it have run. An orchestrator waits for the process to exit, and one that lingers is killed at the end of the grace period instead. A shutdown started by calling `TomServer.shutdown` never exits. Environment name `EXIT_ON_SHUTDOWN_SIGNAL`. |
+
+```yaml
+# assets/config-resources_default.yaml
+shutdownGracePeriodSeconds: 20
+shutdownReadinessDelaySeconds: 15
+```
+
+The shutdown's steps, what it waits for and how the three settings fit a
+Kubernetes pod's `terminationGracePeriodSeconds` and probes are described in
+[server.md](server.md#graceful-shutdown).
 
 ## Source Precedence
 

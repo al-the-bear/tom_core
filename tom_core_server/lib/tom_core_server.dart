@@ -181,6 +181,7 @@ export 'src/tomserver/scheduling/sql_job_store.dart';
 export 'src/tomserver/scheduling/sql_lease_lock.dart';
 export 'src/tomserver/scheduling/sql_scheduler_nodes.dart';
 export 'src/tomserver/scheduling/sql_scheduling_sql.dart';
+export 'src/tomserver/server/graceful_shutdown.dart';
 export 'src/tomserver/server/server.dart';
 export 'src/tomserver/tenancy/tenancy.dart';
 export 'src/tomserver/tenancy/tenant_resolution.dart';

@@ -23,8 +23,9 @@ consumes it.
 | ---- | -------------- |
 | `TomServer` | The server: `TomServer(configuration)`; builds the `TomEndpointRouting` and starts listening. |
 | `TomRequestLogInfo` | Captured per-request log metadata, including the matched endpoint's `route` pattern the request metrics are labelled with. |
-| `tomRequestLogInfoMiddleware` | Seeds a new `TomRequestLogInfo` into every request's context; `start` installs it outermost. |
+| `tomRequestLogInfoMiddleware` | Seeds a new `TomRequestLogInfo` into every request's context; `start` installs it directly inside the shutdown gate. |
 | `tomRequestContextMiddleware` · `tomRequestIdHeader` | Mints the request id, continues or starts the trace, runs the rest of the pipeline in a zone carrying both, and answers with `X-Request-Id` and `traceparent`; registers the `request_id` field of structured log lines. |
+| `TomGracefulShutdown` · `tomProbePaths` | What the server does between SIGTERM and exiting: readiness off, the listener closed, new requests refused with `503` while the probe paths pass, the requests and scheduled runs in flight finished within the grace period, leases released and pools closed. `TomServer.gracefulShutdown` holds the server's; `TomServer.shutdown()` runs it without a signal. |
 | `TomEndpointCredentials` | The path prefixes whose `Authorization` header belongs to the endpoint rather than the framework — the SCIM endpoints, whose identity provider presents a static secret. `extractAuthentication` leaves such a header unread and reports `TomCredentialOutcome.endpointCredential`; the endpoint checks it. |
 
 ## Quick start
@@ -56,8 +57,7 @@ carries a service credential, the deployment logs *itself* in
 `TomServerPrincipal` that caps every user's grants at `min(user, server)`.
 Binding first would serve requests uncapped for as long as the login took, so a
 configured deployment that cannot log in has the error rethrown and **never
-binds the socket** — visible as an unhandled asynchronous error at boot, since
-`start()` is fire-and-forget. A deployment that configures no credential skips
+binds the socket** — `start()`'s future rejects with the error. A deployment that configures no credential skips
 the login and is unaffected.
 
 **Logs and readiness.** `start` applies `logFormat` — `json` writes one JSON
@@ -66,6 +66,16 @@ object per line carrying `trace_id`, `span_id`, `request_id` and `tenant`
 answers `GET /ready` from the framework's own checks unless the application
 installed a readiness analyzer — see
 [`doc/healthcheck.md`](../../../../doc/healthcheck.md).
+
+**Graceful shutdown.** `start` puts the shutdown gate outermost in the
+pipeline and registers `TomServer.gracefulShutdown` for SIGTERM and SIGINT: on
+either signal `/ready` turns to `503`, the listener closes, a new request is
+refused with `503` and `Connection: close`, the requests and scheduled runs in
+flight get `shutdownGracePeriodSeconds` to finish, the outboxes and schedulers
+release their leases, the data sources close their pools, and the process exits
+(`exitOnShutdownSignal`) — see
+[`doc/server.md`](../../../../doc/server.md#graceful-shutdown), with the
+Kubernetes settings.
 
 **Metrics.** `start` places the metrics module's scrape endpoint (when
 `metricsEndpoint` is on) and request series at the outer edge of the pipeline,
@@ -76,13 +86,16 @@ See [`doc/server.md`](../../../../doc/server.md) for the boot sequence, the
 middleware chain and the shutdown path, and
 `example/server/server_example.dart` for a walkthrough of the surface a
 deployment configures — it stops short of binding a socket, so unlike the
-fragment above it is a program that runs and terminates.
+fragment above it is a program that runs and terminates;
+`example/server/graceful_shutdown_example.dart` runs a graceful shutdown step
+by step without a socket.
 `test/server_test.dart` covers the module and
 `test/server_self_login_test.dart` the credentialled boot described above,
 replacing the one JSON POST rather than running an auth server;
 `test/scim_test.dart` reads a claimed path as `endpointCredential`;
 `test/structured_logs_readiness_test.dart` covers the correlation ids and the
-log format;
+log format; `test/graceful_shutdown_test.dart` the graceful shutdown, with a real
+SIGTERM sent to a server process;
 `test/examples_test.dart` runs the example.
 
 ---

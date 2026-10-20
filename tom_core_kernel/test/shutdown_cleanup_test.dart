@@ -1462,6 +1462,44 @@ void main() {
   // ===========================================================================
 
   group('performShutdown', () {
+    group('exitAfterSignalShutdown', () {
+      test('a signal-started shutdown exits once every phase ran', () async {
+        final log = <String>[];
+        final cleanup = _newCleanup()
+          ..silent = true
+          ..exitAfterSignalShutdown = true
+          ..exitProcess = (code) => log.add('exit $code');
+        cleanup.addClosable(RecordingClosable(log));
+        cleanup.addDisposable(RecordingDisposable(log));
+
+        await cleanup.performShutdown(fromSignal: true);
+        await Future<void>.delayed(Duration.zero);
+
+        expect(log, ['closable', 'disposable', 'exit 0']);
+      });
+
+      test('a called shutdown never exits', () async {
+        final exits = <int>[];
+        final cleanup = _newCleanup()
+          ..exitAfterSignalShutdown = true
+          ..exitProcess = exits.add;
+        await cleanup.performShutdown();
+        await Future<void>.delayed(Duration.zero);
+        expect(exits, isEmpty);
+      });
+
+      test('is off by default', () async {
+        final exits = <int>[];
+        final cleanup = _newCleanup()
+          ..silent = true
+          ..exitProcess = exits.add;
+        expect(cleanup.exitAfterSignalShutdown, isFalse);
+        await cleanup.performShutdown(fromSignal: true);
+        await Future<void>.delayed(Duration.zero);
+        expect(exits, isEmpty);
+      });
+    });
+
     test('runs handlers, then closables, then disposables in order', () async {
       final log = <String>[];
       final cleanup = _newCleanup();

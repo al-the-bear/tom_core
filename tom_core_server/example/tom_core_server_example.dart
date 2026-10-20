@@ -52,6 +52,12 @@ const List<TourStop> tour = [
         'the outcomes that tell its anonymous answers apart, two middlewares',
   ),
   TourStop(
+    'example/server/graceful_shutdown_example.dart',
+    'A graceful shutdown step by step: readiness off, new requests refused, '
+        'the request and the scheduled run in flight finished, the lease '
+        'released',
+  ),
+  TourStop(
     'example/endpoints/endpoints_example.dart',
     'Declaring routed endpoints, and what the router makes of them',
   ),

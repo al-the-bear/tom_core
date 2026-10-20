@@ -21,7 +21,10 @@ observable state, security, resources) and adds everything a service needs:
 
 - a **shelf-based HTTP host** (`TomServer`) with a middleware pipeline —
   request context, per-request IDs, authentication, logging, and JSON error
-  mapping wrapped around a declarative **endpoint router**;
+  mapping wrapped around a declarative **endpoint router** — and a **graceful
+  shutdown** on SIGTERM that turns readiness off, refuses new requests, lets the
+  requests and scheduled runs in flight finish, releases their leases and closes
+  the connection pools;
 - an **ORM-style persistence layer** — repositories with type-safe queries
   built from expression operators, persistence annotations, and a query
   builder, over pluggable **datasources** (MariaDB/MySQL and PostgreSQL
@@ -87,6 +90,7 @@ added.
 | Type | Responsibility |
 | ---- | -------------- |
 | `TomServer` | The shelf-based HTTP host and its middleware pipeline; `logFormat: json` writes one JSON log line per entry |
+| `TomGracefulShutdown` / `TomServer.shutdown` | What the server does between SIGTERM (or SIGINT) and exiting: `/ready` answers `503`, the listener closes, a new request is refused with `503` and `Connection: close`, the requests and scheduled runs in flight get the grace period (`shutdownGracePeriodSeconds`) to finish, then the outboxes and schedulers release their leases and the data sources close their pools |
 | `tomRequestContextMiddleware` / `tomRequestIdHeader` | Every request's correlation ids: a request id echoed as `X-Request-Id`, and the caller's W3C `traceparent` continued with a span of the server's own — carried as `request_id`, `trace_id` and `span_id` on every structured log line it writes |
 | `TomEndpoint` / `TomEndpointHandler` / `TomEndpointRouting` | Endpoint declaration and the request-handling pipeline |
 | `TomService` / `TomApiImplementation` / `TomTransactional` | Annotations that turn a class into a routed API, and mark a handler transactional |
@@ -143,7 +147,7 @@ added.
 | `file_storage` | `TomBlobStore`, `TomDatabaseBlobStore`, `TomDirectoryBlobStore`, `TomS3BlobStore`, `TomMemoryBlobStore`, `TomBlobStoreInfo`, `TomFileReference` | Streaming blob storage behind one four-method contract, backends chosen in configuration, and entity columns that hold a storage key instead of the bytes |
 | `scheduling` | `TomSqlJobStore`, `TomSqlLeaseLock` | The kernel's job-store and lease-lock contracts over a shared database, so a cluster whose nodes share no filesystem still runs each window exactly once |
 | `preferences` | `TomUserPreference`, `TomUserPreferenceRepository`, `TomUserPreferences`, `TomUserPreferencesServer` | Per-principal preferences that follow the user across devices: one scoped table, a typed service that reads its caller from the request zone, and the `/preferences/*` endpoints behind the kernel's contract |
-| `healthcheck` | `TomHealthService`, `TomHealthServer`, `TomHealthAnalyzer`, `TomFrameworkReadinessAnalyzer` | Liveness at `/health` and readiness at `/ready`, each with a pluggable analyzer; `/ready` answers by default with the framework's own checks — data sources answering `SELECT 1`, no migration running or failed, started outboxes delivering — one line per check in the body |
+| `healthcheck` | `TomHealthService`, `TomHealthServer`, `TomHealthAnalyzer`, `TomFrameworkReadinessAnalyzer` | Liveness at `/health` and readiness at `/ready`, each with a pluggable analyzer; `/ready` answers by default with the framework's own checks — data sources answering `SELECT 1`, no migration running or failed, started outboxes delivering — one line per check in the body — and `503 shutting down` once a graceful shutdown has begun |
 | `cmdline` | `TomArgs`, `TomEnvFile` | Argument parsing and `.env` loading |
 | `little_things` | `TomServerException`, `TomLoginException`, `TomRequestId` | Server exception base (extends kernel `TomException`), the login failure it raises, and the per-request correlation id it reads from the zone |
 
@@ -203,7 +207,7 @@ there, or excluded with a stated reason.
 
 | Sample | Demonstrates |
 | ------ | ------------ |
-| [`example/server/`](example/server/) | Building and starting `TomServer` |
+| [`example/server/`](example/server/) | The pieces `TomServer` composes its pipeline from; `graceful_shutdown_example.dart` runs a graceful shutdown step by step — readiness off, a new request refused, the request and the scheduled run in flight finished, the lease released |
 | [`example/endpoints/`](example/endpoints/) | Declaring routed endpoints |
 | [`example/object_persistence/`](example/object_persistence/) | Repositories, annotations, query builder |
 | [`example/datasources/`](example/datasources/) | SQL-typed values and dialect rendering |
@@ -412,7 +416,7 @@ See [`doc/authentication.md`](doc/authentication.md).
 ```text
                        TomServer (shelf host)
                             │
-         middleware: context · metrics · request-id · auth · rate limits · logging · JSON errors
+         middleware: shutdown gate · context · metrics · request-id · auth · rate limits · logging · JSON errors
                             │
                     TomEndpointRouting
                             │

@@ -20,7 +20,10 @@ data sources answering, is no migration running or failed, are the started
 outboxes delivering — through `TomFrameworkReadinessAnalyzer`, which
 `TomServer.start` installs unless the application installed a readiness
 analyzer of its own; see
-[The Framework Readiness Checks](#the-framework-readiness-checks).
+[The Framework Readiness Checks](#the-framework-readiness-checks). Once a graceful
+shutdown has begun it answers `503 shutting down` instead, while `GET /health`
+still asks its liveness analyzer; see
+[While the server shuts down](#while-the-server-shuts-down).
 
 ## Table of Contents
 
@@ -28,6 +31,7 @@ analyzer of its own; see
 - [The Probe Endpoints](#the-probe-endpoints)
 - [Two Questions, Two Routes](#two-questions-two-routes)
   - [Kubernetes](#kubernetes)
+  - [While the server shuts down](#while-the-server-shuts-down)
 - [The Framework Readiness Checks](#the-framework-readiness-checks)
   - [What is checked](#what-is-checked)
   - [The body](#the-body)
@@ -173,6 +177,41 @@ process `/ready` answers not ready, and after one failed it stays not ready
 with the error in the body — rather than a liveness failure restart-looping a
 pod on a schema that a restart will not change.
 
+### While the server shuts down
+
+A server's graceful shutdown (see
+[server.md](server.md#graceful-shutdown)) begins by calling
+`TomHealthServer.markShuttingDown()`. From then on every `GET /ready` answers
+`503` with the body `shutting down`, **without asking the readiness analyzer** —
+whatever the data sources say, a server that is stopping is not one to send
+traffic to, and an analyzer that takes its deadline to answer would only delay
+the load balancer noticing. The call is logged once at info:
+
+```text
+INFO  TomHealthServer: readiness now answers 503 shutting down
+```
+
+**Liveness is left alone.** `GET /health` keeps asking its analyzer, so a
+draining process answers `200`: it is alive, and a restart would cut off the
+requests it is finishing.
+
+| | Before the shutdown | Once it has begun |
+| - | ------------------- | ----------------- |
+| `GET /ready` | the readiness analyzer's verdict | `503 shutting down` |
+| `GET /health` | the liveness analyzer's verdict | unchanged |
+
+`TomHealthServer.isShuttingDown` says whether the mark is set. It is
+process-wide like the analyzers and is not cleared by the shutdown itself — the
+process is ending — but `resetHealthChecks()` clears it, for a test or an
+example that drove a shutdown in-process.
+
+Both probe paths are passed by the shutdown's request gate, so a probe arriving
+on a connection kept alive from before still gets this answer after the server
+has stopped accepting connections. A probe on a new connection is refused once
+the listener has closed — see
+[server.md](server.md#kubernetes) for what that means for a liveness probe's
+`failureThreshold`.
+
 ## The Framework Readiness Checks
 
 Every Tom server needs the same things before it can serve traffic: its data
@@ -316,7 +355,7 @@ through a function:
 | `TomHealthServer.installLivenessAnalyzer(a)` | `a` answers every `GET /health` |
 | `TomHealthServer.installReadinessAnalyzer(a)` | `a` answers every `GET /ready` |
 | `TomHealthServer.installHealthTimeout(d)` | `d` is the deadline both probes answer under |
-| `TomHealthServer.resetHealthChecks()` | both probes go back to a fresh `TomDefaultHealthAnalyzer`, one instance each, and the deadline to its default |
+| `TomHealthServer.resetHealthChecks()` | both probes go back to a fresh `TomDefaultHealthAnalyzer`, one instance each, the deadline to its default, and the shutting-down mark is cleared |
 
 **Each call logs at info, naming the outgoing and the incoming analyzer.** That
 line is the whole reason installation is a function rather than an assignment.
@@ -465,6 +504,12 @@ application's own readiness analyzer surviving `start()`.
 source check against a real database, in the group `data source readiness`: a
 data source that answers is ready, a closed one is not.
 
+`test/graceful_shutdown_test.dart`, in the group `TomGracefulShutdown in
+process`, covers readiness during a shutdown: once the shutdown has begun,
+`TomHealthServer.isShuttingDown` is set, `/ready` answers `503` and `/health`
+`200`, and the probe paths pass the shutdown's request gate while other paths
+are refused.
+
 ```bash
 dart run example/healthcheck/healthcheck_example.dart
 dart run example/healthcheck/readiness_logging_example.dart
@@ -487,7 +532,8 @@ step of both checks its own result, and `test/examples_test.dart` runs them.
   (`healthTimeout`) behind `installLivenessAnalyzer` /
   `installReadinessAnalyzer` / `installHealthTimeout` / `resetHealthChecks`,
   runs each route's analyzer through `verdictOf`, and turns the verdict into the
-  response with `responseFor`.
+  response with `responseFor`; `markShuttingDown` / `isShuttingDown` turn
+  readiness to `503 shutting down` for a graceful shutdown.
 - **`TomHealthAnalyzer`** / **`TomDefaultHealthAnalyzer`** — the analyzer
   contract and its always-healthy default.
 - **`TomHealthStatus`** / **`TomHealthVerdict`** — what an analyzer concludes:

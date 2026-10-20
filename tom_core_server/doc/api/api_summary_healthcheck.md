@@ -60,6 +60,11 @@ and the readiness analyzer is still the default one. Its body is `ready` or
 `not ready` followed by one line per check (`TomReadinessCheck`). Liveness is
 never answered by it.
 
+A graceful shutdown (`TomServer.shutdown`, run on SIGTERM and SIGINT) begins with
+`TomHealthServer.markShuttingDown`, after which `GET /ready` answers
+`503 shutting down` without asking the readiness analyzer, and `GET /health`
+still asks the liveness analyzer.
+
 ## Class Hierarchy
 
 ```
@@ -187,6 +192,7 @@ TomHealthServer()
 | `livenessAnalyzer` | `static TomHealthAnalyzer get` | The analyzer every `GET /health` request is answered by (defaults to `TomDefaultHealthAnalyzer`). Read-only: install with `installLivenessAnalyzer`. Named for the question rather than for the module, now that there are two: a `healthAnalyzer` beside a `readinessAnalyzer` would read as though it covered both. |
 | `healthTimeout` | `static Duration get` | How long a probe waits for its analyzer before answering unhealthy. Read-only: install with `installHealthTimeout`. |
 | `readinessAnalyzer` | `static TomHealthAnalyzer get` | The analyzer every `GET /ready` request is answered by — a separate instance, so installing one does not silently change the other. Defaults to always-ready: "not ready until told" would leave a deployment that never configures readiness with an empty load balancer, a healthy process and a passing liveness probe — a failure with no visible cause. |
+| `isShuttingDown` | `static bool get` | Whether `markShuttingDown` has been called: `GET /ready` then answers `503 shutting down`. Cleared by `resetHealthChecks`. |
 
 #### Methods
 
@@ -195,9 +201,10 @@ TomHealthServer()
 | `installLivenessAnalyzer` | `static void installLivenessAnalyzer(TomHealthAnalyzer analyzer)` | Installs the process-wide liveness analyzer, logging the replacement at info with both runtime types. A function rather than a setter because the analyzer is a global anything in the process can replace at any moment, including mid-serving, and an assignment leaves no trace for a deployment to read. Not sealed after startup: the analyzer must be replaceable before the bean context exists, and the framework cannot know when a deployment has finished installing. |
 | `installReadinessAnalyzer` | `static void installReadinessAnalyzer(TomHealthAnalyzer analyzer)` | The same for the readiness analyzer. |
 | `installHealthTimeout` | `static void installHealthTimeout(Duration timeout)` | Installs the process-wide deadline both probes answer under, logging the replacement. Throws `ArgumentError` on a zero or negative duration, which would make every probe answer `TIMEOUT` before its analyzer ran — wrong in the direction that looks safe, since `503` on liveness is a restart. |
-| `resetHealthChecks` | `static void resetHealthChecks()` | Puts the module's process-wide state back the way a fresh process starts it: a fresh `TomDefaultHealthAnalyzer` on each probe, one instance each, and the deadline at `defaultHealthTimeout`. The supported way back for a test or an example; it logs like any other installation, because it is one. |
+| `resetHealthChecks` | `static void resetHealthChecks()` | Puts the module's process-wide state back the way a fresh process starts it: a fresh `TomDefaultHealthAnalyzer` on each probe, one instance each, the deadline at `defaultHealthTimeout`, and the shutting-down mark cleared. The supported way back for a test or an example; it logs like any other installation, because it is one. |
 | `health` | `Future<Response> health()` | *(override)* Runs `livenessAnalyzer` through `verdictOf` and hands the result to `responseFor`. |
-| `ready` | `Future<Response> ready()` | *(override)* Runs `readinessAnalyzer` through `verdictOf` and hands the result to `responseFor`. |
+| `ready` | `Future<Response> ready()` | *(override)* Runs `readinessAnalyzer` through `verdictOf` and hands the result to `responseFor` — or, once `markShuttingDown` has been called, answers `503 shutting down` without asking the analyzer. |
+| `markShuttingDown` | `static void markShuttingDown()` | Answers every later `GET /ready` with `503 shutting down`, without asking the readiness analyzer, and leaves liveness alone. The first step of a graceful shutdown (`TomServer.shutdown`): the load balancer stops sending new traffic while the requests already accepted finish, and liveness keeps answering because a draining process is alive. Logs once at info; a second call does nothing. |
 | `verdictOf` | `static Future<TomHealthStatus> verdictOf(TomHealthAnalyzer analyzer, String probe)` | Runs `analyzer` under `healthTimeout` and turns every way it can fail to produce a verdict into one: a timeout becomes `TIMEOUT: the <probe> check did not answer within …`, a thrown exception — synchronous or asynchronous — becomes `FAILED: the <probe> check threw …`. The throw is the likelier failure and the one that changes the response *shape*: an exception leaving the handler is answered by the endpoints pipeline's error envelope, a `500` carrying JSON rather than the plain text a probe was configured to read, and on liveness a `500` is a restart. Public so a deployment adding a probe route of its own gets the deadline and the failure handling rather than a second, thinner spelling. A timed-out analyzer is not cancelled — `Future.timeout` stops the waiting, not the work — so an analysis is never started twice: a probe arriving while the analyzer's previous analysis is still pending waits on that one under its own deadline, and a hanging analyzer costs one pending future rather than one per probe. |
 | `responseFor` | `static Response responseFor(TomHealthStatus status)` | The HTTP response one status is served as: `status.statusCode`, the message as the body, and `text/plain` — set here because a handler returning a `Response` bypasses the endpoint's `produces`. Public and static so a deployment writing its own health route answers with the same shape rather than a second spelling of it. |
 

@@ -2,6 +2,37 @@
 
 ### Added
 
+- **Graceful shutdown on SIGTERM.** `TomGracefulShutdown` (`server` module)
+  runs, in order: `GET /ready` answers `503 shutting down`; requests are still
+  accepted for the readiness delay; the listener closes and the shutdown gate
+  refuses a new request with `503`, `Connection: close` and `Retry-After: 1`
+  while the probe paths (`tomProbePaths`) pass; every started scheduler —
+  the outbox's included — is stopped and the requests and runs in flight get
+  the grace period to finish; once the responses are written, the started
+  outboxes and schedulers are closed, releasing their leases, and connections
+  still open at the deadline are closed; the data sources close their pools.
+  `TomServer.gracefulShutdown` is the server's instance and
+  `TomServer.shutdown()` runs it without a signal (idempotent, never exits).
+  `TomServer.start` installs the gate as the outermost pipeline layer and
+  registers the shutdown with `tomShutdownCleanup` for SIGTERM (not on Windows)
+  and SIGINT, raising its phase timeout to cover the delay and the grace period.
+  `doc/server.md` § Graceful Shutdown, with the Kubernetes settings
+  (`terminationGracePeriodSeconds`, `preStop` or readiness delay, probes).
+- **Configuration keys `shutdownGracePeriodSeconds`** (default `20`),
+  **`shutdownReadinessDelaySeconds`** (default `0`) and
+  **`exitOnShutdownSignal`** (default `true`; environment
+  `SHUTDOWN_GRACE_PERIOD_SECONDS`, `SHUTDOWN_READINESS_DELAY_SECONDS`,
+  `EXIT_ON_SHUTDOWN_SIGNAL`): the grace period, the time requests are still
+  taken after readiness turned to `503`, and whether a signal ends the process
+  with exit code `0` once the shutdown and every cleanup phase have run.
+  `doc/configuration.md` § Graceful Shutdown.
+- **`TomHealthServer.markShuttingDown()`** and **`TomHealthServer.isShuttingDown`**:
+  once marked, `GET /ready` answers `503 shutting down` without asking the
+  readiness analyzer, and liveness is unchanged; `resetHealthChecks()` clears
+  the mark. `doc/healthcheck.md` § While the server shuts down.
+- **`example/server/graceful_shutdown_example.dart`** — a graceful shutdown step
+  by step, around a handler and a scheduler, on the package tour.
+
 - **Request correlation ids and structured logs.** `tomRequestContextMiddleware`
   mints every request's `TomRequestId` and continues the caller's W3C
   `traceparent` with a span of the server's own (the kernel's
@@ -705,6 +736,13 @@
 
 ### Tests
 
+- **`test/graceful_shutdown_test.dart`** sends a real SIGTERM to a server
+  process (`test/fixtures/graceful_shutdown_server.dart`) during a slow request:
+  the request completes, no new request is accepted, the scheduler's file lease
+  is released and the process exits with `0`. In process it covers the drain and
+  the refusals with the probes passed, a scheduler drained before its lease is
+  released, a run past the grace period abandoned with its lease released, and
+  a second call handed the first shutdown.
 - **`test/structured_logs_readiness_test.dart`** covers the request context
   (trace continued or started, the request id kept by authentication and named
   on the response, the fields of a JSON line), `logFormat`, and the framework

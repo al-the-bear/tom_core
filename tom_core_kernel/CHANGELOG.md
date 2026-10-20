@@ -39,6 +39,21 @@
   `tom_job_last_success_timestamp_seconds`, and from `start()` to `close()`
   observes `tom_job_backlog` and `tom_job_backlog_age_seconds` for its own
   registered jobs. `doc/scheduling/scheduling.md` § Metrics.
+- **`TomScheduler.started`** (`scheduling/`): the schedulers of this isolate
+  that were started and not yet closed, as an unmodifiable snapshot. `start()`
+  adds a scheduler, `close()` removes it, `stop()` leaves it listed. A graceful
+  shutdown stops every one, drains them within its deadline and closes them so
+  their leases are released. `doc/scheduling/scheduling.md` § The Scheduler;
+  test in `test/scheduling_test.dart`.
+- **`TomShutdownCleanup.exitAfterSignalShutdown`** and **`exitProcess`**
+  (`shutdown_cleanup/`): with the flag set (default `false`), a shutdown started
+  by a signal calls `exitProcess(0)` once every phase has run; a shutdown started
+  by calling `performShutdown()` never exits. `exitProcess` defaults to
+  `dart:io`'s `exit` and is replaceable for tests.
+  `doc/shutdown_cleanup/shutdown_cleanup.md` § Exiting after a signal; sample
+  `example/samples/shutdown_cleanup/03_shutdown_execution_example.dart`
+  (example 11); tests in `test/shutdown_cleanup_test.dart`
+  (group `exitAfterSignalShutdown`).
 - **`TomJobStore.backlog(now)`** and **`TomJobBacklog`**: the due, unclaimed
   runs per job — how many, and since when the oldest has been due. A new
   abstract member: an implementation of `TomJobStore` outside this package must

@@ -20,7 +20,7 @@ surface documented here.
 | Endpoints | [api_summary_endpoints.md](api_summary_endpoints.md) | Service/endpoint annotations, routing, handler pipeline, error handling, and the three transports over it: HTML form bodies, redirects and WebSockets — plus the HTTP surface of file columns. |
 | Export | [api_summary_export.md](api_summary_export.md) | Tabular results rendered to CSV, XLSX or PDF, and stored for later retrieval. |
 | File Storage | [api_summary_file_storage.md](api_summary_file_storage.md) | Streaming blob storage: one put/get contract over memory, directory, database and S3 backends. |
-| Health Check | [api_summary_healthcheck.md](api_summary_healthcheck.md) | Health analyzer and health-check service/server, and the framework readiness checks `/ready` answers with by default. |
+| Health Check | [api_summary_healthcheck.md](api_summary_healthcheck.md) | Health analyzer and health-check service/server, and the framework readiness checks `/ready` answers with by default — or `503 shutting down` once a graceful shutdown has begun. |
 | Item Authorization | [api_summary_item_authorization.md](api_summary_item_authorization.md) | Item authorizations kept by an external authority: the port to it, a caching client for checks, accessible items and the user's sharing acts, and the row scope it feeds. |
 | Little Things | [api_summary_little_things.md](api_summary_little_things.md) | The server-side base exception `TomServerException`, the `TomLoginFailure` reason its login subclass carries, the per-request correlation id `TomRequestId` it reads, and `tomErrorEnvelope`, the wire shape every error response uses. |
 | Messaging | [api_summary_messaging.md](api_summary_messaging.md) | Channel-neutral messages, delivery transports (SMTP, HTTP SMS gateway and stand-ins), MIME encoding, the durable outbox, and resource-keyed email and SMS. |
@@ -30,7 +30,7 @@ surface documented here.
 | Rate Limiting | [api_summary_ratelimit.md](api_summary_ratelimit.md) | Request rate limits per principal, API key or client address: the rules, the sliding-window arithmetic, the per-process and shared limiters, and the middleware answering `429` with `Retry-After`. |
 | Resources | [api_summary_resources.md](api_summary_resources.md) | Locale-aware text resolution: one bundle per locale, chosen by the recipient's language. |
 | Scheduling | [api_summary_scheduling.md](api_summary_scheduling.md) | The relational half of the job scheduler: the shared job queue, fencing leases, and the node roll call. |
-| Server | [api_summary_server.md](api_summary_server.md) | The HTTP server, per-request logging state and correlation ids, middleware, the log format, and the paths whose credentials belong to the endpoint. |
+| Server | [api_summary_server.md](api_summary_server.md) | The HTTP server, per-request logging state and correlation ids, middleware, the log format, the paths whose credentials belong to the endpoint, and the graceful shutdown on SIGTERM. |
 | Tenancy | [api_summary_tenancy.md](api_summary_tenancy.md) | Multi-tenancy: the deployment's tenants, the three isolation models chosen per tenant, data-source routing, and the resolution of a request's tenant from its token, host or header. |
 | Transactions | [api_summary_transactions.md](api_summary_transactions.md) | Distributed transaction manager and participants. |
 
@@ -786,6 +786,8 @@ surface documented here.
 | `tomRequestIdHeader` | constant | `X-Request-Id`, the response header carrying the request id. |
 | `tomRequestContextMiddleware` | function | Mints the request id, continues or starts the W3C trace, answers with both. |
 | `noopHandler` | function | A handler returning a fixed status. |
+| `TomGracefulShutdown` | class | What the server does between SIGTERM and exiting: readiness off, new requests refused, work in flight finished, leases released, pools closed. |
+| `tomProbePaths` | constant | `health` and `ready`, the paths a draining server keeps answering. |
 
 ### Tenancy (`lib/src/tomserver/tenancy/`)
 
@@ -1211,6 +1213,7 @@ surface documented here.
 | `TomFrameworkSchemaCheck` | Database Migration |
 | `TomFrameworkTable` | Datasources |
 | `TomGeneratedQuery` | Datasources |
+| `TomGracefulShutdown` | Server |
 | `TomGradedAccessControlInformation` | Authorization |
 | `TomGroupedRow` | Object Persistence |
 | `TomGroupedSelect` | Object Persistence |
@@ -1330,6 +1333,7 @@ surface documented here.
 | `TomPrincipalFlag2FAPolicy` | Authentication |
 | `TomPrincipalResourceGrant` | Authorization |
 | `TomPrincipalResourceRoleResolver` | Authorization |
+| `tomProbePaths` | Server |
 | `TomPushCredential` | Messaging |
 | `TomPushExchange` | Messaging |
 | `TomPushGatewayAnswer` | Messaging |
