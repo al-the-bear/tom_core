@@ -14,6 +14,7 @@ import '../little_things/server_exception.dart';
 import '../configuration/base_server_configuration.dart';
 import '../configuration/runtime_environment.dart';
 import '../endpoints/endpoint_pipeline.dart';
+import '../endpoints/idempotency.dart';
 import '../endpoints/openapi_document_endpoint.dart';
 import '../healthcheck/framework_readiness.dart';
 import '../healthcheck/health_check.dart';
@@ -703,6 +704,7 @@ class TomServer {
     // First, so every outgoing call the start makes — the deployment's own
     // login included — runs under the configured policies.
     configureHttpClients();
+    configureIdempotency();
     await _installServerPrincipal();
     warnOnUnenforcedResourceKeys();
 
@@ -917,6 +919,22 @@ class TomServer {
         config ?? TomServerConfigResourceProvider.getServerConfig();
     if (!provider.exists(httpClientConfigurationKey)) return;
     TomHttpResilience.configure(provider.get(httpClientConfigurationKey));
+  }
+
+  /// The configuration key holding the idempotency-key settings — see
+  /// [configureIdempotency].
+  static const String idempotencyConfigurationKey = 'idempotency';
+
+  /// Applies the [idempotencyConfigurationKey] map of [config] (the server
+  /// configuration unless given) with [TomIdempotency.configure]: the store
+  /// `@TomIdempotent` endpoints keep their keys in, and its retention. Without
+  /// the key the in-memory store and its defaults stand, which holds on a
+  /// single process only.
+  static void configureIdempotency([TomServerConfigResourceProvider? config]) {
+    final provider =
+        config ?? TomServerConfigResourceProvider.getServerConfig();
+    if (!provider.exists(idempotencyConfigurationKey)) return;
+    TomIdempotency.configure(provider.get(idempotencyConfigurationKey));
   }
 
   /// Applies [TomBaseServerConfiguration.logFormat]; see [applyLogFormat].

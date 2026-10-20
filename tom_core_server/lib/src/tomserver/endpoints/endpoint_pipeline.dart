@@ -16,6 +16,7 @@ import '../server/server.dart';
 import '../transactions/transaction_manager.dart';
 
 import 'endpoint_annotation.dart';
+import 'idempotency.dart';
 import 'endpoint_results.dart';
 import 'form_binding.dart';
 import 'web_socket_endpoint.dart';
@@ -1023,12 +1024,24 @@ class TomEndpointHandler {
     // guard rather than a second mechanism: a transactional endpoint makes sure
     // a scope exists instead of trusting the chain in front of it, because the
     // failure it prevents — one request committing another's work — is silent.
-    final Future<Response> response =
+    Future<Response> call(Request req) =>
         metadata.transactionInfo == null ||
             TomTransactionManager.hasTransactionScope
         ? _handleMethodCallInScope(req)
         : TomTransactionManager.runInTransactionScope(
             () => _handleMethodCallInScope(req),
+          );
+    // An idempotent endpoint answers a retried key from the stored response;
+    // a preflight is the browser's question and carries no key worth keeping.
+    final idempotent = metadata.idempotent;
+    final Future<Response> response =
+        idempotent == null || req.method == TomHttpMethod.options.name
+        ? call(req)
+        : TomIdempotency.handle(
+            req,
+            '${req.method} ${metadata.endpoint.uri}',
+            idempotent,
+            call,
           );
     return response.then(withAllowedOrigin);
   }
@@ -2040,7 +2053,17 @@ class TomEndpointRouting {
             TomApi? a;
             TomApiEndpoint? ae;
             TomAudited? aud;
+            TomIdempotent? idem;
             for (var tag in decl.metadata) {
+              if (tag is TomIdempotent) {
+                if (idem != null) {
+                  throw TomEndpointPipelineException(
+                    "endpoint_pipeline.get_class_method_metadata.multiple_idempotent_tags",
+                    "More than one TomIdempotent specified for $decl",
+                  );
+                }
+                idem = tag;
+              }
               if (tag is TomAudited) {
                 if (aud != null) {
                   throw TomEndpointPipelineException(
@@ -2122,6 +2145,7 @@ class TomEndpointRouting {
                 access: resolvedAccess,
                 transactionInfo: ti,
                 audited: aud,
+                idempotent: idem,
                 // A socket endpoint is discovered by the very same `tag is
                 // TomEndpointBase` test as every other kind; all that is kept
                 // here is *which* kind it was, for the mounting step.
@@ -2231,6 +2255,10 @@ class TomMethodMetadata {
   /// declaration — it happens at the repository.
   TomAudited? audited;
 
+  /// The method's `@TomIdempotent` annotation: requests may carry an
+  /// `Idempotency-Key`, replayed from [TomIdempotency.store].
+  TomIdempotent? idempotent;
+
   /// The `@TomWebSocketEndpoint` declaration, when the method is a socket
   /// endpoint rather than a request/response one.
   ///
@@ -2259,6 +2287,7 @@ class TomMethodMetadata {
     this.access,
     this.transactionInfo,
     this.audited,
+    this.idempotent,
     this.webSocket,
     this.apiEndpointImplementation,
     this.apiImplementation,

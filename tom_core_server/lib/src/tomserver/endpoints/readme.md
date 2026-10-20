@@ -26,6 +26,8 @@ transaction.
 | `TomMultipartForm` · `TomFormFile` · `tomConsumesForm` | HTML form bodies, both `multipart/form-data` and URL-encoded, decoded into the parameters an endpoint declares. A `TomFormFile` streams: `openRead()`, never a whole buffer. |
 | `TomWebSocketEndpoint` · `TomWebSocketConnection` | The socket transport over the same router: an annotation that mounts a socket route beside the HTTP ones, and the connection an endpoint is handed. |
 | `TomFileEndpoint` · `TomFileSlot` · `TomFileSlots` · `TomFileServer` | The HTTP face of a `@TomFileReference` column — upload, download and describe for a named slot, gated by the same authorization as the row it hangs off. A download honours `Range`, so a resumed transfer or a seek costs the slice rather than the file, and serves the blob's digest as an `ETag` so a client that already holds the bytes is answered `304`. |
+| `TomIdempotent` · `TomIdempotency` | Idempotency keys. `@TomIdempotent()` on an endpoint lets a client send an `Idempotency-Key`: the first request runs and its response is stored, a retry with the same key gets that response (`Idempotent-Replayed: true`) without running again, the same key for a different request answers `422`, and one still running `409`. A key is scoped to the tenant, the authenticated principal and the operation. |
+| `TomIdempotencyStore` · `TomMemoryIdempotencyStore` · `TomSqlIdempotencyStore` | Where the records are kept: in memory by default (one process), or in `tom_idempotency_key` (`idempotencyTable`) for a cluster — installed by `TomServer.start` when the `idempotency` configuration names a data source, which is resolved per request, so under tenancy a tenant's keys live in its own data source. |
 | `TomOpenApiService` · `TomOpenApiServer` | A framework endpoint: `GET /openapi.json`, public, serving the OpenAPI document the build generated with `tom_core_openapi`. The file comes from the `openApiDocument` setting; with none configured, or none on disk, the route answers `404` with the error envelope. |
 
 ## Quick start
@@ -107,7 +109,11 @@ them and the scan can see their annotations.
 `test/endpoints_pipeline_test.dart` serves it over a real socket,
 `test/endpoints_transport_test.dart` the transport and
 `test/endpoints_serialization_roundtrip_test.dart` the wire shapes;
-`test/examples_test.dart` runs the example.
+`test/examples_test.dart` runs the example. Idempotency keys are described in
+[`doc/endpoints.md`](../../../../doc/endpoints.md#idempotency-keys), shown by
+`example/endpoints/idempotency_example.dart` and covered by
+`test/idempotency_test.dart` and, against a database,
+`test/idempotency_db_test.dart`.
 
 ---
 

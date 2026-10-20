@@ -75,6 +75,15 @@ to another service runs under, overall and per destination. A value of the
 wrong shape stops the start with `http.client.config.invalid` — see
 [`doc/configuration.md`](../../../../doc/configuration.md#outgoing-http-calls).
 
+**Idempotency keys.** `start` applies the `idempotency` key of the
+configuration resources (`TomServer.configureIdempotency`,
+`TomServer.idempotencyConfigurationKey`) right after: a `datasource` keeps the
+records of `@TomIdempotent` endpoints in a `TomSqlIdempotencyStore` shared by
+every instance, and `retentionMinutes` / `inProgressTimeoutSeconds` set how
+long a response is replayed and when an abandoned claim is taken over. Without
+the key the records stay in memory, on one process — see
+[`doc/configuration.md`](../../../../doc/configuration.md#idempotency-keys).
+
 **Graceful shutdown.** `start` puts the shutdown gate outermost in the
 pipeline and registers `TomServer.gracefulShutdown` for SIGTERM and SIGINT: on
 either signal `/ready` turns to `503`, the listener closes, a new request is

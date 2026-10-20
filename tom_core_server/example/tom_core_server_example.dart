@@ -62,6 +62,10 @@ const List<TourStop> tour = [
     'Declaring routed endpoints, and what the router makes of them',
   ),
   TourStop(
+    'example/endpoints/idempotency_example.dart',
+    'Idempotency keys: a retried POST runs once and gets the first response',
+  ),
+  TourStop(
     'example/object_persistence/object_persistence_example.dart',
     'Repositories, the persistence annotations, and the query builder',
   ),

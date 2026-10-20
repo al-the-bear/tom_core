@@ -3369,6 +3369,7 @@ final RegExp _listingHeader = RegExp(r'^abstract class ([A-Za-z_]\w*)');
 const Set<String> _illustrativeListings = {
   'AdminApi',
   'GreetingService',
+  'OrderApi',
   'TickerService',
 };
 
@@ -8105,6 +8106,7 @@ class After {}
           'access',
           'transactionInfo',
           'audited',
+          'idempotent',
           'webSocket',
           'apiEndpointImplementation',
           'apiImplementation',
@@ -8795,8 +8797,9 @@ class After {}
     test('the parser found the fields it claims to check', () {
       // Both findings are emptiness assertions, so a parser that matched no
       // field at all would report a clean class. Pin the roster: these are
-      // every field `TomServer` declares — the instance fields and the one
-      // static constant, `httpClientConfigurationKey` — and the set is small
+      // every field `TomServer` declares — the instance fields and the two
+      // static constants, `httpClientConfigurationKey` and
+      // `idempotencyConfigurationKey` — and the set is small
       // enough that naming it costs less than the vacuity it removes.
       expect(shipped().names, [
         'configuration',
@@ -8807,6 +8810,7 @@ class After {}
         'loggingMiddleware',
         'gracefulShutdown',
         'httpClientConfigurationKey',
+        'idempotencyConfigurationKey',
         'metricsExporter',
       ]);
       // Methods are declarations at the same indentation as fields; a parser

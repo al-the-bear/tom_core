@@ -930,7 +930,7 @@ entry.
 The framework's tables — `tom_job_run`, `tom_lease`, `tom_scheduler_node`,
 `tom_blob`, `tom_blob_chunk`, `tom_audit_trail`, `tom_oauth_state`,
 `tom_scim_resource`, `tom_delivery_report`, `tom_message_inbox`,
-`tom_cache_invalidation` — are not
+`tom_cache_invalidation`, `tom_idempotency_key` — are not
 application entities
 and deliberately stay that way: making them entities would pull them into the
 application's reflection build and have `discoverEntityTypes()` report them
@@ -967,6 +967,13 @@ unique window key `(job_name, tenant, scheduled_for)`) and
 migrations, `example/scheduling/migrations/main/tomcore/[1]-create_tom_job_run.sql`
 and `example/messaging/migrations/main/tomcore/[1]-create_tom_delivery_report.sql`,
 declare them.
+
+Two of them can live where a tenant's data lives instead. `tom_message_inbox`
+belongs in the data source the consumer's work writes to, and
+`tom_idempotency_key` in the data source the idempotency store names — which,
+when tenancy routes that data source, is the tenant's own schema or database.
+Their migrations then belong in the per-tenant tree; see
+[tenancy.md](tenancy.md#what-stays-deployment-wide).
 
 ### The Four Places a Column Name Could Have Been Spelled
 
@@ -1317,6 +1324,7 @@ here it cannot drift silently.
 | [authentication](authentication.md) | module | `framework_convergence.dart` | `defaultOAuthStateTable`, `defaultScimResourceTable`, `oauthStateTable`, `scimResourceTable` |
 | [cache](cache.md) | module | `framework_convergence.dart` | `defaultInvalidationTable`, `invalidationTable` |
 | [datasources](datasources.md) | module | 8 of 8 files | `TomDataSourceInfo` (named data sources) and its `executeCommand` / `executeQuery`; `TomSqlLexer`, the statement splitter and quote scanner; the connected data source's dialect, which `verifyLive` classifies and queries the catalogue with |
+| [endpoints](endpoints.md) | module | `framework_convergence.dart` | `defaultIdempotencyTable`, `idempotencyTable` |
 | [file_storage](file_storage.md) | module | `framework_convergence.dart` | `blobChunkTable`, `blobManifestTable`, `defaultBlobChunkTable`, `defaultBlobManifestTable` |
 | [little_things](little_things.md) | module | `db_migration.dart`, `mariadb_migration_adapter.dart`, `postgres_migration_adapter.dart`, `sql_migration_adaptor.dart` | `TomServerException` |
 | [messaging](messaging.md) | module | `framework_convergence.dart` | `defaultDeliveryReportTable`, `deliveryReportTable`, `defaultInboxTable`, `inboxTable` |

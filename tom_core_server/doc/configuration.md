@@ -34,6 +34,7 @@ store before the configuration is built.
 - [Log Format and Readiness](#log-format-and-readiness)
 - [Graceful Shutdown](#graceful-shutdown)
 - [Outgoing HTTP Calls](#outgoing-http-calls)
+- [Idempotency Keys](#idempotency-keys)
 - [Source Precedence](#source-precedence)
   - [A `SCREAMING_SNAKE_CASE` variable names a `lowerCamelCase` field](#a-screaming_snake_case-variable-names-a-lowercamelcase-field)
 - [Secret References](#secret-references)
@@ -932,6 +933,49 @@ code that sets one with `TomHttpResilience.setDestinationPolicy` does so after
 
 The policies and the circuit and bulkhead state are per isolate. `httpClient`
 is not a field of the configuration base, so the startup warning about
+[unknown keys](#unknown-keys-in-the-configuration-resources) names it.
+
+## Idempotency Keys
+
+An endpoint annotated `@TomIdempotent` stores the response to a request that
+carries an `Idempotency-Key` and answers a retry with the same key from the
+store (see [endpoints.md](endpoints.md#idempotency-keys)). The `idempotency` key
+of the configuration resources (`TomServer.idempotencyConfigurationKey`) says
+where those records are kept and how long. Like `httpClient` it is a nested map
+read through `TomServerConfigResourceProvider`, not a field of the configuration
+base: `TomServer.start` hands it to `TomIdempotency.configure` through
+`TomServer.configureIdempotency`. Without the key the records are kept in
+memory, which holds on one process only.
+
+| Key | Type | Default | What it decides |
+| --- | ---- | ------- | --------------- |
+| `datasource` | `String` | none | The registered data source the records are kept in: a `TomSqlIdempotencyStore` over it replaces the in-memory store, so every instance sharing the database sees every key. Resolved by name on each request, so under tenancy a routed data source keeps each tenant's keys in the tenant's schema or database. Absent: the in-memory store. |
+| `table` | `String` | `tom_idempotency_key` | The table's name. Only read with `datasource`. |
+| `createSchema` | `bool` | `true` | Whether the store creates the table on first use in each data source. `false` for a database user that may not run DDL; the deployment then applies the reference migration `example/endpoints/migrations/main/tomcore/[1]-create_tom_idempotency_key.sql` (or its `migrations_postgresql` form). Only read with `datasource`. |
+| `retentionMinutes` | `int` | `1440` | How long a stored response is replayed (`TomIdempotency.defaultRetention`); an endpoint's `@TomIdempotent(retention:)` overrides it. Choose it longer than clients keep retrying. |
+| `inProgressTimeoutSeconds` | `int` | `300` | How long a claimed key may stay unfinished before a retry takes it over (`TomIdempotency.inProgressTimeout`), for a request whose process died. Keep it longer than the slowest idempotent request. |
+
+```yaml
+# assets/config-resources_default.yaml
+idempotency:
+  datasource: main
+  createSchema: false
+  retentionMinutes: 1440
+  inProgressTimeoutSeconds: 300
+```
+
+**A value of the wrong shape stops the start.** `idempotency` that is not a map,
+or a `retentionMinutes` or `inProgressTimeoutSeconds` that is not a positive
+whole number, throws a `TomIdempotencyException` keyed
+`endpoint.idempotency.config.invalid` before anything is applied. A data source
+the name does not resolve to is reported per request, as
+`endpoint.idempotency.no_datasource`.
+
+**When it applies.** `start()` applies the key right after `httpClient`, before
+the router is built. A deployment that installs a store of its own assigns
+`TomIdempotency.store` after `start()`, or leaves `datasource` out. The
+settings are per isolate. `idempotency` is not a field of the configuration
+base, so the startup warning about
 [unknown keys](#unknown-keys-in-the-configuration-resources) names it.
 
 ## Source Precedence

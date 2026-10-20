@@ -493,6 +493,7 @@ claimed organization is the session's.
 | Jobs | a run records its tenant; its body runs inside it, across a worker isolate too; its window and its overlap protection are per tenant | [scheduling](scheduling.md#runs-per-tenant) |
 | Messaging outbox | a message is queued for the tenant in context and delivered inside it; its receipt and its delivery correlation name the tenant | [messaging](messaging.md#messages-per-tenant) |
 | Delivery reports | `tom_delivery_report.tenant` attributes a carrier's report, which arrives carrying nothing but the carrier's id, to its tenant | [messaging](messaging.md#messages-per-tenant) |
+| Idempotency keys | a key is scoped to the tenant in context, its principal and the operation; the SQL store resolves its data source by name per request, so a routed data source keeps a tenant's keys in the tenant's schema or database | [endpoints](endpoints.md#stores-clusters-and-tenants) |
 
 A tenant-scoped key is spelled one way everywhere —
 `TomTenantContext.qualify(name, tenant)`, which is `tenant:<id>/<name>`, or the
@@ -543,6 +544,24 @@ await tenancy.runFor(tenantId, () async {
 
 Under row-level isolation the routed data source is the shared one, and a
 single inbox serves every tenant.
+
+**The idempotency keys follow the data source they are configured on.**
+`TomSqlIdempotencyStore` — installed by `TomServer.start` when the
+`idempotency` configuration names a data source — looks that data source up by
+name on every request, through the routing. When the name is one of
+`TomTenancy.datasources`, a request in a `schema` or `database` tenant stores
+its key in that tenant's schema or database; the store creates
+`tom_idempotency_key` there on first use, or, with `createSchema: false`, the
+migration belongs in the per-tenant tree. A shared tenant's keys, and every key
+when the data source is not a tenant one, go to the one table, where the
+`tenant` column keeps them apart:
+
+```yaml
+idempotency:
+  datasource: main          # in TomTenancy.datasources: keys live per tenant
+```
+
+See [endpoints.md](endpoints.md#stores-clusters-and-tenants).
 
 ## Working in a Tenant Outside a Request
 

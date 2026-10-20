@@ -48,6 +48,7 @@ import '../datasources/mariadb_sql_dialect.dart';
 import '../datasources/sql_dialects.dart';
 import '../file_storage/database_blob_sql.dart';
 import '../messaging/delivery_report_sql.dart';
+import '../endpoints/idempotency_sql.dart';
 import '../messaging/inbox_sql.dart';
 import '../object_persistence/annotation_analyzer.dart';
 import '../object_persistence/persistence_annotations.dart';
@@ -81,6 +82,7 @@ List<TomFrameworkTable> frameworkOwnedTables({
   String invalidation = defaultInvalidationTable,
   String scimResource = defaultScimResourceTable,
   String inbox = defaultInboxTable,
+  String idempotency = defaultIdempotencyTable,
 }) => [
   jobRunTable(jobRun),
   leaseTable(lease),
@@ -93,6 +95,7 @@ List<TomFrameworkTable> frameworkOwnedTables({
   invalidationTable(invalidation),
   scimResourceTable(scimResource),
   inboxTable(inbox),
+  idempotencyTable(idempotency),
 ];
 
 /// Compares framework-owned table descriptors against everything else that

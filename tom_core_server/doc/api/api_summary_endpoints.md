@@ -44,6 +44,16 @@ method, and runs the per-request handling.
   - [TomFileServer](#tomfileserver)
   - [TomOpenApiService](#tomopenapiservice)
   - [TomOpenApiServer](#tomopenapiserver)
+  - [TomIdempotent](#tomidempotent)
+  - [TomIdempotencyException](#tomidempotencyexception)
+  - [TomIdempotencyScope](#tomidempotencyscope)
+  - [TomIdempotencyRecord](#tomidempotencyrecord)
+  - [TomIdempotencyClaim](#tomidempotencyclaim)
+  - [TomIdempotencyStore](#tomidempotencystore)
+  - [TomMemoryIdempotencyStore](#tommemoryidempotencystore)
+  - [TomSqlIdempotencyStore](#tomsqlidempotencystore)
+  - [TomIdempotencyRow](#tomidempotencyrow)
+  - [TomIdempotency](#tomidempotency)
 - [Global Functions and Constants](#global-functions-and-constants)
 
 ## Overview
@@ -54,7 +64,9 @@ Source: `lib/src/tomserver/endpoints/endpoint_annotation.dart`,
 `lib/src/tomserver/endpoints/endpoint_results.dart`,
 `lib/src/tomserver/endpoints/web_socket_endpoint.dart`,
 `lib/src/tomserver/endpoints/file_endpoint.dart`,
-`lib/src/tomserver/endpoints/openapi_document_endpoint.dart`.
+`lib/src/tomserver/endpoints/openapi_document_endpoint.dart`,
+`lib/src/tomserver/endpoints/idempotency.dart`,
+`lib/src/tomserver/endpoints/idempotency_sql.dart`.
 
 `endpoint_annotation.dart` defines the declarative surface: `@tomService` /
 `@TomApiImplementation` mark a class as a routable service, `@TomEndpoint`
@@ -108,6 +120,21 @@ time by `tom_core_openapi` from the endpoint annotations; the server only serves
 the file `TomOpenApiServer.globalSettingDocumentPath` names, which
 `TomServer.start` sets from the `openApiDocument` configuration setting.
 
+`idempotency.dart` adds idempotency keys. A method annotated `@TomIdempotent`
+lets a client send an `Idempotency-Key`: the handler runs each request of the
+endpoint through `TomIdempotency.handle`, which claims the key in
+`TomIdempotency.store` (a `TomIdempotencyStore`), runs the request once, stores
+its response and answers a retry with that response. A key is scoped
+(`TomIdempotencyScope`) to the tenant, the principal and the operation; a record
+(`TomIdempotencyRecord`) carries the request's fingerprint and the response; a
+claim (`TomIdempotencyClaim`) is won or lost to a record. The default
+`TomMemoryIdempotencyStore` holds for one process; `TomSqlIdempotencyStore`
+keeps the records in a table, read back as `TomIdempotencyRow`, and resolves its
+data source by name per call. `TomIdempotencyException` names the keys that
+cannot be used and a configuration of the wrong shape. `idempotency_sql.dart`
+declares the table once (`idempotencyTable`, `idempotencyTableDdl`,
+`defaultIdempotencyTable`), listed by `frameworkOwnedTables`.
+
 ## Class Hierarchy
 
 ```
@@ -125,13 +152,15 @@ TomEndpointBase<requestType, resultType>  (abstract)
 
 TomComponentReference
 TomTransactional
+TomIdempotent
 
 TomServerException  (little_things)
     ├── TomEndpointHandlerException
     ├── TomEndpointPipelineException
     ├── TomFormBindingException
     ├── TomWebSocketException
-    └── TomFileSlotException
+    ├── TomFileSlotException
+    └── TomIdempotencyException
 
 TomFileSlot  (abstract)
 
@@ -140,6 +169,12 @@ TomFileService  (abstract)
 
 TomOpenApiService  (abstract)
     └── TomOpenApiServer  (implements)
+
+TomIdempotencyStore  (abstract)
+    ├── TomMemoryIdempotencyStore  (implements)
+    └── TomSqlIdempotencyStore     (implements)
+
+TomIdempotency  (abstract final)
 
 TomEndpointHandler
 TomEndpointRoutingInfo
@@ -152,6 +187,10 @@ TomRedirect
 TomWebSocketConnection
 TomFileSlots
 TomFileEndpoint
+TomIdempotencyScope
+TomIdempotencyRecord
+TomIdempotencyClaim
+TomIdempotencyRow
 
 extension TomFormFileStorage on TomFormFile
 ```
@@ -522,7 +561,7 @@ TomEndpointHandler({
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `handlePreflight` | `Response handlePreflight(Request req)` | Answers a CORS preflight (`OPTIONS`) request with the endpoint's (or global default) allowed origins/methods/headers. |
-| `handleMethodCall` | `Future<Response> handleMethodCall(Request req)` | Runs the full request pipeline for this endpoint and returns the response. |
+| `handleMethodCall` | `Future<Response> handleMethodCall(Request req)` | Runs the full request pipeline for this endpoint and returns the response. For an `@TomIdempotent` endpoint every request but the `OPTIONS` preflight goes through `TomIdempotency.handle` first, with the operation `"<METHOD> <uri>"`. |
 | `withAllowedOrigin` | `Response withAllowedOrigin(Response response)` | `response` carrying this endpoint's `Access-Control-Allow-Origin` (its `corsAllowedOrigins`, else the global default) unless a handler set one. `handleMethodCall` applies it to every response, an error included, so the browser hands the page what the preflight allowed it to send. |
 | `handleWebSocketCall` | `Future<Response> handleWebSocketCall(Request req)` | Serves a WebSocket handshake: enforces access, binds parameters *before* the upgrade, and runs the handler inside the captured request zone. Logs both outcomes and does so from two places, because they leave by two routes: a refused upgrade returns a response and is logged with its status, while an accepted one ends in `Request.hijack` — which throws `HijackException` by contract — so its line is written from the `catch` and the exception is rethrown. Catching it would leave shelf writing an ordinary reply over a socket the handshake has already claimed. |
 | `enforceAccess` | `Future<void> enforceAccess()` | Runs the access check and its denial audit; shared by the HTTP and WebSocket paths. Throws `tomEndpointAccessDeniedErrorKey` on a denial — an exception that does not leave the pipeline, since both callers turn it into `accessDeniedResponse`. |
@@ -620,6 +659,7 @@ TomMethodMetadata({
   TomAccessControl? access,
   TomTransactional? transactionInfo,
   TomAudited? audited,
+  TomIdempotent? idempotent,
   TomApiEndpointImplementation? apiEndpointImplementation,
   TomApiImplementation? apiImplementation,
   TomApi? api,
@@ -637,6 +677,7 @@ TomMethodMetadata({
 | `access` | `TomAccessControl?` | The access-control rule, if the method declared one. |
 | `transactionInfo` | `TomTransactional?` | The transaction directive, if the method declared one. |
 | `audited` | `TomAudited?` | The `@TomAudited` declaration, if the method opted its invocation into the audit trail. `null` for the great majority of endpoints, and that is the intended state: endpoint auditing is *declared*, because most endpoint calls are reads whose auditing would drown the trail. Mutation auditing needs no declaration — it happens at the repository. |
+| `idempotent` | `TomIdempotent?` | The `@TomIdempotent` declaration, if the method lets requests carry an `Idempotency-Key`; the handler then runs each request through `TomIdempotency.handle`. |
 | `webSocket` | `TomWebSocketEndpoint?` | The socket declaration, when the method is a WebSocket endpoint (kept alongside the `endpoint` it converts to). |
 | `apiEndpointImplementation` | `TomApiEndpointImplementation?` | The `@TomApiEndpointImplementation` tag, for registry-based endpoints. |
 | `apiImplementation` | `TomApiImplementation?` | The class's `@TomApiImplementation` tag, for registry-based endpoints. |
@@ -1105,6 +1146,286 @@ TomOpenApiServer()
 | ------ | --------- | ----------- |
 | `openApiDocument` | `Future<Response> openApiDocument()` | Answers the document, or a `404` envelope saying why there is none. |
 
+### TomIdempotent
+
+Method-level annotation: requests to the endpoint may carry an
+`Idempotency-Key`, and a retry with the same key is answered with the first
+request's stored response instead of running the method again. Collected into
+`TomMethodMetadata.idempotent`; the handler then sends every request of the
+endpoint, except the `OPTIONS` preflight, through `TomIdempotency.handle` with
+the operation `"<METHOD> <uri>"` (the route as declared). A second annotation on
+one method stops the router build with
+`endpoint_pipeline.get_class_method_metadata.multiple_idempotent_tags`.
+
+#### Constructors
+
+```dart
+const TomIdempotent({Duration? retention})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `retention` | `Duration?` | How long a stored response is replayed, or `null` for `TomIdempotency.defaultRetention`. |
+
+### TomIdempotencyException
+
+An idempotency key that cannot be used, a store that cannot reach its data
+source, or an `idempotency` configuration of the wrong shape. Raised with
+`clientThrow: true`.
+
+| Key | Status | Meaning |
+| --- | ------ | ------- |
+| `endpoint.idempotency.key_invalid` | 400 | The key is empty or longer than 191 characters. |
+| `endpoint.idempotency.key_reused` | 422 | The key was used for a different request. |
+| `endpoint.idempotency.in_progress` | 409 | The first request with the key is still running. |
+| `endpoint.idempotency.no_datasource` | — | The SQL store's data source is not registered; thrown out of the request. |
+| `endpoint.idempotency.config.invalid` | — | The `idempotency` configuration has a value of the wrong shape; thrown by `TomIdempotency.configure`. |
+
+The first three are answered by `TomIdempotency.handle` as a response, not
+thrown: `application/json`, `{"error": "<key>", "message": "<text>"}`, and for
+`in_progress` a `Retry-After: 1` header.
+
+- **Extends:** `TomServerException`
+
+#### Constructors
+
+```dart
+TomIdempotencyException(
+  String key,
+  String defaultUserMessage, {
+  Map<String, Object?>? parameters,
+})
+```
+
+### TomIdempotencyScope
+
+Who a key belongs to and which operation it is for — the identity of a record.
+Two scopes are equal when all four fields are.
+
+#### Constructors
+
+```dart
+const TomIdempotencyScope({
+  required String tenant,
+  required String principal,
+  required String operation,
+  required String key,
+})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `tenant` | `String` | The tenant in context, `''` outside tenancy. |
+| `principal` | `String` | The authenticated principal's id. |
+| `operation` | `String` | The method and the declared route, `POST /orders`. |
+| `key` | `String` | The client's key. |
+| `hashCode` | `int` | Combines the four fields, consistent with `==`. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `operator ==` | `bool operator ==(Object other)` | Equal when tenant, principal, operation and key are. |
+
+### TomIdempotencyRecord
+
+A stored request: its fingerprint and, once it finished, its response.
+
+#### Constructors
+
+```dart
+const TomIdempotencyRecord({
+  required String requestHash,
+  required DateTime createdAt,
+  required DateTime expiresAt,
+  int? status,
+  Map<String, String> headers = const {},
+  List<int>? body,
+})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `requestHash` | `String` | The SHA-256 of the first request's method, path, query and body. |
+| `createdAt` | `DateTime` | When the first request claimed the key. |
+| `expiresAt` | `DateTime` | When the record stops being replayed. |
+| `status` | `int?` | The stored response's status, or `null` while the request runs. |
+| `headers` | `Map<String, String>` | The stored response's headers. |
+| `body` | `List<int>?` | The stored response's body. |
+| `isCompleted` | `bool` | Whether the response has been stored (`status != null`). |
+
+### TomIdempotencyClaim
+
+The answer of `TomIdempotencyStore.claim`: the key is this request's, or the
+record already holding it.
+
+#### Constructors
+
+```dart
+const TomIdempotencyClaim.won()
+const TomIdempotencyClaim.lost(TomIdempotencyRecord this.existing)
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `existing` | `TomIdempotencyRecord?` | The record holding the key, or `null` when this request holds it. |
+| `won` | `bool` | Whether this request holds the key. |
+
+### TomIdempotencyStore
+
+Where idempotency records are kept. `TomIdempotency.store` holds the one in
+use; a deployment may install its own.
+
+- **Abstract.** Implemented by `TomMemoryIdempotencyStore` and
+  `TomSqlIdempotencyStore`.
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `claim` | `Future<TomIdempotencyClaim> claim(TomIdempotencyScope scope, String requestHash, {required DateTime now, required DateTime expiresAt, required DateTime staleBefore})` | *(abstract)* Claims `scope` for the request `requestHash` until `expiresAt`, or answers the live record holding it. An expired record, and a claim still unfinished at `staleBefore`, are replaced. Two simultaneous claims must not both win. |
+| `complete` | `Future<void> complete(TomIdempotencyScope scope, {required int status, required Map<String, String> headers, required List<int> body})` | *(abstract)* Stores the response of the request holding `scope`. |
+| `release` | `Future<void> release(TomIdempotencyScope scope)` | *(abstract)* Gives `scope` up, so the next request with the key runs. |
+| `purgeExpired` | `Future<int> purgeExpired(DateTime now)` | *(abstract)* Removes the records expired at `now`; answers how many. Nothing in the framework calls it. |
+
+### TomMemoryIdempotencyStore
+
+The idempotency records of one process, in memory — the default store. Holds
+for a single process: another instance, or a restarted one, does not see its
+keys.
+
+- **Implements:** `TomIdempotencyStore`
+
+#### Constructors
+
+```dart
+TomMemoryIdempotencyStore()
+```
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `claim` | `Future<TomIdempotencyClaim> claim(TomIdempotencyScope scope, String requestHash, {required DateTime now, required DateTime expiresAt, required DateTime staleBefore})` | *(override)* Answers the record for `scope` when it has not expired and is completed or younger than `staleBefore`; otherwise records a new claim. |
+| `complete` | `Future<void> complete(TomIdempotencyScope scope, {required int status, required Map<String, String> headers, required List<int> body})` | *(override)* Stores the response on the claimed record; does nothing when there is none. |
+| `release` | `Future<void> release(TomIdempotencyScope scope)` | *(override)* Removes the record. |
+| `purgeExpired` | `Future<int> purgeExpired(DateTime now)` | *(override)* Removes the records whose `expiresAt` is not after `now`. |
+
+### TomSqlIdempotencyStore
+
+The idempotency records in a SQL table (`tom_idempotency_key` by default), shared
+by every instance using the database. A claim is one insert that ignores a
+conflict on the primary key `(tenant, principal, operation, idem_key)`; taking
+over an expired or abandoned claim is one conditional update, so two instances
+cannot both win a key. A key claimed and released repeatedly while it is being
+claimed makes `claim` give up after three attempts with
+`endpoint.idempotency.in_progress`. The response headers are stored as JSON and
+the body as base64. Every statement derives from the single `idempotencyTable`
+declaration.
+
+The data source is resolved on every call: by name through
+`TomDataSourceInfo.getDataSourceInfo`, which routes under tenancy, so a request
+in a tenant keeps its key in that tenant's data source. `TomServer.start`
+installs one when the `idempotency` configuration names a data source.
+
+- **Implements:** `TomIdempotencyStore`
+
+#### Constructors
+
+```dart
+TomSqlIdempotencyStore(
+  String this.datasourceName, {
+  String table = defaultIdempotencyTable,
+  bool createSchema = true,
+})
+
+TomSqlIdempotencyStore.over(
+  TomDataSource datasource, {
+  String table = defaultIdempotencyTable,
+  bool createSchema = true,
+})
+```
+
+The unnamed constructor resolves the data source registered as
+`datasourceName` per call; an unregistered name raises
+`endpoint.idempotency.no_datasource`. `over` binds `datasource` itself — for a
+deployment without per-tenant data sources, and for tests. With `createSchema`
+(the default) the table is created on first use in each data source; a
+deployment whose database user may not run DDL applies the shipped migration
+and passes `false`.
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `datasourceName` | `String?` | The registered name of the data source, or `null` for a store built `over` one. |
+| `table` | `String` | The table's name. |
+| `createSchema` | `bool` | Whether the table is created on first use. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `claim` | `Future<TomIdempotencyClaim> claim(TomIdempotencyScope scope, String requestHash, {required DateTime now, required DateTime expiresAt, required DateTime staleBefore})` | *(override)* Inserts the claim, ignoring a conflict; else replaces a record expired at `now` or an `in_progress` claim created before `staleBefore`; else answers the record found. |
+| `complete` | `Future<void> complete(TomIdempotencyScope scope, {required int status, required Map<String, String> headers, required List<int> body})` | *(override)* Marks the row `completed` with the status, the headers and the body. |
+| `release` | `Future<void> release(TomIdempotencyScope scope)` | *(override)* Deletes the row. |
+| `purgeExpired` | `Future<int> purgeExpired(DateTime now)` | *(override)* Deletes the rows whose `expires_at` is not after `now`, in the data source this zone resolves; the column is indexed. |
+| `deleteAll` | `Future<void> deleteAll()` | Empties the table of the data source this zone resolves. Not part of `TomIdempotencyStore`; for tests. |
+
+### TomIdempotencyRow
+
+One row of the idempotency table, as `TomSqlIdempotencyStore` reads it.
+Reflected (`@tomReflector`) and annotated `@TomDbTable`, so the driver can map
+it.
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `requestHash` | `String` | `request_hash` — the first request's fingerprint. |
+| `state` | `String` | `state` — `in_progress` or `completed`. |
+| `status` | `int?` | `status` — the stored status. |
+| `headers` | `String?` | `headers` — the stored headers, as JSON. |
+| `body` | `String?` | `body` — the stored body, as base64. |
+| `createdAt` | `String` | `created_at` — when the key was claimed, as stored UTC text. |
+| `expiresAt` | `String` | `expires_at` — when the record expires, as stored UTC text. |
+
+### TomIdempotency
+
+The isolate's idempotency settings, and the handling of one request. Statics
+only. `TomServer.configureIdempotency` sets them from the `idempotency`
+configuration key.
+
+- **Abstract final.** Not instantiable or extendable.
+
+#### Static Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `header` | `static const String` | `'Idempotency-Key'`, the request header carrying the key. |
+| `replayedHeader` | `static const String` | `'Idempotent-Replayed'`, the response header marking a replayed response (value `true`). |
+| `store` | `static TomIdempotencyStore` | Where records are kept; a `TomMemoryIdempotencyStore` unless a deployment installs another. |
+| `defaultRetention` | `static Duration` | How long a stored response is replayed when the annotation names no retention; 24 hours. |
+| `inProgressTimeout` | `static Duration` | How long a claim may stay unfinished before a retry takes it over; five minutes. |
+| `clock` | `static DateTime Function()` | The clock; `DateTime.now`. Replaceable for tests. |
+| `notStoredStatuses` | `static const Set<int>` | `{401, 403, 408, 409, 425, 429}`: the statuses that say the request did not run, never stored. |
+
+#### Static Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `configure` | `static void configure(Object? config)` | Applies an `idempotency` configuration map: `datasource` installs a `TomSqlIdempotencyStore` over it (`table`, `createSchema`), `retentionMinutes` and `inProgressTimeoutSeconds` set the two durations. Throws `endpoint.idempotency.config.invalid` when `config` is not a map or a duration is not a positive whole number, before anything is applied. See [configuration.md](../configuration.md#idempotency-keys). |
+| `reset` | `static void reset()` | Restores the defaults: a fresh memory store, 24 hours, five minutes, the system clock. For tests. |
+| `handle` | `static Future<Response> handle(Request request, String operation, TomIdempotent annotation, Future<Response> Function(Request request) next)` | Answers `request` for `operation` through `next`, applying its `Idempotency-Key`. A request without the header, or without an authenticated principal in the zone, goes straight to `next`. Otherwise: `400` for an empty or over-long key; a claim on the scope (tenant, principal, `operation`, key) with the request's SHA-256; for a record already there, `422` when its hash differs, `409` with `Retry-After: 1` while it runs, else its stored response with `Idempotent-Replayed: true`. A won claim runs `next` with the buffered body; a `5xx`, a status in `notStoredStatuses` or a throw releases the key, any other response is stored — without `set-cookie` and the hop-by-hop headers — and returned. |
+
 ## Global Functions and Constants
 
 | Name | Signature | Description |
@@ -1113,3 +1434,6 @@ TomOpenApiServer()
 | `tomConsumesForm` | `bool tomConsumesForm(TomMimeType consumes)` | Whether `consumes` declares an HTML form body (multipart **or** url-encoded), comparing type and subtype only. |
 | `tomEndpointAccessDeniedErrorKey` | `const String tomEndpointAccessDeniedErrorKey` | The error key a pre-invocation access denial is raised under, `endpoint_handler.handle_method_call.access_denied`. Named here because the audit trail records it, the suites assert it, and a deployment writing its own refusal policy needs to name the one the pipeline raises — it was hand-copied into two sample servers before it had a name. It does not reach the caller: a denied request answers a bare 404. |
 | `tomConsumesMultipartForm` | `bool tomConsumesMultipartForm(TomMimeType consumes)` | Whether `consumes` declares specifically `multipart/form-data` — which reader the pipeline calls. |
+| `defaultIdempotencyTable` | `const String defaultIdempotencyTable` | `'tom_idempotency_key'`, the idempotency table's name when nothing overrides it. |
+| `idempotencyTable` | `TomFrameworkTable idempotencyTable(String table)` | The idempotency table, declared **once**: `tenant` (`VARCHAR(32)`), `principal` (`VARCHAR(150)`), `operation` and `idem_key` (`VARCHAR(191)`) as the composite primary key; `request_hash` (`VARCHAR(64)`), `state` (`VARCHAR(16)`); the response as `status` (`INT`), `headers` (`TEXT`, JSON) and `body` (`LONGTEXT`, base64), `NULL` until stored; `created_at` and `expires_at` (`DATETIME(6)`, UTC), the latter indexed for the purge. The DDL `TomSqlIdempotencyStore` issues, its statements and the schema the convergence guard compares all derive from it; listed by `frameworkOwnedTables`. |
+| `idempotencyTableDdl` | `String idempotencyTableDdl(String table)` | The `CREATE TABLE` for an idempotency table named `table` — what a deployment applies by hand for a renamed table, or when its database user may not run DDL and the store is constructed with `createSchema: false`. |

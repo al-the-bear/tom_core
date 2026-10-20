@@ -22,6 +22,14 @@ method, and converts the result (or any error) into a `Response`.
   - [Which control to annotate with](#which-control-to-annotate-with)
   - [Automatic endpoint protection](#automatic-endpoint-protection)
 - [Transactions](#transactions)
+- [Idempotency Keys](#idempotency-keys)
+  - [Opting in](#opting-in)
+  - [Sending a key](#sending-a-key)
+  - [What a request with a key gets](#what-a-request-with-a-key-gets)
+  - [What is stored](#what-is-stored)
+  - [Retention and abandoned claims](#retention-and-abandoned-claims)
+  - [Stores, clusters and tenants](#stores-clusters-and-tenants)
+  - [Configuration](#configuration)
 - [What a Handler May Return](#what-a-handler-may-return)
   - [An endpoint declaring `Future<void>` answers with no body](#an-endpoint-declaring-futurevoid-answers-with-no-body)
   - ["No such thing" is an error key, not a `null`](#no-such-thing-is-an-error-key-not-a-null)
@@ -63,7 +71,7 @@ method, and converts the result (or any error) into a `Response`.
 | `TomRedirect` | class | An endpoint result that answers `307` or `308`; `301`/`302` are omitted because their method-rewriting is ambiguous across clients |
 | `TomEndpointHandlerException` / `TomEndpointPipelineException` | class | Serving-time / build-time failures |
 
-Four concerns live in this module because each is a way of *serving a request*
+Five concerns live in this module because each is a way of *serving a request*
 rather than a subject of its own.
 
 **Uploads over a raw body** — the whole request is the file and nothing is
@@ -102,6 +110,20 @@ and served as a file:
 | ---- | ---- | ------- |
 | `TomOpenApiService` | abstract class | The public route contract: `GET /openapi.json` |
 | `TomOpenApiServer` | class | Serves the file `globalSettingDocumentPath` names, read on every request; `404` with the error envelope when none is configured or the file is missing |
+
+**Idempotency keys** — a retried request answered with the first one's stored
+response instead of running again:
+
+| Type | Kind | Purpose |
+| ---- | ---- | ------- |
+| `TomIdempotent` | class | Method annotation: requests to the endpoint may carry an `Idempotency-Key`; optional `retention` |
+| `TomIdempotency` | abstract final class | The isolate's settings — header names, store, retention, in-progress timeout, clock — and `handle`, which answers one request. Statics only |
+| `TomIdempotencyStore` | abstract class | Where records are kept: `claim`, `complete`, `release`, `purgeExpired` |
+| `TomMemoryIdempotencyStore` / `TomSqlIdempotencyStore` | class | The records of one process, in memory (the default); the records in a SQL table, shared by every instance |
+| `TomIdempotencyScope` / `TomIdempotencyRecord` / `TomIdempotencyClaim` | class | Whose key it is and for which operation; a stored request and its response; the outcome of a claim |
+| `TomIdempotencyRow` | class | One row of the table, as the SQL store reads it |
+| `TomIdempotencyException` | class | A key that cannot be used, a store without its data source, or a configuration of the wrong shape |
+| `idempotencyTable` / `idempotencyTableDdl` / `defaultIdempotencyTable` | function / function / const String | The table's single declaration, its DDL, and its default name `tom_idempotency_key` |
 
 ## Declaring an Endpoint
 
@@ -615,6 +637,209 @@ and the `failed` participants as parameters. It goes to the endpoint's error
 handler like any other failure; the coordinator has already concluded the
 transaction, so nothing is rolled back a second time.
 
+## Idempotency Keys
+
+A client that sends a request and loses the answer — a timeout, a dropped
+connection, a load balancer that gave up — cannot know whether the server
+acted. Retrying a `GET` is harmless; retrying "place an order" places a second
+order. An endpoint annotated `@TomIdempotent` makes that retry safe: the client
+sends an `Idempotency-Key` header, the server stores the first request's
+response under the key, and answers a retry with the stored response without
+running the method again.
+
+### Opting in
+
+Idempotency is per endpoint and off unless declared. `@TomIdempotent()` goes on
+the method beside `@TomEndpoint`:
+
+```dart
+@tomReflector
+@tomService
+abstract class OrderApi {
+  @TomAuthenticatedAccess()
+  @TomIdempotent()
+  @TomEndpoint(methods: [TomHttpMethod.post], uri: '/orders')
+  Future<OrderDto> placeOrder(PlaceOrderDto order);
+
+  @TomAuthenticatedAccess()
+  @TomIdempotent(retention: Duration(hours: 2))
+  @TomEndpoint(methods: [TomHttpMethod.post], uri: '/payments')
+  Future<PaymentDto> pay(PaymentDto payment);
+}
+```
+
+`retention` overrides how long the stored response is replayed for this
+endpoint; without it the deployment's default applies (24 hours). A method
+carrying two `@TomIdempotent` annotations stops the router build with
+`endpoint_pipeline.get_class_method_metadata.multiple_idempotent_tags`.
+
+The annotation is collected into `TomMethodMetadata.idempotent`, and the
+handler runs every request of the endpoint through `TomIdempotency.handle`,
+which wraps everything the handler does for it: the access check, the parameter
+binding, the transaction, the call and the error handler. A replay therefore
+opens no transaction and runs no access check — it answers the principal that
+received the response the first time, nobody else (see the scope below). The
+`OPTIONS` preflight is not passed through it. An endpoint without the
+annotation ignores the header.
+
+### Sending a key
+
+The key is the client's: any string of 1 to 191 characters that names *one*
+logical request — a UUID generated when the user pressed "Order", kept for every
+retry of that press and never reused for another.
+
+```bash
+KEY=$(uuidgen)
+curl -i -X POST https://api.example.com/orders \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: $KEY" \
+  -d '{"item": "book", "quantity": 1}'
+
+# The answer was lost; the same request with the same key is safe.
+curl -i -X POST https://api.example.com/orders \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: $KEY" \
+  -d '{"item": "book", "quantity": 1}'
+# HTTP/1.1 201 Created
+# Idempotent-Replayed: true
+```
+
+The framework's own HTTP client already treats such a call as safe to repeat:
+`TomResilientClient` retries a `POST` that carries an `Idempotency-Key` (see
+[configuration.md](configuration.md#outgoing-http-calls)).
+
+### What a request with a key gets
+
+| The key is … | Answer |
+| ------------ | ------ |
+| new | the method runs; its response is stored and returned |
+| stored, for the same request | the stored response, with `Idempotent-Replayed: true`; the method does not run |
+| stored, for a different request | `422`, `endpoint.idempotency.key_reused` |
+| claimed by a request still running | `409`, `endpoint.idempotency.in_progress`, with `Retry-After: 1` |
+| empty, or longer than 191 characters | `400`, `endpoint.idempotency.key_invalid` |
+
+The three refusals answer `application/json` with
+`{"error": "<key>", "message": "<text>"}` and run nothing.
+
+**The same request** means the same method, path, query and body, compared as
+their SHA-256. A retry that changed the body — a quantity edited between two
+attempts — is a different request, and the key refuses it rather than answering
+it with the response to the first.
+
+**A key is scoped** to the tenant, the authenticated principal and the
+operation — the HTTP method and the route as declared, `POST /orders/{id}`. Two
+callers sending the same key never meet, and one caller using one key on two
+endpoints holds two keys.
+
+**A request without a principal ignores the key**, and so does one without the
+header: both run as they would without the annotation. A key with no principal
+behind it would let anyone who learned the key read the response stored under
+it. On a public endpoint the annotation therefore protects only the callers who
+are signed in.
+
+### What is stored
+
+| Response | Stored |
+| -------- | ------ |
+| a status below 500 | yes — `2xx`, `3xx` and the `4xx` that describe the request, such as a `400` validation failure or a `404`, an [access denial](#a-denial-answers-404-and-says-nothing-else)'s included |
+| `401`, `403`, `408`, `409`, `425`, `429` | no — each says the request did not run (refused, or to be tried later), so storing it would replay a refusal after its cause is gone; the key is released |
+| a `5xx` | no — the key is released, and the retry runs |
+| nothing: the handler threw | no — the key is released and the error propagates |
+
+`TomIdempotency.notStoredStatuses` is the set of the second row. A method that
+throws is answered by its [error handler](#error-handling), and the status that
+handler chooses decides: the default `500` releases the key, while an error key
+a `TomStatusMappingErrorHandler` maps to a `4xx` is stored and replayed like any
+other answer. Only a failure that escapes the handler — an error handler that
+itself throws — reaches the last row.
+
+A stored response keeps its status, its body and its headers, except
+`set-cookie` — a session cookie belongs to the first caller, not to whoever
+replays — and the hop-by-hop and per-transmission ones (`date`, `connection`,
+`keep-alive`, `transfer-encoding`, `content-length`, `trailer`, `upgrade`).
+The replay adds `Idempotent-Replayed: true` (`TomIdempotency.replayedHeader`).
+
+Both bodies are read into memory: the request's to fingerprint it, and the
+response's to store it. An idempotent endpoint is an API call, not a file
+transfer; an upload or a download belongs on an endpoint without the
+annotation.
+
+### Retention and abandoned claims
+
+A record is replayed until its retention ends — `@TomIdempotent(retention:)`,
+else `TomIdempotency.defaultRetention`, 24 hours. A key used after that runs as
+new. The retention is the client's retry window: choose it longer than the
+longest a client keeps retrying.
+
+A request claims its key before the method runs. When the process serving it
+dies, the claim is never completed; after `TomIdempotency.inProgressTimeout`
+(five minutes) a retry takes it over and runs. Until then the retry is answered
+`409`. Keep the timeout longer than the slowest request of an idempotent
+endpoint, or a retry arriving while the first request still runs is let through.
+
+Expired records stay in the store until `TomIdempotency.store.purgeExpired(now)`
+removes them; a deployment calls it from a scheduled job.
+
+### Stores, clusters and tenants
+
+`TomIdempotency.store` decides where records are kept:
+
+| Store | Holds for |
+| ----- | --------- |
+| `TomMemoryIdempotencyStore` (default) | one process — a retry that reaches another instance, or the same instance after a restart, runs again |
+| `TomSqlIdempotencyStore` | every instance sharing the database: a claim is a single insert against the table's primary key, and taking over an expired or abandoned claim a single conditional update, so two instances cannot both win a key |
+
+`TomServer.start` installs a `TomSqlIdempotencyStore` when the `idempotency`
+configuration names a data source (below). It keeps its records in
+`tom_idempotency_key` (`idempotencyTable`, `idempotencyTableDdl`,
+`defaultIdempotencyTable`), creating the table on first use unless
+`createSchema` is off; the reference migration is
+`example/endpoints/migrations/main/tomcore/[1]-create_tom_idempotency_key.sql`,
+with its PostgreSQL form under `migrations_postgresql`. The table is one of the
+`frameworkOwnedTables` the schema check covers (see
+[db_migration.md](db_migration.md#the-frameworks-own-tables)).
+
+The store resolves its data source **by name, on every call**, through the same
+routing a repository uses. Under tenancy, when that data source is one of
+`TomTenancy.datasources`, a tenant on its own schema or database keeps its keys
+there — see
+[tenancy.md](tenancy.md#what-stays-deployment-wide). Under shared tenancy one
+table serves every tenant, and the `tenant` column keeps their keys apart.
+`TomSqlIdempotencyStore.over(datasource)` binds one data source instead, for a
+deployment without per-tenant data sources and for tests. A name that resolves
+to no registered data source fails the request with
+`endpoint.idempotency.no_datasource`, raised by the store rather than answered
+as a refusal, so it reaches the server's error mapping as a `500`.
+
+A deployment can also install a store of its own — `TomIdempotencyStore` is the
+contract: `claim`, `complete`, `release`, `purgeExpired`.
+
+### Configuration
+
+The `idempotency` key of the configuration resources
+(`TomServer.idempotencyConfigurationKey`) is read by
+`TomServer.configureIdempotency`, which `start()` calls first, beside the
+`httpClient` key:
+
+```yaml
+# assets/config-resources_default.yaml
+idempotency:
+  datasource: main
+  retentionMinutes: 1440
+  inProgressTimeoutSeconds: 300
+```
+
+The keys are described in
+[configuration.md](configuration.md#idempotency-keys). Without the key the
+in-memory store and the defaults stand; a value of the wrong shape stops the
+start with `endpoint.idempotency.config.invalid`.
+
+`example/endpoints/idempotency_example.dart` runs a first request, its replay, a
+reused key, another caller's key, requests without a key and an expired record
+through `TomIdempotency.handle` over the in-memory store.
+
 ## What a Handler May Return
 
 Whatever `tomReflectionInfo.convertToJsonString` accepts — which is the same
@@ -1119,6 +1344,7 @@ with `TomEndpointPipelineException`:
 | `endpoint_pipeline.get_class_method_metadata.multiple_endpoint_base_tags` | a method carries two endpoint annotations |
 | `endpoint_pipeline.get_class_method_metadata.multiple_transactional_tags` | a method carries two `@TomTransactional` |
 | `endpoint_pipeline.get_class_method_metadata.multiple_audited_tags` | a method carries two `@TomAudited` |
+| `endpoint_pipeline.get_class_method_metadata.multiple_idempotent_tags` | a method carries two `@TomIdempotent` |
 | `endpoint_pipeline.get_class_method_metadata.multiple_tom_api_implementation_tags` | a class carries two `@TomApiImplementation` |
 | `endpoint_pipeline.get_class_method_metadata.no_tom_api_implementation_found` | a registry endpoint's class has no `@TomApiImplementation` |
 
@@ -1237,6 +1463,20 @@ it means "nothing a caller can see", not "nothing at all".
   otherwise the same 404. `TomFileSlots.reset()` exists for tests that want a
   fresh registry, not for re-registration at runtime.
   <!-- pinned: test/file_endpoint_test.dart › resolve refuses an empty registry by name -->
+- **Nothing purges expired idempotency records on its own.** An expired record
+  is no longer replayed and is overwritten when its key is used again, but it
+  stays in the store until `TomIdempotency.store.purgeExpired(now)` is called.
+  A deployment that keeps keys in the SQL store calls it from a scheduled job of
+  its own, or the table grows by one row per key ever sent. See
+  [Retention and abandoned claims](#retention-and-abandoned-claims).
+  <!-- unpinned: absence — nothing in the framework calls purgeExpired -->
+- **The default idempotency store holds on one process.**
+  `TomMemoryIdempotencyStore` is per isolate: a retry that reaches another
+  instance, another isolate or a restarted process runs again. A deployment of
+  more than one runs the SQL store, by naming a data source in the
+  `idempotency` configuration. See
+  [Stores, clusters and tenants](#stores-clusters-and-tenants).
+  <!-- unpinned: decision — the in-process default store is deliberate; a cluster names a data source -->
 - **A socket has no server-side push registry.** A handler owns its own
   connection and can write to it at any time, but there is no shared registry to
   broadcast to every connection of a user or a topic. That is a feature of
@@ -1253,7 +1493,7 @@ it means "nothing a caller can see", not "nothing at all".
 
 ## Verification
 
-Five suites cover this module, split by what each needs.
+Seven suites cover this module, split by what each needs.
 
 `test/endpoints_error_keys_test.dart` pins the module's error vocabulary: each case reaches a raise with a real input and asserts the exact key, so a key the module stops raising, or raises for a different condition, fails by name. None needs a database.
 
@@ -1280,8 +1520,23 @@ the HTTP ones and served over a loopback server.
 `test/endpoints_serialization_roundtrip_test.dart` asserts the one property a
 DTO has to have: it crosses both directions identically.
 
+`test/idempotency_test.dart` covers idempotency keys: `TomIdempotency.handle`
+over the memory store — a retry run once and answered with the first response,
+a reused key refused with `422`, a claimed key with `409` and `Retry-After`, a
+`5xx` and a thrown handler releasing the key, the refusals that are not stored,
+the scope per principal and operation, a request without a key or a principal
+passing through, an over-long key, an expired record and an abandoned claim
+taken over — then the `idempotency` configuration map, and the fixture endpoint
+`POST /fixture/orders` (`@TomIdempotent`) served through the pipeline.
+`test/idempotency_db_test.dart` (tagged `db`) runs `TomSqlIdempotencyStore`
+against MariaDB: the first claim winning, a completed record, a release, an
+expired record and an abandoned claim replaced, the purge, and a retried request
+through the SQL store. The table's declaration is held to its migration and its
+row type by `test/framework_schema_test.dart`.
+
 ```bash
 dart run example/endpoints/endpoints_example.dart
+dart run example/endpoints/idempotency_example.dart
 ```
 
 `example/endpoints/endpoints_example.dart` runs everything that needs neither a
@@ -1292,6 +1547,11 @@ file-slot step needs generated reflection, which comes from
 (regenerate with `./reflection_generation.sh`); its entities are declared in
 `example/endpoints/endpoints_entities.dart`. Every step checks its own result,
 and `test/examples_test.dart` runs it.
+
+`example/endpoints/idempotency_example.dart` sends requests through
+`TomIdempotency.handle` over the in-memory store — a first request, its replay,
+a reused key, another caller's key, requests without a key and an expired
+record — checking each answer; `test/examples_test.dart` runs it too.
 
 ## Core Components
 
@@ -1336,6 +1596,13 @@ and `test/examples_test.dart` runs it.
 - **Results** (`endpoint_results.dart`) — `TomRedirect`.
 - **WebSocket** (`web_socket_endpoint.dart`) — `TomWebSocketEndpoint`,
   `TomWebSocketConnection`, `TomWebSocketException`.
+- **Idempotency keys** (`idempotency.dart`, `idempotency_sql.dart`) —
+  `TomIdempotent`, `TomIdempotency`, `TomIdempotencyStore` with
+  `TomMemoryIdempotencyStore` and `TomSqlIdempotencyStore`,
+  `TomIdempotencyScope`, `TomIdempotencyRecord`, `TomIdempotencyClaim`,
+  `TomIdempotencyRow`, `TomIdempotencyException`; and the table's declaration,
+  `idempotencyTable`, `idempotencyTableDdl` and `defaultIdempotencyTable`. See
+  [Idempotency Keys](#idempotency-keys).
 - **OpenAPI document** (`openapi_document_endpoint.dart`) — `TomOpenApiService`
   and `TomOpenApiServer`, serving the build-generated document at
   `GET /openapi.json`; see [The OpenAPI Document](#the-openapi-document).
@@ -1344,20 +1611,22 @@ and `test/examples_test.dart` runs it.
 
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
-| `dart:async` | dart | `endpoint_pipeline.dart`, `file_endpoint.dart`, `web_socket_endpoint.dart` | `Future`, `Stream`, `StreamController`, `StreamSubscription`, `Zone`, `unawaited` |
+| `dart:async` | dart | `endpoint_pipeline.dart`, `file_endpoint.dart`, `idempotency.dart`, `web_socket_endpoint.dart` | `Future`, `Stream`, `StreamController`, `StreamSubscription`, `Zone`, `unawaited` |
 | `dart:collection` | dart | `endpoint_pipeline.dart` | `UnmodifiableListView`, `UnmodifiableMapView` — the read-only views of the routing tables |
-| `dart:convert` | dart | `endpoint_annotation.dart`, `endpoint_pipeline.dart`, `file_endpoint.dart`, `openapi_document_endpoint.dart` | `Encoding`, `json`, `jsonDecode`, `jsonEncode` |
+| `dart:convert` | dart | `endpoint_annotation.dart`, `endpoint_pipeline.dart`, `file_endpoint.dart`, `idempotency.dart`, `openapi_document_endpoint.dart` | `Encoding`, `json`, `jsonDecode`, `jsonEncode`, `utf8`, `base64Encode` / `base64Decode` (a stored response body) |
 | `dart:io` | dart | `openapi_document_endpoint.dart` | `File` — the generated document is read from disk |
 | `dart:typed_data` | dart | `form_binding.dart` | `Uint8List` |
-| `shelf` | package | `endpoint_annotation.dart`, `endpoint_pipeline.dart`, `endpoint_results.dart`, `file_endpoint.dart`, `form_binding.dart`, `openapi_document_endpoint.dart` | the HTTP `Request` / `Response` / `Router` types |
+| `crypto` | package | `idempotency.dart` | `sha256`, the fingerprint telling a retry from a different request under the same key |
+| `shelf` | package | 7 of 9 files | the HTTP `Request` / `Response` / `Router` types |
 | `shelf_multipart` | package | `form_binding.dart` | decoding a `multipart/form-data` body into its parts |
 | `shelf_router` | package | `endpoint_pipeline.dart`, `file_endpoint.dart` | the HTTP `Request` / `Response` / `Router` types |
 | `shelf_web_socket` | package | `endpoint_pipeline.dart` | the handshake upgrade and the channel a socket handler talks through |
-| `tom_core_kernel` | package | every file | `tomReflector` and the mirror types (annotation discovery, parameter binding, result conversion), `TomHttpMethod`, `TomMimeType`, `TomHeader`, `TomPrincipal`, `TomClientJwtToken`, `TomAccessControl`, `TomResourceKeyProtection`, `TomComponent`, `TomBean`, `tomRemoteApis` / `TomApi` / `TomApiEndpoint`, `TomExecutionContext`, `tomLog` |
+| `tom_core_kernel` | package | 8 of 9 files | `tomReflector` and the mirror types (annotation discovery, parameter binding, result conversion), `TomHttpMethod`, `TomMimeType`, `TomHeader`, `TomPrincipal`, `TomClientJwtToken`, `TomAccessControl`, `TomResourceKeyProtection`, `TomComponent`, `TomBean`, `tomRemoteApis` / `TomApi` / `TomApiEndpoint`, `TomExecutionContext`, `TomTenantContext` (the tenant an idempotency key is scoped to), `tomLog` |
 | `web_socket_channel` | package | `endpoint_pipeline.dart`, `web_socket_endpoint.dart` | the handshake upgrade and the channel a socket handler talks through |
 | [audit](audit.md) | module | `endpoint_pipeline.dart` | `TomAuditAction`, `TomAuditOutcome`, `TomAuditTrail`, `TomAudited` |
+| [datasources](datasources.md) | module | `idempotency.dart`, `idempotency_sql.dart` | `TomFrameworkTable` / `TomFrameworkColumn` / `TomFrameworkKey` (the table's declaration), `TomDataSourceInfo` (the store's data source, resolved by name per call), `TomSchemaProvisioning`, `sqlInstant` / `parseSqlInstant` |
 | [file_storage](file_storage.md) | module | `file_endpoint.dart` | `TomBlobRange`, `TomStorageException`, `TomStoredBlob` |
-| [little_things](little_things.md) | module | `endpoint_annotation.dart`, `endpoint_pipeline.dart`, `file_endpoint.dart`, `form_binding.dart`, `openapi_document_endpoint.dart`, `web_socket_endpoint.dart` | `TomServerException`, `TomRequestId`, `tomErrorEnvelope` |
-| [object_persistence](object_persistence.md) | module | `file_endpoint.dart` | `TomAnnotationAnalyzer`, `TomColumnAuthorizationException`, `TomColumnInformation`, `TomDataScopeAuthorizationException`, `TomDbTable`, `TomFileReference` |
+| [little_things](little_things.md) | module | 7 of 9 files | `TomServerException`, `TomRequestId`, `tomErrorEnvelope` |
+| [object_persistence](object_persistence.md) | module | `file_endpoint.dart`, `idempotency.dart` | `TomAnnotationAnalyzer`, `TomColumnAuthorizationException`, `TomColumnInformation`, `TomDataScopeAuthorizationException`, `TomDbTable`, `TomDbColumn` (on `TomIdempotencyRow`), `TomFileReference` |
 | [server](server.md) | module | `endpoint_pipeline.dart` | `TomRequestLogInfo` |
 | [transactions](transactions.md) | module | `endpoint_pipeline.dart` | `TomTransactionManager` / `TomTransaction` |

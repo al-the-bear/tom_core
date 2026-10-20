@@ -177,6 +177,45 @@ class _WithClassMetadata implements ClassMirror {
   );
 }
 
+/// A reflected class mirror whose method [method] carries extra annotations.
+///
+/// Stands in for a method the shared fixture library cannot carry: an endpoint
+/// annotated twice the same way would fail every router any suite boots. Only
+/// the declarations are re-answered, with [method]'s metadata extended; the
+/// rest is the real mirror's, as [_WithClassMetadata] answers it.
+class _WithMethodMetadata extends _WithClassMetadata {
+  _WithMethodMetadata(ClassMirror inner, this._method, List<Object> extra)
+    : _methodExtra = extra,
+      super(inner, const []);
+
+  final String _method;
+  final List<Object> _methodExtra;
+
+  @override
+  Map<String, DeclarationMirror> get declarations => {
+    for (final e in _inner.declarations.entries)
+      e.key: e.key == _method && e.value is MethodMirror
+          ? _AnnotatedMethod(e.value as MethodMirror, _methodExtra)
+          : e.value,
+  };
+}
+
+/// A method mirror with extra annotations appended to its metadata.
+class _AnnotatedMethod implements MethodMirror {
+  _AnnotatedMethod(this._inner, this._extra);
+
+  final MethodMirror _inner;
+  final List<Object> _extra;
+
+  @override
+  List<Object> get metadata => [..._inner.metadata, ..._extra];
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => throw UnsupportedError(
+    '${invocation.memberName} is not answered by this stand-in mirror',
+  );
+}
+
 /// A channel that is never spoken on: attaching one only stores it.
 class _UnusedChannel implements WebSocketChannel {
   @override
@@ -271,6 +310,16 @@ void main() {
             'endpoint_pipeline.get_class_method_metadata.multiple_transactional_tags',
         input: 'two @TomTransactional on one endpoint',
         mirror: () => _mirror(FixtureDoubleTransactionalService),
+      ),
+      (
+        key:
+            'endpoint_pipeline.get_class_method_metadata.multiple_idempotent_tags',
+        input: 'two @TomIdempotent on one endpoint',
+        mirror: () => _WithMethodMetadata(
+          _mirror(FixtureApiService),
+          'placeOrder',
+          const [TomIdempotent()],
+        ),
       ),
       (
         key:

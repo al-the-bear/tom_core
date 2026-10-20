@@ -165,6 +165,12 @@ void main() {
       ]);
     });
 
+    test('the endpoints chain builds the idempotency-key descriptor', () {
+      converges('example/endpoints/migrations/main/tomcore', [
+        idempotencyTable(defaultIdempotencyTable),
+      ]);
+    });
+
     test('the cache chain builds the invalidation-log descriptor', () {
       converges('example/cache/migrations/main/tomcore', [
         invalidationTable(defaultInvalidationTable),
@@ -229,6 +235,10 @@ void main() {
 
     test('the inbox', () {
       maps(inboxTable(defaultInboxTable), [TomInboxRow]);
+    });
+
+    test('the idempotency keys', () {
+      maps(idempotencyTable(defaultIdempotencyTable), [TomIdempotencyRow]);
     });
 
     test('the roll call', () {
@@ -496,6 +506,44 @@ void main() {
         );
         await _issuing(() => inbox.deleteAll());
       });
+    });
+
+    test('the idempotency store', () async {
+      final datasource = _RecordingDataSource();
+      final store = TomSqlIdempotencyStore.over(datasource);
+      const scope = TomIdempotencyScope(
+        tenant: '',
+        principal: 'u1',
+        operation: 'POST /orders',
+        key: 'k1',
+      );
+      final now = DateTime.utc(2026, 10, 20, 12);
+      await audit(
+        datasource,
+        [idempotencyTable(defaultIdempotencyTable)],
+        () async {
+          await _issuing(
+            () => store.claim(
+              scope,
+              'h',
+              now: now,
+              expiresAt: now.add(const Duration(days: 1)),
+              staleBefore: now.subtract(const Duration(minutes: 5)),
+            ),
+          );
+          await _issuing(
+            () => store.complete(
+              scope,
+              status: 201,
+              headers: const {},
+              body: const [],
+            ),
+          );
+          await _issuing(() => store.release(scope));
+          await _issuing(() => store.purgeExpired(now));
+          await _issuing(() => store.deleteAll());
+        },
+      );
     });
 
     test('the database blob store', () async {

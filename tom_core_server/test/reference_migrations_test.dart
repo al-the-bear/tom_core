@@ -138,6 +138,9 @@ final Map<String, String> _guardedElsewhere = {
   _migration('messaging', '[2]-create_tom_message_inbox.sql'):
       'descriptor table — framework_schema_test.dart converges the chain '
       'against inboxTable',
+  _migration('endpoints', '[1]-create_tom_idempotency_key.sql'):
+      'descriptor table — framework_schema_test.dart converges the chain '
+      'against idempotencyTable',
   _migration('cache', '[1]-create_tom_cache_invalidation.sql'):
       'descriptor table — framework_schema_test.dart converges the chain '
       'against invalidationTable',

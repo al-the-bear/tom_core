@@ -80,7 +80,13 @@ circuit-breaker and bulkhead policies every outgoing framework call runs under,
 for all destinations and for named ones. A value of the wrong shape stops the
 start with `http.client.config.invalid`; without the key the kernel's defaults
 stand, a 30-second timeout among them (see
-[configuration.md](configuration.md#outgoing-http-calls)).
+[configuration.md](configuration.md#outgoing-http-calls)). Right after, it
+applies the `idempotency` key (`TomServer.configureIdempotency`): the store the
+`@TomIdempotent` endpoints keep their keys in and how long a response is
+replayed. A value of the wrong shape stops the start with
+`endpoint.idempotency.config.invalid`; without the key the keys are kept in
+memory, on one process (see
+[configuration.md](configuration.md#idempotency-keys)).
 `start()` completes **when the socket is listening**, with the bound
 `HttpServer`. So a bind failure — a port already in use, an unreadable
 certificate, a malformed private key — rejects the returned future instead of
@@ -835,7 +841,7 @@ and an application that needs one builds it today rather than waiting:
 | [authorization](authorization.md) | module | `server.dart` | `TomAuthorizationCache` (principal resolution) |
 | [configuration](configuration.md) | module | `server.dart` | `TomBaseServerConfiguration` |
 | [datasources](datasources.md) | module | `graceful_shutdown.dart` | `TomDataSourceInfo.closeAll`, the graceful shutdown's last step |
-| [endpoints](endpoints.md) | module | `server.dart` | `TomEndpointRouting` (router initialisation), `TomOpenApiServer` (the OpenAPI document path, set from `openApiDocument`) |
+| [endpoints](endpoints.md) | module | `server.dart` | `TomEndpointRouting` (router initialisation), `TomOpenApiServer` (the OpenAPI document path, set from `openApiDocument`), `TomIdempotency` (`configureIdempotency` applies the `idempotency` key) |
 | [healthcheck](healthcheck.md) | module | every file | `TomFrameworkReadinessAnalyzer`, installed on `GET /ready` by `start()` when `frameworkReadiness` is on, `TomHealthServer` / `TomDefaultHealthAnalyzer` to see whether the application installed its own, and `TomHealthServer.markShuttingDown`, the graceful shutdown's first step |
 | [little_things](little_things.md) | module | `server.dart` | `TomServerException` (its `clientThrow` flag feeds the error response) and `TomRequestId` (minted by `tomRequestContextMiddleware`, carried into every request zone) |
 | [messaging](messaging.md) | module | `graceful_shutdown.dart` | `TomMessageOutbox.started`, the outboxes the graceful shutdown closes |

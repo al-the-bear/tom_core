@@ -137,6 +137,17 @@ abstract class FixtureApiService {
   )
   Future<Map<String, Object>> auditDisabledAction();
 
+  /// An idempotent `POST`: a retry carrying the same `Idempotency-Key` is
+  /// answered from the stored response, and the handler runs once.
+  @TomIdempotent()
+  @TomEndpoint(
+    methods: [TomHttpMethod.post],
+    uri: '/fixture/orders',
+    produces: TomMimeType.json,
+    logRequests: false,
+  )
+  Future<Map<String, Object>> placeOrder();
+
   /// A `multipart/form-data` endpoint that takes both halves of a form: the
   /// text parts as a typed request DTO, and a file part as a parameter.
   ///
@@ -836,6 +847,14 @@ class FixtureApiServer implements FixtureApiService {
   @override
   Future<Map<String, Object>> auditedAction() async => <String, Object>{
     'audited': true,
+  };
+
+  /// How often [placeOrder] has run.
+  static int ordersPlaced = 0;
+
+  @override
+  Future<Map<String, Object>> placeOrder() async => <String, Object>{
+    'order': ++ordersPlaced,
   };
 
   @override

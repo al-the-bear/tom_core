@@ -2,6 +2,47 @@
 
 ### Added
 
+- **Idempotency keys** (`endpoints` module). `@TomIdempotent({retention})` on
+  an endpoint lets a request carry an `Idempotency-Key` header (1 to 191
+  characters): the first request runs and its response is stored; a retry with
+  the same key gets the stored response with `Idempotent-Replayed: true`
+  without running again; the same key for a different request (method, path,
+  query and body, compared as a SHA-256) answers `422`
+  `endpoint.idempotency.key_reused`, a key whose request still runs `409`
+  `endpoint.idempotency.in_progress` with `Retry-After: 1`, an invalid key `400`
+  `endpoint.idempotency.key_invalid`. A key is scoped to the tenant, the
+  authenticated principal and the operation (`"<METHOD> <uri>"`); a request
+  without a principal or without the header runs as before. A `5xx`, a thrown
+  handler and the statuses saying the request did not run
+  (`TomIdempotency.notStoredStatuses`: `401`, `403`, `408`, `409`, `425`, `429`)
+  release the key; `set-cookie` and the hop-by-hop headers are not replayed. A
+  claim left unfinished past `inProgressTimeout` (five minutes) is taken over;
+  records expire after the retention (24 hours by default) and are removed by
+  `TomIdempotencyStore.purgeExpired`. `TomIdempotency` holds the settings and
+  `handle`, which `TomEndpointHandler.handleMethodCall` routes every request of
+  an annotated endpoint through (not `OPTIONS`); `TomMethodMetadata.idempotent`
+  carries the annotation, and a second one on a method stops the router build
+  with `endpoint_pipeline.get_class_method_metadata.multiple_idempotent_tags`.
+  Stores: `TomMemoryIdempotencyStore` (the default, one process) and
+  `TomSqlIdempotencyStore` — a data source resolved by name per call, so under
+  tenancy a tenant's keys live in its own schema or database, or bound with
+  `.over(datasource)` — keeping the records in `tom_idempotency_key`, declared
+  once by `idempotencyTable` (`idempotencyTableDdl`, `defaultIdempotencyTable`,
+  read back as `TomIdempotencyRow`), listed by `frameworkOwnedTables` under the
+  new `idempotency` parameter, and shipped as the reference migration
+  `example/endpoints/migrations/main/tomcore/[1]-create_tom_idempotency_key.sql`
+  with its PostgreSQL form. `TomIdempotencyScope`, `TomIdempotencyRecord` and
+  `TomIdempotencyClaim` make up the store contract; `TomIdempotencyException`
+  carries the keys above plus `endpoint.idempotency.no_datasource` and
+  `endpoint.idempotency.config.invalid`. `TomServer.idempotencyConfigurationKey`
+  (`'idempotency'`) and `TomServer.configureIdempotency([provider])`, called by
+  `start()` right after `configureHttpClients`, apply the `datasource`, `table`,
+  `createSchema`, `retentionMinutes` and `inProgressTimeoutSeconds` keys.
+  `doc/endpoints.md` § Idempotency Keys, `doc/configuration.md` § Idempotency
+  Keys, notes in `doc/tenancy.md`, `doc/db_migration.md` and `doc/server.md`;
+  `example/endpoints/idempotency_example.dart`, on the package tour;
+  `test/idempotency_test.dart`, `test/idempotency_db_test.dart`.
+
 - **Idempotent receiver (inbox) for consumers of a message broker** (`messaging`
   module). `TomInbox.process(consumer, messageId, work, {acknowledge})`
   records the `(consumer, message id)` pair and runs `work` in one database

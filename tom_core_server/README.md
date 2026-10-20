@@ -102,6 +102,7 @@ added.
 | `TomWebSocketEndpoint` / `TomWebSocketConnection` | Sockets as a *kind of endpoint* — same scan, access check and parameter binding, run inside the captured request zone, with their own connection lifecycle |
 | `TomOpenApiService` / `TomOpenApiServer` | `GET /openapi.json`, public: serves the OpenAPI 3.1 document `tom_core_openapi` generates at build time, from the file the `openApiDocument` setting names |
 | `TomErrorHandler` / `TomDefaultErrorHandler` | Maps a thrown exception onto the response the caller sees |
+| `TomIdempotent` / `TomIdempotency` / `TomSqlIdempotencyStore` | Idempotency keys: an annotated endpoint answers a retry carrying the same `Idempotency-Key` with the first response instead of running again — kept in memory, or for a cluster in `tom_idempotency_key` through the `idempotency` block |
 
 ### Persistence (`object_persistence`, `datasources`)
 
@@ -210,7 +211,7 @@ there, or excluded with a stated reason.
 | Sample | Demonstrates |
 | ------ | ------------ |
 | [`example/server/`](example/server/) | The pieces `TomServer` composes its pipeline from; `graceful_shutdown_example.dart` runs a graceful shutdown step by step — readiness off, a new request refused, the request and the scheduled run in flight finished, the lease released |
-| [`example/endpoints/`](example/endpoints/) | Declaring routed endpoints |
+| [`example/endpoints/`](example/endpoints/) | Declaring routed endpoints; `idempotency_example.dart` sends a request, its retry, a reused key and another caller's key through the idempotency-key handling |
 | [`example/object_persistence/`](example/object_persistence/) | Repositories, annotations, query builder |
 | [`example/datasources/`](example/datasources/) | SQL-typed values and dialect rendering |
 | [`example/db_migration/`](example/db_migration/) | Versioned schema migrations |
@@ -417,6 +418,12 @@ under the kernel's resilience policies: a 30-second timeout per API call, retrie
 that may be repeated, and a circuit breaker and a bulkhead per destination. An
 `httpClient` block changes them, overall and per destination (see
 [`doc/configuration.md`](doc/configuration.md#outgoing-http-calls)).
+
+An endpoint annotated `@TomIdempotent()` makes a client's retry safe: a request
+carrying an `Idempotency-Key` runs once, and a retry with the same key gets the
+stored response, marked `Idempotent-Replayed: true`. The records are kept in
+memory unless an `idempotency` block names a data source, which every instance
+then shares (see [`doc/endpoints.md`](doc/endpoints.md#idempotency-keys)).
 
 See [`doc/authentication.md`](doc/authentication.md).
 

@@ -17,7 +17,7 @@ surface documented here.
 | Configuration | [api_summary_configuration.md](api_summary_configuration.md) | Server config provider, typed config values, YAML resources, and secret references resolved from a secret store. |
 | Datasources | [api_summary_datasources.md](api_summary_datasources.md) | DB type system, SQL dialects, queries, MariaDB datasource/prepared statements. |
 | Database Migration | [api_summary_db_migration.md](api_summary_db_migration.md) | Migration runner, versioning, the record of the last run readiness reads, and the MariaDB migration adaptor. |
-| Endpoints | [api_summary_endpoints.md](api_summary_endpoints.md) | Service/endpoint annotations, routing, handler pipeline, error handling, and the three transports over it: HTML form bodies, redirects and WebSockets — plus the HTTP surface of file columns. |
+| Endpoints | [api_summary_endpoints.md](api_summary_endpoints.md) | Service/endpoint annotations, routing, handler pipeline, error handling, and the three transports over it: HTML form bodies, redirects and WebSockets — plus the HTTP surface of file columns, and idempotency keys that answer a retried request with the first one's response. |
 | Export | [api_summary_export.md](api_summary_export.md) | Tabular results rendered to CSV, XLSX or PDF, and stored for later retrieval. |
 | File Storage | [api_summary_file_storage.md](api_summary_file_storage.md) | Streaming blob storage: one put/get contract over memory, directory, database and S3 backends. |
 | Health Check | [api_summary_healthcheck.md](api_summary_healthcheck.md) | Health analyzer and health-check service/server, and the framework readiness checks `/ready` answers with by default — or `503 shutting down` once a graceful shutdown has begun. |
@@ -482,6 +482,19 @@ surface documented here.
 | `TomFormFileStorage` | extension | Stores a `TomFormFile` through the same file slot the raw-body endpoint uses. |
 | `TomOpenApiService` | abstract class | The public route contract for the server's OpenAPI document, `GET /openapi.json`. |
 | `TomOpenApiServer` | class | Serves the build-generated OpenAPI document the configuration points at. |
+| `TomIdempotent` | class | Method annotation: requests may carry an `Idempotency-Key`. |
+| `TomIdempotencyException` | class | A key that cannot be used, a store without its data source, or an `idempotency` configuration of the wrong shape. |
+| `TomIdempotencyScope` | class | Whose key it is: tenant, principal, operation and key. |
+| `TomIdempotencyRecord` | class | A stored request's fingerprint and, once finished, its response. |
+| `TomIdempotencyClaim` | class | The outcome of a claim: won, or lost to a record. |
+| `TomIdempotencyStore` | abstract class | Where idempotency records are kept. |
+| `TomMemoryIdempotencyStore` | class | The records of one process, in memory; the default. |
+| `TomSqlIdempotencyStore` | class | The records in a SQL table, shared by every instance; its data source resolved by name per call. |
+| `TomIdempotencyRow` | class | One row of the idempotency table, as the SQL store reads it. |
+| `TomIdempotency` | abstract final class | The isolate's idempotency settings, and `handle`, which answers one request. |
+| `defaultIdempotencyTable` | constant | `tom_idempotency_key`. |
+| `idempotencyTable` | function | The idempotency table, declared once. |
+| `idempotencyTableDdl` | function | The `CREATE TABLE` for it, for a deployment that applies DDL by hand. |
 
 ### Export (`lib/src/tomserver/export/`)
 
@@ -861,6 +874,7 @@ surface documented here.
 | `defaultBlobChunkTable` | File Storage |
 | `defaultBlobManifestTable` | File Storage |
 | `defaultDeliveryReportTable` | Messaging |
+| `defaultIdempotencyTable` | Endpoints |
 | `defaultInboxTable` | Messaging |
 | `defaultInvalidationTable` | Cache |
 | `defaultJobRunTable` | Scheduling |
@@ -882,6 +896,8 @@ surface documented here.
 | `Group` | Object Persistence |
 | `Gt` | Object Persistence |
 | `Gte` | Object Persistence |
+| `idempotencyTable` | Endpoints |
+| `idempotencyTableDdl` | Endpoints |
 | `In` | Object Persistence |
 | `inboxTable` | Messaging |
 | `inboxTableDdl` | Messaging |
@@ -1238,6 +1254,14 @@ surface documented here.
 | `TomHttp2PushExchange` | Messaging |
 | `TomHttpOAuthTokenTransport` | Authentication |
 | `TomHttpServiceLoginTransport` | Authentication |
+| `TomIdempotency` | Endpoints |
+| `TomIdempotencyClaim` | Endpoints |
+| `TomIdempotencyException` | Endpoints |
+| `TomIdempotencyRecord` | Endpoints |
+| `TomIdempotencyRow` | Endpoints |
+| `TomIdempotencyScope` | Endpoints |
+| `TomIdempotencyStore` | Endpoints |
+| `TomIdempotent` | Endpoints |
 | `TomInbox` | Messaging |
 | `TomInboxException` | Messaging |
 | `TomInboxOutcome` | Messaging |
@@ -1287,6 +1311,7 @@ surface documented here.
 | `TomMemoryDeliveryReportStore` | Messaging |
 | `TomMemoryExportStore` | Export |
 | `TomMemoryExternalIdentityStore` | Authentication |
+| `TomMemoryIdempotencyStore` | Endpoints |
 | `TomMemoryInbox` | Messaging |
 | `TomMemoryMessageTransport` | Messaging |
 | `TomMemoryOAuthTokenStore` | Authentication |
@@ -1497,6 +1522,7 @@ surface documented here.
 | `TomSqlDatasourceRepository` | Object Persistence |
 | `TomSqlDeliveryReportStore` | Messaging |
 | `TomSqlFailureMode` | Datasources |
+| `TomSqlIdempotencyStore` | Endpoints |
 | `TomSqlInbox` | Messaging |
 | `TomSqlInvalidationChannel` | Cache |
 | `TomSqlJobStore` | Scheduling |
