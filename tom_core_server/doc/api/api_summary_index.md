@@ -23,7 +23,7 @@ surface documented here.
 | Health Check | [api_summary_healthcheck.md](api_summary_healthcheck.md) | Health analyzer and health-check service/server, and the framework readiness checks `/ready` answers with by default — or `503 shutting down` once a graceful shutdown has begun. |
 | Item Authorization | [api_summary_item_authorization.md](api_summary_item_authorization.md) | Item authorizations kept by an external authority: the port to it, a caching client for checks, accessible items and the user's sharing acts, and the row scope it feeds. |
 | Little Things | [api_summary_little_things.md](api_summary_little_things.md) | The server-side base exception `TomServerException`, the `TomLoginFailure` reason its login subclass carries, the per-request correlation id `TomRequestId` it reads, and `tomErrorEnvelope`, the wire shape every error response uses. |
-| Messaging | [api_summary_messaging.md](api_summary_messaging.md) | Channel-neutral messages, delivery transports (SMTP, HTTP SMS gateway and stand-ins), MIME encoding, the durable outbox, and resource-keyed email and SMS. |
+| Messaging | [api_summary_messaging.md](api_summary_messaging.md) | Channel-neutral messages, delivery transports (SMTP, HTTP SMS gateway and stand-ins), MIME encoding, the durable outbox, resource-keyed email and SMS, and the idempotent receiver (inbox) for consuming a broker's messages once. |
 | Metrics | [api_summary_metrics.md](api_summary_metrics.md) | The request series, the Prometheus scrape endpoint answered ahead of authentication, and the OTLP/HTTP transport and metrics exporter. |
 | Object Persistence | [api_summary_object_persistence.md](api_summary_object_persistence.md) | Persistence annotations, repositories, query builder, operators/expressions, grouped queries and their aggregates, paging and sorting, file-reference columns, data scoping, column authorization. |
 | Preferences | [api_summary_preferences.md](api_summary_preferences.md) | Server-stored per-principal preferences: the scoped `tom_user_preference` entity, the typed service over it, and the `/preferences/*` endpoints. |
@@ -636,6 +636,15 @@ surface documented here.
 | `TomDeliveryReportEndpoint` | class | The static configuration behind the callback route, and its handler. |
 | `TomDeliveryReportService` | abstract class | The reflected `POST /messaging/delivery-report` declaration. |
 | `TomDeliveryReportServer` | class | Its default implementation. |
+| `TomInboxException` | class | An empty or over-long consumer name or message id (extends `TomServerException`). |
+| `TomInboxOutcome` | enum | `processed`, `duplicate`. |
+| `TomInbox` | abstract class | The idempotent receiver: record and work in one transaction, acknowledge after the commit, skip a message already processed. |
+| `TomMemoryInbox` | class | The inbox in memory; for tests, forgotten on restart. |
+| `TomSqlInbox` | class | The inbox in a table of the data source the consumer's work writes to. |
+| `TomInboxRow` | class | One row of that table as the driver hands it back. |
+| `inboxTable` | function | The inbox table, declared once. |
+| `inboxTableDdl` | function | The `CREATE TABLE` for it, for a deployment that applies DDL by hand. |
+| `defaultInboxTable` | constant | `tom_message_inbox`. |
 | `TomSmsSubmission` | class | One recipient's share of a message, as handed to a protocol. |
 | `TomSmsSegmentation` | class | What a text costs: encoding, units, segments. |
 | `TomSmsEncoding` | enum | `gsm7`, `ucs2`. |
@@ -852,6 +861,7 @@ surface documented here.
 | `defaultBlobChunkTable` | File Storage |
 | `defaultBlobManifestTable` | File Storage |
 | `defaultDeliveryReportTable` | Messaging |
+| `defaultInboxTable` | Messaging |
 | `defaultInvalidationTable` | Cache |
 | `defaultJobRunTable` | Scheduling |
 | `defaultLeaseTable` | Scheduling |
@@ -873,6 +883,8 @@ surface documented here.
 | `Gt` | Object Persistence |
 | `Gte` | Object Persistence |
 | `In` | Object Persistence |
+| `inboxTable` | Messaging |
+| `inboxTableDdl` | Messaging |
 | `InMemoryPrincipalDelegationStore` | Authorization |
 | `InMemoryPrincipalResourceGrantStore` | Authorization |
 | `installJwtSigning` | Authentication |
@@ -1226,6 +1238,10 @@ surface documented here.
 | `TomHttp2PushExchange` | Messaging |
 | `TomHttpOAuthTokenTransport` | Authentication |
 | `TomHttpServiceLoginTransport` | Authentication |
+| `TomInbox` | Messaging |
+| `TomInboxException` | Messaging |
+| `TomInboxOutcome` | Messaging |
+| `TomInboxRow` | Messaging |
 | `TomInformationSchemaColumnRow` | Database Migration |
 | `TomIntConfig` | Configuration |
 | `TomInvalidationChannel` | Cache |
@@ -1271,6 +1287,7 @@ surface documented here.
 | `TomMemoryDeliveryReportStore` | Messaging |
 | `TomMemoryExportStore` | Export |
 | `TomMemoryExternalIdentityStore` | Authentication |
+| `TomMemoryInbox` | Messaging |
 | `TomMemoryMessageTransport` | Messaging |
 | `TomMemoryOAuthTokenStore` | Authentication |
 | `TomMemoryRateLimiter` | Rate Limiting |
@@ -1480,6 +1497,7 @@ surface documented here.
 | `TomSqlDatasourceRepository` | Object Persistence |
 | `TomSqlDeliveryReportStore` | Messaging |
 | `TomSqlFailureMode` | Datasources |
+| `TomSqlInbox` | Messaging |
 | `TomSqlInvalidationChannel` | Cache |
 | `TomSqlJobStore` | Scheduling |
 | `TomSqlLeaseLock` | Scheduling |

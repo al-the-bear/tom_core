@@ -5594,7 +5594,7 @@ final x = SampledType();
       // The enums filed beside the type that carries them are found all the
       // same, which is what keeps the forward check about documentation rather
       // than layout — and the accounting check satisfiable without moving them.
-      expect(_exportedEnums('messaging'), hasLength(7));
+      expect(_exportedEnums('messaging'), hasLength(8));
       expect(
         _headingNamesOf(_summary('messaging')),
         containsAll(_exportedEnums('messaging')),

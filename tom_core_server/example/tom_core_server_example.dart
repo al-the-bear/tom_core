@@ -150,6 +150,11 @@ const List<TourStop> tour = [
         'as library API',
   ),
   TourStop(
+    'example/messaging/inbox_example.dart',
+    'The idempotent receiver: a message delivered more than once is processed '
+        'once, and acknowledged only after it was',
+  ),
+  TourStop(
     'example/export/export_example.dart',
     'The streaming tabular shape, columns derived from a reflected entity, '
         'the CSV/XLSX/PDF renderers, the format registry and the storage '

@@ -75,6 +75,14 @@ templated-service base to render each type against. Both boundaries are stated
 under "Not in This Framework" in `doc/messaging.md`, with the reasoning and the
 alternative for each.
 
+**The inbox is the receiving side of a broker, beside the four layers.**
+`inbox.dart` and `inbox_sql.dart` hold the idempotent receiver: a consumer of a
+message broker hands `TomInbox.process` the message id, its work and its
+acknowledgement, and the inbox records the message and runs the work in one
+transaction, acknowledges after the commit, and skips a message it recorded
+before — so at-least-once delivery is processed exactly once. It knows no
+broker; any consumer loop calls it with its own acknowledgement.
+
 `mime_encoder.dart` sits beside the SMTP transport rather than under it: the
 RFC 5322 document is a value the encoder produces, not a step of the
 conversation, and it is asserted directly by the test suite.
@@ -204,6 +212,19 @@ carrier did with it afterwards arrives minutes or hours later, on a callback, an
 | `TomDeliveryReportProtocol` · `TomFieldMappedDeliveryReportProtocol` · `TomDeliveryCallback` | The carrier's callback shape, described in configuration rather than coded — the same seam `TomSmsGatewayProtocol` is, and with no vendor presets for the same reason. |
 | `TomDeliveryReportService` · `TomDeliveryReportServer` · `TomDeliveryReportEndpoint` | The inbound `POST /messaging/delivery-report` route. Public, because a carrier has no account here, and gated by a shared secret compared in constant time. Nothing is installed by default, and an uninstalled endpoint refuses everything. |
 
+### The idempotent receiver
+
+Source: `inbox.dart`, `inbox_sql.dart`
+
+| Type | What it is |
+| ---- | ---------- |
+| `TomInbox` | The contract: `process(consumer, messageId, work, {acknowledge})` records the message and runs `work` in one transaction, then acknowledges — a duplicate too, so the broker stops redelivering it. A failing `work` rolls back, is not acknowledged and is rethrown. `recordAndRun` is the atomic step an implementation supplies; `hasProcessed` and `purgeProcessedBefore` read and prune the records. |
+| `TomInboxOutcome` | `processed` or `duplicate`. |
+| `TomSqlInbox` · `TomInboxRow` | The inbox in a table of the data source the consumer's work writes to, so the record and the work commit together; two simultaneous deliveries are serialised by the table's key. |
+| `TomMemoryInbox` | The same contract in a map of the process — for tests; it forgets everything on restart. |
+| `inboxTable` · `inboxTableDdl` · `defaultInboxTable` | `tom_message_inbox`, declared once and listed by `frameworkOwnedTables`. |
+| `TomInboxException` | An empty or over-long consumer name or message id (`messaging.inbox.invalid_consumer`, `messaging.inbox.invalid_message_id`). |
+
 ### The vendor mapping's path
 
 Source: `vendor_mapping.dart`
@@ -275,7 +296,7 @@ Future<void> main() async {
 See [`doc/messaging.md`](../../../../doc/messaging.md) for the full treatment:
 why this is not a mailer call, the open-channel decision, the one distinction a
 transport must get right, the SMTP conversation, the SMS gateway shape and its
-segment arithmetic, the push protocols and credentials, what "queued" guarantees, and the application template rule.
+segment arithmetic, the push protocols and credentials, what "queued" guarantees, the application template rule, and the idempotent receiver.
 The connection-free surface runs in
 `example/messaging/messaging_example.dart` and, for the template layer, in
 `example/messaging/messaging_templated_example.dart` — `test/messaging_test.dart`
@@ -284,8 +305,10 @@ and SMS protocols through their injectable seams.
 `test/email_service_test.dart`, `test/sms_service_test.dart` and
 `test/push_service_test.dart` cover the three application services,
 `test/sms_transport_test.dart` the gateway mapping and its segment arithmetic,
-`test/push_transport_test.dart` the push protocols, credentials and exchanges, and `test/readme_quick_start_test.dart` runs the snippet
-above.
+`test/push_transport_test.dart` the push protocols, credentials and exchanges,
+`test/inbox_test.dart` and `test/inbox_db_test.dart` the inbox in memory and
+against a database (`example/messaging/inbox_example.dart` runs it end to end),
+and `test/readme_quick_start_test.dart` runs the snippet above.
 
 ---
 

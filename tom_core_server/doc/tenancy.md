@@ -522,6 +522,28 @@ Build these stores over a data source that is not in `TomTenancy.datasources`,
 or construct them outside any tenant's context, which is where a server's
 start-up runs anyway. Their migrations belong in the deployment-wide tree.
 
+**The message inbox is the exception, and on purpose.** `TomSqlInbox` records
+a message in the same transaction as the consumer's own writes, so it must live
+where those writes go. A consumer whose work is routed to a tenant's database or
+schema builds its inbox over that tenant's data source — resolved inside the
+tenant, as the work's own repository resolves it — and the `tom_message_inbox`
+migration belongs in the per-tenant tree:
+
+```dart
+await tenancy.runFor(tenantId, () async {
+  final ds = TomDataSourceInfo.getDataSourceInfo('app')!.datasource;
+  await TomSqlInbox(ds).process(
+    'billing',
+    message.id,
+    () => invoices.record(message),
+    acknowledge: message.ack,
+  );
+});
+```
+
+Under row-level isolation the routed data source is the shared one, and a
+single inbox serves every tenant.
+
 ## Working in a Tenant Outside a Request
 
 Work that does not arrive as a request states its tenant explicitly:

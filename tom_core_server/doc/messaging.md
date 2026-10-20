@@ -4,7 +4,9 @@ The outbound message substrate: a channel-neutral message shape, a transport
 contract, two real implementations — SMTP and an HTTP SMS gateway — stand-in
 transports for tests and local runs, a durable outbox that queues delivery onto
 the kernel's job scheduler, and a templating layer that composes every message
-from resource keys so no user-facing string is written in Dart.
+from resource keys so no user-facing string is written in Dart — and, for a
+consumer of a message broker, an idempotent receiver (inbox) that processes a
+message the broker delivers more than once exactly once.
 
 This module does **not** model notification types, subscriptions or user
 preferences, and it is not going to — that belongs to the application, and
@@ -52,6 +54,17 @@ out of.
   - [The endpoint is public, and gated by a secret](#the-endpoint-is-public-and-gated-by-a-secret)
     - [What a carrier is told](#what-a-carrier-is-told)
     - [Failure keys](#failure-keys-1)
+- [Idempotent Receiver (Inbox)](#idempotent-receiver-inbox)
+  - [Using it in a consumer](#using-it-in-a-consumer)
+  - [Record, work, commit, then acknowledge](#record-work-commit-then-acknowledge)
+  - [When something fails](#when-something-fails)
+  - [The work must write to the inbox's data source](#the-work-must-write-to-the-inboxs-data-source)
+  - [Concurrent deliveries](#concurrent-deliveries)
+  - [Purging the records](#purging-the-records)
+  - [Provisioning the table](#provisioning-the-table)
+  - [The memory inbox](#the-memory-inbox)
+  - [Broker-neutral by design](#broker-neutral-by-design)
+  - [Inbox failure keys](#inbox-failure-keys)
 - [Configuration and Secrets](#configuration-and-secrets)
 - [The MIME Document](#the-mime-document)
 - [Delivery Semantics: One Retry Mechanism](#delivery-semantics-one-retry-mechanism)
@@ -125,6 +138,10 @@ out of.
 | `deliveryReportTable` / `deliveryReportTableDdl` / `defaultDeliveryReportTable` | functions / const String | The correlation table, declared once — the DDL, the statements and the convergence guard all derive from it |
 | `TomDeliveryReportProtocol` / `TomFieldMappedDeliveryReportProtocol` / `TomDeliveryCallback` | abstract class / class / class | The carrier's callback shape, described rather than coded |
 | `TomDeliveryReportService` / `TomDeliveryReportServer` / `TomDeliveryReportEndpoint` | abstract class / classes | The inbound `POST /messaging/delivery-report` route and what answers it |
+| `TomInbox` / `TomInboxOutcome` | abstract class / enum | The idempotent receiver: records a message and runs the consumer's work in one transaction, acknowledges after the commit, and skips a message already processed |
+| `TomMemoryInbox` / `TomSqlInbox` / `TomInboxRow` | classes | That inbox in memory and in a table, and the row the driver hands back |
+| `inboxTable` / `inboxTableDdl` / `defaultInboxTable` | functions / const String | The inbox table, declared once |
+| `TomInboxException` | class | An inbox argument that cannot be used |
 | `TomMimeEncoder` | class | Renders a `TomMessage` as an RFC 5322 / MIME document |
 | `tomVendorValueAt` | function | The dotted-path reader both vendor mappings share; a numeric segment indexes a list |
 | `TomMessageOutbox` | class | The durable send queue in front of a router |
@@ -967,6 +984,223 @@ everything through is worse than no gate — it reads like one.
 | `messaging.delivery_report.empty_secret` | — | `install` was called with an empty secret; a `TomMessagingException` at installation, not a callback answer |
 | `messaging.delivery_report.unknown_datasource` | — | `TomSqlDeliveryReportStore.named` was given a data source that is not registered; a `TomServerException` at construction |
 
+## Idempotent Receiver (Inbox)
+
+A broker that promises at-least-once delivery redelivers every message whose
+acknowledgement it did not receive — after a consumer crashed between doing the
+work and acknowledging it, after a network blip, after a rebalance moved the
+partition to another node. A consumer that simply does the work again charges a
+card twice or sends a second welcome mail. `TomInbox` closes that gap: it
+records each `(consumer, message id)` pair in the same database transaction as
+the consumer's work, and skips the work for a pair it has already recorded. At
+least once *delivered* becomes exactly once *processed*.
+
+This is the receiving counterpart of [`TomMessageOutbox`](#delivery-semantics-one-retry-mechanism),
+which is idempotent on `TomMessage.id` on the sending side.
+
+### Using it in a consumer
+
+```dart
+final inbox = TomSqlInbox(ordersDataSource);
+
+Future<void> onDelivery(BrokerDelivery delivery) async {
+  final outcome = await inbox.process(
+    'billing',                            // the consumer
+    delivery.messageId,                   // stable across redeliveries
+    () => chargeOrder(delivery.payload),  // writes through ordersDataSource
+    acknowledge: delivery.ack,            // the broker's acknowledgement
+  );
+  if (outcome == TomInboxOutcome.duplicate) {
+    log('already charged: ${delivery.messageId}');
+  }
+}
+```
+
+`process(consumer, messageId, work, {acknowledge})` answers a
+`TomInboxOutcome`:
+
+| Outcome | Meaning |
+| ------- | ------- |
+| `processed` | The message was new: `work` ran and was committed together with its record. |
+| `duplicate` | The consumer had processed the message before: `work` did not run. |
+
+The **consumer** is part of the key. Two consumers of one message — a billing
+projection and a notifier — each process it once, so each names itself: a
+consumer name is the identity of one handler, not of one node, and every node
+running that handler uses the same name.
+
+The **message id** must be the one the broker carries unchanged on every
+redelivery — an id the producer assigned, or the broker's own message id. A
+per-delivery handle (a delivery tag, a receipt handle) changes on each
+redelivery and would make every redelivery look new.
+
+The consumer name is 1 to 150 characters and the message id 1 to 191; anything
+else is refused with a `TomInboxException` before anything is written (see
+[Inbox failure keys](#inbox-failure-keys)).
+
+`acknowledge` is optional. A consumer whose broker acknowledges by other means
+— a client that acknowledges when the handler returns, a commit of consumed
+offsets on the consumer's own schedule — leaves it out, and `process` still
+records, runs and answers the outcome.
+
+### Record, work, commit, then acknowledge
+
+`process` runs in a fixed order, and the order is the whole guarantee:
+
+1. **In one transaction**, it inserts the `(consumer, message id)` row and runs
+   `work`. The table's primary key refuses the insert for a pair already
+   recorded; the inbox then answers `duplicate` without running `work`.
+2. **After the commit**, it calls `acknowledge` — for a `duplicate` as well, so
+   the broker stops redelivering a message that was processed before.
+
+Each place a crash can land is covered:
+
+| The consumer stops… | What is in the database | What the broker does | What the next delivery does |
+| ------------------- | ----------------------- | -------------------- | --------------------------- |
+| before the commit | nothing — the record and the work rolled back together | redelivers | processes it: the record is not there |
+| after the commit, before the acknowledgement | the record and the work | redelivers | finds the record, skips the work, acknowledges |
+| after the acknowledgement | the record and the work | nothing | — |
+
+The step `process` wraps is `recordAndRun(consumer, messageId, work)`: the
+record and the work, atomically, without the validation and without the
+acknowledgement. It is public so an inbox over another store implements one
+method, and `process` keeps the ordering for every implementation.
+
+### When something fails
+
+| What fails | What happens |
+| ---------- | ------------ |
+| `work` throws | The transaction rolls back — the record with it — `acknowledge` is not called, and `process` rethrows the error. The broker redelivers, and the redelivery runs `work` again: a failed message was never processed. |
+| The commit fails | `process` throws the transaction manager's `TomTransactionException` and does not acknowledge. The broker redelivers; the record and the work commit or fail together, so the redelivery either runs `work` or is a `duplicate`, never half of each. |
+| `acknowledge` throws | The work and the record are committed; the error propagates from `process`. The broker redelivers, and the redelivery is a `duplicate` that is acknowledged — nothing runs twice. |
+| An invalid consumer or message id | `TomInboxException`, before anything is written and before `acknowledge`. |
+
+`process` must run **outside** any transaction already in progress.
+`TomTransactionManager.runInTransaction` joins a running transaction rather than
+opening its own (see [transactions.md](transactions.md#transaction-scopes)), so
+inside one the record and the work would commit only when the outer transaction
+does — after `acknowledge` has already told the broker the message was handled.
+A consumer loop is not on the request path and has no transaction of its own,
+which is the case `process` is built for.
+
+### The work must write to the inbox's data source
+
+The guarantee holds only for what commits together with the record. `work` must
+therefore write through the **same data source** the inbox was built over:
+every statement it issues joins the transaction `process` opened, and commits or
+rolls back with the record. Work on a second data source joins that transaction
+only when both are two-phase data sources (`MariaDbXADatasource`,
+`PostgresXADatasource` — see [transactions.md](transactions.md)); over a
+one-phase second data source the two can come apart.
+
+With tenancy, that means the tenant's data source: a consumer whose work is
+routed to a tenant's database or schema builds its inbox over that routed data
+source, inside the tenant, and the inbox table lives there too — see
+[What Stays Deployment-Wide](tenancy.md#what-stays-deployment-wide).
+
+**Work that is not a database write is not covered.** A call to a payment
+provider, an e-mail sent directly, a message published to another broker — none
+of these rolls back with the transaction, so a crash after the call and before
+the commit repeats it on redelivery. Such a call has to be idempotent itself
+(the provider's idempotency key, set to the message id), or be turned into a
+database write inside `work` that a later step acts on once it has committed.
+
+### Concurrent deliveries
+
+Two deliveries of one message processed at the same moment — two nodes after a
+rebalance, or a redelivery that overtakes a slow first attempt — are serialised
+by the database. The second insert waits on the first transaction's key; when
+the first commits, the second finds the row and answers `duplicate`, and when
+the first rolls back, the second claims the message and runs `work`. Neither
+consumer has to coordinate with the other.
+
+### Purging the records
+
+Every processed message leaves a row, and nothing purges them automatically.
+`purgeProcessedBefore(before)` removes the records of messages processed before
+`before` and answers how many it removed; `processed_at` is indexed, so the
+purge does not scan the table.
+
+A record must outlive every redelivery of its message: a record purged while the
+broker can still redeliver the message lets that redelivery run the work again.
+So `before` lies further back than the broker's longest redelivery window — its
+message retention, or the delay after which it moves a message to a dead-letter
+queue — and how long that is is a deployment's knowledge, not the inbox's. Run
+the purge as a scheduled job of the application with that margin, for example
+a daily job removing records older than twice the retention.
+
+`hasProcessed(consumer, messageId)` answers whether a pair is recorded, for an
+operator or a test; a consumer does not need it, because `process` asks the
+question atomically.
+
+### Provisioning the table
+
+`TomSqlInbox(datasource, {table, createSchema, clock})` keeps its records in
+`tom_message_inbox` (`defaultInboxTable`), declared once by `inboxTable(table)`:
+
+| Column | Type | Carries |
+| ------ | ---- | ------- |
+| `consumer` | `VARCHAR(150)`, primary key | the consumer name — short enough that the composite key stays within the index length a `utf8mb4` column allows |
+| `message_id` | `VARCHAR(191)`, primary key | the message id |
+| `processed_at` | `DATETIME(6)`, indexed, UTC | when the message was processed; the purge reads it |
+
+With `createSchema` left `true`, the table is created on first use.
+`ensureSchema()` does that explicitly — idempotent, and called by every
+operation — so a start-up can provision the table before the consumer loop
+begins. It runs **outside** the consumer's transaction, because MariaDB commits
+DDL implicitly and would end that transaction half way.
+
+A deployment whose database user may not run DDL applies the reference migration
+instead and passes `createSchema: false`:
+
+- `example/messaging/migrations/main/tomcore/[2]-create_tom_message_inbox.sql`,
+  in the framework's canonical DDL;
+- `example/messaging/migrations_postgresql/main/tomcore/[2]-create_tom_message_inbox.sql`,
+  its generated PostgreSQL form (see
+  [db_migration.md](db_migration.md#reference-migrations-for-postgresql)).
+
+An inbox over a renamed table ships no migration of its own:
+`inboxTableDdl(name)` returns the `CREATE TABLE` for the name passed to the
+constructor. The table is framework-owned and listed by `frameworkOwnedTables`
+(its `inbox` parameter), so the convergence check holds the declaration, the
+reference migration and a live database to one shape (see
+[db_migration.md](db_migration.md#the-frameworks-own-tables)).
+
+`deleteAll()` empties the table; it is not part of `TomInbox`, because no
+consumer should want it, and exists for provisioning and tests. `clock` supplies
+the processing time, for a test that purges by date.
+
+### The memory inbox
+
+`TomMemoryInbox({clock})` keeps the records in a map of the process. It
+honours the same contract — a duplicate is skipped and acknowledged, a failing
+`work` records nothing and is not acknowledged, a delivery arriving while the
+same message is being processed waits for it — and it is what a unit test and
+`example/messaging/inbox_example.dart` use.
+
+It forgets everything on restart, so it **cannot stand behind a durable
+broker**: a redelivery after a restart finds no record and runs the work again.
+And there is no transaction around `work` — if `work` changed state in memory
+before it threw, that change stays. Use it for a test, or for a single process
+whose work is in memory too.
+
+### Broker-neutral by design
+
+The inbox does not know the broker. `process` takes the message id and two
+functions — the work and the acknowledgement — so any broker's consumer loop
+uses it the same way: a queue client acknowledges a delivery, a log-based client
+commits an offset, a webhook receiver answers `200`. There is no message bus and
+no broker adapter in `tom_core`; any consumer loop calls `process` with its own
+acknowledgement, and the message bus, by design, wraps each of its handlers in
+an inbox in exactly the same way.
+
+### Inbox failure keys
+
+| Key | Raised when |
+| --- | ----------- |
+| `messaging.inbox.invalid_consumer` | The consumer name is empty or longer than 150 characters; a `TomInboxException` from `process`, before anything is written |
+| `messaging.inbox.invalid_message_id` | The message id is empty or longer than 191 characters; a `TomInboxException` from `process`, before anything is written |
+
 ## Configuration and Secrets
 
 The declarations live on `TomBaseServerConfiguration`:
@@ -1569,9 +1803,9 @@ hands back is a plain [`TomMessage.push`](#push-two-vendors-and-a-mapping).
 
 ## Verification
 
-Seven suites cover the module: six split along the same seam this document
-is — the substrate below the services, and the templated layer above it — and
-one pinning the error vocabulary.
+Nine suites cover the module: six split along the same seam this document
+is — the substrate below the services, and the templated layer above it — one
+pinning the error vocabulary, and two for the inbox.
 
 `test/messaging_error_keys_test.dart` pins the module's error vocabulary: each case reaches a raise with a real input and asserts the exact key, so a key the module stops raising, or raises for a different condition, fails by name. None needs a database.
 
@@ -1594,7 +1828,20 @@ failure that fires before anything is queued, and the segment budget. What that
 locale then *resolves* against is the resources module's rule, pinned in
 `test/resources_test.dart`; both suites render against the same fixture.
 
-Three examples run the module end to end.
+`test/inbox_test.dart` holds the inbox's contract on `TomMemoryInbox`: a
+redelivered message processed once and acknowledged each time, a failing
+delivery neither recorded nor acknowledged and then processed on redelivery,
+two consumers kept apart, two simultaneous deliveries doing the work once, the
+purge by date, and the two refused arguments. `test/inbox_db_test.dart`
+(`@Tags(['db'])`, skipped without a database) runs `TomSqlInbox` against
+MariaDB or PostgreSQL with a consumer that writes a ledger row in the same data
+source: a redelivery charges once, a delivery failing after its write leaves no
+row behind, and two simultaneous deliveries charge once.
+`test/framework_schema_db_test.dart` compares the table `ensureSchema` creates
+with `inboxTable`, and `test/framework_schema_test.dart` the reference
+migration.
+
+Four examples run the module end to end.
 
 `example/messaging/messaging_example.dart` is the substrate, in twelve numbered
 steps: composing a message and reading its channel; registering a channel the
@@ -1623,6 +1870,14 @@ decoded against a sample answer in that vendor's documented shape — an
 acceptance and a refusal apiece — and closing on the case that makes the other
 six worth something, a mapping pointed at a field the answer does not have,
 which must read as a refusal rather than as a success.
+
+`example/messaging/inbox_example.dart` is the fourth, in six steps on
+`TomMemoryInbox`: a first delivery processed and acknowledged; its redelivery
+skipped and acknowledged; a delivery whose work fails, neither recorded nor
+acknowledged, then processed on redelivery; a second consumer processing the
+same message once of its own; two simultaneous deliveries doing the work once;
+and the purge of records older than a cut-off. `test/examples_test.dart` runs
+it and requires its six steps.
 
 ```bash
 dart run example/messaging/messaging_example.dart
@@ -1707,6 +1962,11 @@ reads them: a stopped scheduler is not ready, and a message waiting past
 - **`TomDeliveryReportService` / `TomDeliveryReportServer` /
   `TomDeliveryReportEndpoint`** — the inbound route, and the static
   configuration behind it.
+- **`TomInbox` / `TomInboxOutcome` / `TomInboxException`** — the idempotent
+  receiver: a message a broker delivers more than once is processed once.
+- **`TomMemoryInbox` / `TomSqlInbox` / `TomInboxRow` / `inboxTable` /
+  `inboxTableDdl` / `defaultInboxTable`** — the inbox in memory and in a table
+  written in the consumer's own transaction.
 - **`TomMessagingException`** — the module's base error.
 
 ## Not in This Framework
@@ -1895,7 +2155,9 @@ mis-decodes a character set produces text that *looks* right.
 the framework POSTs, it does not receive. `TomDeliveryReportService` *is* an
 inbound HTTP route, but what arrives on it is a carrier's status about a message
 this deployment sent, not a message somebody sent to it; it resolves through a
-correlation index, never through a mailbox.
+correlation index, never through a mailbox. `TomInbox` sits on the receiving
+side of a message *broker*, not of a mail server: it decides whether a delivery
+was processed before, and reads nothing out of a mailbox.
 
 ## Not Yet Implemented
 
@@ -1919,8 +2181,8 @@ correlation index, never through a mailbox.
 
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
-| `dart:async` | dart | 7 of 17 files | `Future`, `Stream`, `StreamController`, `unawaited` |
-| `dart:convert` | dart | 7 of 17 files | `Encoding`, `LineSplitter`, `base64`, `json`, `jsonDecode`, `jsonEncode` |
+| `dart:async` | dart | 8 of 19 files | `Future`, `FutureOr`, `Stream`, `StreamController`, `unawaited` |
+| `dart:convert` | dart | 7 of 19 files | `Encoding`, `LineSplitter`, `base64`, `json`, `jsonDecode`, `jsonEncode` |
 | `dart:io` | dart | `message_transport.dart`, `push_transport.dart`, `smtp_transport.dart` | `Socket` / `SecureSocket` |
 | `dart:math` | dart | `mime_encoder.dart` | `Random`, `min` |
 | `dart:typed_data` | dart | `message.dart`, `push_transport.dart` | `Uint8List`, `BytesBuilder` |
@@ -1929,12 +2191,13 @@ correlation index, never through a mailbox.
 | `http2` | package | `push_transport.dart` | the HTTP/2 client APNs requires |
 | `path` | package | `message_transport.dart` | file naming in `TomFileMessageTransport` |
 | `shelf` | package | `delivery_report_endpoint.dart` | `Request` / `Response`, because a carrier acts on the status code and the pipeline's own envelope would make every refusal a `500` |
-| `tom_core_kernel` | package | 11 of 17 files | `TomScheduler`, `TomJobStore`, `TomJobDefinition`, `TomRetryPolicy`, `TomJobAlertSink`, `TomPermanentFailure`, `TomCommand`, `TomClosable`, `TomPrincipal`, `TomUser`, `TomBean`, `TomDataSource`, `tomLog`, `TomHeader` / `TomMimeType`, and `TomServerChannel` / `TomServerCall` / `TomServerCallSpecs` — the HTTP call layer `TomSmsTransport`, `TomWebhookTransport` and `TomHttp1PushExchange` reach their endpoints through, rather than a raw client |
+| `tom_core_kernel` | package | 12 of 19 files | `TomScheduler`, `TomJobStore`, `TomJobDefinition`, `TomRetryPolicy`, `TomJobAlertSink`, `TomPermanentFailure`, `TomCommand`, `TomClosable`, `TomPrincipal`, `TomUser`, `TomBean`, `TomDataSource`, `tomLog`, `TomHeader` / `TomMimeType`, and `TomServerChannel` / `TomServerCall` / `TomServerCallSpecs` — the HTTP call layer `TomSmsTransport`, `TomWebhookTransport` and `TomHttp1PushExchange` reach their endpoints through, rather than a raw client |
 | `uuid` | package | `message.dart` | `UuidV4`, for a message id when the caller supplies none |
 | [configuration](configuration.md) | module | `sms_transport.dart`, `smtp_transport.dart` | `TomBaseServerConfiguration` |
-| [datasources](datasources.md) | module | `delivery_report_sql.dart`, `sql_delivery_report_store.dart` | `TomFrameworkTable` — the single declaration the DDL, the statements and the convergence guard all derive from — plus `TomDataSourceInfo` and `sqlInstant` |
+| [datasources](datasources.md) | module | `delivery_report_sql.dart`, `inbox.dart`, `inbox_sql.dart`, `sql_delivery_report_store.dart` | `TomFrameworkTable` — the single declaration the DDL, the statements and the convergence guard all derive from — plus `TomDataSourceInfo`, `TomSchemaProvisioning` and `sqlInstant` |
 | [endpoints](endpoints.md) | module | `delivery_report_endpoint.dart` | `tomService` and `TomEndpoint`, the two annotations by which the pipeline discovers the callback route |
-| [little_things](little_things.md) | module | `message.dart`, `sql_delivery_report_store.dart` | `TomServerException` |
-| [object_persistence](object_persistence.md) | module | `sql_delivery_report_store.dart` | `TomDbTable` / `TomDbColumn` on the reflected row type the driver maps |
+| [little_things](little_things.md) | module | `inbox.dart`, `message.dart`, `sql_delivery_report_store.dart` | `TomServerException` |
+| [object_persistence](object_persistence.md) | module | `inbox.dart`, `sql_delivery_report_store.dart` | `TomDbTable` / `TomDbColumn` on the reflected row types the driver maps |
 | [resources](resources.md) | module | `email_service.dart`, `push_service.dart`, `sms_service.dart` | `TomLocalizedTextResources` |
 | [resources](resources.md) | module | `email_service.dart`, `push_service.dart`, `sms_service.dart`, `templated_message_service.dart` | `TomLocalizedTextResources` and `TomTextLocale`, which `TomTemplatedMessageService` resolves every template through (see `doc/resources.md`) |
+| [transactions](transactions.md) | module | `inbox.dart` | `TomTransactionManager.runInTransaction`, which holds the inbox's record and the consumer's work in one transaction |

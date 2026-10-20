@@ -33,7 +33,9 @@ observable state, security, resources) and adds everything a service needs:
   the migration chain and the live database still agree — and **local/XA
   transaction** coordination;
 - an **audit trail** that is attributable and tamper-evident, **outbound
-  messaging** with a durable outbox and **per-recipient localized text**,
+  messaging** with a durable outbox and **per-recipient localized text**, an
+  **idempotent receiver (inbox)** that lets a broker's consumer process a
+  redelivered message once,
   **tabular export** to CSV/XLSX/PDF,
   **streaming blob storage** behind one contract, and relational **job
   scheduling** for a cluster that shares no filesystem;
@@ -141,7 +143,7 @@ added.
 | `ratelimit` | `TomRateLimits`, `TomRateLimitRule`, `TomRateLimitScope`, `TomMemoryRateLimiter`, `TomSqlRateLimiter`, `tomRateLimitMiddleware` | Request rate limits per signed-in user, per API key or per client address, as sliding-window counters kept per node or in a table every node shares; a request over a limit is answered `429` with `Retry-After`, an admitted one carries `RateLimit-*` headers. Nothing is limited until a deployment configures `rateLimits`; behind a proxy the client address is read from `X-Forwarded-For` only from a trusted proxy |
 | `metrics` | `tomRequestMetricsMiddleware`, `tomMetricsEndpointMiddleware`, `TomOtlpHttpTransport`, `TomOtlpMetricsExporter` | The series every module records into the kernel's `TomMetrics.registry` — requests by method, route pattern and status, SQL statements and pool usage per data source (and per tenant pool), cache hits and misses, rate-limit refusals, and the scheduler's job lag, duration, outcomes and backlog — exposed as a Prometheus scrape at `/metrics`, answered before authentication with a bearer token of its own, and pushed cumulatively to an OTLP/HTTP collector, once more on shutdown. Both are off until `metricsEndpoint` / `otlpEndpoint` are configured |
 | `audit` | `TomAuditTrail`, `TomAudited`, `TomAuditRecord`, `TomAuditSink`, `TomSqlAuditSink`, `TomAuditAnchor`, `TomAuditAnchorStore`, `TomAuditAnchorPublisher` | Attributable, tamper-evident trail written at the endpoint and repository chokepoints, stored in memory, in append-only files, or in a table whose write-once guarantee is the grant it is served with — and anchors, published outside the server, that turn a wholesale rewrite or a truncation from invisible into provable |
-| `messaging` | `TomMessage`, `TomMessageTransport`, `TomSmtpTransport`, `TomMessageOutbox` | Outbound messages: a channel-neutral shape, SMTP, and a durable outbox on the kernel's job scheduler |
+| `messaging` | `TomMessage`, `TomMessageTransport`, `TomSmtpTransport`, `TomMessageOutbox`, `TomInbox` | Outbound messages: a channel-neutral shape, SMTP, and a durable outbox on the kernel's job scheduler; an idempotent receiver for consuming a broker's messages once |
 | `resources` | `TomTextLocale`, `TomLocalizedTextResources`, `TomResourceLocaleException` | Per-recipient text for a server that renders many languages at once: the locale is an argument rather than ambient state, bundles resolve along a fallback chain *per key* so a half-translated language serves what it has, and a missing key answers `null` instead of the key — right on a screen, unacceptable in a subject line |
 | `export` | `TomTabularResult`, `TomTabularRenderer`, `TomCsvRenderer`, `TomXlsxRenderer`, `TomPdfRenderer`, `TomExportService`, `TomExportStore` | CSV/XLSX/PDF rendering from one streaming tabular shape, streamed back to a caller or into storage |
 | `file_storage` | `TomBlobStore`, `TomDatabaseBlobStore`, `TomDirectoryBlobStore`, `TomS3BlobStore`, `TomMemoryBlobStore`, `TomBlobStoreInfo`, `TomFileReference` | Streaming blob storage behind one four-method contract, backends chosen in configuration, and entity columns that hold a storage key instead of the bytes |
@@ -217,7 +219,7 @@ there, or excluded with a stated reason.
 | [`example/cache/`](example/cache/) | Isolate-backed cache |
 | [`example/authentication/`](example/authentication/) · [`example/authorization/`](example/authorization/) | Login and second factors, external identity and SCIM provisioning; the authorization cache, graded grants, resource roles and delegation, and the grant-driven row scope those grants filter the database with |
 | [`example/audit/`](example/audit/) | Audit records, the declared/automatic split, the hash chain, the relational trail's schema and its write-once check, and signed anchors published outside the server |
-| [`example/messaging/`](example/messaging/) | Message composition, the MIME document, stand-in transports, the durable outbox |
+| [`example/messaging/`](example/messaging/) | Message composition, the MIME document, stand-in transports, the durable outbox, the idempotent receiver |
 | [`example/export/`](example/export/) | The streaming tabular shape, the same shape with its columns derived from a reflected entity — rendered against the hand-written one byte for byte — CSV/XLSX/PDF renderers, the format registry, one export through all three storage backends, and the two delivery channels |
 | [`example/resources/`](example/resources/) | Localized text as an argument rather than ambient state: bundle sets from maps, the three-rung per-key fallback chain, the locale a principal carries, and the `isTranslated` completeness check |
 | [`example/preferences/`](example/preferences/) | The five-piece bootstrap a user preference needs — reflection, the datasource name, the bean, a principal-carrying zone and the migration — with a scalar and a `@tomReflector` object written and read back through the shipped service |

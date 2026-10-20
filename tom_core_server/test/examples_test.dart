@@ -113,6 +113,7 @@ const _stepCounts = <String, int>{
   'example/healthcheck/readiness_logging_example.dart': 6,
   'example/item_authorization/item_authorization_example.dart': 7,
   'example/little_things/little_things_example.dart': 6,
+  'example/messaging/inbox_example.dart': 6,
   'example/messaging/messaging_example.dart': 12,
   'example/messaging/messaging_templated_example.dart': 12,
   'example/messaging/sms_gateway_presets.dart': 7,

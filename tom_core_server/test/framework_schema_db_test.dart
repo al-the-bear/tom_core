@@ -135,6 +135,10 @@ void main() async {
       ).ensureSchema();
       await TomDatabaseBlobStore(dsi.datasource).ensureSchema();
       await TomSqlOAuthStateStore(dsi.datasource).ensureSchema();
+      await dsi.datasource.executeCommand(
+        'DROP TABLE IF EXISTS $defaultInboxTable',
+      );
+      await TomSqlInbox(dsi.datasource).ensureSchema();
 
       await matchesLiveSchema([
         jobRunTable(defaultJobRunTable),
@@ -143,6 +147,7 @@ void main() async {
         blobManifestTable(defaultBlobManifestTable),
         blobChunkTable(defaultBlobChunkTable),
         oauthStateTable(defaultOAuthStateTable),
+        inboxTable(defaultInboxTable),
       ]);
     });
 

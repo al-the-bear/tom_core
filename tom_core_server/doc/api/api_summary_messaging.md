@@ -5,7 +5,9 @@ contract, four real implementations — SMTP, an HTTP SMS gateway, push through
 FCM, APNs or a described service, and an HTTP webhook — stand-in
 transports for tests and local runs, a durable outbox that queues delivery onto
 the kernel's job scheduler, and the templating layer above it that composes
-every channel's messages from resource keys.
+every channel's messages from resource keys — and, on the receiving side of a
+message broker, the idempotent receiver (inbox) that processes a redelivered
+message once.
 
 ## Table of Contents
 
@@ -85,6 +87,12 @@ every channel's messages from resource keys.
   - [TomDeliveryReportEndpoint](#tomdeliveryreportendpoint)
   - [TomDeliveryReportService](#tomdeliveryreportservice)
   - [TomDeliveryReportServer](#tomdeliveryreportserver)
+  - [TomInboxException](#tominboxexception)
+  - [TomInboxOutcome](#tominboxoutcome)
+  - [TomInbox](#tominbox)
+  - [TomMemoryInbox](#tommemoryinbox)
+  - [TomSqlInbox](#tomsqlinbox)
+  - [TomInboxRow](#tominboxrow)
 - [Global Functions and Constants](#global-functions-and-constants)
 
 ## Overview
@@ -105,7 +113,9 @@ Source: `lib/src/tomserver/messaging/email_service.dart`,
 `lib/src/tomserver/messaging/delivery_report_sql.dart`,
 `lib/src/tomserver/messaging/delivery_report_endpoint.dart`,
 `lib/src/tomserver/messaging/sql_delivery_report_store.dart`,
-`lib/src/tomserver/messaging/vendor_mapping.dart`.
+`lib/src/tomserver/messaging/vendor_mapping.dart`,
+`lib/src/tomserver/messaging/inbox.dart`,
+`lib/src/tomserver/messaging/inbox_sql.dart`.
 
 The module separates three things a single `sendMail()` call conflates.
 *Composition* is `TomMessage` and the value types around it — `TomRecipient`
@@ -166,16 +176,29 @@ refusing a message over its segment budget; `TomPushService` resolves `.title`
 and `.body`. Each renders a `TomMessage` and hands it to the outbox — never to a
 transport — and each raises before anything is queued.
 
+*Receiving* is `TomInbox`, the idempotent receiver a consumer of a message
+broker wraps its handler in. `process` records the `(consumer, message id)`
+pair and runs the consumer's work in one transaction, answers a
+`TomInboxOutcome`, and calls the broker's acknowledgement only after the commit
+— for a duplicate too — so a redelivered message is recognised and a failed one
+is processed again. `TomSqlInbox` keeps the records in `tom_message_inbox`,
+declared once by `inboxTable` (`inboxTableDdl`, `defaultInboxTable`) and read
+back as `TomInboxRow`, in the data source the consumer's work writes to;
+`TomMemoryInbox` keeps them in memory for tests. The inbox knows no broker.
+
 `TomMessagingException` is the module's base error, from which every failure
-above derives.
+above derives — except `TomInboxException`, the inbox's refusal of an empty or
+over-long consumer name or message id, which extends `TomServerException`
+directly.
 
 ## Class Hierarchy
 
 ```
 TomServerException  (little_things)
-    └── TomMessagingException
-            └── TomDeliveryException
-                    └── TomPermanentDeliveryException
+    ├── TomMessagingException
+    │       └── TomDeliveryException
+    │               └── TomPermanentDeliveryException
+    └── TomInboxException
 
 TomMessageTransport  (abstract)
     ├── TomMemoryMessageTransport
@@ -204,6 +227,10 @@ TomPushCredential  (abstract)
 TomPushExchange  (abstract)
     ├── TomHttp1PushExchange
     └── TomHttp2PushExchange
+
+TomInbox  (abstract)
+    ├── TomMemoryInbox
+    └── TomSqlInbox
 
 TomTemplatedMessageService<R>  (abstract)
     ├── TomEmailService     (R = TomEmailRequest)
@@ -239,6 +266,8 @@ TomPushGatewayRequest
 TomPushGatewayResponse
 TomPushGatewayAnswer
 TomPushRequest
+TomInboxOutcome  (enum)
+TomInboxRow
 ```
 
 ## Classes
@@ -2723,6 +2752,153 @@ bean of its own.
 | ------ | --------- | ----------- |
 | `deliveryReport` | `Future<Response> deliveryReport(Request request)` | *(override)* Hands the request to `TomDeliveryReportEndpoint.handle`. |
 
+### TomInboxException
+
+An inbox argument that cannot be used, raised by `TomInbox.process` before
+anything is written and before the acknowledgement. Not client-visible
+(`clientThrow: false`): a consumer loop raised it, not a caller.
+
+- **Extends:** `TomServerException`
+
+| Key | Meaning |
+| --- | ------- |
+| `messaging.inbox.invalid_consumer` | The consumer name is empty or longer than 150 characters. |
+| `messaging.inbox.invalid_message_id` | The message id is empty or longer than 191 characters. |
+
+Both carry the parameters `length` (the length given) and `max`.
+
+#### Constructors
+
+```dart
+TomInboxException(
+  String key,
+  String defaultUserMessage, {
+  Map<String, Object?>? parameters,
+})
+```
+
+### TomInboxOutcome
+
+The outcome of `TomInbox.process`.
+
+#### Values
+
+| Value | Description |
+| ----- | ----------- |
+| `processed` | The message was new: the work ran and was committed with its record. |
+| `duplicate` | The consumer had processed the message before: the work was skipped. |
+
+### TomInbox
+
+The idempotent receiver. A broker that delivers at least once redelivers a
+message whose acknowledgement it did not receive; the inbox records each
+`(consumer, message id)` pair in the same transaction as the consumer's work and
+skips the work for a pair already recorded, so the work is done once. It does
+not know the broker: the work and the acknowledgement are functions, so any
+consumer loop can use it.
+
+- **Abstract.** Implemented by `TomMemoryInbox` and `TomSqlInbox`; an
+  implementation supplies `recordAndRun`, `hasProcessed` and
+  `purgeProcessedBefore`, and inherits `process`.
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `process` | `Future<TomInboxOutcome> process(String consumer, String messageId, FutureOr<void> Function() work, {FutureOr<void> Function()? acknowledge})` | Processes `messageId` for `consumer` once. Records the message and runs `work` in one transaction; a message already recorded skips `work`. After the commit — for a processed and for a duplicate message — calls `acknowledge`, the broker's acknowledgement. When `work` throws, the transaction rolls back (the record with it), `acknowledge` is not called and the error is rethrown, so the broker redelivers. Throws `TomInboxException` (`messaging.inbox.invalid_consumer` / `messaging.inbox.invalid_message_id`) for an empty or over-long name, before anything is written. |
+| `recordAndRun` | `Future<TomInboxOutcome> recordAndRun(String consumer, String messageId, FutureOr<void> Function() work)` | *(abstract)* Records `messageId` for `consumer` and runs `work`, atomically; answers `duplicate` without running `work` when the record exists. The step `process` wraps with validation and acknowledgement. |
+| `hasProcessed` | `Future<bool> hasProcessed(String consumer, String messageId)` | *(abstract)* Whether `consumer` has processed `messageId`. |
+| `purgeProcessedBefore` | `Future<int> purgeProcessedBefore(DateTime before)` | *(abstract)* Removes the records of messages processed before `before` and answers how many were removed. A record must outlive every redelivery of its message, so `before` lies further back than the broker's longest redelivery window. Nothing purges automatically. |
+
+### TomMemoryInbox
+
+The inbox of one process, in memory: for tests, and for a single process whose
+work is in memory too. A delivery arriving while the same message is being
+processed waits for it, as the second insert does in a database. It forgets
+everything on restart, so it cannot stand behind a durable broker, and there is
+no transaction around the work: state the work changed before it threw stays
+changed.
+
+- **Extends:** `TomInbox`
+
+#### Constructors
+
+```dart
+TomMemoryInbox({DateTime Function()? clock})
+```
+
+`clock` supplies the processing time a purge compares against; it defaults to
+`DateTime.now`.
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `recordAndRun` | `Future<TomInboxOutcome> recordAndRun(String consumer, String messageId, FutureOr<void> Function() work)` | *(override)* Runs `work` and records the message once it completed; a record already present answers `duplicate`. A failing `work` records nothing. |
+| `hasProcessed` | `Future<bool> hasProcessed(String consumer, String messageId)` | *(override)* Whether the pair is recorded. |
+| `purgeProcessedBefore` | `Future<int> purgeProcessedBefore(DateTime before)` | *(override)* Removes the records processed before `before`. |
+
+### TomSqlInbox
+
+The inbox in a SQL data source, written in the same transaction as the
+consumer's work. The consumer's work must write through `datasource`, so both
+commit together; work on another data source joins the transaction only when
+both are XA data sources, and work that is not a database write is not covered.
+Two simultaneous deliveries of one message are serialised by the table's
+primary key: the second insert waits on the first transaction and finds the row
+once it commits, or claims it if the first rolled back.
+
+Every statement is derived from the single `inboxTable` declaration.
+
+- **Extends:** `TomInbox`
+
+#### Constructors
+
+```dart
+TomSqlInbox(
+  TomDataSource datasource, {
+  String table = defaultInboxTable,
+  bool createSchema = true,
+  DateTime Function()? clock,
+})
+```
+
+With `createSchema` (the default) the table is created on first use; a
+deployment whose database user may not run DDL applies the shipped migration
+and passes `false`. `clock` supplies the processing time, defaulting to
+`DateTime.now`; it is stored in UTC.
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `datasource` | `final TomDataSource` | The data source the inbox and the consumer's work share. |
+| `table` | `final String` | The inbox table's name. |
+| `createSchema` | `final bool` | Whether the table is created on first use. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `ensureSchema` | `Future<void> ensureSchema()` | Creates the inbox table if it does not exist. Idempotent, and called by every operation — outside the consumer's transaction, because MariaDB commits DDL implicitly; exposed so a start-up can provision the table before consuming. |
+| `recordAndRun` | `Future<TomInboxOutcome> recordAndRun(String consumer, String messageId, FutureOr<void> Function() work)` | *(override)* In `TomTransactionManager.runInTransaction`: inserts the row, ignoring a conflict, and answers `duplicate` when no row was inserted; otherwise runs `work`. A throwing `work` rolls back the insert with it. |
+| `hasProcessed` | `Future<bool> hasProcessed(String consumer, String messageId)` | *(override)* Whether the row exists. |
+| `purgeProcessedBefore` | `Future<int> purgeProcessedBefore(DateTime before)` | *(override)* Deletes the rows whose `processed_at` is before `before`; the column is indexed. |
+| `deleteAll` | `Future<void> deleteAll()` | Empties the inbox. Not part of `TomInbox` — no consumer should want it; it exists for provisioning and tests. |
+
+### TomInboxRow
+
+One row of the inbox table, as `TomSqlInbox.hasProcessed` reads it. Reflected
+(`@tomReflector`) and annotated `@TomDbTable` with the primary key
+`consumer`, `messageId`, so the driver can map it.
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `consumer` | `String` | `consumer` — the consumer name. |
+| `messageId` | `String` | `message_id` — the message id. |
+
 ## Global Functions and Constants
 
 ### Constants
@@ -2733,6 +2909,7 @@ bean of its own.
 | `tomMimeMaxLineLength` | `const int` | `76` — the maximum line length RFC 5322 permits, excluding the line ending. |
 | `tomOutboxJobName` | `const String` | `'messaging.outbox'`, the default job name the outbox registers under. Stable across restarts by necessity: it is the store key tying queued runs to the definition that knows how to execute them. |
 | `defaultDeliveryReportTable` | `const String` | `'tom_delivery_report'`, the correlation index's table name when nothing overrides it. |
+| `defaultInboxTable` | `const String` | `'tom_message_inbox'`, the inbox's table name when nothing overrides it. |
 
 ### Functions
 
@@ -2741,3 +2918,5 @@ bean of its own.
 | `tomVendorValueAt` | `String? tomVendorValueAt(Object? json, String? path)` | The value at dotted `path` inside a decoded gateway answer, as text, or `null`. A segment that parses as a non-negative integer indexes a **list**; every other segment reads a map key. Shared by `TomFieldMappedSmsProtocol` and `TomFieldMappedDeliveryReportProtocol`, because a deployment reading the two side by side has every reason to expect `a.b.0.c` to mean the same thing to both. A missing key, an index past the end, or a segment applied to neither answers `null` rather than throwing: a path is configuration describing someone else's payload, and a gateway that changed its shape should produce an unclassifiable answer rather than an exception from inside a decode. A map whose keys are digits is therefore unreachable — a real limit, and not a likely one. |
 | `deliveryReportTable` | `TomFrameworkTable deliveryReportTable(String table)` | The correlation table, declared **once**. The DDL `TomSqlDeliveryReportStore` issues, the column lists its statements interpolate and the schema model the convergence guard compares are all derived from this one declaration, so they cannot come apart. |
 | `deliveryReportTableDdl` | `String deliveryReportTableDdl(String table)` | The `CREATE TABLE` for a correlation table named `table` — what a deployment applies by hand when its database user may not run DDL and the store is constructed with `createSchema: false`. |
+| `inboxTable` | `TomFrameworkTable inboxTable(String table)` | The inbox table, declared **once**: `consumer` (`VARCHAR(150)`) and `message_id` (`VARCHAR(191)`) as the composite primary key — the whole mechanism, since recording a message is an insert the key refuses for a message already processed — and `processed_at` (`DATETIME(6)`, UTC, indexed for the purge). The DDL `TomSqlInbox` issues, its statements and the schema the convergence guard compares all derive from it; listed by `frameworkOwnedTables`. |
+| `inboxTableDdl` | `String inboxTableDdl(String table)` | The `CREATE TABLE` for an inbox table named `table` — what a deployment applies by hand for a renamed table, or when its database user may not run DDL and the inbox is constructed with `createSchema: false`. |

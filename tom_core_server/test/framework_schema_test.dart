@@ -157,9 +157,11 @@ void main() {
       ]);
     });
 
-    test('the messaging chain builds the delivery-report descriptor', () {
+    test('the messaging chain builds the delivery-report and inbox '
+        'descriptors', () {
       converges('example/messaging/migrations/main/tomcore', [
         deliveryReportTable(defaultDeliveryReportTable),
+        inboxTable(defaultInboxTable),
       ]);
     });
 
@@ -223,6 +225,10 @@ void main() {
       maps(deliveryReportTable(defaultDeliveryReportTable), [
         TomDeliveryReportRow,
       ]);
+    });
+
+    test('the inbox', () {
+      maps(inboxTable(defaultInboxTable), [TomInboxRow]);
     });
 
     test('the roll call', () {
@@ -477,6 +483,19 @@ void main() {
           await _issuing(() => store.deleteAll());
         },
       );
+    });
+
+    test('the inbox', () async {
+      final datasource = _RecordingDataSource();
+      final inbox = TomSqlInbox(datasource);
+      await audit(datasource, [inboxTable(defaultInboxTable)], () async {
+        await _issuing(() => inbox.process('billing', 'm1', () {}));
+        await _issuing(() => inbox.hasProcessed('billing', 'm1'));
+        await _issuing(
+          () => inbox.purgeProcessedBefore(DateTime.utc(2026, 10, 1)),
+        );
+        await _issuing(() => inbox.deleteAll());
+      });
     });
 
     test('the database blob store', () async {

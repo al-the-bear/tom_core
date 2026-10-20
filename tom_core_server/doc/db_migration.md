@@ -929,7 +929,8 @@ entry.
 
 The framework's tables — `tom_job_run`, `tom_lease`, `tom_scheduler_node`,
 `tom_blob`, `tom_blob_chunk`, `tom_audit_trail`, `tom_oauth_state`,
-`tom_scim_resource`, `tom_delivery_report`, `tom_cache_invalidation` — are not
+`tom_scim_resource`, `tom_delivery_report`, `tom_message_inbox`,
+`tom_cache_invalidation` — are not
 application entities
 and deliberately stay that way: making them entities would pull them into the
 application's reflection build and have `discoverEntityTypes()` report them
@@ -1318,7 +1319,7 @@ here it cannot drift silently.
 | [datasources](datasources.md) | module | 8 of 8 files | `TomDataSourceInfo` (named data sources) and its `executeCommand` / `executeQuery`; `TomSqlLexer`, the statement splitter and quote scanner; the connected data source's dialect, which `verifyLive` classifies and queries the catalogue with |
 | [file_storage](file_storage.md) | module | `framework_convergence.dart` | `blobChunkTable`, `blobManifestTable`, `defaultBlobChunkTable`, `defaultBlobManifestTable` |
 | [little_things](little_things.md) | module | `db_migration.dart`, `mariadb_migration_adapter.dart`, `postgres_migration_adapter.dart`, `sql_migration_adaptor.dart` | `TomServerException` |
-| [messaging](messaging.md) | module | `framework_convergence.dart` | `defaultDeliveryReportTable`, `deliveryReportTable` |
+| [messaging](messaging.md) | module | `framework_convergence.dart` | `defaultDeliveryReportTable`, `deliveryReportTable`, `defaultInboxTable`, `inboxTable` |
 | [object_persistence](object_persistence.md) | module | `framework_convergence.dart`, `sql_migration_adaptor.dart`, `schema_convergence.dart` | `TomDbTable` / `TomDbColumn` on `TomDbVersion` |
 | [scheduling](scheduling.md) | module | `framework_convergence.dart` | `defaultJobRunTable`, `defaultLeaseTable`, `defaultSchedulerNodeTable`, `jobRunTable`, `leaseTable`, `schedulerNodeTable` |
 | [transactions](transactions.md) | module | `postgres_migration_adapter.dart` | `TomTransactionManager.runInTransaction`, which runs a PostgreSQL script and its version row as one transaction |

@@ -2,6 +2,30 @@
 
 ### Added
 
+- **Idempotent receiver (inbox) for consumers of a message broker** (`messaging`
+  module). `TomInbox.process(consumer, messageId, work, {acknowledge})`
+  records the `(consumer, message id)` pair and runs `work` in one database
+  transaction, skips `work` for a pair already recorded
+  (`TomInboxOutcome.processed` / `duplicate`), and calls `acknowledge` after the
+  commit — for a duplicate too; a failing `work` rolls back with its record, is
+  not acknowledged and is rethrown. `recordAndRun`, `hasProcessed` and
+  `purgeProcessedBefore` complete the contract. `TomSqlInbox` (`datasource`,
+  `table`, `createSchema`, `clock`; `ensureSchema`, `deleteAll`) keeps the
+  records in `tom_message_inbox` of the data source the consumer's work writes
+  to, so both commit together and simultaneous deliveries are serialised by the
+  table's key; `TomMemoryInbox` keeps them in memory for tests. The table is
+  declared once by `inboxTable` (`inboxTableDdl`, `defaultInboxTable`, read back
+  as `TomInboxRow`), listed by `frameworkOwnedTables` under the new `inbox`
+  parameter, and shipped as the reference migration
+  `example/messaging/migrations/main/tomcore/[2]-create_tom_message_inbox.sql`
+  with its PostgreSQL form. `TomInboxException` refuses an empty or over-long
+  consumer name or message id (`messaging.inbox.invalid_consumer`,
+  `messaging.inbox.invalid_message_id`). Broker-neutral: there is no message bus
+  or broker adapter in `tom_core`, and any consumer loop calls `process` with its
+  own acknowledgement. `doc/messaging.md` § Idempotent Receiver (Inbox);
+  `example/messaging/inbox_example.dart`, on the package tour;
+  `test/inbox_test.dart`, `test/inbox_db_test.dart`.
+
 - **Resilient outgoing HTTP calls, configured by `httpClient`.**
   `TomServer.httpClientConfigurationKey` (`'httpClient'`) names the
   configuration key and `TomServer.configureHttpClients([provider])` applies it

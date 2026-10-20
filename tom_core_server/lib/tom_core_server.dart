@@ -142,6 +142,8 @@ export 'src/tomserver/messaging/delivery_report.dart';
 export 'src/tomserver/messaging/delivery_report_endpoint.dart';
 export 'src/tomserver/messaging/delivery_report_sql.dart';
 export 'src/tomserver/messaging/email_service.dart';
+export 'src/tomserver/messaging/inbox.dart';
+export 'src/tomserver/messaging/inbox_sql.dart';
 export 'src/tomserver/messaging/message.dart';
 export 'src/tomserver/messaging/message_transport.dart';
 export 'src/tomserver/messaging/mime_encoder.dart';

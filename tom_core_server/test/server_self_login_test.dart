@@ -711,7 +711,11 @@ void main() {
         _kernelSpelling(
           _serviceToken(
             entitlements: ['feature.tasks'],
-            expiresIn: const Duration(seconds: 1),
+            // Two seconds, not one: `exp` is whole seconds, so a token minted
+            // late in a second with a one-second life is already expired when
+            // it is read. Two leave at least a second, and the renewal still
+            // fires at the minimum delay because the life is below the lead.
+            expiresIn: const Duration(seconds: 2),
           ),
         ),
         _kernelSpelling(_serviceToken(entitlements: ['feature.renewed'])),
