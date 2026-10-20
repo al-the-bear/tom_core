@@ -1,0 +1,32 @@
+name: tom_core_storage
+description: >-
+  Storage for Tom applications: a compare-and-swap storage port, keyed file
+  media, a device-local cache, a durable offline commit journal, and the local
+  filesystem, browser (IndexedDB) and cache-cipher implementations behind
+  entry points of their own.
+version: 0.1.0
+publish_to: none
+repository: https://github.com/al-the-bear/tom_ai_core
+
+environment:
+  sdk: ^3.10.0
+
+dependencies:
+  # ZIP: a bundle medium reads and writes its container as one archive.
+  archive: ^4.0.0
+  meta: ^1.15.0
+  # Joining paths on the local filesystem (io.dart).
+  path: ^1.9.0
+  # AES-256-GCM for the optional cache cipher (cipher.dart).
+  pointycastle: ^4.0.0
+  # The structured diagnostics port, the YAML emitter and the content hash.
+  tom_basics:
+    path: ../../basics/tom_basics
+  # IndexedDB, for the browser medium (web.dart).
+  web: ^1.1.0
+  # Reading the commit journal's entries back.
+  yaml: ^3.1.0
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.25.0
