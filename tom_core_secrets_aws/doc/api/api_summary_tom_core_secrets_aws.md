@@ -60,7 +60,9 @@ TomAwsSecretsProvider({
 ```
 
 `endpoint` defaults to `https://secretsmanager.<region>.amazonaws.com/`;
-`httpClient` to a new `http.Client`, closed by `close`; `clock` to
+`httpClient` to a `TomResilientClient` (the kernel's) over a new `http.Client`,
+so every call runs under the endpoint's timeout, circuit breaker and bulkhead,
+closed by `close`; `clock` to
 `DateTime.now`, the signing time.
 
 #### Factory Constructors

@@ -144,7 +144,9 @@ TomVaultSecretsProvider({
 })
 ```
 
-`httpClient` defaults to a new `http.Client`, closed by `close`.
+`httpClient` defaults to a `TomResilientClient` (the kernel's) over a new
+`http.Client`, so every call runs under Vault's destination policy — timeout,
+retries for `GET`s, circuit breaker, bulkhead; it is closed by `close`.
 
 #### Factory Constructors
 

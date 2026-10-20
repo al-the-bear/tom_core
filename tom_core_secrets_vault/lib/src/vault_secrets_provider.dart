@@ -120,7 +120,7 @@ class TomVaultSecretsProvider implements TomSecretsProvider {
     this.namespace,
     this.name = 'vault',
     http.Client? httpClient,
-  }) : _http = httpClient ?? http.Client();
+  }) : _http = httpClient ?? TomResilientClient(http.Client());
 
   /// Builds a provider from the `secrets.vault` configuration key, falling back
   /// to Vault's own environment variables:

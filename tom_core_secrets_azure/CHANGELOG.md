@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- **The default client is resilient.** Without an `httpClient`,
+  `TomAzureKeyVaultSecretsProvider` sends through the kernel's `TomResilientClient` instead of a
+  bare `http.Client`, so every call runs under its destination's policy — a
+  timeout per attempt (30 seconds by default), retries for calls that may be
+  repeated, a circuit breaker and a bulkhead — configured by
+  `tom_core_server`'s `httpClient` key. `doc/azure_secrets.md` § The HTTP client.
+
 ## 0.1.0
 
 ### Added

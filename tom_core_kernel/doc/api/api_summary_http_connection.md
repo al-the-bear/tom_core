@@ -7,9 +7,11 @@ types HTTP endpoints are described with (`TomHttpMethod`, `TomMimeType`,
 machinery (`TomServerCall`, `TomServerChannel`, `TomServerEndpoint`, the HTTP
 client factories), client remote-server configuration
 (`TomClientRemoteContext`), a pluggable expired-token refresh-and-retry policy
-(`TomAuthRefresher`, `TomAuthRetryPolicy`, `tomRunWithAuthRetry`), and the
+(`TomAuthRefresher`, `TomAuthRetryPolicy`, `tomRunWithAuthRetry`), the
 streaming file-transfer client (`TomFileTransferClient`,
-`TomHttpFileTransferClient`, `TomFileSource`, `TomFileMetadata`).
+`TomHttpFileTransferClient`, `TomFileSource`, `TomFileMetadata`), and the
+resilience policies of outgoing calls (`TomResilientClient`,
+`TomHttpResilience`, `TomHttpResiliencePolicy`).
 
 ## Table of Contents
 
@@ -59,7 +61,18 @@ streaming file-transfer client (`TomFileTransferClient`,
     - [TomHttpFileTransferClient](#tomhttpfiletransferclient)
     - [TomMemoryFileTransferClient](#tommemoryfiletransferclient)
     - [TomFileTransferException](#tomfiletransferexception)
+  - [Resilience](#resilience)
+    - [TomHttpResilienceException](#tomhttpresilienceexception)
+    - [TomHttpRetryPolicy](#tomhttpretrypolicy)
+    - [TomCircuitBreakerPolicy](#tomcircuitbreakerpolicy)
+    - [TomBulkheadPolicy](#tombulkheadpolicy)
+    - [TomHttpResiliencePolicy](#tomhttpresiliencepolicy)
+    - [TomCircuitBreaker](#tomcircuitbreaker)
+    - [TomBulkhead](#tombulkhead)
+    - [TomHttpResilience](#tomhttpresilience)
+    - [TomResilientClient](#tomresilientclient)
 - [Enums](#enums)
+  - [TomCircuitState](#tomcircuitstate)
 - [Global Functions and Constants](#global-functions-and-constants)
   - [Constants](#constants)
   - [Functions](#functions)
@@ -74,6 +87,7 @@ Source: `lib/src/tombase/http_connection/auth_retry.dart`,
 `lib/src/tombase/http_connection/httpmethods.dart`,
 `lib/src/tombase/http_connection/mimetypes.dart`,
 `lib/src/tombase/http_connection/remote_context.dart`,
+`lib/src/tombase/http_connection/resilience.dart`,
 `lib/src/tombase/http_connection/server_connection.dart`.
 
 An API is described declaratively: a `TomApi` groups typed `TomApiEndpoint`s
@@ -101,6 +115,16 @@ file, reporting `TomTransferProgress` and honouring a `TomTransferCancellation`.
 answering the first and the `x-tom-file` header answering the third), and
 `TomMemoryFileTransferClient` implements the same contract over a map for tests
 and offline modes.
+
+Every outgoing call is bounded and, where safe, repeated: `TomResilientClient`
+wraps a client and applies the `TomHttpResiliencePolicy` of each call's
+destination — a timeout per attempt, a `TomHttpRetryPolicy`, a
+`TomCircuitBreakerPolicy` and a `TomBulkheadPolicy`, the last two backed by a
+`TomCircuitBreaker` and a `TomBulkhead` shared per destination.
+`TomHttpResilience` holds the defaults, the per-destination policies and that
+state, and applies a configuration map. `TomDefaultHttpClientFactory` returns
+the platform client inside a `TomResilientClient`, so every `TomServerChannel`
+call runs under these policies — a 30-second timeout among them.
 
 ## Class Hierarchy
 
@@ -130,9 +154,19 @@ Object
     ├── TomFileMetadata
     ├── TomTransferProgress
     ├── TomTransferCancellation
-    └── TomFileTransferClient  (abstract)
-            ├── TomHttpFileTransferClient
-            └── TomMemoryFileTransferClient
+    ├── TomFileTransferClient  (abstract)
+    │       ├── TomHttpFileTransferClient
+    │       └── TomMemoryFileTransferClient
+    ├── TomHttpRetryPolicy
+    ├── TomCircuitBreakerPolicy
+    ├── TomBulkheadPolicy
+    ├── TomHttpResiliencePolicy
+    ├── TomCircuitBreaker
+    ├── TomBulkhead
+    └── TomHttpResilience  (abstract final)
+
+BaseClient  (package:http)
+    └── TomResilientClient
 
 TomException  (kernel)
     ├── TomAuthExpiredException
@@ -142,7 +176,8 @@ TomException  (kernel)
     ├── TomServerConnectionException
     ├── TomRequestAbortedException
     ├── TomRequestTimeoutException
-    └── TomFileTransferException
+    ├── TomFileTransferException
+    └── TomHttpResilienceException
 ```
 
 ## Classes
@@ -1018,9 +1053,11 @@ abstract interface class TomHttpClientAbstractFactory
 
 #### TomDefaultHttpClientFactory
 
-Default HTTP client factory using platform-specific clients. It *produces*, so
-it implements the contract rather than extending the resolver: there is nothing
-for it to delegate to.
+Default HTTP client factory: the platform's client inside a
+`TomResilientClient`, so every framework call gets the resilience policies of
+its destination (`TomHttpResilience`) — a 30-second timeout per attempt above
+all. It *produces*, so it implements the contract rather than extending the
+resolver: there is nothing for it to delegate to.
 
 - **Implements:** `TomHttpClientAbstractFactory`
 
@@ -1034,7 +1071,7 @@ TomDefaultHttpClientFactory()
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `getClient` | `Client getClient()` | *(override)* Returns a platform-specific HTTP client from `TomPlatformUtils`. |
+| `getClient` | `Client getClient()` | *(override)* Returns `TomPlatformUtils.current.httpClient()` wrapped in a `TomResilientClient` that applies each destination's policy. |
 
 #### TomServerEndpoint&lt;T, R&gt;
 
@@ -1467,9 +1504,274 @@ calling code is deliberately not among them. The list is the whole contract:
 | `file_transfer.invalid_descriptor` | The server's description of a stored file was unreadable: not valid JSON, not a JSON object, missing `key` / `mediaType` / `byteCount`, or a `HEAD` that described nothing at all. |
 | `file_transfer.invalid_slot` | A slot was empty or contained `.` / `..` segments. |
 
+### Resilience
+
+Source: `lib/src/tombase/http_connection/resilience.dart`. Timeout, retries,
+circuit breaker and bulkhead for outgoing HTTP calls, applied per destination
+(`scheme://host:port`) by `TomResilientClient`. The framework's default client
+factory wraps the platform client in one. Configuration, defaults and behaviour
+are described in [HTTP Connection → Resilience](../http_connection/http_connection.md#resilience).
+
+#### TomHttpResilienceException
+
+A call refused or abandoned by a resilience policy.
+
+- **Extends:** `TomException`
+
+##### Constructors
+
+```dart
+TomHttpResilienceException(
+  String key,
+  String defaultUserMessage, {
+  Map<String, Object?>? parameters,
+  Object? rootException,
+  StackTrace? stack,
+})
+```
+
+##### Error keys
+
+| Key | Meaning |
+| --- | ------- |
+| `http.client.timeout` | An attempt did not receive a response within the policy's timeout. `parameters`: `destination`, `timeoutMs`. |
+| `http.client.circuit_open` | The destination's circuit is open; the call was not sent. `parameters`: `destination`. |
+| `http.client.bulkhead_full` | The destination already has the most concurrent and queued calls the policy allows; the call was not sent. `parameters`: `destination`. |
+| `http.client.config.invalid` | A resilience configuration value has the wrong shape. `parameters`: `key` and `value`, or `destination`. |
+
+#### TomHttpRetryPolicy
+
+When and how often a failed attempt is repeated.
+
+##### Constructors
+
+```dart
+const TomHttpRetryPolicy({
+  int maxAttempts = 3,
+  Duration initialBackoff = const Duration(milliseconds: 200),
+  Duration maxBackoff = const Duration(seconds: 5),
+  Set<int> retryStatuses = const {429, 502, 503, 504},
+  Set<String> idempotentMethods = const {'GET', 'HEAD', 'OPTIONS', 'PUT', 'DELETE', 'TRACE'},
+})
+```
+
+##### Static Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `none` | `static const TomHttpRetryPolicy` | A policy that never retries (`maxAttempts: 1`). |
+
+##### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `maxAttempts` | `int` | The most attempts a call gets, the first included; `1` never retries. |
+| `initialBackoff` | `Duration` | The wait before the first retry; each further retry doubles it. |
+| `maxBackoff` | `Duration` | The longest wait between attempts, and the longest `Retry-After` honoured. |
+| `retryStatuses` | `Set<int>` | The response statuses that are retried. |
+| `idempotentMethods` | `Set<String>` | The methods safe to repeat; any other method needs an `Idempotency-Key` header. |
+
+##### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `mayRetry` | `bool mayRetry(BaseRequest request)` | Whether `request` may be sent more than once: `maxAttempts > 1`, a buffered `Request`, and an idempotent method or an `Idempotency-Key` header. |
+| `backoffBefore` | `Duration backoffBefore(int nextAttempt, Random random, {Duration? retryAfter})` | The wait before attempt `nextAttempt` (2 for the first retry): half fixed, half random below `initialBackoff × 2^(nextAttempt−2)` capped at `maxBackoff` — or `retryAfter` when it is no longer than `maxBackoff`. |
+
+#### TomCircuitBreakerPolicy
+
+When a destination's circuit opens and how long it stays open.
+
+##### Constructors
+
+```dart
+const TomCircuitBreakerPolicy({
+  int failureThreshold = 5,
+  Duration openDuration = const Duration(seconds: 30),
+})
+```
+
+##### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `failureThreshold` | `int` | Consecutive failed attempts — an error, a timeout or a `5xx` — that open the circuit. |
+| `openDuration` | `Duration` | How long an open circuit refuses calls before letting one trial through. |
+
+#### TomBulkheadPolicy
+
+How many calls one destination may have at once.
+
+##### Constructors
+
+```dart
+const TomBulkheadPolicy({int maxConcurrent = 32, int maxQueued = 64})
+```
+
+##### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `maxConcurrent` | `int` | Calls in flight at once; the next one waits in the queue. |
+| `maxQueued` | `int` | Calls waiting at once; beyond it a call is refused at once. |
+
+#### TomHttpResiliencePolicy
+
+The policies applied to calls to one destination. A `null` breaker or bulkhead
+switches that policy off; a `null` timeout waits forever.
+
+##### Constructors
+
+```dart
+const TomHttpResiliencePolicy({
+  Duration? timeout = const Duration(seconds: 30),
+  Duration? streamedTimeout,
+  TomHttpRetryPolicy retry = const TomHttpRetryPolicy(),
+  TomCircuitBreakerPolicy? circuitBreaker = const TomCircuitBreakerPolicy(),
+  TomBulkheadPolicy? bulkhead = const TomBulkheadPolicy(),
+})
+```
+
+##### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `timeout` | `Duration?` | How long one attempt may wait for its response's status and headers, for a request whose body is buffered (a `Request`). |
+| `streamedTimeout` | `Duration?` | The same for a request whose body is streamed (`StreamedRequest`, `MultipartRequest`) — an upload, answered only once the body has arrived; `null`, the default, waits forever. |
+| `retry` | `TomHttpRetryPolicy` | When failed attempts are repeated. |
+| `circuitBreaker` | `TomCircuitBreakerPolicy?` | When the destination's circuit opens, or `null` for no breaker. |
+| `bulkhead` | `TomBulkheadPolicy?` | How many concurrent calls the destination takes, or `null` for no limit. |
+
+##### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `merge` | `TomHttpResiliencePolicy merge(Map<Object?, Object?> map)` | This policy with the parts a configuration `map` names replaced (the keys of `TomHttpResilience.configure`, without `destinations`). Throws `http.client.config.invalid` for a value of the wrong shape. |
+
+#### TomCircuitBreaker
+
+The circuit breaker of one destination. `TomHttpResilience.breakerFor` keeps one
+per destination; the client drives it.
+
+##### Constructors
+
+```dart
+TomCircuitBreaker(TomCircuitBreakerPolicy policy, {DateTime Function()? clock})
+```
+
+A closed breaker; `clock` defaults to `DateTime.now`.
+
+##### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `policy` | `TomCircuitBreakerPolicy` | The thresholds this breaker applies; replaced when a call brings another policy. |
+| `state` | `TomCircuitState` | The current state; an open circuit whose open duration has passed reads as half-open. |
+
+##### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `tryAcquire` | `bool tryAcquire()` | Whether a call may be sent now. Half-open, one call is let through as the trial and every other call is refused until it ends. |
+| `recordSuccess` | `void recordSuccess()` | Records a successful attempt: the failure count resets and the circuit closes. |
+| `recordFailure` | `void recordFailure()` | Records a failed attempt: a failed trial reopens the circuit, and the `failureThreshold`th consecutive failure opens it. |
+
+#### TomBulkhead
+
+The bulkhead of one destination: at most `maxConcurrent` calls at once, at most
+`maxQueued` waiting. `TomHttpResilience.bulkheadFor` keeps one per destination.
+
+##### Constructors
+
+```dart
+TomBulkhead(TomBulkheadPolicy policy)
+```
+
+##### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `policy` | `TomBulkheadPolicy` | The limits this bulkhead applies; replaced when a call brings another policy. |
+| `active` | `int` | Calls holding a permit now. |
+| `queued` | `int` | Calls waiting for one. |
+
+##### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `acquire` | `Future<void Function()?> acquire()` | Takes a permit, waiting in the queue when every permit is taken, and answers the function that returns it — call it exactly once (further calls do nothing). Answers `null`, without waiting, when the queue is full too. A returned permit passes straight to the next waiting caller. |
+
+#### TomHttpResilience
+
+The isolate's resilience configuration and per-destination state. Static only.
+
+```dart
+abstract final class TomHttpResilience
+```
+
+##### Static Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `clock` | `static DateTime Function()` | The clock circuit breakers read; replaceable for tests. Default `DateTime.now`. |
+| `defaults` | `static TomHttpResiliencePolicy` | The policy of every destination without one of its own (getter and setter). Default `const TomHttpResiliencePolicy()`. |
+
+##### Static Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `destinationOf` | `static String destinationOf(Uri uri)` | The destination `uri` belongs to: `scheme://host:port`, with `443` for `https` and `80` for `http` when the URL names no port. |
+| `setDestinationPolicy` | `static void setDestinationPolicy(String destination, TomHttpResiliencePolicy policy)` | Gives `destination` (`scheme://host[:port]`, or a URL on it) its own policy. |
+| `policyFor` | `static TomHttpResiliencePolicy policyFor(Uri uri)` | The policy calls to `uri` are made under: the destination's own, else `defaults`. |
+| `breakerFor` | `static TomCircuitBreaker? breakerFor(String destination, TomHttpResiliencePolicy policy)` | The destination's circuit breaker with `policy`'s thresholds, created on first use, or `null` when `policy` has none. Registers the `tom_http_client_circuit_open` gauge. |
+| `bulkheadFor` | `static TomBulkhead? bulkheadFor(String destination, TomHttpResiliencePolicy policy)` | The destination's bulkhead with `policy`'s limits, created on first use, or `null` when `policy` has none. |
+| `configure` | `static void configure(Object? config)` | Applies a configuration map — `timeoutMs`, `streamedTimeoutMs`, `retry`, `circuitBreaker`, `bulkhead`, `destinations`. The top level replaces parts of `defaults`, each destination's map parts of the new defaults, and the destination policies are replaced as a whole. Throws `http.client.config.invalid` for a `config` that is not a map or holds a value of the wrong shape, before anything is applied. |
+| `reset` | `static void reset()` | Forgets every policy and every destination's breaker and bulkhead, unregisters the circuit gauge and restores `clock`, as a fresh isolate starts. For tests. |
+
+#### TomResilientClient
+
+A `package:http` client applying the resilience policies to every call: the
+timeout per attempt, retries for calls that may be repeated, the destination's
+circuit breaker and bulkhead. Records the `tom_http_client_*` series into
+`TomMetrics.registry`.
+
+- **Extends:** `BaseClient` (`package:http`) — `get`, `post`, `put`, `delete`, `read` and the other convenience methods all go through `send`.
+
+##### Constructors
+
+```dart
+TomResilientClient([Client? inner, TomHttpResiliencePolicy? policy, Random? random])
+```
+
+Sends through `inner` (a new `Client` when omitted). With `policy` every call
+uses it; without, `TomHttpResilience.policyFor` decides per destination.
+`random` drives the backoff jitter.
+
+##### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `policy` | `TomHttpResiliencePolicy?` | The policy of every call, or `null` to use the destination's. |
+
+##### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `send` | `Future<StreamedResponse> send(BaseRequest request)` | *(override)* Sends `request` under its policy. Throws `TomHttpResilienceException` (`http.client.circuit_open`, `http.client.bulkhead_full`, or `http.client.timeout` once the attempts run out), or the inner client's error; returns the last response when a retryable status outlasts the attempts. The bulkhead permit is held until the response body has been read, has failed or was cancelled. |
+| `close` | `void close()` | *(override)* Closes the inner client. |
+
 ## Enums
 
-None — this module exposes no public enums.
+### TomCircuitState
+
+Source: `lib/src/tombase/http_connection/resilience.dart`. Where a
+destination's circuit stands.
+
+| Value | Meaning |
+| ----- | ------- |
+| `closed` | Calls go through; failures are counted. |
+| `open` | Calls are refused until the open duration has passed. |
+| `halfOpen` | One trial call goes through; its outcome closes or reopens the circuit. |
 
 ## Global Functions and Constants
 

@@ -120,6 +120,15 @@ back to an environment variable when an `environment` map is passed:
 | `managedIdentity` | — | `true` uses the host's managed identity. |
 | `tenantId` · `clientId` · `clientSecret` | `AZURE_TENANT_ID` · `AZURE_CLIENT_ID` · `AZURE_CLIENT_SECRET` | A service principal. With `managedIdentity`, `clientId` selects a user-assigned identity. |
 
+**Outgoing calls are resilient by default.** Without an `httpClient` of its own,
+`TomAzureKeyVaultSecretsProvider` sends through the kernel's `TomResilientClient`, under the policy of
+the vault, Entra ID and the managed identity endpoint that `tom_core_server`'s `httpClient` configuration key sets — a
+30-second timeout per attempt by default, and a circuit breaker and a bulkhead
+per destination. The token requests use the same client, each destination with its own circuit; `GET`s are retried after a connection failure, a timeout or a `429`/`502`/`503`/`504`, the service principal's token `POST` is sent once. Name a destination under `httpClient.destinations`
+to give it its own policy; `TomSecrets.load` runs before the server applies the
+key, so a boot that wants it at load applies it first — see
+[`tom_core_server/doc/configuration.md`](../tom_core_server/doc/configuration.md#outgoing-http-calls) and [`doc/azure_secrets.md`](doc/azure_secrets.md#the-http-client).
+
 ## Limits
 
 - **The provider's own settings are literal values.** `secrets.azure` holds
@@ -147,7 +156,7 @@ and [`tom_core_secrets_aws`](../tom_core_secrets_aws/README.md).
 
 | Dependency | Kind | For |
 | ---------- | ---- | --- |
-| `tom_core_server` | runtime | `TomSecretsProvider`, `TomSecretPayload`, `TomSecretsException`, `TomServerConfigResourceProvider` |
+| `tom_core_server` | runtime | `TomSecretsProvider`, `TomSecretPayload`, `TomSecretsException`, `TomServerConfigResourceProvider`, and the kernel's `TomResilientClient` it re-exports — the default client |
 | `tom_core_kernel` | runtime | the framework base the server builds on |
 | `http` | runtime | the Key Vault REST API and the token endpoints |
 | `test`, `lints` | dev | the suite |

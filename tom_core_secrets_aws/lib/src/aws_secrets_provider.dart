@@ -43,7 +43,7 @@ class TomAwsSecretsProvider implements TomSecretsProvider {
   }) : endpoint =
            endpoint ??
            Uri.parse('https://secretsmanager.$region.amazonaws.com/'),
-       _http = httpClient ?? http.Client(),
+       _http = httpClient ?? TomResilientClient(http.Client()),
        _clock = clock ?? DateTime.now;
 
   /// Builds a provider from the `secrets.aws` configuration key, falling back

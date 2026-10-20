@@ -36,6 +36,7 @@ import 'dart:typed_data';
 import 'package:http/http.dart';
 import 'package:tom_basics/tom_basics.dart';
 
+import 'resilience.dart';
 import '../little_things/exception_base.dart';
 import '../reflection/reflection.dart';
 import '../security/bearer_authentication.dart';
@@ -1093,15 +1094,16 @@ abstract interface class TomHttpClientAbstractFactory {
   Client getClient();
 }
 
-/// Default HTTP client factory using platform-specific clients.
+/// Default HTTP client factory: the platform's client inside a
+/// [TomResilientClient], so every framework call gets the resilience policies
+/// of its destination ([TomHttpResilience]) — a timeout above all.
 ///
 /// It *produces*, so it implements the contract rather than extending the
 /// resolver: there is nothing for it to delegate to.
 class TomDefaultHttpClientFactory implements TomHttpClientAbstractFactory {
   @override
-  Client getClient() {
-    return TomPlatformUtils.current.httpClient();
-  }
+  Client getClient() =>
+      TomResilientClient(TomPlatformUtils.current.httpClient());
 }
 
 // =============================================================================

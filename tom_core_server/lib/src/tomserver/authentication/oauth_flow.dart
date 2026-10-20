@@ -374,9 +374,16 @@ abstract class TomOAuthTokenTransport {
 }
 
 /// The live [TomOAuthTokenTransport], over `package:http`.
+///
+/// Calls go through a [TomResilientClient], so a provider that does not answer
+/// fails at its destination's timeout rather than holding the sign-in for as
+/// long as the socket allows; the user-info `GET` is retried, the token `POST`
+/// is not — an authorization code is single-use.
 class TomHttpOAuthTokenTransport implements TomOAuthTokenTransport {
   /// Creates the transport.
   const TomHttpOAuthTokenTransport();
+
+  static final http.Client _client = TomResilientClient(http.Client());
 
   @override
   Future<String> postForm(
@@ -384,14 +391,14 @@ class TomHttpOAuthTokenTransport implements TomOAuthTokenTransport {
     Map<String, String> form,
     Map<String, String> headers,
   ) async {
-    final response = await http.post(uri, body: form, headers: headers);
+    final response = await _client.post(uri, body: form, headers: headers);
     _requireSuccess(uri, response.statusCode, response.body);
     return response.body;
   }
 
   @override
   Future<String> getJson(Uri uri, Map<String, String> headers) async {
-    final response = await http.get(uri, headers: headers);
+    final response = await _client.get(uri, headers: headers);
     _requireSuccess(uri, response.statusCode, response.body);
     return response.body;
   }

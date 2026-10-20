@@ -98,7 +98,9 @@ TomOtlpHttpTransport({
 })
 ```
 
-`client` defaults to a new `http.Client`; a test passes its own.
+`client` defaults to a `TomResilientClient` (the kernel's) over a new
+`http.Client`, so a push runs under the receiver's timeout and circuit breaker;
+a test passes its own.
 
 #### Properties
 

@@ -196,7 +196,9 @@ TomAzureKeyVaultSecretsProvider({
 })
 ```
 
-`httpClient` defaults to a new `http.Client`, used for the token requests as
+`httpClient` defaults to a `TomResilientClient` (the kernel's) over a new
+`http.Client`, so every call runs under its destination's timeout, retry,
+circuit-breaker and bulkhead policies; it is used for the token requests as
 well and closed by `close`.
 
 #### Factory Constructors

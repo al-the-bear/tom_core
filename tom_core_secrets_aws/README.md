@@ -118,6 +118,15 @@ when an `environment` map is passed:
 | `sessionToken` | `AWS_SESSION_TOKEN` | Optional, for temporary credentials. |
 | `endpoint` | `AWS_ENDPOINT_URL_SECRETS_MANAGER` | Optional: a VPC endpoint or an emulator instead of `https://secretsmanager.<region>.amazonaws.com/`. |
 
+**Outgoing calls are resilient by default.** Without an `httpClient` of its own,
+`TomAwsSecretsProvider` sends through the kernel's `TomResilientClient`, under the policy of
+the Secrets Manager endpoint that `tom_core_server`'s `httpClient` configuration key sets — a
+30-second timeout per attempt by default, and a circuit breaker and a bulkhead
+per destination. Every Secrets Manager action is a `POST`, so none is retried by the client; the timeout, the circuit breaker and the bulkhead apply. Name a destination under `httpClient.destinations`
+to give it its own policy; `TomSecrets.load` runs before the server applies the
+key, so a boot that wants it at load applies it first — see
+[`tom_core_server/doc/configuration.md`](../tom_core_server/doc/configuration.md#outgoing-http-calls) and [`doc/aws_secrets.md`](doc/aws_secrets.md#the-http-client).
+
 ## Limits
 
 - **`fromConfiguration` takes static keys only.** Credentials that rotate —
@@ -146,7 +155,7 @@ and [`tom_core_secrets_azure`](../tom_core_secrets_azure/README.md).
 
 | Dependency | Kind | For |
 | ---------- | ---- | --- |
-| `tom_core_server` | runtime | `TomSecretsProvider`, `TomSecretPayload`, `TomSecretsException`, `TomServerConfigResourceProvider`, and the SigV4 signer `TomAwsV4Signer` with `TomAwsCredentials` |
+| `tom_core_server` | runtime | `TomSecretsProvider`, `TomSecretPayload`, `TomSecretsException`, `TomServerConfigResourceProvider`, the SigV4 signer `TomAwsV4Signer` with `TomAwsCredentials`, and the kernel's `TomResilientClient` it re-exports — the default client |
 | `tom_core_kernel` | runtime | the framework base the server builds on |
 | `http` | runtime | the Secrets Manager JSON API |
 | `crypto` | runtime | the SHA-256 payload hash the signature covers |

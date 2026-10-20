@@ -134,7 +134,7 @@ handle declared so far so a missing binding fails at start-up.
 | `preferences` | `TomUserPreferenceKeys`, `TomUserPreferenceDto`, `TomUserPreferenceCodec`, `tomUserPreferencesApi` | The contract both preference stores bind to: well-known keys, wire DTOs, the value codec, and the `/preferences` API |
 | `shutdown_cleanup` | `TomShutdownCleanup`, `TomDisposable`, `TomClosable` | Ordered shutdown / cleanup hooks |
 | `timezoned` | `DateTimestamp`, timezone tables | Timezone-aware date/time |
-| `http_connection` | server connection, endpoints, headers | HTTP connection helpers |
+| `http_connection` | server connection, endpoints, headers, `TomResilientClient`, `TomHttpResilience` | HTTP connection helpers; timeout, retries, circuit breaker and bulkhead per destination for every outgoing call |
 | `little_things` | zone helpers, formatting, `TomException` | Small cross-cutting utilities |
 | `reflection` | reflection bootstrap | Reflection support built on `tom_reflection` |
 

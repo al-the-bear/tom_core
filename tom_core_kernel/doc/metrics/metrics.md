@@ -264,7 +264,7 @@ response's `Content-Type`; in a Tom server that is the `/metrics` endpoint.
 ## Series the Framework Records
 
 The framework records into `TomMetrics.registry`. From this package, the
-scheduler:
+scheduler and the outgoing HTTP client (`TomResilientClient`):
 
 | Series | Kind | Labels | Meaning |
 | ------ | ---- | ------ | ------- |
@@ -274,10 +274,16 @@ scheduler:
 | `tom_job_last_success_timestamp_seconds` | gauge | `job` | When the job last succeeded on this node. |
 | `tom_job_backlog` | observed gauge | `job` | Runs due and unclaimed. |
 | `tom_job_backlog_age_seconds` | observed gauge | `job` | How long the oldest of them has been due. |
+| `tom_http_client_attempts` | counter | `destination`, `outcome` | Outgoing HTTP attempts: `ok`, `retryable_status`, `error`. |
+| `tom_http_client_retries` | counter | `destination` | Outgoing HTTP attempts repeated. |
+| `tom_http_client_rejections` | counter | `destination`, `reason` | Outgoing calls refused without being sent: `circuit_open`, `bulkhead_full`. |
+| `tom_http_client_circuit_open` | observed gauge | `destination` | `1` while the destination's circuit is open or half-open, `0` while closed. |
 | `tom_metrics_observation_failures_total` | counter | `metric` | Observers that threw or timed out — see [When an observer fails](#when-an-observer-fails). |
 
 See [Scheduling → Metrics](../scheduling/scheduling.md#metrics) for what each
-job series answers and the alert rules they support; the messaging outbox runs
+job series answers and the alert rules they support, and
+[HTTP Connection → Metrics](../http_connection/http_connection.md#metrics) for
+the client series; the messaging outbox runs
 as the job `messaging.outbox`, so its lag is these series. `tom_core_server`
 adds the HTTP, SQL, connection-pool, cache and rate-limit series and documents
 them with the server.

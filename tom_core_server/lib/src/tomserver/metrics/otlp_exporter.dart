@@ -44,7 +44,7 @@ class TomOtlpHttpTransport {
     this.headers = const {},
     this.timeout = const Duration(seconds: 10),
     http.Client? client,
-  }) : _client = client ?? http.Client();
+  }) : _client = client ?? TomResilientClient(http.Client());
 
   /// The receiver's base URL.
   final Uri endpoint;

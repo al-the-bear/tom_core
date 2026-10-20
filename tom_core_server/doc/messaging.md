@@ -1109,6 +1109,19 @@ than the framework default of three, because a mail relay's transient refusals
 (greylisting above all) are routinely measured in minutes, and a budget that
 expires inside the greylist window turns a deliberate delay into a lost message.
 
+**The HTTP transports' calls run under the outgoing-call policies.** The
+webhook and SMS transports, the push transport's HTTP/1.1 exchange and the FCM
+credential's token exchange send through a kernel `TomServerChannel`, whose
+default client is a `TomResilientClient`: each call is bounded by its
+destination's timeout, circuit breaker and bulkhead (the `httpClient` key, see
+[configuration.md](configuration.md#outgoing-http-calls)). A delivery is a
+`POST`, which the client does not repeat unless the request carries an
+`Idempotency-Key` header, so the outbox stays the one retry mechanism. A call the
+policy abandons or refuses — a timeout, an open circuit, a full bulkhead — is
+an unreachable gateway, a transient failure the outbox redelivers. The APNs
+exchange over HTTP/2 (`TomHttp2PushExchange`) and SMTP do not use HTTP/1.1 and
+are bounded by their own timeouts only.
+
 ## What "Queued" Guarantees
 
 **At-least-once** — the same guarantee the scheduler states for every job. A

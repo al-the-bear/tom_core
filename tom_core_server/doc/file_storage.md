@@ -708,6 +708,19 @@ A larger one becomes a multipart upload: initiate, one part per `partSize`
 window, complete. A part failure aborts the upload, so a half-uploaded object is
 not left to be billed for. `x-amz-meta-filename` carries the original name.
 
+Without a `client` of its own the store sends through the kernel's
+`TomResilientClient`, under the policy of the object store's destination (the
+`httpClient` key, see [configuration.md](configuration.md#outgoing-http-calls)):
+every request is bounded by the timeout, the circuit breaker and the bulkhead,
+and the idempotent ones — `GET`, `HEAD`, `DELETE` and the `PUT`s of an
+upload, a part and a copy — are retried after a connection failure, a timeout or a
+`429`/`502`/`503`/`504`. The `POST`s — initiating and completing a multipart
+upload, `DeleteObjects` — are sent once. Every request carries its body in
+memory, so the destination's `timeoutMs` (30 seconds by default) also covers
+sending an upload or a part of up to `partSize`; over a slow link, give the
+object store's destination a longer one. A request the policy refuses or
+abandons fails like any other, as one of the operation keys below.
+
 S3 refuses a multipart part below 5 MiB (`minimumPartSize`), and such a store
 could not upload anything larger than one part, so a smaller `partSize` is
 refused at construction with `storage.s3.part_size_too_small`. Two answers from
@@ -1474,7 +1487,7 @@ and the count of them is the assertion. Every step checks its own result, and
 | `crypto` | package | `aws_v4_signer.dart`, `blob_store.dart`, `s3_blob_store.dart` | HMAC-SHA256 and SHA-256 for SigV4; the chunked SHA-256 behind `TomBlobDigest`; the MD5 S3 requires on a `DeleteObjects` body |
 | `http` | package | `s3_blob_store.dart` | the S3 backend's transport (injectable, so it is mockable) |
 | `path` | package | `directory_blob_store.dart` | key-to-path joining in the directory backend |
-| `tom_core_kernel` | package | `blob_store_backends.dart`, `blob_store_registry.dart`, `database_blob_store.dart` | `TomServerException` by way of `TomStorageException`, `tomLog`, and the `TomAuthState` grades the C-4 gate reads; `@tomReflector` and `tomReflectionInfo`, through which a backend's settings are checked against its fields and bound onto them |
+| `tom_core_kernel` | package | `blob_store_backends.dart`, `blob_store_registry.dart`, `database_blob_store.dart`, `s3_blob_store.dart` | `TomServerException` by way of `TomStorageException`, `tomLog`, and the `TomAuthState` grades the C-4 gate reads; `@tomReflector` and `tomReflectionInfo`, through which a backend's settings are checked against its fields and bound onto them; `TomResilientClient`, the S3 store's default client |
 | `uuid` | package | `database_blob_store.dart` | key generation and the database backend's upload ids |
 | [datasources](datasources.md) | module | `database_blob_sql.dart`, `database_blob_store.dart` | `TomDataSource` for the database backend |
 | [little_things](little_things.md) | module | `blob_store.dart` | `TomServerException` |

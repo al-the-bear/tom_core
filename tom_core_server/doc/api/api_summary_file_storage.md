@@ -708,7 +708,9 @@ result goes straight into a signed request URI, so it is checked nowhere else.
 The same error is raised per request when the prefix and the caller's key are
 each valid but join past `TomBlobStore.maxKeyLength`; S3's own limit is twice
 ours, so nothing downstream would object. When no `client` is supplied the store
-creates and owns one, and `close` disposes of it.
+creates and owns one — a `TomResilientClient` (the kernel's) over a new
+`http.Client`, so every request runs under the object store's timeout, retry,
+circuit-breaker and bulkhead policies — and `close` disposes of it.
 
 Every request the store rejects becomes one `storage.s3.request_failed` —
 which a caller meets as the `rootException` of one of the four operation keys,

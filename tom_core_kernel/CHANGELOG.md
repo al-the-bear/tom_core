@@ -2,6 +2,30 @@
 
 ### Added
 
+- **HTTP client resilience** (`http_connection/`, `resilience.dart`):
+  `TomResilientClient` wraps a `package:http` client and applies the
+  `TomHttpResiliencePolicy` of each call's destination (`scheme://host:port`) —
+  a timeout per attempt (30 s by default), a `TomHttpRetryPolicy` (3 attempts,
+  jittered exponential backoff from 200 ms to 5 s, `Retry-After` in seconds
+  honoured up to that ceiling; only for idempotent methods or an
+  `Idempotency-Key` header, and buffered bodies; on a connection failure, a
+  timeout, `429`, `502`, `503` or `504`), a `TomCircuitBreakerPolicy` (opens
+  after 5 consecutive errors, timeouts or `5xx`, half-opens after 30 s) and a
+  `TomBulkheadPolicy` (32 concurrent, 64 queued; a permit is held until the
+  response body has been read). Breakers (`TomCircuitBreaker`,
+  `TomCircuitState`) and bulkheads (`TomBulkhead`) are shared per destination
+  across the isolate. `TomHttpResilience` holds the `defaults`, per-destination
+  policies (`setDestinationPolicy`, `policyFor`), `configure` for a
+  configuration map (`timeoutMs`, `retry`, `circuitBreaker`, `bulkhead`,
+  `destinations`; `false` / `0` switches a part off), `reset` and `clock` for
+  tests. Refusals raise `TomHttpResilienceException`
+  (`http.client.timeout`, `http.client.circuit_open`,
+  `http.client.bulkhead_full`, `http.client.config.invalid`). Series
+  `tom_http_client_attempts`, `tom_http_client_retries`,
+  `tom_http_client_rejections`, `tom_http_client_circuit_open`.
+  `doc/http_connection/http_connection.md` § Resilience; sample
+  `example/samples/http_connection/09_http_resilience_example.dart`; tests in
+  `test/http_resilience_test.dart`.
 - **`TomTraceContext`** (`context/`): the W3C Trace Context a piece of work
   belongs to, carried in the zone — `traceId`, `spanId`, `parentSpanId`,
   `sampled`. `parse` reads a `traceparent` header and answers `null` for an
@@ -115,6 +139,16 @@
   `TomWebAuthn2FAService` and `tom_core_flutter`'s passkey mechanism.
 
 ### Changed
+
+- **`TomDefaultHttpClientFactory.getClient()` returns the platform client inside
+  a `TomResilientClient`.** Every `TomServerChannel` call — and with it every
+  `TomServerEndpoint` call and `TomHttpFileTransferClient` transfer — runs
+  under its destination's resilience policy, so an attempt that receives no
+  status and headers within 30 seconds fails with `http.client.timeout` where it
+  used to wait indefinitely. A custom `TomHttpClientAbstractFactory` replaces
+  the default whole and wraps its own client to keep the policies. An upload
+  slower than the timeout needs a destination policy with a longer `timeoutMs`,
+  or `0`.
 
 - **The principal id is a string, unique within its tenant.** `TomUser.id` and
   `TomPrincipal.id` are `String` (default `TomUser.noId`, `''`), so a deployment

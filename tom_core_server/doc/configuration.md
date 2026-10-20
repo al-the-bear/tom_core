@@ -33,6 +33,7 @@ store before the configuration is built.
 - [Publishing Metrics](#publishing-metrics)
 - [Log Format and Readiness](#log-format-and-readiness)
 - [Graceful Shutdown](#graceful-shutdown)
+- [Outgoing HTTP Calls](#outgoing-http-calls)
 - [Source Precedence](#source-precedence)
   - [A `SCREAMING_SNAKE_CASE` variable names a `lowerCamelCase` field](#a-screaming_snake_case-variable-names-a-lowercamelcase-field)
 - [Secret References](#secret-references)
@@ -843,6 +844,95 @@ shutdownReadinessDelaySeconds: 15
 The shutdown's steps, what it waits for and how the three settings fit a
 Kubernetes pod's `terminationGracePeriodSeconds` and probes are described in
 [server.md](server.md#graceful-shutdown).
+
+## Outgoing HTTP Calls
+
+Every HTTP call the framework makes to another service — an identity
+provider, an object store, an OTLP receiver, a webhook, an SMS or push gateway,
+the auth server's login, a secret store — goes through the kernel's
+`TomResilientClient`: a timeout on every attempt, retries with backoff for a
+call that may be repeated, and a circuit breaker and a bulkhead per destination.
+The one exception is the APNs push exchange, which speaks HTTP/2 over a
+connection of its own (see [messaging.md](messaging.md#http2)).
+What each policy does, what is retried and the metrics it records are described
+in the kernel's
+[HTTP connection guide](../../tom_core_kernel/doc/http_connection/http_connection.md).
+
+The `httpClient` key of the configuration resources
+(`TomServer.httpClientConfigurationKey`) sets those policies for the deployment.
+It is a nested map read through `TomServerConfigResourceProvider`, like
+`rateLimits`, not a field of the configuration base: `TomServer.start` hands it
+to `TomHttpResilience.configure` through `TomServer.configureHttpClients`.
+Without the key the framework's defaults stand.
+
+| Key | Type | Default | What it decides |
+| --- | ---- | ------- | --------------- |
+| `timeoutMs` | `int` | `30000` | How long one attempt of a call with a buffered body — every API call — may wait for the response's status and headers. `0` waits forever. |
+| `streamedTimeoutMs` | `int` | none | The same for a call whose body is streamed (`StreamedRequest`, `MultipartRequest` — a file upload through a `TomServerChannel`). A server answers an upload only once the whole body has arrived, so this limit also caps the upload's duration; it is off unless set, and `0` switches it off again. Set it per destination to the longest upload expected. |
+| `retry` | map, `true` or `false` | on | `maxAttempts` (`3`, the first attempt included), `initialBackoffMs` (`200`, doubling per retry, jittered), `maxBackoffMs` (`5000`, also the longest `Retry-After` honoured) and `retryStatuses` (`[429, 502, 503, 504]`). `false` never retries. Only a call with an idempotent method or an `Idempotency-Key` header is retried at all; the methods are not configurable. |
+| `circuitBreaker` | map, or `false` | on | `failureThreshold` (`5` consecutive failed attempts open the circuit) and `openDurationMs` (`30000` before one trial call is let through). `false` switches the breaker off. |
+| `bulkhead` | map, or `false` | on | `maxConcurrent` (`32` calls in flight per destination) and `maxQueued` (`64` waiting; beyond that a call is refused at once). `false` switches the limit off. |
+| `destinations` | map | none | Policies of single destinations, keyed by `scheme://host[:port]` or any URL on it. Each value takes the keys above and replaces parts of the top-level policy; a destination not named here runs under the top level. |
+
+A key a map leaves out keeps the value it had, so a destination entry names
+only what differs. `true` for `circuitBreaker` or `bulkhead` keeps the policy's
+own values. `retry: true`, or a `retry` map, where retries were switched off —
+a destination under a top-level `retry: false` — starts again from the
+framework's retry policy, three attempts.
+
+```yaml
+# assets/config-resources_default.yaml
+httpClient:
+  timeoutMs: 10000
+  streamedTimeoutMs: 600000
+  retry: {maxAttempts: 3, initialBackoffMs: 200, maxBackoffMs: 5000}
+  circuitBreaker: {failureThreshold: 5, openDurationMs: 30000}
+  bulkhead: {maxConcurrent: 32, maxQueued: 64}
+  destinations:
+    "https://login.microsoftonline.com": {timeoutMs: 5000}
+    "https://idp.example.com": {timeoutMs: 5000, retry: false}
+    "http://otel-collector:4318": {circuitBreaker: false}
+    "https://files.example.com": {streamedTimeoutMs: 1800000}
+    "https://s3.eu-west-1.amazonaws.com": {timeoutMs: 120000}
+```
+
+**An S3 upload is buffered, not streamed.** `TomS3BlobStore` sends every
+request with its body in memory — a single `PUT` up to `partSize`, or one
+multipart part — so its uploads fall under `timeoutMs`, not
+`streamedTimeoutMs`: the timeout covers sending up to 8 MiB. A store reached
+over a slow link gives its destination a longer `timeoutMs`, as above; see
+[file_storage.md](file_storage.md#s3).
+
+**A value of the wrong shape stops the start.** `httpClient` that is not a map,
+a `destinations` entry that is not a map, a section that is neither a map nor a
+boolean, or a negative or non-numeric number throws a `TomHttpResilienceException`
+keyed `http.client.config.invalid` before anything is applied, so a misspelt
+setting does not leave a dependency running under a policy nobody chose.
+
+**When it applies.** `start()` applies the key first, before the deployment's
+own login ([Server Self-Login](#server-self-login)) and anything else that
+reaches out. Secrets are
+[loaded](#boot-order-load-then-build) before the configuration exists, so a
+boot that wants its secret store reached under the configured policies calls
+`TomServer.configureHttpClients` with the merged sources first:
+
+```dart
+TomServer.configureHttpClients(
+  TomServerConfigResourceProvider.from(
+    TomBaseServerConfiguration.collectSources(args),
+  ),
+);
+await TomSecrets.load(TomBaseServerConfiguration.collectSources(args));
+```
+
+Applying the same map again in `start()` changes nothing. Applying `httpClient`
+replaces every destination policy set before it with its `destinations`, so
+code that sets one with `TomHttpResilience.setDestinationPolicy` does so after
+`start()`.
+
+The policies and the circuit and bulkhead state are per isolate. `httpClient`
+is not a field of the configuration base, so the startup warning about
+[unknown keys](#unknown-keys-in-the-configuration-resources) names it.
 
 ## Source Precedence
 

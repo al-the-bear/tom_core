@@ -122,6 +122,15 @@ variable when an `environment` map is passed:
 | `appRoleMount` | `VAULT_APPROLE_MOUNT` | Where the AppRole method is mounted; `approle` by default. |
 | `namespace` | `VAULT_NAMESPACE` | The Vault Enterprise namespace, sent as `X-Vault-Namespace`. |
 
+**Outgoing calls are resilient by default.** Without an `httpClient` of its own,
+`TomVaultSecretsProvider` sends through the kernel's `TomResilientClient`, under the policy of
+Vault's address that `tom_core_server`'s `httpClient` configuration key sets — a
+30-second timeout per attempt by default, and a circuit breaker and a bulkhead
+per destination. Reads are retried after a connection failure, a timeout or a `429`/`502`/`503`/`504`; the AppRole login `POST` is sent once. Name a destination under `httpClient.destinations`
+to give it its own policy; `TomSecrets.load` runs before the server applies the
+key, so a boot that wants it at load applies it first — see
+[`tom_core_server/doc/configuration.md`](../tom_core_server/doc/configuration.md#outgoing-http-calls) and [`doc/vault_secrets.md`](doc/vault_secrets.md#the-http-client).
+
 ## Limits
 
 - **The provider's own settings are literal values.** `secrets.vault` holds
@@ -151,7 +160,7 @@ and [`tom_core_secrets_azure`](../tom_core_secrets_azure/README.md).
 
 | Dependency | Kind | For |
 | ---------- | ---- | --- |
-| `tom_core_server` | runtime | `TomSecretsProvider`, `TomSecretPayload`, `TomSecretsException`, `TomServerConfigResourceProvider` |
+| `tom_core_server` | runtime | `TomSecretsProvider`, `TomSecretPayload`, `TomSecretsException`, `TomServerConfigResourceProvider`, and the kernel's `TomResilientClient` it re-exports — the default client |
 | `tom_core_kernel` | runtime | the framework base the server builds on |
 | `http` | runtime | the Vault HTTP API |
 | `test`, `lints` | dev | the suite |

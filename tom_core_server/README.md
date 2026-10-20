@@ -89,7 +89,7 @@ added.
 
 | Type | Responsibility |
 | ---- | -------------- |
-| `TomServer` | The shelf-based HTTP host and its middleware pipeline; `logFormat: json` writes one JSON log line per entry |
+| `TomServer` | The shelf-based HTTP host and its middleware pipeline; `logFormat: json` writes one JSON log line per entry, and the `httpClient` block sets the timeout, retry, circuit-breaker and bulkhead policies of every outgoing framework call (`configureHttpClients`) |
 | `TomGracefulShutdown` / `TomServer.shutdown` | What the server does between SIGTERM (or SIGINT) and exiting: `/ready` answers `503`, the listener closes, a new request is refused with `503` and `Connection: close`, the requests and scheduled runs in flight get the grace period (`shutdownGracePeriodSeconds`) to finish, then the outboxes and schedulers release their leases and the data sources close their pools |
 | `tomRequestContextMiddleware` / `tomRequestIdHeader` | Every request's correlation ids: a request id echoed as `X-Request-Id`, and the caller's W3C `traceparent` continued with a span of the server's own — carried as `request_id`, `trace_id` and `span_id` on every structured log line it writes |
 | `TomEndpoint` / `TomEndpointHandler` / `TomEndpointRouting` | Endpoint declaration and the request-handling pipeline |
@@ -408,6 +408,13 @@ print(issued.value); // tomk.<keyId>.<secret> — stored nowhere
 Rate limits are off until configured; a `rateLimits` block counts requests per
 user, per API key or per anonymous address and answers `429` with
 `Retry-After` (see [`doc/ratelimit.md`](doc/ratelimit.md)).
+
+Every call the framework makes to another service — an identity provider, the
+object store, the OTLP receiver, a webhook or gateway, a secret store — runs
+under the kernel's resilience policies: a 30-second timeout per API call, retries for calls
+that may be repeated, and a circuit breaker and a bulkhead per destination. An
+`httpClient` block changes them, overall and per destination (see
+[`doc/configuration.md`](doc/configuration.md#outgoing-http-calls)).
 
 See [`doc/authentication.md`](doc/authentication.md).
 

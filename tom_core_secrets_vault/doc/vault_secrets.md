@@ -13,6 +13,7 @@ refresh cycle — is in
 - [The reference](#the-reference)
 - [Registering the provider](#registering-the-provider)
 - [Configuration](#configuration)
+- [The HTTP client](#the-http-client)
 - [Authentication](#authentication)
   - [A token](#a-token)
   - [AppRole](#approle)
@@ -88,8 +89,9 @@ final provider = TomVaultSecretsProvider(
 
 `name` registers it under another provider name — two Vault clusters side by
 side, `vault` and `vault-eu`, each answering its own references. `httpClient`
-replaces the default `http.Client`: a client with a custom trust store, or a
-`MockClient` in a test.
+replaces the default client — a `TomResilientClient` over a new `http.Client`
+(see [The HTTP client](#the-http-client)): a client with a custom trust store,
+or a `MockClient` in a test.
 
 ## Configuration
 
@@ -118,6 +120,34 @@ secrets:
 `secrets.vault` is read as written: it holds the credentials that open the
 store, so a reference inside it is not resolved. Keep the token or secret id
 itself in the environment or a `.env` file the deployment does not commit.
+
+## The HTTP client
+
+Without an `httpClient` of its own the provider sends through the kernel's
+`TomResilientClient`, so every call to Vault runs under the policy of Vault's
+destination (`scheme://host:port` of `address`) that `tom_core_server`'s
+`httpClient` configuration key sets — see
+[`tom_core_server/doc/configuration.md`](../../tom_core_server/doc/configuration.md#outgoing-http-calls): a
+timeout on every attempt (30 seconds by default), and a circuit breaker and a
+bulkhead per destination. Reads are `GET`s and are retried after a connection
+failure, a timeout or a `429`/`502`/`503`/`504` — a standby or sealed node
+answers `503`; the AppRole login is a `POST` and is sent once. A call the
+policy abandons or refuses fails as `secrets.fetch.failed`.
+
+```yaml
+httpClient:
+  destinations:
+    "https://vault.example.com:8200": {timeoutMs: 5000, retry: {maxAttempts: 4}}
+```
+
+**At boot the load comes first.** `TomSecrets.load` runs before
+`TomServer.start` applies `httpClient`, so the load runs under the kernel's
+defaults unless the boot applies the key itself first —
+`TomServer.configureHttpClients` with the merged sources, as
+[`tom_core_server/doc/configuration.md`](../../tom_core_server/doc/configuration.md#outgoing-http-calls) shows. A
+refresh after the start runs under the configured policies. A client passed as
+`httpClient` replaces the resilient one; wrap it — `TomResilientClient(client)`
+— to keep the policies.
 
 ## Authentication
 

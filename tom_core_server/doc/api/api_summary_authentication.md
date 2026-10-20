@@ -2685,13 +2685,17 @@ and leave every other line of the flow executing for real.
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `postForm` | `Future<String> postForm(Uri uri, Map<String, String> form, Map<String, String> headers)` | The token-endpoint call; returns the raw body. |
-| `getJson` | `Future<String> getJson(Uri uri, Map<String, String> headers)` | The user-info call, for providers that predate OIDC. |
+| `getJson` | `Future<String> getJson(Uri uri, Map<String, String> headers)` | A `GET` returning the raw body: the user-info call for providers that predate OIDC, and the OIDC discovery document and SAML metadata reads. |
 | `resolve` | `static TomOAuthTokenTransport resolve()` | The installed bean, or `TomHttpOAuthTokenTransport`. |
 
 ### TomHttpOAuthTokenTransport
 
 The default transport, over real HTTP. Raises `oauth.provider.http_error` for a
-non-2xx answer.
+non-2xx answer. Sends through one shared `TomResilientClient` (the kernel's), so
+every call is bounded by its destination's timeout and circuit breaker;
+`getJson` is retried after a connection failure, a timeout or a
+`429`/`502`/`503`/`504`, and `postForm` is sent once — an authorization code is
+single-use.
 
 ### TomExternalIdentity
 

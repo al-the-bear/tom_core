@@ -74,6 +74,13 @@ of every log line (see [The log format](#the-log-format)), and
 `frameworkReadiness`, which answers `GET /ready` with the framework's own
 readiness checks unless the application installed a readiness analyzer of its
 own (see [healthcheck.md](healthcheck.md#the-framework-readiness-checks)).
+First of all, before the deployment's own login, `start()` applies the
+`httpClient` key of the configuration resources (`TomServer.configureHttpClients`): the timeout, retry,
+circuit-breaker and bulkhead policies every outgoing framework call runs under,
+for all destinations and for named ones. A value of the wrong shape stops the
+start with `http.client.config.invalid`; without the key the kernel's defaults
+stand, a 30-second timeout among them (see
+[configuration.md](configuration.md#outgoing-http-calls)).
 `start()` completes **when the socket is listening**, with the bound
 `HttpServer`. So a bind failure — a port already in use, an unreadable
 certificate, a malformed private key — rejects the returned future instead of
@@ -659,7 +666,8 @@ process at all.
 Three suites cover this module, a fourth covers its endpoint-owned
 credentials, a fifth its tenant resolution, a sixth the API keys and rate
 limits it reads, a seventh the metrics middlewares it installs, an eighth
-its correlation ids and log format, and a ninth its graceful shutdown.
+its correlation ids and log format, a ninth its graceful shutdown, and a tenth
+the resilience of its outgoing HTTP calls.
 
 `test/server_test.dart` covers the pipeline as composed functions:
 `TomRequestLogInfo`, `extractAuthentication` reading a credential off a request
@@ -744,6 +752,16 @@ one step at a time: a request in flight drained while a new one is refused with
 its lease released only afterwards; a run past the grace period abandoned and
 its lease released; and a second call handed the first shutdown.
 
+`test/http_client_resilience_test.dart` covers the `httpClient` key and the
+framework's own call paths. The group `configuration` applies a map through
+`TomServer.configureHttpClients` — the defaults and a destination's policy set
+from it, the defaults standing without it, and a value that is not a map
+refused with `http.client.config.invalid`. The group `framework call paths`
+runs against a local server that fails on purpose: a `TomServerChannel` call
+retried through a `503`, and the OAuth transport retrying its user-info `GET`
+and sending its token `POST` once. The policies themselves are the kernel's and
+are tested there.
+
 ```bash
 dart run example/server/server_example.dart
 dart run example/server/graceful_shutdown_example.dart
@@ -812,7 +830,7 @@ and an application that needs one builds it today rather than waiting:
 | `dart:io` | dart | every file | `HttpServer`, `InternetAddress`, `SecurityContext`, `ProcessSignal` (SIGTERM, SIGINT), `HttpHeaders` |
 | `shelf` | package | every file | the HTTP pipeline, `Request`/`Response`/`Handler`/ `Middleware`/`Router`/`Cascade`, and `serve` |
 | `shelf_router` | package | `server.dart` | the HTTP pipeline, `Request`/`Response`/`Handler`/ `Middleware`/`Router`/`Cascade`, and `serve` |
-| `tom_core_kernel` | package | every file | `TomPrincipal`, `TomClientJwtToken`, `TomBearerAuthentication`, `TomExecutionContext`/`tomExecutionContext`, `TomZoneValues`, `tomLog`, `tomPrintStackTrace`, `TomException`, `TomTraceContext` and `TomLogContext` (the request's trace and the `request_id` log field), `TomJsonLogOutput` / `TomConsoleLogOutput` (`logFormat`), `tomShutdownCleanup` (the signals the graceful shutdown runs on) and `TomScheduler.started` (the schedulers it drains) |
+| `tom_core_kernel` | package | every file | `TomPrincipal`, `TomClientJwtToken`, `TomBearerAuthentication`, `TomExecutionContext`/`tomExecutionContext`, `TomZoneValues`, `tomLog`, `tomPrintStackTrace`, `TomException`, `TomTraceContext` and `TomLogContext` (the request's trace and the `request_id` log field), `TomJsonLogOutput` / `TomConsoleLogOutput` (`logFormat`), `tomShutdownCleanup` (the signals the graceful shutdown runs on), `TomScheduler.started` (the schedulers it drains) and `TomHttpResilience` / `TomHttpResilienceException` (`configureHttpClients`) |
 | [authentication](authentication.md) | module | `server.dart` | `TomServerSelfLogin`, `TomServerSelfLoginException`, `TomApiKeys` and `TomApiKeyIdentity` (a service account's API key) |
 | [authorization](authorization.md) | module | `server.dart` | `TomAuthorizationCache` (principal resolution) |
 | [configuration](configuration.md) | module | `server.dart` | `TomBaseServerConfiguration` |

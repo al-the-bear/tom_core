@@ -39,6 +39,7 @@ import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
+import 'package:tom_core_kernel/tom_core_kernel.dart' show TomResilientClient;
 
 import 'aws_v4_signer.dart';
 import 'blob_store.dart';
@@ -69,7 +70,7 @@ class TomS3BlobStore extends TomBlobStore {
     this.keyPrefix,
     http.Client? client,
   }) : signer = TomAwsV4Signer(credentials: credentials, region: region),
-       _client = client ?? http.Client(),
+       _client = client ?? TomResilientClient(http.Client()),
        _ownsClient = client == null {
     if (partSize < minimumPartSize) {
       throw TomStorageException(

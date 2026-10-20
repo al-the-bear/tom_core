@@ -24,6 +24,7 @@ import '05_remote_context_example.dart' as remote_context;
 import '06_auth_retry_example.dart' as auth_retry;
 import '07_endpoint_call_example.dart' as endpoint_call;
 import '08_file_transfer_example.dart' as file_transfer;
+import '09_http_resilience_example.dart' as http_resilience;
 
 /// Standalone entry point for running HTTP connection examples.
 Future<void> main() async {
@@ -45,6 +46,7 @@ Future<void> run() async {
   await auth_retry.run();
   await endpoint_call.run();
   await file_transfer.run();
+  await http_resilience.run();
 
   sampleGroupFooter('HTTP Connection');
 }

@@ -700,6 +700,9 @@ class TomServer {
   /// because the bound socket keeps the isolate alive on its own. What changes
   /// is that ignoring it is now a choice rather than the only option.
   Future<HttpServer> start() async {
+    // First, so every outgoing call the start makes — the deployment's own
+    // login included — runs under the configured policies.
+    configureHttpClients();
     await _installServerPrincipal();
     warnOnUnenforcedResourceKeys();
 
@@ -893,6 +896,27 @@ class TomServer {
     if (configuration.exitOnShutdownSignal) {
       tomShutdownCleanup.exitAfterSignalShutdown = true;
     }
+  }
+
+  /// The configuration key holding the resilience settings of outgoing HTTP
+  /// calls — see [configureHttpClients].
+  static const String httpClientConfigurationKey = 'httpClient';
+
+  /// Applies the [httpClientConfigurationKey] map of [config] (the server
+  /// configuration unless given) to [TomHttpResilience]: the timeout, retry,
+  /// circuit-breaker and bulkhead defaults of every outgoing framework call,
+  /// and the policies of named destinations. See
+  /// [TomHttpResilience.configure] for the keys.
+  ///
+  /// Called by [start]. Without the key the framework defaults stand — a
+  /// 30-second timeout among them. Throws `http.client.config.invalid` for a
+  /// value of the wrong shape, so a misspelt setting stops the start rather
+  /// than leaving a dependency unprotected.
+  static void configureHttpClients([TomServerConfigResourceProvider? config]) {
+    final provider =
+        config ?? TomServerConfigResourceProvider.getServerConfig();
+    if (!provider.exists(httpClientConfigurationKey)) return;
+    TomHttpResilience.configure(provider.get(httpClientConfigurationKey));
   }
 
   /// Applies [TomBaseServerConfiguration.logFormat]; see [applyLogFormat].

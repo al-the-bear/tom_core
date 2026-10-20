@@ -13,6 +13,7 @@ precedence, the boot order and the refresh cycle — is in
 - [The reference](#the-reference)
 - [Registering the provider](#registering-the-provider)
 - [Configuration](#configuration)
+- [The HTTP client](#the-http-client)
 - [Credentials](#credentials)
 - [Signing](#signing)
 - [Rotation](#rotation)
@@ -72,7 +73,8 @@ pass `Platform.environment`, or `TomEnvFile.resolveEnvironment()` to include a
 The constructor takes the region and a credentials source; `endpoint`
 overrides the regional endpoint, `name` registers the provider under another
 name (one per account or region, `aws` and `aws-us`), and `httpClient` replaces
-the default `http.Client`:
+the default client, a `TomResilientClient` over a new `http.Client` (see [The
+HTTP client](#the-http-client)):
 
 ```dart
 final provider = TomAwsSecretsProvider(
@@ -108,6 +110,33 @@ secrets:
 
 `secrets.aws` is read as written: it holds the credentials that open the
 store, so a reference inside it is not resolved.
+
+## The HTTP client
+
+Without an `httpClient` of its own the provider sends through the kernel's
+`TomResilientClient`, so every call to Secrets Manager runs under the policy of
+its destination — the regional endpoint, or `endpoint` — that
+`tom_core_server`'s `httpClient` configuration key sets; see
+[`tom_core_server/doc/configuration.md`](../../tom_core_server/doc/configuration.md#outgoing-http-calls). Every
+Secrets Manager action is a `POST`, so the client does not retry one; what
+applies is the timeout on the attempt (30 seconds by default) and the
+destination's circuit breaker and bulkhead. A call the policy abandons or
+refuses fails as `secrets.fetch.failed`.
+
+```yaml
+httpClient:
+  destinations:
+    "https://secretsmanager.eu-west-1.amazonaws.com": {timeoutMs: 5000}
+```
+
+**At boot the load comes first.** `TomSecrets.load` runs before
+`TomServer.start` applies `httpClient`, so the load runs under the kernel's
+defaults unless the boot applies the key itself first —
+`TomServer.configureHttpClients` with the merged sources, as
+[`tom_core_server/doc/configuration.md`](../../tom_core_server/doc/configuration.md#outgoing-http-calls) shows. A
+refresh after the start runs under the configured policies. A client passed as
+`httpClient` replaces the resilient one; wrap it — `TomResilientClient(client)`
+— to keep the policies.
 
 ## Credentials
 

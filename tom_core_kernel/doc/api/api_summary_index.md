@@ -17,7 +17,7 @@ declarations are omitted.
 | ------ | ------- | ---------------- |
 | Bean Locator | [api_summary_beanlocator.md](api_summary_beanlocator.md) | Component annotation and typed bean lookup/dependency injection. |
 | Context | [api_summary_context.md](api_summary_context.md) | Zone-scoped typed execution context and ambient providers, and the zone-carried tenant and W3C trace context. |
-| HTTP Connection | [api_summary_http_connection.md](api_summary_http_connection.md) | Server call model, remote APIs/endpoints, headers, MIME types, auth-retry, client factories. |
+| HTTP Connection | [api_summary_http_connection.md](api_summary_http_connection.md) | Server call model, remote APIs/endpoints, headers, MIME types, auth-retry, client factories, and the timeout, retry, circuit-breaker and bulkhead policies of outgoing calls. |
 | Isolate Pooling | [api_summary_isolate_pooling.md](api_summary_isolate_pooling.md) | Worker/executor/command model and isolate worker pool. |
 | JSON | [api_summary_json.md](api_summary_json.md) | JSON serialization contract, map merge/traversal, env substitution, pretty printing. |
 | Little Things | [api_summary_little_things.md](api_summary_little_things.md) | Kernel base exception, zone helpers, checked runners, stack-trace and offset formatting. |
@@ -78,7 +78,7 @@ declarations are omitted.
 | `TomRequestAbortedException` | class | Aborted-request failure (extends `TomException`). |
 | `TomHttpClientFactory` | class | Resolves a client through a per-instance override or the global registration. |
 | `TomHttpClientAbstractFactory` | abstract interface class | The client-factory contract a custom factory implements. |
-| `TomDefaultHttpClientFactory` | class | The shipped factory, over the platform's client. |
+| `TomDefaultHttpClientFactory` | class | The shipped factory: the platform's client inside a `TomResilientClient`. |
 | `TomRemoteApis` | class | Registry of remote API groups. |
 | `TomApi` | class | A remote API group. |
 | `TomApiEndpoint<ReturnType, RequestType>` | class | A typed remote API endpoint. |
@@ -106,6 +106,16 @@ declarations are omitted.
 | `TomRequestTimeoutException` | class | Exception thrown when a request outlives its `TomServerCallSpecs.timeout`. |
 | `TomTransferCancellation` | class | A cancel signal shared with an in-flight transfer. |
 | `TomTransferProgress` | class | How far a transfer has got. |
+| `TomHttpResilienceException` | class | A call refused or abandoned by a resilience policy (extends `TomException`). |
+| `TomHttpRetryPolicy` | class | When and how often a failed attempt is repeated. |
+| `TomCircuitBreakerPolicy` | class | When a destination's circuit opens and how long it stays open. |
+| `TomBulkheadPolicy` | class | How many calls one destination may have at once. |
+| `TomHttpResiliencePolicy` | class | The timeout, retry, breaker and bulkhead policies of one destination. |
+| `TomCircuitState` | enum | Where a destination's circuit stands: closed, open, half-open. |
+| `TomCircuitBreaker` | class | The circuit breaker of one destination. |
+| `TomBulkhead` | class | The bulkhead of one destination. |
+| `TomHttpResilience` | abstract final class | The isolate's resilience configuration and per-destination state. |
+| `TomResilientClient` | class | A `package:http` client applying the resilience policies to every call. |
 | `decodeFileDescriptor` | function | Decodes the JSON descriptor body shared by the upload and describe responses. |
 | `tomEscapeFileNameForDisposition` | function | Escapes a file name for a quoted `Content-Disposition` parameter. |
 | `tomFileDescriptorHeaders` | function | Writes the descriptor header a `HEAD` response needs so `TomFileTransferClient.describe` can answer without a body. |

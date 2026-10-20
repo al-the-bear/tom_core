@@ -273,6 +273,15 @@ is answered anything but a `2xx` is `otlp.export.failed`. The periodic push logs
 it as a warning and carries on; the next push carries the same totals, so
 nothing is lost but freshness. `export()` called directly throws it.
 
+Without a `client` of its own `TomOtlpHttpTransport` sends through the kernel's
+`TomResilientClient`, under the policy of the receiver's destination (the
+`httpClient` key, see [configuration.md](configuration.md#outgoing-http-calls)).
+A push is a `POST` and is not retried by the client — the next push is the
+retry — but the receiver's circuit breaker applies: once it opens, a push is
+refused at once and fails as `otlp.export.failed` without waiting for the
+timeout. The transport's own ten seconds stay the limit, as they are shorter
+than the default policy's thirty.
+
 `close()` stops the timer and pushes **once more** before closing the HTTP
 client, so a server shutting down does not lose what it counted since the last
 push. The shutdown cleanup closes the exporter; a second `close` does nothing.
@@ -401,6 +410,6 @@ in-process receiver, read back. Every step checks its own result, and
 | `dart:convert` | dart | `otlp_exporter.dart` | `jsonEncode`, the body of an export |
 | `http` | package | `otlp_exporter.dart` | `Client`, which posts an export |
 | `shelf` | package | `metrics_middleware.dart` | `Request`, `Response` and `Middleware` |
-| `tom_core_kernel` | package | every file | `TomMetrics`, `TomMetricRegistry`, `TomCounter`, `TomHistogram`, `TomMetricFamily`, `TomMetricKind`, `TomMetricPoint`, `tomPrometheusText`, `tomPrometheusContentType`, `TomClosable` and `tomLog` |
+| `tom_core_kernel` | package | every file | `TomMetrics`, `TomMetricRegistry`, `TomCounter`, `TomHistogram`, `TomMetricFamily`, `TomMetricKind`, `TomMetricPoint`, `tomPrometheusText`, `tomPrometheusContentType`, `TomClosable`, `tomLog` and `TomResilientClient` (the OTLP transport's default client) |
 | [little_things](little_things.md) | module | `otlp_exporter.dart` | `TomServerException`, the base of `TomOtlpExportException` |
 | [server](server.md) | module | `metrics_middleware.dart` | `TomRequestLogInfo`, whose `route` the endpoint pipeline sets |

@@ -5,8 +5,10 @@
 
 Platform-neutral HTTP client primitives used by the remote-call layer: typed
 methods, headers, MIME types, endpoint/API descriptors, the server-call
-machinery that the server and Flutter layers build their transports on, and the
-streaming file-transfer client that moves large payloads without buffering them.
+machinery that the server and Flutter layers build their transports on, the
+streaming file-transfer client that moves large payloads without buffering them,
+and the resilience policies — timeout, retries, circuit breaker, bulkhead —
+every outgoing call runs under.
 
 ## Key types
 
@@ -19,7 +21,7 @@ streaming file-transfer client that moves large payloads without buffering them.
 | `TomServerCall` / `TomServerCallSpecs` / `TomServerCallLoad` / `TomServerCallError` | A remote call, its spec, payload, and error. `TomServerCallSpecs.timeout` (also declarable per `TomApiEndpoint`) bounds the exchange; without one a call waits indefinitely. |
 | `TomRequestAbortedException` / `TomRequestTimeoutException` | Why a call ended early — cancelled by this application, or unanswered past its deadline. Kept as siblings rather than as a subtype, because only the second is worth retrying. |
 | `TomServerChannel` / `TomServerEndpoint` | Channel and endpoint abstractions. `TomServerEndpoint.createApiServerEndpoint` turns a declaration into a callable endpoint, resolving its address through `resolveUri` — so the declarative half of the contract is reachable through the factory, not only by hand. |
-| `TomHttpClientAbstractFactory` / `TomDefaultHttpClientFactory` / `TomHttpClientFactory` | Pluggable HTTP-client construction: the contract a custom factory implements, the shipped implementation, and the resolver that answers from a per-instance override or the process-wide registration. |
+| `TomHttpClientAbstractFactory` / `TomDefaultHttpClientFactory` / `TomHttpClientFactory` | Pluggable HTTP-client construction: the contract a custom factory implements, the shipped implementation (the platform's client inside a `TomResilientClient`), and the resolver that answers from a per-instance override or the process-wide registration. |
 | `TomAuthRefresher` / `TomAuthRetryPolicy` / `TomAuthExpiredException` | Refresh-and-retry on an expired token. A client implements `TomAuthRefresher` over whatever auth mechanism it has; `tomDefaultAuthRetryPolicy` treats a single `401` as an expiry and retries exactly once, and is replaceable by registering another `TomAuthRetryPolicy` as a bean. |
 | `TomContentDisposition` | The `Content-Disposition` header values — how a client should treat the body, inline or as an attachment. |
 | `TomServerConnectionException` / `TomEndpointException` / `TomClientRemoteContextException` | Raised by the connection, the endpoint declaration, and the remote-context configuration respectively. |
@@ -27,6 +29,11 @@ streaming file-transfer client that moves large payloads without buffering them.
 | `TomClientRemoteContext` | Which remote a client addresses. Installed once at startup by `setCurrent`; `runWithContext` shadows it on the `Zone` to reach a second server from part of a program. |
 | `TomFileTransferClient` / `TomHttpFileTransferClient` / `TomMemoryFileTransferClient` | Streaming file transfer — upload, download, describe, remove — addressed by application-owned *slot* rather than by storage key. Neither direction buffers a whole file; the in-memory client honours the same contract for tests and offline modes. |
 | `TomFileSource` / `TomFileMetadata` / `TomTransferProgress` / `TomTransferCancellation` | The transfer value types: the bytes to send (re-openable, so a retry sees them again), what the server stored, how far a transfer has got, and the shared cancel signal. |
+| `TomResilientClient` | A `package:http` client applying the resilience policies of each call's destination (`scheme://host:port`): a timeout per attempt (30 s by default), retries with jittered backoff for idempotent or `Idempotency-Key` calls, a circuit breaker and a bulkhead. |
+| `TomHttpResilience` | The isolate's defaults, per-destination policies and per-destination breaker and bulkhead state; `configure` applies a configuration map, `reset` forgets everything for tests. |
+| `TomHttpResiliencePolicy` / `TomHttpRetryPolicy` / `TomCircuitBreakerPolicy` / `TomBulkheadPolicy` | The policy of one destination and its parts; a `null` part is switched off. |
+| `TomCircuitBreaker` / `TomCircuitState` / `TomBulkhead` | One destination's breaker, where its circuit stands, and its bulkhead. |
+| `TomHttpResilienceException` | A call refused or abandoned by a policy: `http.client.timeout`, `http.client.circuit_open`, `http.client.bulkhead_full`, `http.client.config.invalid`. |
 
 ## Quick start
 

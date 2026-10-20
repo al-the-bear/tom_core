@@ -23,7 +23,10 @@ layer a file belongs to. From the bottom:
    `push_transport.dart`, `webhook_transport.dart`) — the four implementations
    that do touch a wire,
    each with the wire itself behind an injectable seam so the protocol is
-   testable without a server.
+   testable without a server. The HTTP/1.1 ones send through the kernel's
+   `TomServerChannel`, so each call runs under its destination's timeout,
+   circuit breaker and bulkhead (the server's `httpClient` key); a delivery
+   that the policy abandons is a transient failure the outbox redelivers.
 4. **The application layer** (`templated_message_service.dart` and the three
    services on it, plus `outbox.dart`) — resource-keyed templates, a per-channel
    request type, and the queue that makes a send survive a restart.

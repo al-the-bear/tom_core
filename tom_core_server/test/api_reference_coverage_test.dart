@@ -8795,8 +8795,9 @@ class After {}
     test('the parser found the fields it claims to check', () {
       // Both findings are emptiness assertions, so a parser that matched no
       // field at all would report a clean class. Pin the roster: these are
-      // every instance field `TomServer` declares, and the set is small enough
-      // that naming it costs less than the vacuity it removes.
+      // every field `TomServer` declares — the instance fields and the one
+      // static constant, `httpClientConfigurationKey` — and the set is small
+      // enough that naming it costs less than the vacuity it removes.
       expect(shipped().names, [
         'configuration',
         'securityContext',
@@ -8805,6 +8806,7 @@ class After {}
         'authenticationErrorHandler',
         'loggingMiddleware',
         'gracefulShutdown',
+        'httpClientConfigurationKey',
         'metricsExporter',
       ]);
       // Methods are declarations at the same indentation as fields; a parser

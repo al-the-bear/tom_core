@@ -2419,6 +2419,15 @@ stays server-side. Stubbing the seam — which is all `oauth_test.dart` does —
 leaves every other line of the flow executing exactly as it does against a real
 provider.
 
+The live transport sends through the kernel's `TomResilientClient`, under the
+policy of the provider's destination (the `httpClient` key, see
+[configuration.md](configuration.md#outgoing-http-calls)): a provider that does
+not answer fails at the timeout instead of holding the sign-in open, and a
+failing one opens its own circuit and leaves the other providers alone. Its
+`GET`s — the discovery document, SAML metadata, user info — are retried; its
+`POST`s to the token endpoint are not, because an authorization code is
+single-use.
+
 ### Delegated access: the provider's tokens
 
 Authentication asks *who the user is*; delegated authorization asks *what this
@@ -4221,7 +4230,7 @@ store keeps them in `tom_service_account` and `tom_api_key`, declared by
 | `http` | package | `oauth_flow.dart` | `http.dart`, `http.get`, `http.post` |
 | `pointycastle` | package | `jwt_keys.dart`, `saml_provider.dart`, `saml_xml_signature.dart`, `two_factor_webauthn.dart`, `webauthn_software_authenticator.dart` | RSA PKCS#1 v1.5 signing and verification for XML Signature, ECDSA P-256 and RSA PKCS#1 v1.5 signature verification for passkeys, and the software authenticator's key generation and signing; deriving a signing key's public half |
 | `shelf` | package | `jwks_endpoint.dart`, `saml_endpoints.dart`, `scim_endpoints.dart` | `Request` and `Response` — the SCIM endpoints read the raw request and answer in `application/scim+json`; `Response`, which the JSON Web Key Set and SAML metadata endpoints answer with directly to set their content type — and, for the key set, its cache header |
-| `tom_core_kernel` | package | 32 of 37 files | `TomPrincipal`, `TomAccessControlDefinition`, `TomBearerAuthentication`, `TomServerJwtToken`, the 2FA wire types `Tom2FAChallenge` / `Tom2FAClaims` / `Tom2FAPendingEnrolment` / `Tom2FAEnrolmentClaims`, the `Tom2FAMethodDescriptor` every adaptor describes itself with, the `TomTotp` derivation primitives, `TomServerPrincipal` (the holder server self-login installs into), and the wire types `TomAuthenticationMessage` / `TomAuthenticationResult`. The 2FA types live there and not here because the server writes them and the client reads them |
+| `tom_core_kernel` | package | 32 of 37 files | `TomPrincipal`, `TomAccessControlDefinition`, `TomBearerAuthentication`, `TomServerJwtToken`, the 2FA wire types `Tom2FAChallenge` / `Tom2FAClaims` / `Tom2FAPendingEnrolment` / `Tom2FAEnrolmentClaims`, the `Tom2FAMethodDescriptor` every adaptor describes itself with, the `TomTotp` derivation primitives, `TomServerPrincipal` (the holder server self-login installs into), the wire types `TomAuthenticationMessage` / `TomAuthenticationResult`, and `TomResilientClient` (the OAuth transport's client). The 2FA types live there and not here because the server writes them and the client reads them |
 | `xml` | package | `saml_flow.dart`, `saml_provider.dart`, `saml_xml_signature.dart` | `XmlDocument`, `XmlElement`, parsing SAML responses and metadata, and the node walk exclusive canonicalization is written over |
 | [audit](audit.md) | module | `authentication_server.dart` | `TomAuditTrail.recordAction`, `TomAuditAction` and `TomAuditOutcome` — the record of a switch of the sign-in organization (`session.organizationSwitched`) |
 | [cache](cache.md) | module | `api_keys.dart`, `scim_service.dart` | `TomCacheInvalidator.revokePrincipal`, the default revocation a SCIM deprovisioning change calls; `TomCache` and `TomCacheManager` for the node's API-key lookup cache, and `TomCacheInvalidator.invalidateCacheEntry`, which drops a revoked or rotated key from it |

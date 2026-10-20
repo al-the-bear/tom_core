@@ -287,7 +287,7 @@ account's roles, and rotates and revokes it; `TomSqlApiKeyStore`
 | `TomOAuthFlow` · `TomOAuthPkce` · `TomOAuthStateStore` | The authorization-code + PKCE handshake and its pending-authorization records. |
 | `TomSqlOAuthStateStore` | A `TomOAuthStateStore` over the `tom_oauth_state` table — the one every node of a cluster shares. |
 | `TomOAuthStateStoreSettings` | Which store a deployment gets, read from `oauth.stateStore`; memory unless told otherwise. |
-| `TomOAuthTokenTransport` | The one HTTP call to a provider's token endpoint — the seam a stub provider replaces in tests. |
+| `TomOAuthTokenTransport` | The one HTTP call to a provider's token endpoint — the seam a stub provider replaces in tests. The live `TomHttpOAuthTokenTransport` sends through the kernel's `TomResilientClient`: every call is bounded by the provider's timeout and circuit breaker, a `GET` is retried, the token `POST` is not (a code is single-use). |
 | `TomExternalIdentityStore` · `TomExternalIdentityLink` | The linking table: (issuer, subject) → local account, many per account. |
 | `TomExternalIdentityDirectory` | What the deployment supplies: local principal lookup, and provisioning for a first external login. |
 | `TomOAuthTokenGrant` | One provider grant: access token, refresh token, scopes, lifetime. Never prints either token. |

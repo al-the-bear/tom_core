@@ -35,7 +35,7 @@ backend on every method, because one key must not be able to reach another.
 | `TomMemoryBlobStore` | A map. Tests and single-process development. |
 | `TomDirectoryBlobStore` | A directory tree. Writes to a `.partial` sibling and renames, so a reader never meets a half-written blob. |
 | `TomDatabaseBlobStore` | The bytes in the database itself, as a manifest row plus chunk rows — `blobManifestTable` and `blobChunkTable` declare the two tables, `blobManifestTableDdl` and `blobChunkTableDdl` render them. No new infrastructure: no bucket, no shared mount, no extra credential. |
-| `TomS3BlobStore` | S3 and anything speaking its API. `TomAwsV4Signer` and `TomAwsCredentials` sign the requests, so the store needs no AWS SDK. |
+| `TomS3BlobStore` | S3 and anything speaking its API. `TomAwsV4Signer` and `TomAwsCredentials` sign the requests, so the store needs no AWS SDK. Its default client is the kernel's `TomResilientClient`, so every request runs under the object store's timeout, retry, circuit-breaker and bulkhead policies (the server's `httpClient` key). |
 
 ### The registry
 

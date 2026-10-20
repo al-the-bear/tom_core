@@ -180,7 +180,7 @@ throw ArgumentError.value(timeout, 'timeout', 'the health deadline must be posit
 a raise outside the family with no marker, on a marker naming no category, and
 on a marker no longer standing above such a raise. `throw e` of a value already
 held is propagation, not a raise site, and is not judged. The reasons live at
-the thirteen marked sites rather than in a list in the test, so an exemption is
+the marked sites rather than in a list in the test, so an exemption is
 read where it is used and cannot outlive the code it excuses.
 
 ### The Whole Kernel Parameter List

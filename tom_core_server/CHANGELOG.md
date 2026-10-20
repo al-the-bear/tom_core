@@ -2,6 +2,25 @@
 
 ### Added
 
+- **Resilient outgoing HTTP calls, configured by `httpClient`.**
+  `TomServer.httpClientConfigurationKey` (`'httpClient'`) names the
+  configuration key and `TomServer.configureHttpClients([provider])` applies it
+  to the kernel's `TomHttpResilience.configure` — `timeoutMs`,
+  `streamedTimeoutMs` (uploads with a streamed body; off unless set), `retry`,
+  `circuitBreaker`, `bulkhead` and per-destination `destinations`. `start()`
+  calls it after the self-login and before building the router; a value of the
+  wrong shape stops the start with `http.client.config.invalid`, and without the
+  key the kernel's defaults stand (a 30-second timeout among them). The server's
+  own HTTP clients run under these policies: `TomHttpOAuthTokenTransport` sends
+  through one shared `TomResilientClient` (a `GET` — discovery, SAML metadata,
+  user info — is retried, the token `POST` is not, as a code is single-use), and
+  `TomS3BlobStore` and `TomOtlpHttpTransport` default their client to one; the
+  webhook, SMS and push transports, the FCM token exchange and the server
+  self-login get it through `TomServerChannel`'s default client factory.
+  `doc/configuration.md` § Outgoing HTTP Calls, with short notes in
+  `doc/server.md`, `doc/authentication.md`, `doc/file_storage.md`,
+  `doc/metrics.md` and `doc/messaging.md`; `test/http_client_resilience_test.dart`.
+
 - **Graceful shutdown on SIGTERM.** `TomGracefulShutdown` (`server` module)
   runs, in order: `GET /ready` answers `503 shutting down`; requests are still
   accepted for the readiness delay; the listener closes and the shutdown gate

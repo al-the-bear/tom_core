@@ -67,6 +67,14 @@ answers `GET /ready` from the framework's own checks unless the application
 installed a readiness analyzer — see
 [`doc/healthcheck.md`](../../../../doc/healthcheck.md).
 
+**Outgoing HTTP calls.** `start` applies the `httpClient` key of the
+configuration resources (`TomServer.configureHttpClients`,
+`TomServer.httpClientConfigurationKey`) to the kernel's `TomHttpResilience`:
+the timeout, retry, circuit-breaker and bulkhead policies every framework call
+to another service runs under, overall and per destination. A value of the
+wrong shape stops the start with `http.client.config.invalid` — see
+[`doc/configuration.md`](../../../../doc/configuration.md#outgoing-http-calls).
+
 **Graceful shutdown.** `start` puts the shutdown gate outermost in the
 pipeline and registers `TomServer.gracefulShutdown` for SIGTERM and SIGINT: on
 either signal `/ready` turns to `503`, the listener closes, a new request is

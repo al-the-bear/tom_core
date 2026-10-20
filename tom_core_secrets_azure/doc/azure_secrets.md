@@ -13,6 +13,7 @@ appear, their precedence, the boot order and the refresh cycle — is in
 - [The reference](#the-reference)
 - [Registering the provider](#registering-the-provider)
 - [Configuration](#configuration)
+- [The HTTP client](#the-http-client)
 - [Credentials](#credentials)
   - [A service principal](#a-service-principal)
   - [A managed identity](#a-managed-identity)
@@ -74,7 +75,8 @@ pass `Platform.environment`, or `TomEnvFile.resolveEnvironment()` to include a
 The constructor takes the vault and a credential; `apiVersion` overrides the
 REST API version, `name` registers the provider under another name (one per
 vault, `azure` and `azure-shared`), and `httpClient` replaces the default
-`http.Client` — the token requests go through the same client:
+client, a `TomResilientClient` over a new `http.Client` (see [The HTTP
+client](#the-http-client)) — the token requests go through the same client:
 
 ```dart
 final provider = TomAzureKeyVaultSecretsProvider(
@@ -116,6 +118,42 @@ needed; with neither, the provider is refused,
 `secrets.azure.config.missing_credentials`. `secrets.azure` is read as
 written: it holds the credentials that open the store, so a reference inside it
 is not resolved.
+
+## The HTTP client
+
+Without an `httpClient` of its own the provider sends through the kernel's
+`TomResilientClient`, and so do its token requests: every call runs under the
+policy of its destination that `tom_core_server`'s `httpClient` configuration
+key sets — see
+[`tom_core_server/doc/configuration.md`](../../tom_core_server/doc/configuration.md#outgoing-http-calls) — with a
+timeout on every attempt (30 seconds by default) and a circuit breaker and a
+bulkhead per destination. Three destinations are involved, each with its own
+circuit:
+
+| Destination | Calls | Retried |
+| ----------- | ----- | ------- |
+| The vault, `https://<name>.vault.azure.net` | `GET` of a secret | yes, after a connection failure, a timeout or a `429`/`502`/`503`/`504` |
+| Entra ID, `https://login.microsoftonline.com` (or `authorityHost`) | the service principal's token `POST` | no |
+| The managed identity endpoint, `IDENTITY_ENDPOINT` or `http://169.254.169.254` | the identity's token `GET` | yes |
+
+A call the policy abandons or refuses fails as `secrets.fetch.failed`, or as
+`secrets.azure.token_failed` when it was a token request.
+
+```yaml
+httpClient:
+  destinations:
+    "https://my-vault.vault.azure.net": {timeoutMs: 5000}
+    "http://169.254.169.254": {timeoutMs: 2000}
+```
+
+**At boot the load comes first.** `TomSecrets.load` runs before
+`TomServer.start` applies `httpClient`, so the load runs under the kernel's
+defaults unless the boot applies the key itself first —
+`TomServer.configureHttpClients` with the merged sources, as
+[`tom_core_server/doc/configuration.md`](../../tom_core_server/doc/configuration.md#outgoing-http-calls) shows. A
+refresh after the start runs under the configured policies. A client passed as
+`httpClient` replaces the resilient one; wrap it — `TomResilientClient(client)`
+— to keep the policies.
 
 ## Credentials
 

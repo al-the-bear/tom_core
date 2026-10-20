@@ -239,7 +239,7 @@ class TomAzureKeyVaultSecretsProvider implements TomSecretsProvider {
     this.apiVersion = '7.4',
     this.name = 'azure',
     http.Client? httpClient,
-  }) : _http = httpClient ?? http.Client();
+  }) : _http = httpClient ?? TomResilientClient(http.Client());
 
   /// Builds a provider from the `secrets.azure` configuration key, falling
   /// back to the variables Azure's SDKs read:
