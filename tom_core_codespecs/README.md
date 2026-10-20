@@ -63,7 +63,7 @@ otherwise reuse: CE-API's *second* binding of an already-named operation.
 
 ```yaml
 dependencies:
-  tom_core_codespecs: ^0.13.0
+  tom_core_codespecs: ^0.13.1
 ```
 
 or
@@ -410,7 +410,7 @@ rather than an omission.
 
 ## Status
 
-Version **0.13.0**, published on pub.dev. The suite runs with `dart test`; no
+Version **0.13.1**, published on pub.dev. The suite runs with `dart test`; no
 count is given, because a count is a claim nothing checks and every added test
 would be a README edit nobody makes. The version is checked.
 

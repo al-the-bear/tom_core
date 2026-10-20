@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.13.1
+
+- Documentation only: the CodeSpecs mapping and derivation contract name the
+  `interval` job trigger (`CsJobTrigger.interval`, `SCJOB-INTV`, lowered onto
+  `TomIntervalSchedule`).
+
 ## 0.13.0
 
 - **`TomOperationBinding`** (`lib/src/operation_binding.dart`), with
