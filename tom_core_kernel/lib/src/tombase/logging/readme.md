@@ -13,6 +13,12 @@ retried, written to a fallback sink, and buffered in a replay queue whose
 storage is pluggable — in memory by default, or mirrored to disk so the buffer
 survives a restart during an endpoint outage.
 
+For a log collector, `TomJsonLogOutput` writes one JSON object per line — the
+fixed fields `timestamp`, `level`, `message`, `logger`, `isolate`, then the
+context fields read from the zone: `trace_id`, `span_id` and `tenant` by
+default, plus what an application registers. Ids only — no personal data in a
+fixed field.
+
 ## Key types
 
 | Type | Responsibility |
@@ -26,6 +32,8 @@ survives a restart during an endpoint outage.
 | `TomLogReplayStore` | Storage contract behind `TomRemoteLogOutput`'s replay queue: FIFO append, snapshot, and overflow that drops from the head. |
 | `TomInMemoryLogReplayStore` | The zero-config default — buffered records live in a list and are lost if the process exits with the queue non-empty. |
 | `TomFileLogReplayStore` | Durable alternative: every mutation is mirrored to a JSON file (written to a temp file and renamed into place) under a sibling lock, and every operation reloads it — so the buffer survives a restart mid-outage, and two owners of one path do not overwrite each other. Requires `dart:io`, so it is not available on the web. |
+| `TomJsonLogOutput` | Structured output: one JSON object per line, errors and status to stderr, or through a `writer`. `fixedFields` names the five fields every line has; `entry(...)` answers the object a line is encoded from. |
+| `TomLogContext` | The context fields of a structured line, read from the current zone: `register` / `unregister` a `TomLogFieldProvider`, `names`, `fields()`. A provider that throws is skipped; a fixed field name is refused. |
 
 ## Quick start
 

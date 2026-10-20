@@ -3,7 +3,8 @@
 Isolate-aware and remote log delivery: log outputs that route messages from
 worker isolates to a dedicated logging isolate or back to the creator isolate,
 plus HTTP-based transmission of log messages to (and reception on) a central
-logging server.
+logging server, and a structured output writing one JSON object per line with
+the trace, span and tenant of the work that logged it.
 
 ## Table of Contents
 
@@ -24,6 +25,8 @@ logging server.
   - [TomFileLogReplayStore](#tomfilelogreplaystore)
   - [TomRemoteLogOutput](#tomremotelogoutput)
   - [TomRemoteLogServer](#tomremotelogserver)
+  - [TomLogContext](#tomlogcontext)
+  - [TomJsonLogOutput](#tomjsonlogoutput)
 - [Global Functions and Constants](#global-functions-and-constants)
 
 ## Overview
@@ -34,6 +37,7 @@ Sources:
 - `lib/src/tombase/logging/remote_logoutput.dart`
 - `lib/src/tombase/logging/file_log_replay_store.dart`
 - `lib/src/tombase/logging/remote_logserver.dart`
+- `lib/src/tombase/logging/json_logoutput.dart`
 
 The Logging module builds on the `TomLogLevel` / `TomLogOutput` primitives from
 `tom_basics`. The isolate side lets the main isolate offload log processing to a
@@ -51,6 +55,16 @@ in a bounded replay queue whose storage is pluggable through
 mirrored to disk (`TomFileLogReplayStore`) so the buffer survives a process
 restart during an endpoint outage.
 
+The structured side writes each entry as one JSON object per line
+(`TomJsonLogOutput`) — the fixed fields `timestamp`, `level`, `message`,
+`logger` and `isolate`, then the **context fields** `TomLogContext` reads from
+the zone the entry was logged in: `trace_id` and `span_id` from
+`TomTraceContext.current`, `tenant` from `TomTenantContext.currentId`, and any
+field an application registers (`tom_core_server` adds `request_id`). A log
+collector indexes such a line field by field, so every line of one trace or one
+tenant is a query. The fixed fields and the framework's context fields are ids,
+never personal data.
+
 The log-level type (`TomLogLevel`) is defined in `tom_basics`, not in this
 module.
 
@@ -65,7 +79,8 @@ TomInterIsolateLogMessage
 TomLogOutput  (tom_basics)
     ├── TomIsolateLogOutput
     ├── TomCreatorLogOutput
-    └── TomRemoteLogOutput
+    ├── TomRemoteLogOutput
+    └── TomJsonLogOutput
 
 TomWorkerContext  (isolate_pooling)
     └── TomLoggingWorkerContext
@@ -83,6 +98,8 @@ TomLogReplayStore  (abstract interface)
     └── TomFileLogReplayStore
 
 TomRemoteLogServer
+
+TomLogContext  (abstract final)
 ```
 
 ## Classes
@@ -506,6 +523,78 @@ rejection. Reporting is itself failure-tolerant — when the broken sink is the
 cause, writing the diagnostic throws again, and that second failure is
 swallowed rather than allowed to escape into the collector's HTTP handler.
 
+### TomLogContext
+
+The context fields every structured log line carries, read from the zone the
+entry is logged in. All members are static.
+
+- **Kind:** abstract final class (static members only).
+
+The kernel registers three fields, in this order:
+
+| Context field | Provider |
+| ----- | -------- |
+| `trace_id` | `TomTraceContext.current?.traceId` |
+| `span_id` | `TomTraceContext.current?.spanId` |
+| `tenant` | `TomTenantContext.currentId` |
+
+`tom_core_server` adds `request_id`. A field must name work — a trace, a
+request, a tenant — never a person.
+
+#### Static Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `names` | `List<String>` | *(getter)* The registered field names, in the order they are written; an unmodifiable copy. |
+
+#### Static Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `register` | `static void register(String name, TomLogFieldProvider provider)` | Registers `provider` for the field `name`, replacing an earlier one (a replaced field keeps its position). Throws `ArgumentError` for a name in `TomJsonLogOutput.fixedFields` — a programmer error, since a field name is chosen in code. |
+| `unregister` | `static bool unregister(String name)` | Removes the field `name`; answers whether it was registered. |
+| `fields` | `static Map<String, String> fields()` | The context fields of the current zone that have a value, in registration order. A provider answering `null` or an empty string contributes nothing, and so does a provider that throws: a log line must not fail because the context it would have carried could not be read. |
+
+### TomJsonLogOutput
+
+A `TomLogOutput` writing one JSON object per line.
+
+- **Extends:** `TomLogOutput`
+
+| Line field | Present | Value |
+| ----- | ------- | ----- |
+| `timestamp` | always | the entry's time, UTC, ISO 8601 |
+| `level` | always | the level name, trimmed and lower-case (`info`, `warn`, `error`, …) |
+| `message` | always | the message, rendered as `TomLogOutput.convertToString` renders it |
+| `logger` | when the logger determined its caller | the calling `Class.method` (the entry's origin) |
+| `isolate` | always | the isolate the entry was logged in |
+| context fields | when the zone has a value | `TomLogContext.fields()` |
+
+#### Constructors
+
+```dart
+TomJsonLogOutput({void Function(String line, bool isError)? writer})
+```
+
+An output writing through `writer` — each line without its newline, and whether
+it is an error-stream line — or to stdout / stderr through `TomPlatformUtils`
+when omitted.
+
+#### Static Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `fixedFields` | `static const Set<String>` | `timestamp`, `level`, `message`, `logger`, `isolate` — the fields every line has, which a context field may not replace. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `output` | `void output(TomLogLevel loggerLevel, TomLogLevel logLevel, String level, Object message, String isolateName, DateTime timeStamp, [String? origin])` | *(override)* Writes `entry(...)` as one JSON line when `logLevel` matches `loggerLevel`. A line whose level matches `TomConsoleLogOutput.globalSettingStderrLogLevel` (errors and status by default) is an error-stream line, as `TomConsoleLogOutput` routes it. |
+| `entry` | `Map<String, Object> entry(String level, Object message, String isolateName, DateTime timeStamp, [String? origin])` | The object one entry is written as — the fixed fields, then the context fields of the current zone. |
+
 ## Global Functions and Constants
 
-None — this module exposes no top-level functions or constants.
+| Name | Signature | Description |
+| ---- | --------- | ----------- |
+| `TomLogFieldProvider` | `typedef TomLogFieldProvider = String? Function()` | Computes one context field of a log entry from the current zone, or `null` when the zone has no value for it. |

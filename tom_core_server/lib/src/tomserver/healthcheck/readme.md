@@ -16,6 +16,13 @@ balancer and leaves it running. A dependency being down belongs on readiness.
 own `TomHealthAnalyzer` (both default to the always-healthy
 `TomDefaultHealthAnalyzer`).
 
+`TomServer.start` answers `/ready` with `TomFrameworkReadinessAnalyzer` unless
+the application installed a readiness analyzer of its own (configuration key
+`frameworkReadiness`, on by default): every registered data source operational
+and answering `SELECT 1`, no database migration running or failed, every started
+message outbox delivering. The body is `ready` or `not ready` followed by one
+line per check. Liveness is left alone.
+
 ## Key types
 
 | Type | Responsibility |
@@ -25,6 +32,8 @@ own `TomHealthAnalyzer` (both default to the always-healthy
 | `TomHealthAnalyzer` | Abstract probe that decides the health verdict. |
 | `TomHealthStatus` · `TomHealthVerdict` | What an analyzer concludes: the verdict a probe acts on, and the message a person reads. Two verdicts, because HTTP offers a probe two answers. |
 | `TomDefaultHealthAnalyzer` | Always-healthy analyzer used when no custom probe is supplied. |
+| `TomFrameworkReadinessAnalyzer` | The framework's readiness checks — data sources, migrations, started outboxes — with `dataSourceTimeout` (two seconds) and the optional `maxOutboxWait` (off by default: a shared backlog would take every node out of the load balancer at once). Compose it into an application analyzer by asking it first. |
+| `TomReadinessCheck` | One check of that analyzer: `subject`, `passed`, `detail`; `checks()` returns them. |
 
 ## Quick start
 
@@ -47,11 +56,14 @@ Future<void> main() async {
 See [`doc/healthcheck.md`](../../../../doc/healthcheck.md) for the verdict
 contract and how a deployment supplies its own analyzer, and
 `example/healthcheck/healthcheck_example.dart` for a connection-free walkthrough
-that checks its own results. `test/healthcheck_test.dart` covers the module and
+that checks its own results, and
+`example/healthcheck/readiness_logging_example.dart` for the framework readiness
+checks and the JSON log line of a request. `test/healthcheck_test.dart` covers the module and
 `test/endpoints_pipeline_test.dart` pins the route it is served on, in the group
 `healthcheck GET /health route` — the analyzer is reachable in-process, but the
 path a load balancer polls is only a fact once something serves it.
-`test/examples_test.dart` runs the example and
+`test/structured_logs_readiness_test.dart` and its `db`-tagged sibling cover the
+framework readiness checks. `test/examples_test.dart` runs the examples and
 `test/readme_quick_start_test.dart` runs the snippet above, so neither can drift
 away from the code.
 

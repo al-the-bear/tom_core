@@ -1,6 +1,6 @@
 # TomBase Logging System
 
-A flexible, configurable logging framework for Dart applications with support for multiple log levels, custom outputs, isolate-based logging, and remote log collection.
+A flexible, configurable logging framework for Dart applications with support for multiple log levels, custom outputs, isolate-based logging, remote log collection, and structured JSON lines that carry the trace, span and tenant of the work that logged them.
 
 ## Table of Contents
 
@@ -19,6 +19,11 @@ A flexible, configurable logging framework for Dart applications with support fo
     - [When the creator channel is absent](#when-the-creator-channel-is-absent)
   - [Custom Loggable Objects](#custom-loggable-objects)
   - [Delayed/Function Logging](#delayedfunction-logging)
+- [Structured JSON Output](#structured-json-output)
+  - [The line](#the-line)
+  - [Context fields](#context-fields)
+  - [Registering a field](#registering-a-field)
+  - [No personal data in a fixed field](#no-personal-data-in-a-fixed-field)
 - [Best Practices](#best-practices)
   - [1. Use Appropriate Log Levels](#1-use-appropriate-log-levels)
   - [2. Use Lazy Evaluation for Expensive Messages](#2-use-lazy-evaluation-for-expensive-messages)
@@ -54,6 +59,9 @@ A flexible, configurable logging framework for Dart applications with support fo
 | `TomFileLogReplayStore` | class | A `TomLogReplayStore` that persists buffered records to a JSON file. |
 | `TomInMemoryLogReplayStore` | class | In-memory `TomLogReplayStore` — the zero-config default. |
 | `TomLogReplayStore` | abstract class | Pluggable backend for `TomRemoteLogOutput`'s replay queue. |
+| `TomJsonLogOutput` | class | Log output writing one JSON object per line. |
+| `TomLogContext` | abstract final class | The context fields every structured line carries, read from the zone. |
+| `TomLogFieldProvider` | typedef | Computes one context field from the current zone. |
 
 The TomBase logging system provides:
 
@@ -63,6 +71,7 @@ The TomBase logging system provides:
 - **Pluggable Outputs**: Console, remote server, isolate-based, or custom implementations
 - **Multi-Isolate Support**: Centralized logging across all application isolates
 - **Remote Logging**: Send logs to a centralized server for analysis
+- **Structured Output**: One JSON object per line, with the trace, span and tenant read from the zone
 
 ## Quick Start
 
@@ -192,6 +201,7 @@ Abstract base class for log output implementations.
 - **TomRemoteLogOutput**: Sends logs to a remote server
 - **TomIsolateLogOutput**: Routes logs through a dedicated logging isolate
 - **TomCreatorLogOutput**: Routes worker isolate logs to main isolate
+- **TomJsonLogOutput**: Writes one JSON object per line to stdout/stderr — see [Structured JSON Output](#structured-json-output)
 
 #### Custom Output
 
@@ -675,6 +685,112 @@ tomLog.trace(() => 'Created user: $user'); // Will only be executed if the log l
 
 ```
 
+## Structured JSON Output
+
+`TomJsonLogOutput` writes every entry as one JSON object on one line. A log
+collector — Loki, Elasticsearch, CloudWatch, Cloud Logging — indexes such a
+line field by field, so "every line of trace 4bf9…" or "every error of tenant
+acme" is a query rather than a regular expression over free text.
+
+```dart
+tomLog.logOutput = TomJsonLogOutput();
+```
+
+Errors and status entries go to stderr and the rest to stdout, as
+`TomConsoleLogOutput` routes them (the split follows
+`TomConsoleLogOutput.globalSettingStderrLogLevel`). Pass a `writer` to send the
+lines somewhere else — it receives each line without its newline, and whether
+it is an error-stream line:
+
+```dart
+final lines = <String>[];
+tomLog.logOutput = TomJsonLogOutput(writer: (line, isError) => lines.add(line));
+```
+
+In `tom_core_server` the setting `logFormat: json` installs this output.
+
+### The line
+
+```json
+{"timestamp":"2026-10-20T08:15:02.113Z","level":"info","message":"Order placed",
+ "logger":"OrderService.place","isolate":"main",
+ "trace_id":"4bf92f3577b34da6a3ce929d0e0e4736","span_id":"00f067aa0ba902b7",
+ "tenant":"acme"}
+```
+
+(One line in the output; wrapped here.)
+
+| Line field | Present | Value |
+| ----- | ------- | ----- |
+| `timestamp` | always | the entry's time, UTC, ISO 8601 |
+| `level` | always | the level name, trimmed and lower-case (`info`, `warn`, `error`, …) |
+| `message` | always | the message, rendered as `TomLogOutput.convertToString` renders it — a `TomLoggable`'s own rendering, a function's result |
+| `logger` | when the logger determined its caller | the calling `Class.method` |
+| `isolate` | always | the isolate the entry was logged in |
+| context fields | when the zone has a value | see below |
+
+The five fixed fields are `TomJsonLogOutput.fixedFields`. `entry(...)` answers
+the object a line is encoded from, for an output that wants the fields rather
+than the text.
+
+### Context fields
+
+The fields that name the work come from the zone the entry was logged in,
+through `TomLogContext`; nothing at the call site passes them.
+
+| Context field | Read from | Set by |
+| ----- | --------- | ------ |
+| `trace_id` | `TomTraceContext.current?.traceId` | `TomTraceContext.run` — see [Trace Context](../context/context.md#trace-context) |
+| `span_id` | `TomTraceContext.current?.spanId` | the same |
+| `tenant` | `TomTenantContext.currentId` | `TomTenantContext.run` — see [Tenant Context](../context/context.md#tenant-context) |
+| `request_id` | the server's request | `tom_core_server`, which registers it |
+
+A field whose provider answers `null` or an empty string is left out of the
+line, so a line logged outside every trace and tenant carries only the fixed
+fields. A provider that throws contributes nothing either: a log line must not
+fail because the context it would have carried could not be read.
+
+```dart
+TomTraceContext.run(TomTraceContext.newRoot(), () {
+  TomTenantContext.run('acme', () {
+    tomLog.info('Order placed'); // carries trace_id, span_id and tenant
+  });
+});
+```
+
+### Registering a field
+
+An application adds a field of its own with `TomLogContext.register`; the
+provider is called once per line, in the zone the line is logged in.
+
+```dart
+final region = Object();
+TomLogContext.register('region', () => Zone.current[region] as String?);
+
+runZoned(() => tomLog.info('Shipped'), zoneValues: {region: 'eu-west'});
+// … "isolate":"main","region":"eu-west"}
+
+TomLogContext.unregister('region');
+```
+
+| Member | Meaning |
+| ------ | ------- |
+| `names` | The registered field names, in the order they are written. |
+| `register(name, provider)` | Registers `provider` for `name`, replacing an earlier one in its place. A name in `TomJsonLogOutput.fixedFields` throws `ArgumentError`. |
+| `unregister(name)` | Removes the field; answers whether it was registered. |
+| `fields()` | The context fields of the current zone that have a value. |
+
+The registry is per isolate, like every static; a worker isolate that writes
+JSON lines registers its own fields.
+
+### No personal data in a fixed field
+
+The fixed fields and the framework's context fields are ids — a trace, a span,
+a request, a tenant — never a user name, an address or a principal. What a
+message says is the message's business; what every line carries is chosen so
+every line may be kept. A field an application registers is held to the same
+rule: it names work, not a person.
+
 ## Best Practices
 
 ### 1. Use Appropriate Log Levels
@@ -746,6 +862,10 @@ value a caller would ignore.
 | Type | Error key | Raised when |
 | ---- | --------- | ----------- |
 | `TomException` | `logging.isolate.runtime_not_initialized` | `TomIsolateLogging.startIsolatedLogging` was called without a `workerContext` and the runtime platform has not been registered, so the default worker context cannot be built. Register it during application startup — normally `TomRuntime.setCurrentPlatform(...)` — or pass a context of your own. |
+
+`TomLogContext.register` also throws, an `ArgumentError`, for a field name that
+is one of `TomJsonLogOutput.fixedFields` — a programming error, since a field
+name is chosen in code, and so outside the keyed family.
 
 Delivery failures are not in this table and never throw. A record the remote
 endpoint refuses is written to the fallback output and, if the replay queue is
@@ -820,6 +940,7 @@ Resilience](#delivery-resilience) for what each knob buys.
 
 ```
 logging/
+├── json_logoutput.dart         # Structured JSON lines + context fields
 ├── logging_isolate.dart        # Multi-isolate support
 ├── remote_logoutput.dart       # Remote logging client + replay queue
 ├── file_log_replay_store.dart  # Durable, file-backed replay store
@@ -838,9 +959,10 @@ that route records off the emitting isolate.
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
 | `dart:async` | dart | `logging_isolate.dart`, `remote_logoutput.dart` | `Completer`, `Future`, `unawaited` |
-| `dart:convert` | dart | `file_log_replay_store.dart` | `jsonDecode`, `jsonEncode` |
+| `dart:convert` | dart | `file_log_replay_store.dart`, `json_logoutput.dart` | `jsonDecode`, `jsonEncode` |
 | `dart:io` | dart | `file_log_replay_store.dart` | The replay store's file access, and the reason that one file is native-only |
 | `tom_basics` | package | every file | `tomLog` and the `TomLogOutput` interface this module plugs into. The module does not *define* logging — it supplies outputs for the logger that already exists |
+| [context](../context/context.md) | module | `json_logoutput.dart` | `TomTraceContext` and `TomTenantContext`, which the default context fields `trace_id`, `span_id` and `tenant` read |
 | [http_connection](../http_connection/http_connection.md) | module | `remote_logoutput.dart` | `TomServerEndpoint`, which ships batches to the log server |
 | [isolate_pooling](../isolate_pooling/isolate_pooling.md) | module | `logging_isolate.dart` | `TomWorker`, which is what moves file writes off the calling isolate |
 | [little_things](../little_things/little_things.md) | module | `file_log_replay_store.dart`, `logging_isolate.dart`, `remote_logoutput.dart` | `getFromCurrentZone` for the ambient `TomLoggingContext`, `tomWriteFileAtomically` for the replay store, and `TomException` for the module's one raised failure — `logging.isolate.runtime_not_initialized`, see *What the module throws* |

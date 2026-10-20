@@ -86,7 +86,8 @@ added.
 
 | Type | Responsibility |
 | ---- | -------------- |
-| `TomServer` | The shelf-based HTTP host and its middleware pipeline |
+| `TomServer` | The shelf-based HTTP host and its middleware pipeline; `logFormat: json` writes one JSON log line per entry |
+| `tomRequestContextMiddleware` / `tomRequestIdHeader` | Every request's correlation ids: a request id echoed as `X-Request-Id`, and the caller's W3C `traceparent` continued with a span of the server's own — carried as `request_id`, `trace_id` and `span_id` on every structured log line it writes |
 | `TomEndpoint` / `TomEndpointHandler` / `TomEndpointRouting` | Endpoint declaration and the request-handling pipeline |
 | `TomService` / `TomApiImplementation` / `TomTransactional` | Annotations that turn a class into a routed API, and mark a handler transactional |
 | `TomFileEndpoint` / `TomFileSlots` / `TomFileSlot` | Upload/download/probe/delete over a `<table>/<id>/<column>` slot derived from the entity's own annotations — registered per repository, exposed only where `@TomFileReference` says so |
@@ -142,7 +143,7 @@ added.
 | `file_storage` | `TomBlobStore`, `TomDatabaseBlobStore`, `TomDirectoryBlobStore`, `TomS3BlobStore`, `TomMemoryBlobStore`, `TomBlobStoreInfo`, `TomFileReference` | Streaming blob storage behind one four-method contract, backends chosen in configuration, and entity columns that hold a storage key instead of the bytes |
 | `scheduling` | `TomSqlJobStore`, `TomSqlLeaseLock` | The kernel's job-store and lease-lock contracts over a shared database, so a cluster whose nodes share no filesystem still runs each window exactly once |
 | `preferences` | `TomUserPreference`, `TomUserPreferenceRepository`, `TomUserPreferences`, `TomUserPreferencesServer` | Per-principal preferences that follow the user across devices: one scoped table, a typed service that reads its caller from the request zone, and the `/preferences/*` endpoints behind the kernel's contract |
-| `healthcheck` | `TomHealthService`, `TomHealthServer`, `TomHealthAnalyzer` | Health endpoints and analyzers |
+| `healthcheck` | `TomHealthService`, `TomHealthServer`, `TomHealthAnalyzer`, `TomFrameworkReadinessAnalyzer` | Liveness at `/health` and readiness at `/ready`, each with a pluggable analyzer; `/ready` answers by default with the framework's own checks — data sources answering `SELECT 1`, no migration running or failed, started outboxes delivering — one line per check in the body |
 | `cmdline` | `TomArgs`, `TomEnvFile` | Argument parsing and `.env` loading |
 | `little_things` | `TomServerException`, `TomLoginException`, `TomRequestId` | Server exception base (extends kernel `TomException`), the login failure it raises, and the per-request correlation id it reads from the zone |
 
@@ -221,7 +222,8 @@ there, or excluded with a stated reason.
 | [`example/ratelimit/`](example/ratelimit/) | A service account's scoped API key authenticating requests through the server's own middlewares, limits per key and per anonymous address answering `429` with `Retry-After`, a rotation and a revocation |
 | [`example/tenancy/`](example/tenancy/) | Two tenants in one deployment: request resolution by host, header and token, a login binding its token, and caches, revocations, jobs and the outbox kept apart |
 | [`example/metrics/`](example/metrics/) | Requests counted by route pattern rather than path, a scrape refused without its token and answered with it, cache lookups in the same scrape, and the registry pushed over OTLP to an in-process receiver and once more on close |
-| [`example/healthcheck/`](example/healthcheck/) · [`example/cmdline/`](example/cmdline/) · [`example/little_things/`](example/little_things/) | Health, CLI, and exceptions |
+| [`example/healthcheck/`](example/healthcheck/) | The liveness and readiness verdicts and what a probe acts on; `readiness_logging_example.dart` adds the framework readiness checks and the JSON log line a request writes with its trace and request ids |
+| [`example/cmdline/`](example/cmdline/) · [`example/little_things/`](example/little_things/) | CLI and exceptions |
 
 Run a single example, or all of them:
 

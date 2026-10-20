@@ -2,6 +2,26 @@
 
 ### Added
 
+- **`TomTraceContext`** (`context/`): the W3C Trace Context a piece of work
+  belongs to, carried in the zone — `traceId`, `spanId`, `parentSpanId`,
+  `sampled`. `parse` reads a `traceparent` header and answers `null` for an
+  invalid one (as the W3C specification requires), `newRoot` starts a trace,
+  `child` continues one with a new span, `traceparent` renders the header for an
+  outgoing call, and `run` / `current` install and read it. The constructor
+  throws `FormatException` for an invalid id. `doc/context/context.md` § Trace
+  Context; sample `example/samples/context/05_trace_context_example.dart`; tests
+  in `test/structured_logging_test.dart`.
+- **Structured log output** (`logging/`): `TomJsonLogOutput` writes one JSON
+  object per line — `timestamp` (UTC, ISO 8601), `level` (lower-case),
+  `message`, `logger`, `isolate` (`fixedFields`), then the context fields of the
+  current zone — with errors and status to stderr as `TomConsoleLogOutput`
+  routes them, or through a `writer`. `TomLogContext` holds the context fields
+  (`trace_id`, `span_id`, `tenant` by default; `register` / `unregister` a
+  `TomLogFieldProvider`, `names`, `fields()`); a provider that throws is
+  skipped, and registering a fixed field name throws `ArgumentError`. Fixed
+  fields carry ids only, never personal data. `doc/logging/logging.md`
+  § Structured JSON Output; sample
+  `example/samples/logging/07_json_log_output_example.dart`.
 - **Metrics module** (`metrics/`): `TomMetricRegistry` holds counters
   (`TomCounter`), gauges (`TomGauge`), histograms (`TomHistogram`, with
   `tomLatencyBuckets` and `tomLagBuckets`) and observed gauges (`observe`,

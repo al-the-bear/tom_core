@@ -16,12 +16,12 @@ declarations are omitted.
 | Module | Summary | What it provides |
 | ------ | ------- | ---------------- |
 | Bean Locator | [api_summary_beanlocator.md](api_summary_beanlocator.md) | Component annotation and typed bean lookup/dependency injection. |
-| Context | [api_summary_context.md](api_summary_context.md) | Zone-scoped typed execution context and ambient providers, and the zone-carried tenant. |
+| Context | [api_summary_context.md](api_summary_context.md) | Zone-scoped typed execution context and ambient providers, and the zone-carried tenant and W3C trace context. |
 | HTTP Connection | [api_summary_http_connection.md](api_summary_http_connection.md) | Server call model, remote APIs/endpoints, headers, MIME types, auth-retry, client factories. |
 | Isolate Pooling | [api_summary_isolate_pooling.md](api_summary_isolate_pooling.md) | Worker/executor/command model and isolate worker pool. |
 | JSON | [api_summary_json.md](api_summary_json.md) | JSON serialization contract, map merge/traversal, env substitution, pretty printing. |
 | Little Things | [api_summary_little_things.md](api_summary_little_things.md) | Kernel base exception, zone helpers, checked runners, stack-trace and offset formatting. |
-| Logging | [api_summary_logging.md](api_summary_logging.md) | Cross-isolate and remote log transport, outputs, and log servers. |
+| Logging | [api_summary_logging.md](api_summary_logging.md) | Cross-isolate and remote log transport, outputs, and log servers, and the structured JSON line output with its zone-read context fields. |
 | Metrics | [api_summary_metrics.md](api_summary_metrics.md) | Counters, gauges, histograms and observed gauges in a per-isolate registry, and the Prometheus text rendering of its snapshot. |
 | Observable | [api_summary_observable.md](api_summary_observable.md) | Observable base, observers, and the boxed `TomObject<T>` value/collection hierarchy. |
 | Preferences | [api_summary_preferences.md](api_summary_preferences.md) | Well-known preference keys, wire DTOs, the value codec, and the `/preferences` API declaration. |
@@ -62,6 +62,7 @@ declarations are omitted.
 | `TomTenantException` | class | Invalid tenant id or missing tenant context (extends `TomException`). |
 | `TomTenantScopedCommand` | class | A `TomCommand` that runs its inner command inside a tenant, across isolates too. |
 | `TomTenantEvent` | class | An event for an event-triggered job, carrying its tenant. |
+| `TomTraceContext` | class | The W3C trace and span the current zone's work belongs to; parses and renders `traceparent`. |
 
 ### HTTP Connection (`lib/src/tombase/http_connection/`)
 
@@ -181,6 +182,9 @@ declarations are omitted.
 | `TomFileLogReplayStore` | class | A `TomLogReplayStore` that persists buffered records to a JSON file. |
 | `TomInMemoryLogReplayStore` | class | In-memory `TomLogReplayStore` — the zero-config default. |
 | `TomLogReplayStore` | abstract class | Pluggable backend for `TomRemoteLogOutput`'s replay queue. |
+| `TomLogFieldProvider` | typedef | Computes one context field of a structured log line from the current zone. |
+| `TomLogContext` | abstract final class | The context fields every structured log line carries (`trace_id`, `span_id`, `tenant`, and registered ones). |
+| `TomJsonLogOutput` | class | Log output writing one JSON object per line. |
 
 ### Metrics (`lib/src/tombase/metrics/`)
 

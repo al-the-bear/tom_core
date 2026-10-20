@@ -29,14 +29,15 @@ serialized without hand-written boilerplate. Conceptually it provides five thing
 
 - **Observable state** — values and objects that notify observers on change, with
   a terse operator syntax (`|` set, `~` read, `>>` observe).
-- **Ambient context** — zone-propagated execution context, the tenant a piece
-  of work belongs to, and hierarchical scope identifiers, so a deeply nested
+- **Ambient context** — zone-propagated execution context, the tenant and the
+  W3C trace a piece of work belongs to, and hierarchical scope identifiers, so a deeply nested
   call can resolve "where am I" without threading parameters through every
   frame.
 - **Dependency injection** — a reflection-driven bean container.
 - **Security** — authentication, a layered access-control model, bearer-token
   auth, and a four-state authorization model (`TomAuthState`).
-- **Runtime utilities** — logging (including isolate/remote), an isolate worker
+- **Runtime utilities** — logging (including isolate/remote, and structured
+  JSON lines carrying the trace, span and tenant), an isolate worker
   pool, a durable job scheduler, in-process metrics exported to Prometheus
   and OTLP, the canonical success-or-error result
   envelope, JSON tree helpers, resource providers, settings, timezone-aware
@@ -92,6 +93,7 @@ require a `dart run build_runner build` to generate `*.reflection.dart`.
 | `TomExecutionContext` | Ambient, zone-propagated execution context |
 | `TomContextEntry<T>` | A typed value carried on the context |
 | `TomTenantContext` / `TomTenantScopedCommand` / `TomTenantEvent` | The tenant — an isolation boundary, not an organization — carried in the zone, into a job's body and across an isolate hop |
+| `TomTraceContext` | The W3C trace and span the work belongs to, carried in the zone; parses and renders `traceparent` |
 | `TomScope` / `ScopeCapture` | Hierarchical, zone-propagated scope identifiers |
 
 ### Dependency injection (`beanlocator`)
@@ -122,7 +124,7 @@ handle declared so far so a missing binding fails at start-up.
 
 | Module | Key types | What it does |
 | ------ | --------- | ------------ |
-| `logging` | isolate & remote log output/server | Structured logging across isolates and the wire |
+| `logging` | isolate & remote log output/server, `TomJsonLogOutput`, `TomLogContext` | Structured logging across isolates and the wire; one JSON object per line with the trace, span and tenant read from the zone |
 | `isolate_pooling` | `TomWorker`, `TomWorkerPool`, `TomExecutor`, `TomCommand` | Worker-pool execution across isolates |
 | `metrics` | `TomMetricRegistry`, `TomCounter`, `TomGauge`, `TomHistogram`, `TomMetrics.registry`, `tomPrometheusText` | Per-isolate counters, gauges, histograms and observed gauges; one snapshot rendered as Prometheus text and read by the server's OTLP exporter |
 | `scheduling` | `TomScheduler`, `TomJobDefinition`, `TomSchedule` (cron / calendar / interval / once / event), `TomJobStore`, `TomLeaseLock` | Durable, leased job scheduling with retry and catch-up policies |
@@ -170,13 +172,13 @@ so anything listed below is executed on every run.
 | ------ | ------------ |
 | [`example/samples/observable/`](example/samples/observable/) | Observable scalars, composites, and observers |
 | [`example/samples/beanlocator/`](example/samples/beanlocator/) | Registering and locating beans |
-| [`example/samples/context/`](example/samples/context/) | Execution context & context entries |
+| [`example/samples/context/`](example/samples/context/) | Execution context & context entries, and the W3C trace context |
 | [`example/samples/scope_ids/`](example/samples/scope_ids/) | Hierarchical scope paths |
 | [`example/samples/security/`](example/samples/security/) | Access controls, authorization, bearer auth |
 | [`example/samples/crypto/`](example/samples/crypto/) | JWT / hashing helpers (via `tom_crypto`) |
 | [`example/samples/runtime/`](example/samples/runtime/) | Environment / platform detection (via `tom_basics`) |
 | [`example/samples/isolate_pooling/`](example/samples/isolate_pooling/) | Worker-pool execution |
-| [`example/samples/logging/`](example/samples/logging/) | Structured / isolate / remote logging |
+| [`example/samples/logging/`](example/samples/logging/) | Structured / isolate / remote logging, and JSON lines with their context fields |
 | [`example/samples/resources/`](example/samples/resources/) | Text & config resource providers |
 | [`example/samples/preferences/`](example/samples/preferences/) | The preference codec's scalar, `DateTime` and reflected round-trips, and the `/preferences` contract |
 | [`example/samples/metrics/`](example/samples/metrics/) | The three instruments and every misuse refused, the exact Prometheus text of a snapshot, and the `tom_job_*` series a scheduler records |

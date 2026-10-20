@@ -72,8 +72,9 @@ TomException  (kernel)
 
 ### TomRequestId
 
-A per-request correlation id. `tomDefaultAuthenticationMiddleware` (server
-module) creates one per incoming request and publishes it into the request zone,
+A per-request correlation id. `tomRequestContextMiddleware` (server module)
+creates one per incoming request and publishes it into the request zone — echoed
+to the caller as `X-Request-Id` —
 so any code under that request can recover it with
 `getFromCurrentZone<TomRequestId>()`. It is read by the `TomServerException`
 constructor, by the endpoints pipeline, and by

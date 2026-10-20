@@ -58,6 +58,7 @@ out of.
 - [What "Queued" Guarantees](#what-queued-guarantees)
 - [Failure Reporting](#failure-reporting)
 - [Wiring a Server](#wiring-a-server)
+  - [The outbox and readiness](#the-outbox-and-readiness)
 - [Messages per Tenant](#messages-per-tenant)
 - [Application Email: A Template Key, Not a Body](#application-email-a-template-key-not-a-body)
   - [The three sub-keys](#the-three-sub-keys)
@@ -1183,7 +1184,25 @@ down because the outbox stopped.
 
 A `send` after `close()` throws `messaging.outbox.closed`, a
 `TomMessagingException`: the message is not queued, and nothing is written to
-the store.
+the store. `start()` after `close()` throws the same.
+
+### The outbox and readiness
+
+`start()` registers the outbox in `TomMessageOutbox.started`, the outboxes of
+this isolate that were started and not yet closed; `close()` removes it. The
+framework readiness check behind `GET /ready` (see
+[healthcheck.md](healthcheck.md#the-framework-readiness-checks)) asks each of
+them whether it is delivering: an outbox whose scheduler stopped makes the
+server not ready. An outbox that was never started is not checked — it is one a
+test or a tool drives with `tick()`.
+
+`oldestWaitingSince()` answers since when the oldest message that is due and not
+yet taken for delivery has been waiting, or `null` when none waits. The
+readiness check compares it against its `maxOutboxWait` only when that is set,
+which it is not by default: every node delivers from the same queue, so a
+backlog behind a slow relay would take every node out of the load balancer at
+once. The same figure is the kernel scheduler's `tom_job_backlog_age_seconds`
+for the job `messaging.outbox`, which is where an alert on a backlog belongs.
 
 ## Messages per Tenant
 
@@ -1612,6 +1631,12 @@ Neither example opens a socket. The templated one drives a real
 are scripted — which is the only way steps 11 and 12 can show an
 invalid-number rejection and a rate limit at all, since a real gateway will not
 produce either on demand.
+
+`test/structured_logs_readiness_test.dart`, in the group `framework readiness`,
+covers `TomMessageOutbox.started` — an outbox registered by `start()` and gone
+after `close()` — and `oldestWaitingSince()`, through the readiness check that
+reads them: a stopped scheduler is not ready, and a message waiting past
+`maxOutboxWait` is not ready either.
 
 ## Core Components
 

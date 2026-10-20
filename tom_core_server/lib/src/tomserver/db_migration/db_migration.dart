@@ -123,6 +123,45 @@ class TomMigrationFileName {
       environments.isEmpty || environments.contains(environmentName);
 }
 
+/// Where a process's database migration stands — see
+/// [TomDbMigrations.lastRun].
+enum TomMigrationRunState {
+  /// [TomDbMigrations.migrateDatabases] has not been called in this process.
+  notRun,
+
+  /// A migration is being applied now.
+  running,
+
+  /// The last call applied every migration.
+  succeeded,
+
+  /// The last call threw; [TomMigrationRun.error] says why.
+  failed,
+}
+
+/// One call of [TomDbMigrations.migrateDatabases]: its state, when it started
+/// and finished, and the error it failed with.
+class TomMigrationRun {
+  const TomMigrationRun._(
+    this.state,
+    this.startedAt, {
+    this.finishedAt,
+    this.error,
+  });
+
+  /// Where the run stands.
+  final TomMigrationRunState state;
+
+  /// When it started; `null` when no run has been made.
+  final DateTime? startedAt;
+
+  /// When it ended, for a run that has.
+  final DateTime? finishedAt;
+
+  /// The error a failed run threw, as text.
+  final String? error;
+}
+
 /// The migration orchestrator: discovers migrator adaptors by reflection and
 /// drives migrations from a directory tree.
 ///
@@ -492,6 +531,40 @@ class TomDbMigrations {
   /// data source or migrator is missing, a file name is malformed, or a script
   /// fails.
   static Future<void> migrateDatabases(String directory) async {
+    _lastRun = TomMigrationRun._(TomMigrationRunState.running, DateTime.now());
+    try {
+      await _migrateDatabases(directory);
+      _lastRun = TomMigrationRun._(
+        TomMigrationRunState.succeeded,
+        _lastRun.startedAt,
+        finishedAt: DateTime.now(),
+      );
+    } catch (error) {
+      _lastRun = TomMigrationRun._(
+        TomMigrationRunState.failed,
+        _lastRun.startedAt,
+        finishedAt: DateTime.now(),
+        error: '$error',
+      );
+      rethrow;
+    }
+  }
+
+  static TomMigrationRun _lastRun = const TomMigrationRun._(
+    TomMigrationRunState.notRun,
+    null,
+  );
+
+  /// The state of this process's most recent [migrateDatabases] call — the
+  /// fact the framework readiness check reads: a server whose migrations are
+  /// still running, or failed, is not ready for traffic.
+  static TomMigrationRun get lastRun => _lastRun;
+
+  /// Forgets [lastRun], as a fresh process starts. For tests.
+  static void resetLastRun() =>
+      _lastRun = const TomMigrationRun._(TomMigrationRunState.notRun, null);
+
+  static Future<void> _migrateDatabases(String directory) async {
     Directory dir = Directory(directory);
     // Validated before the adaptor scan: the path is the argument this call was
     // handed, and answering a wrong one with "reflection has not been

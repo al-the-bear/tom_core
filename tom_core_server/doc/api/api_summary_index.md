@@ -16,11 +16,11 @@ surface documented here.
 | Command Line | [api_summary_cmdline.md](api_summary_cmdline.md) | CLI argument parsing (`TomArgs`) and `.env` file loading (`TomEnvFile`). |
 | Configuration | [api_summary_configuration.md](api_summary_configuration.md) | Server config provider, typed config values, YAML resources, and secret references resolved from a secret store. |
 | Datasources | [api_summary_datasources.md](api_summary_datasources.md) | DB type system, SQL dialects, queries, MariaDB datasource/prepared statements. |
-| Database Migration | [api_summary_db_migration.md](api_summary_db_migration.md) | Migration runner, versioning, and the MariaDB migration adaptor. |
+| Database Migration | [api_summary_db_migration.md](api_summary_db_migration.md) | Migration runner, versioning, the record of the last run readiness reads, and the MariaDB migration adaptor. |
 | Endpoints | [api_summary_endpoints.md](api_summary_endpoints.md) | Service/endpoint annotations, routing, handler pipeline, error handling, and the three transports over it: HTML form bodies, redirects and WebSockets — plus the HTTP surface of file columns. |
 | Export | [api_summary_export.md](api_summary_export.md) | Tabular results rendered to CSV, XLSX or PDF, and stored for later retrieval. |
 | File Storage | [api_summary_file_storage.md](api_summary_file_storage.md) | Streaming blob storage: one put/get contract over memory, directory, database and S3 backends. |
-| Health Check | [api_summary_healthcheck.md](api_summary_healthcheck.md) | Health analyzer and health-check service/server. |
+| Health Check | [api_summary_healthcheck.md](api_summary_healthcheck.md) | Health analyzer and health-check service/server, and the framework readiness checks `/ready` answers with by default. |
 | Item Authorization | [api_summary_item_authorization.md](api_summary_item_authorization.md) | Item authorizations kept by an external authority: the port to it, a caching client for checks, accessible items and the user's sharing acts, and the row scope it feeds. |
 | Little Things | [api_summary_little_things.md](api_summary_little_things.md) | The server-side base exception `TomServerException`, the `TomLoginFailure` reason its login subclass carries, the per-request correlation id `TomRequestId` it reads, and `tomErrorEnvelope`, the wire shape every error response uses. |
 | Messaging | [api_summary_messaging.md](api_summary_messaging.md) | Channel-neutral messages, delivery transports (SMTP, HTTP SMS gateway and stand-ins), MIME encoding, the durable outbox, and resource-keyed email and SMS. |
@@ -30,7 +30,7 @@ surface documented here.
 | Rate Limiting | [api_summary_ratelimit.md](api_summary_ratelimit.md) | Request rate limits per principal, API key or client address: the rules, the sliding-window arithmetic, the per-process and shared limiters, and the middleware answering `429` with `Retry-After`. |
 | Resources | [api_summary_resources.md](api_summary_resources.md) | Locale-aware text resolution: one bundle per locale, chosen by the recipient's language. |
 | Scheduling | [api_summary_scheduling.md](api_summary_scheduling.md) | The relational half of the job scheduler: the shared job queue, fencing leases, and the node roll call. |
-| Server | [api_summary_server.md](api_summary_server.md) | The HTTP server, per-request logging state, middleware, and the paths whose credentials belong to the endpoint. |
+| Server | [api_summary_server.md](api_summary_server.md) | The HTTP server, per-request logging state and correlation ids, middleware, the log format, and the paths whose credentials belong to the endpoint. |
 | Tenancy | [api_summary_tenancy.md](api_summary_tenancy.md) | Multi-tenancy: the deployment's tenants, the three isolation models chosen per tenant, data-source routing, and the resolution of a request's tenant from its token, host or header. |
 | Transactions | [api_summary_transactions.md](api_summary_transactions.md) | Distributed transaction manager and participants. |
 
@@ -417,6 +417,8 @@ surface documented here.
 | `PostgresMigrationAdaptor` | class | PostgreSQL migration adaptor; a script and its version row in one transaction. |
 | `TomMigrationFileName` | class | Parses/validates migration file names. |
 | `TomDbVersion` | class | A schema version. |
+| `TomMigrationRun` | class | The process's most recent `migrateDatabases` call (`TomDbMigrations.lastRun`). |
+| `TomMigrationRunState` | enum | `notRun`, `running`, `succeeded` or `failed`. |
 | `TomSchemaColumn` | class | One column, in the vocabulary the convergence check compares in. |
 | `TomSchemaTable` | class | One table: its columns, primary key and origin. |
 | `TomSchemaModel` | class | A whole schema — the tables of one datasource/schema pair. |
@@ -541,6 +543,8 @@ surface documented here.
 | `TomDefaultHealthAnalyzer` | class | Default analyzer. |
 | `TomHealthService` | abstract class | Health-check service (`@tomService`). |
 | `TomHealthServer` | class | Health-check server component. |
+| `TomReadinessCheck` | class | One check of the framework readiness analyzer. |
+| `TomFrameworkReadinessAnalyzer` | class | The framework's readiness checks: data sources, migrations, started outboxes. |
 
 ### Item Authorization (`lib/src/tomserver/item_authorization/`)
 
@@ -779,6 +783,8 @@ surface documented here.
 | `tomDefaultAuthenticationMiddleware` | function | Default auth middleware. |
 | `tomLoggingMiddleware` | function | Request-logging middleware. |
 | `tomRequestLogInfoMiddleware` | function | Seeds a new `TomRequestLogInfo` into every request's context. |
+| `tomRequestIdHeader` | constant | `X-Request-Id`, the response header carrying the request id. |
+| `tomRequestContextMiddleware` | function | Mints the request id, continues or starts the W3C trace, answers with both. |
 | `noopHandler` | function | A handler returning a fixed status. |
 
 ### Tenancy (`lib/src/tomserver/tenancy/`)
@@ -1201,6 +1207,7 @@ surface documented here.
 | `TomFormFileStorage` | Endpoints |
 | `TomFrameworkColumn` | Datasources |
 | `TomFrameworkKey` | Datasources |
+| `TomFrameworkReadinessAnalyzer` | Health Check |
 | `TomFrameworkSchemaCheck` | Database Migration |
 | `TomFrameworkTable` | Datasources |
 | `TomGeneratedQuery` | Datasources |
@@ -1276,6 +1283,8 @@ surface documented here.
 | `tomMetricsEndpointMiddleware` | Metrics |
 | `TomMigrationArtifact` | Database Migration |
 | `TomMigrationFileName` | Database Migration |
+| `TomMigrationRun` | Database Migration |
+| `TomMigrationRunState` | Database Migration |
 | `TomMimeEncoder` | Messaging |
 | `tomMimeLineEnding` | Messaging |
 | `tomMimeMaxLineLength` | Messaging |
@@ -1343,13 +1352,16 @@ surface documented here.
 | `TomRateLimitRule` | Rate Limiting |
 | `TomRateLimits` | Rate Limiting |
 | `TomRateLimitScope` | Rate Limiting |
+| `TomReadinessCheck` | Health Check |
 | `TomRecipient` | Messaging |
 | `TomRecipientKind` | Messaging |
 | `TomRedirect` | Endpoints |
 | `TomReference` | Object Persistence |
 | `TomRepository` | Object Persistence |
 | `TomRepositoryException` | Object Persistence |
+| `tomRequestContextMiddleware` | Server |
 | `TomRequestId` | Little Things |
+| `tomRequestIdHeader` | Server |
 | `TomRequestLogInfo` | Server |
 | `tomRequestLogInfoMiddleware` | Server |
 | `tomRequestMetricsMiddleware` | Metrics |

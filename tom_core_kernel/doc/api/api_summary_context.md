@@ -2,7 +2,8 @@
 
 A zone-based execution-context system that propagates request-scoped values
 (user principal data, tenant information, locale) through synchronous and
-asynchronous call chains without explicit parameter passing.
+asynchronous call chains without explicit parameter passing, together with the
+tenant and the W3C trace a piece of work belongs to.
 
 ## Table of Contents
 
@@ -17,6 +18,7 @@ asynchronous call chains without explicit parameter passing.
   - [TomTenantException](#tomtenantexception)
   - [TomTenantScopedCommand](#tomtenantscopedcommand)
   - [TomTenantEvent](#tomtenantevent)
+  - [TomTraceContext](#tomtracecontext)
 - [Global Functions and Constants](#global-functions-and-constants)
   - [Constants](#constants)
   - [Functions](#functions)
@@ -24,7 +26,8 @@ asynchronous call chains without explicit parameter passing.
 ## Overview
 
 Source: `lib/src/tombase/context/execution_context.dart`,
-`lib/src/tombase/context/tenant_context.dart`.
+`lib/src/tombase/context/tenant_context.dart`,
+`lib/src/tombase/context/trace_context.dart`.
 
 The Context module uses Dart's Zone system to propagate contextual information
 across async boundaries. `TomExecutionContext` holds a map of named
@@ -48,6 +51,16 @@ that leaves the request carries it explicitly — a job run records it and the
 scheduler runs the body back inside it through `TomTenantScopedCommand`, and an
 event-triggered job learns it from a `TomTenantEvent`.
 
+`TomTraceContext` carries, in the same zone again, the **trace** the work belongs
+to in the W3C Trace Context form — a 32-hex-digit trace id, a 16-hex-digit span
+id, the span it continues and the `sampled` flag. `parse` reads a `traceparent`
+header and answers `null` for an invalid one, `newRoot` starts a trace, `child`
+continues one with a new span, and `traceparent` renders the header to send on
+an outgoing call. `tom_core_server`'s request pipeline continues an incoming
+trace (or starts one) and serves the request inside `TomTraceContext.run`; the
+structured log output (logging module, `TomLogContext`) reads
+`TomTraceContext.current` into every line's `trace_id` and `span_id`.
+
 ## Class Hierarchy
 
 ```
@@ -65,6 +78,8 @@ TomException  (little_things)
 TomCommand  (isolate_pooling)
     └── TomTenantScopedCommand
 TomTenantEvent
+
+TomTraceContext
 ```
 
 ## Classes
@@ -325,6 +340,61 @@ when there is none.
 | -------- | ---- | ----------- |
 | `tenant` | `String` | The tenant the run belongs to (final). |
 | `payload` | `Object?` | The run's payload (final). |
+
+### TomTraceContext
+
+One position in a trace: the trace, this span, the span it continues, and
+whether the trace is sampled. The ids are those of the W3C `traceparent` header
+— lower-case hex, 32 digits for the trace and 16 for a span, never all zeros.
+
+- **Extends:** none
+
+#### Constructors
+
+```dart
+TomTraceContext({
+  required String traceId,
+  required String spanId,
+  String? parentSpanId,
+  bool sampled = true,
+})
+factory TomTraceContext.newRoot({bool sampled = true})
+```
+
+The generative constructor throws `FormatException` for an id that is not
+lower-case hex of the right length, or that is all zeros — the W3C rule for an
+invalid id. `newRoot` starts a new trace with a new span, from a secure random
+source, for work no caller is tracing.
+
+#### Static Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `parse` | `static TomTraceContext? parse(String? header)` | The context a `traceparent` header value names (version `00`, surrounding whitespace ignored), or `null` when `header` is absent or invalid. An invalid header is ignored rather than refused, as the W3C specification requires: a malformed header from an upstream proxy must not fail the request, it only fails to continue the trace. The parsed context has no `parentSpanId`; its `spanId` is the caller's span. |
+| `run` | `static R run<R>(TomTraceContext context, R Function() body)` | Runs `body` with `context` as the current trace context. The zone follows the body across its awaits. |
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `traceId` | `String` | The trace, 32 lower-case hex digits (final). |
+| `spanId` | `String` | This span, 16 lower-case hex digits (final). |
+| `parentSpanId` | `String?` | The span this one continues, or `null` for the first span of a trace (final). |
+| `sampled` | `bool` | Whether the trace is recorded — the `sampled` flag of `traceparent` (final). |
+| `traceparent` | `String` | *(getter)* This context as a `traceparent` header value, `00-<traceId>-<spanId>-<01 or 00>` — the value to send on an outgoing call so the callee continues this span. |
+
+#### Static Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `current` | `TomTraceContext?` | *(getter)* The context of the current zone, or `null` outside any trace. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `child` | `TomTraceContext child()` | A new span in the same trace, continuing this one: same `traceId` and `sampled`, a new `spanId`, and this span as `parentSpanId`. |
+| `toString` | `String toString()` | *(override)* `TomTraceContext(<traceparent>)`. |
 
 ## Global Functions and Constants
 

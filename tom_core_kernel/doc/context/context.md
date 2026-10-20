@@ -4,7 +4,10 @@ The Tom Execution Context System provides zone-based context propagation for pas
 
 The module also carries the **tenant** a piece of work belongs to —
 `TomTenantContext` — in the same zone. A tenant is an isolation boundary, not an
-organization: see [Tenant Context](#tenant-context).
+organization: see [Tenant Context](#tenant-context). And it carries the
+**trace** the work belongs to — `TomTraceContext`, in the W3C Trace Context
+form — so every log line written while serving a request can name it: see
+[Trace Context](#trace-context).
 
 ## Table of Contents
 
@@ -29,6 +32,11 @@ organization: see [Tenant Context](#tenant-context).
   - [Tenant-scoped keys](#tenant-scoped-keys)
   - [Jobs carry their tenant](#jobs-carry-their-tenant)
   - [Failure keys](#failure-keys)
+- [Trace Context](#trace-context)
+  - [Trace, span and the `traceparent` header](#trace-span-and-the-traceparent-header)
+  - [Continuing, starting and running a trace](#continuing-starting-and-running-a-trace)
+  - [An invalid header is ignored, an invalid id is refused](#an-invalid-header-is-ignored-an-invalid-id-is-refused)
+  - [Who reads it](#who-reads-it)
 - [Best Practices](#best-practices)
   - [1. Always write the entry's type parameter](#1-always-write-the-entrys-type-parameter)
   - [2. Handle Missing Context](#2-handle-missing-context)
@@ -49,6 +57,7 @@ organization: see [Tenant Context](#tenant-context).
 | `TomTenantException` | class | A tenant id that cannot be used, or tenant-owned work with no tenant in context. |
 | `TomTenantScopedCommand` | class | A `TomCommand` that runs its inner command inside a tenant, wherever it executes. |
 | `TomTenantEvent` | class | An event for an event-triggered job, carrying the tenant it was raised for. |
+| `TomTraceContext` | class | The W3C trace and span the current zone's work belongs to: `parse`, `newRoot`, `child`, `traceparent`, `current`, `run`. |
 
 The execution-context system consists of four public types:
 
@@ -668,6 +677,94 @@ Both are raised as `TomTenantException`, which extends `TomException`.
 | `tenancy.id.invalid` | A tenant id is not a lower-case identifier of at most 32 characters. |
 | `tenancy.context.missing` | Tenant-owned work ran with no tenant in context. |
 
+## Trace Context
+
+`TomTraceContext` holds the trace the current zone's work belongs to. Like the
+tenant it is set once, at the edge, and read wherever it is needed; unlike the
+tenant it isolates nothing — it names the work, so that what one operation did
+across every process it touched can be found again.
+
+### Trace, span and the `traceparent` header
+
+A **trace** is the whole of one operation across every process it touches; a
+**span** is one process's part of it. The ids are those of the W3C Trace
+Context `traceparent` header, so a request arriving from a traced client, a
+gateway or a service mesh keeps the caller's trace:
+
+```text
+traceparent: 00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01
+             │  │                                │                └ flags: 01 = sampled
+             │  │                                └ the caller's span, 16 hex digits
+             │  └ the trace, 32 hex digits
+             └ version 00
+```
+
+| Member | Meaning |
+| ------ | ------- |
+| `traceId` | The trace, 32 lower-case hex digits. |
+| `spanId` | This span, 16 lower-case hex digits. |
+| `parentSpanId` | The span this one continues, or `null` for the first span of a trace — and for a context parsed from a header, whose `spanId` is the caller's span. |
+| `sampled` | Whether the trace is recorded — the `sampled` flag of `traceparent`. |
+| `traceparent` | This context as a header value — what to send on an outgoing call so the callee continues this span. |
+| `current` | The context of the current zone, or `null` outside any trace. |
+
+### Continuing, starting and running a trace
+
+```dart
+// An incoming request: continue the caller's trace with a span of our own,
+// or start a trace when the request carries none.
+final incoming = TomTraceContext.parse(
+  '00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01',
+);
+final context = incoming?.child() ?? TomTraceContext.newRoot();
+
+TomTraceContext.run(context, () {
+  final current = TomTraceContext.current!;
+  print(current.traceId);      // 4bf92f3577b34da6a3ce929d0e0e4736 — the caller's
+  print(current.parentSpanId); // 00f067aa0ba902b7 — the caller's span
+  print(current.traceparent);  // 00-4bf9…4736-<our span>-01 — for an outgoing call
+});
+
+print(TomTraceContext.current); // null — outside the run
+```
+
+| Member | Meaning |
+| ------ | ------- |
+| `parse(header)` | The context a `traceparent` value names, or `null` for an absent or invalid one. |
+| `newRoot({sampled})` | A new trace with a new span, for work no caller is tracing. Ids come from a secure random source and are never all zeros. |
+| `child()` | A new span in the same trace: same `traceId` and `sampled`, a new `spanId`, this span as `parentSpanId`. |
+| `run(context, body)` | Runs `body` with `context` as the current trace context. The zone follows the body across its awaits, as every zone value does; nested runs replace the context for their body only. |
+
+`tom_core_server`'s request pipeline does exactly the first two lines for every
+request: it continues an incoming `traceparent` with a server span, or starts a
+trace, and serves the request inside `TomTraceContext.run`.
+
+### An invalid header is ignored, an invalid id is refused
+
+The two ways in treat a bad value differently, on purpose:
+
+- **`parse` answers `null`** for a header that is not a valid version-00 value
+  — wrong length, upper-case hex, an all-zero id, an unknown version. The W3C
+  specification requires an invalid header to be ignored rather than refused: a
+  malformed header from an upstream proxy must not fail the request, it only
+  fails to continue the trace. The caller then starts a new one.
+- **The constructor throws `FormatException`** for an id that is not lower-case
+  hex of the right length, or that is all zeros. An id passed to the
+  constructor was chosen in code, so a bad one is a programming error.
+
+### Who reads it
+
+The structured log output of the logging module, `TomJsonLogOutput`, writes
+`TomTraceContext.current`'s `traceId` and `spanId` into every line as
+`trace_id` and `span_id` — see [Structured JSON
+Output](../logging/logging.md#structured-json-output). Nothing at the call site
+passes them: a line logged anywhere inside the run carries them.
+
+Exporting spans — recording each span's start, end and outcome and sending them
+to a tracing backend — is a separate concern this module does not do. The trace
+context is the seam such an exporter uses: the spans it would record are the
+ones `run` delimits, under the ids this type carries.
+
 ## Best Practices
 
 ### 1. Always write the entry's type parameter
@@ -820,8 +917,9 @@ than a `!`.
 
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
-| `dart:async` | dart | every file | `Future` |
+| `dart:async` | dart | every file | `Future`, and `runZoned` for `TomTraceContext.run` |
 | `dart:collection` | dart | `execution_context.dart` | `UnmodifiableMapView`, the read-only view `contextMap` hands out |
+| `dart:math` | dart | `trace_context.dart` | `Random.secure`, the source of new trace and span ids |
 | [isolate_pooling](../isolate_pooling/isolate_pooling.md) | module | `tenant_context.dart` | `TomCommand`, which `TomTenantScopedCommand` extends so a tenant survives an isolate hop |
-| [little_things](../little_things/little_things.md) | module | every file | `getFromCurrentZone`, the zone lookup the context installs itself for, and `TomException`, the base of `TomTenantException` |
+| [little_things](../little_things/little_things.md) | module | `execution_context.dart`, `tenant_context.dart` | `getFromCurrentZone`, the zone lookup the context installs itself for, and `TomException`, the base of `TomTenantException` |
 | [security](../security/security.md) | module | `execution_context.dart` | `TomPrincipal` for authenticated user context |

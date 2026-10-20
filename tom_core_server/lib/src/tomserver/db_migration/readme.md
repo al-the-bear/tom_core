@@ -38,6 +38,7 @@ optimisation: a check that needs a live server cannot gate code generation.
 | `MariadbMigrationAdaptor` | The MariaDB/MySQL migrator, registered for the `"mariadb"` type. Records a failed script with `success = 0`. |
 | `PostgresMigrationAdaptor` | The PostgreSQL migrator, registered for the `"postgresql"` type. Runs a script and its version row in one transaction, so a failure leaves nothing behind. |
 | `TomDbVersion` | One row of a `<schema>_versioning` table — the record of a single applied (or attempted) migration. |
+| `TomMigrationRun` · `TomMigrationRunState` | `TomDbMigrations.lastRun`: where the process's most recent `migrateDatabases` call stands — `notRun`, `running`, `succeeded` or `failed` with its error. The framework readiness check on `GET /ready` answers not ready while it is `running` or `failed`. |
 | `TomDbMigrationException` | Thrown when a migration cannot be discovered, parsed or applied. |
 | `TomSqlMigrationException` | The SQL migrators' failure type, including a changed description or checksum on an already-applied version. |
 | `MariadbMigrationException` · `PostgresMigrationException` | Its two subtypes; their keys are prefixed `mariadb_migration…` and `postgres_migration…`. |

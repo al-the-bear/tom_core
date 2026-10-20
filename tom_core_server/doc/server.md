@@ -7,8 +7,8 @@ The module also provides the middleware that the pipeline is built from —
 context setup, authentication, error mapping, and request logging — plus
 `TomRequestLogInfo`, the per-request logging state that travels in the request
 context. The other per-request value object, the correlation id `TomRequestId`,
-is *produced* here — the authentication middleware seeds a fresh one into every
-request zone — but declared in the little-things module, beside the exception
+is *produced* here — the request-context middleware mints one for every request,
+together with the request's W3C trace context — but declared in the little-things module, beside the exception
 base that reads it; see [little_things.md](little_things.md#tomrequestid).
 
 ## Table of Contents
@@ -17,6 +17,8 @@ base that reads it; see [little_things.md](little_things.md#tomrequestid).
 - [Starting a Server](#starting-a-server)
   - [The Deployment Logs Itself In First](#the-deployment-logs-itself-in-first)
 - [The Pipeline](#the-pipeline)
+- [Correlation Ids and Structured Logs](#correlation-ids-and-structured-logs)
+  - [The log format](#the-log-format)
 - [Request Context and Zone Values](#request-context-and-zone-values)
   - [Endpoint-owned credentials](#endpoint-owned-credentials)
   - [A service account's API key](#a-service-accounts-api-key)
@@ -41,6 +43,8 @@ base that reads it; see [little_things.md](little_things.md#tomrequestid).
 | `TomEndpointCredentials` | abstract final class | The path prefixes whose `Authorization` header belongs to the endpoint, which `extractAuthentication` leaves unread. Statics only |
 | `contextSetupMiddleware` | function | Seeds entries into the request context — the same objects for every request |
 | `tomRequestLogInfoMiddleware` | function | Seeds a new `TomRequestLogInfo` into every request's context |
+| `tomRequestContextMiddleware` | function | Mints the request id and continues or starts the W3C trace; answers with both |
+| `tomRequestIdHeader` | const String | `X-Request-Id`, the response header carrying the request id |
 | `tomDefaultAuthenticationMiddleware` | function | Extracts credentials and publishes request zone values |
 | `tomLoggingMiddleware` | function | Emits the one-shot access-log line, prefixed with the application id |
 | `extractAuthentication` | function | Reads bearer credentials from a request |
@@ -57,9 +61,13 @@ final socket = await server.start();       // completes when it is listening
 credential (below), TLS material (`certificateChain` / `privateKey`, unless
 `noSsl`), the listen address (`host`, or any-IPv4 when empty or
 `listenToAnyIp`), the `port`, `isolateCount` (sockets are `shared` when more
-than one), `autoCompress`, the `serverHeader` / `poweredByHeader`, and
+than one), `autoCompress`, the `serverHeader` / `poweredByHeader`,
 `openApiDocument`, the generated OpenAPI document `GET /openapi.json` serves
-(see [endpoints.md](endpoints.md#the-openapi-document)).
+(see [endpoints.md](endpoints.md#the-openapi-document)), `logFormat`, the shape
+of every log line (see [The log format](#the-log-format)), and
+`frameworkReadiness`, which answers `GET /ready` with the framework's own
+readiness checks unless the application installed a readiness analyzer of its
+own (see [healthcheck.md](healthcheck.md#the-framework-readiness-checks)).
 `start()` completes **when the socket is listening**, with the bound
 `HttpServer`. So a bind failure — a port already in use, an unreadable
 certificate, a malformed private key — rejects the returned future instead of
@@ -120,13 +128,21 @@ order:
    here, before anything below sees it — it is infrastructure like a probe, so
    it is not counted, logged, authenticated or rate-limited. See
    [metrics.md](metrics.md).
-3. **Request metrics** — `tomRequestMetricsMiddleware`, recording
+3. **Request context** — `tomRequestContextMiddleware`, which mints the
+   request's `TomRequestId`, continues the caller's W3C trace from its
+   `traceparent` header (or starts one), and runs everything below in a zone
+   carrying both. Its place is what makes the ids complete: it is outside the
+   access log, both error layers and authentication, so every line any of them
+   writes for the request carries the same `request_id`, `trace_id` and
+   `span_id`. A metrics scrape is answered above it and gets no ids. See
+   [Correlation Ids and Structured Logs](#correlation-ids-and-structured-logs).
+4. **Request metrics** — `tomRequestMetricsMiddleware`, recording
    `tom_http_server_requests` and `tom_http_server_request_duration_seconds`
    for every request, labelled by the route pattern the endpoint pipeline
    writes into `TomRequestLogInfo.route` (`unmatched` when no endpoint matched,
    which includes a request refused before routing). It sits outside both error
    layers, so a request is counted with the status the client received.
-4. **Logging middleware** — `loggingMiddleware` (defaults to
+5. **Logging middleware** — `loggingMiddleware` (defaults to
    `tomLoggingMiddleware`), which emits one line per served request:
 
    ```text
@@ -139,20 +155,20 @@ order:
    the requested URI carries a port, but that only separates them while they are
    separate ports on one host. A deployment that configures no `appId` sees the
    line without the prefix.
-5. **Outer error handler** — catches errors from the authentication phase using
+6. **Outer error handler** — catches errors from the authentication phase using
    the `authenticationErrorHandler`.
-6. **Authentication middleware** — the configuration's `authenticationMiddleware`
+7. **Authentication middleware** — the configuration's `authenticationMiddleware`
    or `tomDefaultAuthenticationMiddleware`.
-7. **Rate-limiting middleware** — `tomRateLimitMiddleware()`, directly inside
+8. **Rate-limiting middleware** — `tomRateLimitMiddleware()`, directly inside
    authentication, where the request's principal and the API key it
    authenticated with are in the zone. A no-op while no limits are installed;
    otherwise a request over a limit is answered `429` here, before any handler
    runs. `start()` installs the limits the `rateLimits` configuration key
    describes when no limits were installed before it. See
    [ratelimit.md](ratelimit.md).
-8. **Inner error handler** — catches errors from handling using `errorHandler`.
-9. **Router** — optionally wrapped in a `Cascade` with the configuration's
-   `preExecutionHandler` / `postExecutionHandler`.
+9. **Inner error handler** — catches errors from handling using `errorHandler`.
+10. **Router** — optionally wrapped in a `Cascade` with the configuration's
+    `preExecutionHandler` / `postExecutionHandler`.
 
 **Logging sits above both error layers**, and that is what makes the access log
 complete. A request that fails while its principal is being established — an
@@ -168,6 +184,60 @@ write; `_handleError` logs that error itself and shelf answers the client.
 The endpoint pipeline's own richer line still wins for a served request — it
 marks `hasBeenLogged`, so moving the middleware outwards adds no second line.
 
+## Correlation Ids and Structured Logs
+
+Every request gets two correlation ids before any other part of the pipeline
+sees it, from `tomRequestContextMiddleware`:
+
+| Id | Where it comes from | Where it goes |
+| -- | ------------------- | ------------- |
+| `TomRequestId` | Minted per request — a v4 UUID | The request zone; the `X-Request-Id` response header (`tomRequestIdHeader`); the `request_id` field of every structured log line; a `TomServerException`'s `requestUuid`; the audit trail's `requestId` |
+| W3C trace context (`TomTraceContext`, kernel) | The request's `traceparent` header, continued with a child span of this server's own; a new trace when the header is missing or does not parse | The request zone; the `traceparent` response header (the server span); the `trace_id` and `span_id` fields of every structured log line |
+
+The request id is what a user quotes to support; the trace id is what joins
+this server's lines to those of the caller and of every service it calls. A
+caller-supplied `X-Request-Id` is not adopted — the id is the server's — while a
+caller's `traceparent` is continued, because joining traces across services is
+what the header is for.
+
+`tomDefaultAuthenticationMiddleware` carries the request id it finds in the
+zone into the request's `TomZoneValues` rather than minting a second one, so the
+id on the response header, on a server exception and in the audit trail is the
+same id. Used on its own — without the request-context middleware outside it —
+it mints one itself.
+
+Building the middleware registers the `request_id` field with the kernel's
+`TomLogContext`; the kernel registers `trace_id`, `span_id` and `tenant`. Those
+fields are read from the zone each line is logged in, so a handler logs as it
+always did and the line carries them without being passed anything.
+
+### The log format
+
+`logFormat` decides how every log line is written:
+
+| Value | Output |
+| ----- | ------ |
+| `text` (default) | One human-readable line per entry — the default console output stays installed |
+| `json` | One JSON object per line (kernel `TomJsonLogOutput`): `timestamp`, `level`, `message`, `logger`, `isolate`, then the context fields `trace_id`, `span_id`, `tenant` and `request_id` where the zone has them |
+
+```text
+{"timestamp":"2026-10-20T08:15:02.113Z","level":"info","message":"…","logger":"TasksServer.list","isolate":"main","trace_id":"4bf92f3577b34da6a3ce929d0e0e4736","span_id":"b7ad6b7169203331","tenant":"acme","request_id":"0f4c…"}
+```
+
+Use `json` wherever a log collector indexes the lines: "every line of one
+request" or "every error of one tenant" is then a field query rather than a
+regular expression over free text. **No fixed field and no framework context
+field carries personal data** — they are ids of a trace, a span, a request and a
+tenant, never a user name, an address or a principal — so every line may be
+kept wherever the logs are kept. What a message says is still the message's
+business.
+
+`start()` applies the setting through `TomServer.applyLogFormat`, which replaces
+only the default console output: an application that installed an output of its
+own keeps it. An unrecognised value is logged as an error and changes nothing.
+A boot step that logs before the server starts can call
+`TomServer.applyLogFormat(configuration.logFormat)` itself, earlier.
+
 ## Request Context and Zone Values
 
 Three channels carry per-request state:
@@ -181,8 +251,8 @@ Three channels carry per-request state:
   `TomExecutionContext`, the resolved `TomPrincipal`, the `TomClientJwtToken`,
   the `TomApiKeyIdentity` of a request a service account's API key
   authenticated (`null` otherwise; see
-  [API keys](#a-service-accounts-api-key)), and a fresh `TomRequestId`
-  (declared in the little-things module) — and, in a
+  [API keys](#a-service-accounts-api-key)), and the `TomRequestId`
+  `tomRequestContextMiddleware` minted (declared in the little-things module) — and, in a
   multi-tenant deployment, the request's tenant (see
   [The request's tenant](#the-requests-tenant)). Downstream
   code recovers any of them with
@@ -346,7 +416,8 @@ to guess from and an intermediary free to sniff it as anything it likes.
 - **Authentication** — set `authenticationMiddleware` on the configuration to
   replace `tomDefaultAuthenticationMiddleware`. A substitute is responsible for
   everything the default established: the zone values — at minimum
-  `TomPrincipal` and `TomRequestId` — and the
+  `TomPrincipal` and `TomRequestId` (the one `tomRequestContextMiddleware`
+  already put in the zone, read with `getFromCurrentZone<TomRequestId>()`) — and the
   `TomTransactionManager.runInTransactionScope` around them, and, with a
   tenancy installed, the request's tenant; and, for an API-key limit to count
   anything, the `TomApiKeyIdentity` of a request a key authenticated. Everything below
@@ -401,7 +472,8 @@ The series, their labels and the exporter are described in
 
 Three suites cover this module, a fourth covers its endpoint-owned
 credentials, a fifth its tenant resolution, a sixth the API keys and rate
-limits it reads, and a seventh the metrics middlewares it installs.
+limits it reads, a seventh the metrics middlewares it installs, and an eighth
+its correlation ids and log format.
 
 `test/server_test.dart` covers the pipeline as composed functions:
 `TomRequestLogInfo`, `extractAuthentication` reading a credential off a request
@@ -441,6 +513,19 @@ The two metrics middlewares at the outer edge are covered by
 request counted under its route pattern, an unmatched path, an escaping error
 counted as a `500`, and a scrape that is answered before — and so not counted
 by — the request series. See [metrics.md](metrics.md#verification).
+
+`test/structured_logs_readiness_test.dart` covers the correlation ids and the
+log format. In the group `request context` it runs requests through
+`tomRequestContextMiddleware` and `tomDefaultAuthenticationMiddleware` stacked
+as `start()` stacks them: a caller's `traceparent` continued with a span of the
+server's own, a missing or invalid one starting a trace, the request id kept by
+authentication and named on the response, and a line logged while serving
+carrying `trace_id`, `span_id`, `request_id` and `tenant` and no other field
+beyond the fixed ones. The group `logFormat` pins `applyLogFormat`: `json`
+replacing the default console output, an application's own output kept, `text`
+changing nothing and an unknown value refused. The group `a started server`
+binds a socket and reads the `X-Request-Id` and `traceparent` response headers
+off a real response.
 
 `TomEndpointCredentials` is exercised where it is used: `test/scim_test.dart`'s
 test `the framework leaves the claimed header to the endpoint` reads a SCIM
@@ -521,12 +606,13 @@ and an application that needs one builds it today rather than waiting:
 | `dart:io` | dart | every file | `HttpServer`, `InternetAddress`, `SecurityContext` |
 | `shelf` | package | every file | the HTTP pipeline, `Request`/`Response`/`Handler`/ `Middleware`/`Router`/`Cascade`, and `serve` |
 | `shelf_router` | package | every file | the HTTP pipeline, `Request`/`Response`/`Handler`/ `Middleware`/`Router`/`Cascade`, and `serve` |
-| `tom_core_kernel` | package | every file | `TomPrincipal`, `TomClientJwtToken`, `TomBearerAuthentication`, `TomExecutionContext`/`tomExecutionContext`, `TomZoneValues`, `tomLog`, `tomPrintStackTrace`, `TomException` |
+| `tom_core_kernel` | package | every file | `TomPrincipal`, `TomClientJwtToken`, `TomBearerAuthentication`, `TomExecutionContext`/`tomExecutionContext`, `TomZoneValues`, `tomLog`, `tomPrintStackTrace`, `TomException`, `TomTraceContext` and `TomLogContext` (the request's trace and the `request_id` log field), `TomJsonLogOutput` / `TomConsoleLogOutput` (`logFormat`) |
 | [authentication](authentication.md) | module | every file | `TomServerSelfLogin`, `TomServerSelfLoginException`, `TomApiKeys` and `TomApiKeyIdentity` (a service account's API key) |
 | [authorization](authorization.md) | module | every file | `TomAuthorizationCache` (principal resolution) |
 | [configuration](configuration.md) | module | every file | `TomBaseServerConfiguration` |
 | [endpoints](endpoints.md) | module | every file | `TomEndpointRouting` (router initialisation), `TomOpenApiServer` (the OpenAPI document path, set from `openApiDocument`) |
-| [little_things](little_things.md) | module | every file | `TomServerException` (its `clientThrow` flag feeds the error response) and `TomRequestId` (seeded into every request zone) |
+| [healthcheck](healthcheck.md) | module | every file | `TomFrameworkReadinessAnalyzer`, installed on `GET /ready` by `start()` when `frameworkReadiness` is on, and `TomHealthServer` / `TomDefaultHealthAnalyzer` to see whether the application installed its own |
+| [little_things](little_things.md) | module | every file | `TomServerException` (its `clientThrow` flag feeds the error response) and `TomRequestId` (minted by `tomRequestContextMiddleware`, carried into every request zone) |
 | [metrics](metrics.md) | module | every file | `tomMetricsEndpointMiddleware` and `tomRequestMetricsMiddleware` (the outer edge of the pipeline), `TomOtlpHttpTransport` and `TomOtlpMetricsExporter` (`metricsExporter`) |
 | [ratelimit](ratelimit.md) | module | every file | `TomRateLimits` (installed from configuration at start) and `tomRateLimitMiddleware` |
 | [tenancy](tenancy.md) | module | every file | `TomTenancy` and `TomTenantResolution` — the request's tenant, or the refusal to answer it with |

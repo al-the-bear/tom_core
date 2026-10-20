@@ -19,6 +19,7 @@ import '03_log_formatting_example.dart' as log_formatting;
 import '04_advanced_logging_example.dart' as advanced_logging;
 import '05_isolate_and_remote_logging_example.dart' as isolate_remote;
 import '06_log_replay_and_isolate_plumbing_example.dart' as log_replay_plumbing;
+import '07_json_log_output_example.dart' as json_log_output;
 
 /// Standalone entry point for running logging examples.
 Future<void> main() async {
@@ -51,6 +52,9 @@ Future<void> run() async {
 
   await log_replay_plumbing.run();
   print('✓ Log replay and isolate plumbing examples passed\n');
+
+  json_log_output.run();
+  print('✓ JSON log output examples passed\n');
 
   sampleGroupFooter('Logging');
 }

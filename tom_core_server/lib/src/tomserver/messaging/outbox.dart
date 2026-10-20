@@ -285,8 +285,28 @@ class TomMessageOutbox implements TomClosable {
     await scheduler.drain();
   }
 
-  /// Begins delivering on the scheduler's tick interval.
-  void start() => scheduler.start();
+  /// Begins delivering on the scheduler's tick interval, and registers this
+  /// outbox in [started] until [close].
+  void start() {
+    _requireOpen();
+    _started.add(this);
+    unawaited(scheduler.start());
+  }
+
+  static final Set<TomMessageOutbox> _started = {};
+
+  /// The outboxes of this isolate that were started and not yet closed — what
+  /// the framework readiness check asks whether they are delivering.
+  static Set<TomMessageOutbox> get started => Set.unmodifiable(_started);
+
+  /// The oldest message of this outbox that is due and not yet taken for
+  /// delivery has been waiting since this instant, or `null` when none waits.
+  Future<DateTime?> oldestWaitingSince() async {
+    for (final backlog in await store.backlog(_clock())) {
+      if (backlog.jobName == jobName) return backlog.oldestDueAt;
+    }
+    return null;
+  }
 
   /// Drops finished runs recorded before [before] from the queue.
   ///
@@ -342,6 +362,7 @@ class TomMessageOutbox implements TomClosable {
 
   Future<void> _shutDown() async {
     _closed = true;
+    _started.remove(this);
     await scheduler.close();
     await _receipts.close();
   }

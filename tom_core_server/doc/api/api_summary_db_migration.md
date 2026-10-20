@@ -13,6 +13,7 @@ both on one database-neutral base (`TomSqlMigrationAdaptor`): MariaDB
 - [Overview](#overview)
 - [Class Hierarchy](#class-hierarchy)
 - [Classes](#classes)
+  - [TomMigrationRun](#tommigrationrun)
   - [TomDbMigrations](#tomdbmigrations)
   - [TomDbMigrator](#tomdbmigrator)
   - [TomDbMigrationAdaptor](#tomdbmigrationadaptor)
@@ -41,6 +42,7 @@ both on one database-neutral base (`TomSqlMigrationAdaptor`): MariaDB
     - [MariadbMigrationException](#mariadbmigrationexception)
     - [PostgresMigrationException](#postgresmigrationexception)
 - [Enums](#enums)
+  - [TomMigrationRunState](#tommigrationrunstate)
   - [TomSchemaDivergenceKind](#tomschemadivergencekind)
 - [Extensions](#extensions)
   - [TomSqlTypeFamilyCompatibility](#tomsqltypefamilycompatibility)
@@ -119,6 +121,7 @@ TomDbMigrator  (abstract)
             └── PostgresMigrationAdaptor
 
 TomDbMigrations
+    └── lastRun: TomMigrationRun  (state: TomMigrationRunState enum)
 TomDbMigrationAdaptor  (annotation)
 TomMigrationFileName
 TomDbVersion
@@ -151,11 +154,36 @@ TomServerException  (little_things)
 
 ## Classes
 
+### TomMigrationRun
+
+One call of `TomDbMigrations.migrateDatabases`: its state, when it started and
+finished, and the error it failed with. Read through `TomDbMigrations.lastRun`;
+the framework readiness check (`TomFrameworkReadinessAnalyzer`) answers not
+ready while the state is `running` or `failed`. Created only by the module — no
+public constructor.
+
+- **Extends:** none
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `state` | `TomMigrationRunState` | Where the run stands (final). |
+| `startedAt` | `DateTime?` | When it started; `null` when no run has been made (final). |
+| `finishedAt` | `DateTime?` | When it ended, for a run that has (final). |
+| `error` | `String?` | The error a failed run threw, as text (final). |
+
 ### TomDbMigrations
 
 The migration orchestrator: discovers migrator adaptors by reflection and drives
 migrations from a directory tree matching the configured data sources and their
 schemas.
+
+#### Static Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `lastRun` | `static TomMigrationRun get` | The state of this process's most recent `migrateDatabases` call — `notRun` until one is made. The fact the framework readiness check reads: a server whose migrations are still running, or failed, is not ready for traffic. Process-wide: in a per-tenant loop it describes the most recent tenant's call. |
 
 #### Static Methods
 
@@ -168,7 +196,8 @@ schemas.
 | `orderMigrationNames` | `static List<({String basename, TomMigrationFileName parsed})> orderMigrationNames(Iterable<String> basenames)` | Parses `basenames` and returns them ordered by ascending numeric version, each paired with its parsed name. Two names claiming the **same version** throw `db_migration.migration.duplicate_migration_version`, naming both in a stable order. The version is the whole of a migration's recorded identity, so a pair sharing one applies twice on the first run — a migrator's applied-version list is an initialisation snapshot, so the second call cannot see the first — in an order the sort does not define, and leaves the versioning table holding two rows for one version; the next run matches the first of them against the other's script and reports a description/checksum mismatch, blaming an edit that never happened. Compared on the parsed integer, so `[1]` and `[001]` collide, and checked **before** environment selection, so a tagged and an untagged file cannot share a version either — a tag decides which of the pair runs *here*, not which row the shared history keeps, and a tree may not be valid on one box and broken on the next. Shared with `TomSchemaConvergenceCheck.readChain`, which has no environment to filter by at all. |
 | `resolveActiveEnvironment` | `static String resolveActiveEnvironment()` | The environment name migrations are filtered against, via `TomRuntime` (falling back to the production-safe default). |
 | `selectForEnvironment` | `static List<({String basename, TomMigrationFileName parsed})> selectForEnvironment(Iterable<({String basename, TomMigrationFileName parsed})> ordered, String environmentName)` | Filters an ordered migration list to those applying in `environmentName`, preserving order. |
-| `migrateDatabases` | `static Future<void> migrateDatabases(String directory)` | Runs all pending migrations under `directory`; throws `TomDbMigrationException` on a missing data source/migrator, malformed name, or failed script. |
+| `migrateDatabases` | `static Future<void> migrateDatabases(String directory)` | Runs all pending migrations under `directory`; throws `TomDbMigrationException` on a missing data source/migrator, malformed name, or failed script. Records the call in `lastRun` — `running` while it runs, then `succeeded`, or `failed` with the error before the exception is rethrown. |
+| `resetLastRun` | `static void resetLastRun()` | Forgets `lastRun`, as a fresh process starts (`notRun`). For tests. |
 | `migrateDataSource` | `static Future<void> migrateDataSource(TomDbMigrator migrator, TomDataSourceInfo dsInfo, Directory dataSourceDirectory, String environmentName)` | Applies every schema under `dataSourceDirectory` through `migrator`, resetting and re-initialising it **once per schema**. Split out of `migrateDatabases` so the walk can be driven with a caller-supplied migrator — the reflection-scanned registry is not injectable. |
 | `instantiateMigrator` | `static TomDbMigrator instantiateMigrator(Object? candidate, Object? Function() construct)` | Builds one scanned adaptor candidate, turning a throwing constructor or a class that does not implement `TomDbMigrator` into a `TomDbMigrationException` naming `candidate`. A constructor error and its trace are forwarded as the raised exception's **root cause**. Parameterised by `construct` rather than the reflected class, because the scan's registry is a global no test can populate. |
 
@@ -941,6 +970,18 @@ PostgresMigrationException(
 ```
 
 ## Enums
+
+### TomMigrationRunState
+
+Where a process's database migration stands — the `state` of
+`TomDbMigrations.lastRun`.
+
+| Value | Meaning |
+| ----- | ------- |
+| `notRun` | `migrateDatabases` has not been called in this process. Ready: a deployment whose schema a DBA or a job applies never calls it. |
+| `running` | A migration is being applied now. Not ready. |
+| `succeeded` | The last call applied every migration. |
+| `failed` | The last call threw; `TomMigrationRun.error` says why. Not ready. |
 
 ### TomSchemaDivergenceKind
 

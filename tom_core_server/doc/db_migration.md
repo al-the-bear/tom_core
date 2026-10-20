@@ -23,6 +23,7 @@ implementations are provided on one database-neutral base
   - [The Tree Root Has to Be There](#the-tree-root-has-to-be-there)
 - [Running Migrations](#running-migrations)
   - [Per-tenant migrations](#per-tenant-migrations)
+  - [Where the last run stands](#where-the-last-run-stands)
 - [Adaptor Discovery](#adaptor-discovery)
 - [The SQL Adaptors](#the-sql-adaptors)
   - [The outcome row is written with bound parameters](#the-outcome-row-is-written-with-bound-parameters)
@@ -77,6 +78,8 @@ them run against a live server.
 | `MariadbMigrationAdaptor` | class | The MariaDB migrator |
 | `PostgresMigrationAdaptor` | class | The PostgreSQL migrator — a script and its version row in one transaction |
 | `TomDbVersion` | class | One row of a `<schema>_versioning` table |
+| `TomMigrationRun` | class | The process's most recent `migrateDatabases` call: its state, start, end and error (`TomDbMigrations.lastRun`) |
+| `TomMigrationRunState` | enum | `notRun`, `running`, `succeeded` or `failed` — what the framework readiness check reads |
 | `TomDbMigrationException` | class | Orchestration / discovery / parsing failures |
 | `TomSqlMigrationException` | class | SQL migration failures, whichever adaptor raised them |
 | `MariadbMigrationException` / `PostgresMigrationException` | class | Its MariaDB and PostgreSQL subtypes |
@@ -482,6 +485,32 @@ create unused copies in every tenant's schema. A shared tenant's per-tenant run
 reaches the shared database, where the versioning table makes every run after
 the first a no-op. A tenant onboarded later is brought to the current version by
 the same call inside `TomTenancy.runFor`.
+
+### Where the last run stands
+
+Every `migrateDatabases` call records how it stands in
+`TomDbMigrations.lastRun`, a `TomMigrationRun`:
+
+| `state` | When | Also set |
+| ------- | ---- | -------- |
+| `notRun` | `migrateDatabases` has not been called in this process | — |
+| `running` | a call has started and not returned | `startedAt` |
+| `succeeded` | the last call applied every migration | `startedAt`, `finishedAt` |
+| `failed` | the last call threw | `startedAt`, `finishedAt`, `error` (the thrown error as text) |
+
+A failed call still throws as it always does; the record is what lets something
+other than the caller see it. The framework readiness check on `GET /ready`
+reads it: a server whose migration is running or failed answers not ready, with
+the error in the body, and a process that never migrates — its schema applied
+by a DBA or a job — passes (see
+[healthcheck.md](healthcheck.md#the-framework-readiness-checks)).
+
+The record is the process's, not a data source's: in a per-tenant loop it
+describes the most recent tenant's call, and a later call replaces an earlier
+failure. A boot step that migrates per tenant and wants a failure to stay
+visible stops at the first one, which is what letting the exception propagate
+does. `TomDbMigrations.resetLastRun()` returns the record to `notRun`, as a
+fresh process starts — for tests.
 
 ## Adaptor Discovery
 
@@ -1162,6 +1191,11 @@ and `test/reference_migrations_test.dart` pins the seven entity-owned
 migrations; both are described under [Schema
 Convergence](#schema-convergence).
 
+`test/structured_logs_readiness_test.dart`, in the group
+`framework readiness`, pins `TomDbMigrations.lastRun`: a call against a missing
+directory throws and leaves the record `failed`, and the readiness check then
+answers not ready — see [Where the last run stands](#where-the-last-run-stands).
+
 `test/postgres_migrations_test.dart` holds the generated PostgreSQL reference
 migrations to the generator's output for their canonical sources — see
 [Reference migrations for PostgreSQL](#reference-migrations-for-postgresql).
@@ -1205,7 +1239,9 @@ here it cannot drift silently.
 ## Core Components
 
 - **`TomDbMigrations`** — the orchestrator and reflection-based adaptor
-  discovery; `migrateDatabases`.
+  discovery; `migrateDatabases`, and `lastRun` (a `TomMigrationRun` with its
+  `TomMigrationRunState`), the record of the most recent call that readiness
+  reads.
 - **`TomDbMigrator`** (+ the `TomDbMigrationAdaptor` annotation) — the migrator
   contract.
 - **`TomSqlMigrationAdaptor`**, **`MariadbMigrationAdaptor`**,

@@ -6,9 +6,11 @@
 The HTTP server entry point. `TomServer` is constructed from a
 `TomBaseServerConfiguration`, builds its endpoint router during `start`, and
 binds the listener. Each request gets a `TomRequestLogInfo` record, a
-`TomRequestId` — a UUID this module's authentication middleware places in the
-request's zone so logs and exceptions correlate — and its own current
-transaction, because that same middleware runs the request inside a
+`TomRequestId` and a W3C trace context — minted (or, for the trace, continued
+from the caller's `traceparent`) by `tomRequestContextMiddleware` before
+anything else runs, so every log line, exception and audit entry of the request
+correlates, and echoed as the `X-Request-Id` and `traceparent` response headers
+— and its own current transaction, because the authentication middleware runs the request inside a
 [`TomTransactionManager`](../transactions/readme.md) scope; without it, requests
 interleaving in one isolate would share whichever transaction the manager last
 made current. The id type is declared in
@@ -22,6 +24,7 @@ consumes it.
 | `TomServer` | The server: `TomServer(configuration)`; builds the `TomEndpointRouting` and starts listening. |
 | `TomRequestLogInfo` | Captured per-request log metadata, including the matched endpoint's `route` pattern the request metrics are labelled with. |
 | `tomRequestLogInfoMiddleware` | Seeds a new `TomRequestLogInfo` into every request's context; `start` installs it outermost. |
+| `tomRequestContextMiddleware` · `tomRequestIdHeader` | Mints the request id, continues or starts the trace, runs the rest of the pipeline in a zone carrying both, and answers with `X-Request-Id` and `traceparent`; registers the `request_id` field of structured log lines. |
 | `TomEndpointCredentials` | The path prefixes whose `Authorization` header belongs to the endpoint rather than the framework — the SCIM endpoints, whose identity provider presents a static secret. `extractAuthentication` leaves such a header unread and reports `TomCredentialOutcome.endpointCredential`; the endpoint checks it. |
 
 ## Quick start
@@ -57,6 +60,13 @@ binds the socket** — visible as an unhandled asynchronous error at boot, since
 `start()` is fire-and-forget. A deployment that configures no credential skips
 the login and is unaffected.
 
+**Logs and readiness.** `start` applies `logFormat` — `json` writes one JSON
+object per line carrying `trace_id`, `span_id`, `request_id` and `tenant`
+(`TomServer.applyLogFormat`) — and, with `frameworkReadiness` on (the default),
+answers `GET /ready` from the framework's own checks unless the application
+installed a readiness analyzer — see
+[`doc/healthcheck.md`](../../../../doc/healthcheck.md).
+
 **Metrics.** `start` places the metrics module's scrape endpoint (when
 `metricsEndpoint` is on) and request series at the outer edge of the pipeline,
 and pushes over OTLP through `TomServer.metricsExporter` when `otlpEndpoint` is
@@ -71,6 +81,8 @@ fragment above it is a program that runs and terminates.
 `test/server_self_login_test.dart` the credentialled boot described above,
 replacing the one JSON POST rather than running an auth server;
 `test/scim_test.dart` reads a claimed path as `endpointCredential`;
+`test/structured_logs_readiness_test.dart` covers the correlation ids and the
+log format;
 `test/examples_test.dart` runs the example.
 
 ---

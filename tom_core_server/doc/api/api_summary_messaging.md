@@ -941,6 +941,12 @@ for production. `retryPolicy` defaults to five attempts rather than the
 framework's three, because a relay's transient refusals — greylisting above
 all — are routinely measured in minutes.
 
+#### Static Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `started` | `static Set<TomMessageOutbox> get` | The outboxes of this isolate that were started and not yet closed, as an unmodifiable copy. `start` adds an outbox, `close` removes it. What the framework readiness check (`TomFrameworkReadinessAnalyzer`) asks whether each is delivering. |
+
 #### Properties
 
 | Property | Type | Description |
@@ -959,9 +965,10 @@ all — are routinely measured in minutes.
 | `send` | `Future<void> send(TomMessage message)` | Queues `message` and returns once it is durably stored. Enqueues directly rather than through the schedule's event stream, so two messages composed in the same instant are two runs. The run records the tenant in context, and the message is delivered inside it — a transport choosing a per-tenant sending identity reads it from `TomTenantContext.currentId`; the receipt and the delivery correlation name it. Throws `TomMessagingException` once the outbox is closed. |
 | `sendNow` | `Future<void> sendNow(TomMessage message)` | Queues `message` and ticks immediately, for a case where the tick interval is felt by a human. A failure still retries on the queue exactly as `send` would. |
 | `tick` | `Future<void> tick()` | Runs one delivery pass; exposed so a test can drive delivery without waiting on wall-clock time. |
-| `start` | `void start()` | Begins delivering on the scheduler's tick interval. |
+| `start` | `void start()` | Begins delivering on the scheduler's tick interval, and registers this outbox in `started` until `close`. Throws `TomMessagingException` (`messaging.outbox.closed`) once the outbox is closed. |
+| `oldestWaitingSince` | `Future<DateTime?> oldestWaitingSince()` | When the oldest message of this outbox that is due and not yet taken for delivery started waiting, or `null` when none waits — read from the store's backlog for `jobName`. The framework readiness check compares it against `maxOutboxWait` when one is set. |
 | `purgeFinished` | `Future<int> purgeFinished(DateTime before)` | Drops finished runs recorded before `before`, returning how many. Never called on your behalf: the completed runs are a delivery audit trail whose retention is a deployment's decision. |
-| `close` | `Future<void> close()` | *(override)* Stops delivery, closes the scheduler — releasing its leases — and closes the receipt stream, completing once all of that has. The `router` is left open. Idempotent: every call is handed the same close. |
+| `close` | `Future<void> close()` | *(override)* Removes the outbox from `started`, stops delivery, closes the scheduler — releasing its leases — and closes the receipt stream, completing once all of that has. The `router` is left open. Idempotent: every call is handed the same close. |
 
 ### TomTemplatedMessageService
 

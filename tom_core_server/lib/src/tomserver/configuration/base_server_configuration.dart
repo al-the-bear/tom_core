@@ -928,6 +928,30 @@ utj3flRQDLaDAl91lySpAjUp9aM8
   /// Environment name: `LOG_LEVEL` (see [getDefaultValues]).
   String logLevel = "";
 
+  /// How log entries are written: `text` (the default, one human-readable line
+  /// per entry) or `json` (one JSON object per line carrying `trace_id`,
+  /// `span_id`, `request_id` and `tenant` — see `TomJsonLogOutput`).
+  ///
+  /// Applied by [TomServer.start] when the output is still the default console
+  /// output; an application that installed its own output keeps it. Use `json`
+  /// wherever a log collector indexes the lines. An unrecognised value is
+  /// reported as an error and the output is left alone.
+  ///
+  /// Environment name: `LOG_FORMAT`.
+  String logFormat = "text";
+
+  /// Whether [TomServer.start] answers `GET /ready` with the framework's
+  /// readiness checks — every registered data source answering, no database
+  /// migration running or failed, every started message outbox delivering —
+  /// when the application installed no readiness analyzer of its own.
+  ///
+  /// On by default: a server that cannot reach its database should not be
+  /// sent traffic, and that is true of every Tom server. Turn it off only
+  /// where something else answers readiness.
+  ///
+  /// Environment name: `FRAMEWORK_READINESS`.
+  bool frameworkReadiness = true;
+
   /// The directory `TomDbMigrations.migrateDatabases` reads, relative to the
   /// working directory unless absolute.
   ///

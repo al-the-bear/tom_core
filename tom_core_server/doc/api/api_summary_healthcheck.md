@@ -2,7 +2,8 @@
 
 Health-check service for server monitoring: `GET /health` (liveness) and
 `GET /ready` (readiness), each with a pluggable analyzer, so applications can
-report custom status to container orchestration tools (Docker, Kubernetes).
+report custom status to container orchestration tools (Docker, Kubernetes),
+and the framework's own readiness checks that answer `GET /ready` by default.
 
 ## Table of Contents
 
@@ -14,12 +15,15 @@ report custom status to container orchestration tools (Docker, Kubernetes).
   - [TomDefaultHealthAnalyzer](#tomdefaulthealthanalyzer)
   - [TomHealthService](#tomhealthservice)
   - [TomHealthServer](#tomhealthserver)
+  - [TomReadinessCheck](#tomreadinesscheck)
+  - [TomFrameworkReadinessAnalyzer](#tomframeworkreadinessanalyzer)
 - [Enums](#enums)
 - [Global Functions and Constants](#global-functions-and-constants)
 
 ## Overview
 
-Source: `lib/src/tomserver/healthcheck/health_check.dart`.
+Sources: `lib/src/tomserver/healthcheck/health_check.dart`,
+`lib/src/tomserver/healthcheck/framework_readiness.dart`.
 
 `TomHealthService` is a `@tomService` interface declaring two endpoints, both
 public and unlogged: `GET /health` (**liveness** — am I running) and
@@ -47,6 +51,15 @@ probe correct — a load balancer's default check and a Kubernetes `httpGet` pro
 read the code and nothing else — while a probe that wants the reason still reads
 the body.
 
+`TomFrameworkReadinessAnalyzer` is the readiness analyzer every Tom server
+needs: every registered data source operational and answering `SELECT 1`, no
+`TomDbMigrations.migrateDatabases` call running or failed in this process, every
+started `TomMessageOutbox` delivering. `TomServer.start` installs it on
+`GET /ready` when the `frameworkReadiness` configuration key is on (the default)
+and the readiness analyzer is still the default one. Its body is `ready` or
+`not ready` followed by one line per check (`TomReadinessCheck`). Liveness is
+never answered by it.
+
 ## Class Hierarchy
 
 ```
@@ -54,7 +67,10 @@ TomHealthStatus          (a verdict and a message)
 TomHealthVerdict  (enum) (healthy 200 / unhealthy 503)
 
 TomHealthAnalyzer  (abstract)
-    └── TomDefaultHealthAnalyzer
+    ├── TomDefaultHealthAnalyzer
+    └── TomFrameworkReadinessAnalyzer
+
+TomReadinessCheck        (one check of the framework analyzer)
 
 TomHealthService  (abstract, @tomService)
     └── TomHealthServer  (@tomComponent, implements)
@@ -184,6 +200,75 @@ TomHealthServer()
 | `ready` | `Future<Response> ready()` | *(override)* Runs `readinessAnalyzer` through `verdictOf` and hands the result to `responseFor`. |
 | `verdictOf` | `static Future<TomHealthStatus> verdictOf(TomHealthAnalyzer analyzer, String probe)` | Runs `analyzer` under `healthTimeout` and turns every way it can fail to produce a verdict into one: a timeout becomes `TIMEOUT: the <probe> check did not answer within …`, a thrown exception — synchronous or asynchronous — becomes `FAILED: the <probe> check threw …`. The throw is the likelier failure and the one that changes the response *shape*: an exception leaving the handler is answered by the endpoints pipeline's error envelope, a `500` carrying JSON rather than the plain text a probe was configured to read, and on liveness a `500` is a restart. Public so a deployment adding a probe route of its own gets the deadline and the failure handling rather than a second, thinner spelling. A timed-out analyzer is not cancelled — `Future.timeout` stops the waiting, not the work — so an analysis is never started twice: a probe arriving while the analyzer's previous analysis is still pending waits on that one under its own deadline, and a hanging analyzer costs one pending future rather than one per probe. |
 | `responseFor` | `static Response responseFor(TomHealthStatus status)` | The HTTP response one status is served as: `status.statusCode`, the message as the body, and `text/plain` — set here because a handler returning a `Response` bypasses the endpoint's `produces`. Public and static so a deployment writing its own health route answers with the same shape rather than a second spelling of it. |
+
+### TomReadinessCheck
+
+One check of `TomFrameworkReadinessAnalyzer`: what was checked, and what was
+found.
+
+- **Extends:** none
+
+#### Constructors
+
+```dart
+const TomReadinessCheck(String subject, {required bool passed, String? detail})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `subject` | `String` | What was checked: `datasource <name>`, `migrations`, `outbox <jobName>` (final). |
+| `passed` | `bool` | Whether it allows traffic (final). |
+| `detail` | `String?` | What was seen — `ok`, or the reason it does not pass (final). |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `toString` | `String toString()` | *(override)* `<subject>: <detail>` — one line of the readiness body; `ok` or `failed` when there is no detail. |
+
+### TomFrameworkReadinessAnalyzer
+
+Answers readiness from the data sources, the migrations and the outboxes of
+this process. `TomServer.start` installs it on `GET /ready` unless the
+application installed a readiness analyzer of its own; an application with
+further dependencies installs its own analyzer and asks this one first.
+
+| Check | Ready when |
+| ----- | ---------- |
+| every registered data source | it reports operational, and an SQL data source answers `SELECT 1` within `dataSourceTimeout`; a `delegateTo` alias is checked once, under its target |
+| migrations | no `migrateDatabases` call is running or has failed in this process; one never made passes, since a deployment whose schema a DBA or a job applies never calls it |
+| every started `TomMessageOutbox` | its scheduler is running, and — when `maxOutboxWait` is set — no due message has waited longer |
+
+- **Extends:** `TomHealthAnalyzer`
+
+#### Constructors
+
+```dart
+TomFrameworkReadinessAnalyzer({
+  Duration dataSourceTimeout = const Duration(seconds: 2),
+  Duration? maxOutboxWait,
+  DateTime Function()? clock,
+})
+```
+
+`clock` is the time the outbox wait is measured against; it defaults to
+`DateTime.now` and exists for tests.
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `dataSourceTimeout` | `Duration` | How long an SQL data source may take to answer `SELECT 1`; also the deadline for reading an outbox's queue (final). |
+| `maxOutboxWait` | `Duration?` | How long the oldest due message may wait before the server is not ready; `null`, the default, does not look at the backlog (final). Off by default because every node of a cluster delivers from the same queue: a backlog caused by a slow relay would take every node out of the load balancer at once, refusing the requests that are not waiting on a message at all. Set it where the outbox is the service's purpose. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `analyzeHealth` | `Future<TomHealthStatus> analyzeHealth()` | *(override)* Runs `checks()`; healthy when every check passed. The message is `ready` or `not ready`, then one line per check. |
+| `checks` | `Future<List<TomReadinessCheck>> checks()` | Every check, in the order the body lists them: the data sources, then migrations, then the started outboxes. |
 
 ## Enums
 

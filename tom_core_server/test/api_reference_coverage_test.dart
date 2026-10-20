@@ -5584,6 +5584,7 @@ final x = SampledType();
       // All three findings above are emptiness assertions, so a parser that
       // read nothing would report every summary as agreeing.
       expect(_enumSectionHeadingsOf(_summary('db_migration')), [
+        'TomMigrationRunState',
         'TomSchemaDivergenceKind',
       ]);
       expect(

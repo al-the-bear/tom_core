@@ -2,6 +2,44 @@
 
 ### Added
 
+- **Request correlation ids and structured logs.** `tomRequestContextMiddleware`
+  mints every request's `TomRequestId` and continues the caller's W3C
+  `traceparent` with a span of the server's own (the kernel's
+  `TomTraceContext`), or starts a trace; it runs the rest of the pipeline in a
+  zone carrying both and answers with the `X-Request-Id` (`tomRequestIdHeader`)
+  and `traceparent` response headers. `TomServer.start` installs it after the
+  metrics endpoint and before the request metrics, so the access log, both error
+  layers and authentication log under the same ids. Building it registers the
+  `request_id` field of structured log lines (`TomLogContext`); a JSON line
+  carries `trace_id`, `span_id`, `tenant` and `request_id`, and no personal data
+  in a fixed field. `doc/server.md` § Correlation Ids and Structured Logs.
+- **Configuration key `logFormat`** (`text` — the default — or `json`;
+  environment `LOG_FORMAT`) and **`TomServer.applyLogFormat`**: `json` replaces
+  the default console output with the kernel's `TomJsonLogOutput`, keeping an
+  output the application installed; an unknown value is logged as an error and
+  changes nothing. `TomServer.start` applies it. `doc/configuration.md` § Log
+  Format and Readiness.
+- **Framework readiness checks** — `TomFrameworkReadinessAnalyzer` and
+  `TomReadinessCheck` in the `healthcheck` module: every registered data source
+  operational and answering `SELECT 1` within `dataSourceTimeout`, no database
+  migration running or failed in this process, every started message outbox
+  delivering, and — only when `maxOutboxWait` is set — no message waiting longer.
+  The body is `ready` / `not ready` and one line per check. `TomServer.start`
+  installs it on `GET /ready` when the new **configuration key
+  `frameworkReadiness`** (default `true`, environment `FRAMEWORK_READINESS`) is on
+  and the application installed no readiness analyzer of its own; `/health` is
+  not affected. `doc/healthcheck.md` § The Framework Readiness Checks, with the
+  Kubernetes probe configuration.
+- **`TomDbMigrations.lastRun`**, a `TomMigrationRun` with its
+  `TomMigrationRunState` (`notRun`, `running`, `succeeded`, `failed`), recorded
+  by every `migrateDatabases` call, and `TomDbMigrations.resetLastRun()`.
+  `doc/db_migration.md` § Where the last run stands.
+- **`TomMessageOutbox.started`** — the started, unclosed outboxes of the isolate
+  — and **`TomMessageOutbox.oldestWaitingSince()`**. `doc/messaging.md` § The
+  outbox and readiness.
+- **`example/healthcheck/readiness_logging_example.dart`** — the framework
+  readiness checks and the JSON log line of one request, on the package tour.
+
 - **Metrics, exposed for Prometheus and over OTLP — the new `metrics` module.**
   The server records into the kernel's process registry (`TomMetrics.registry`,
   the kernel's new `metrics` module) beside the scheduler's job series:
@@ -545,6 +583,12 @@
 
 ### Changed
 
+- **The request id is minted before authentication.**
+  `tomDefaultAuthenticationMiddleware` carries the `TomRequestId` it finds in the
+  zone — the one `tomRequestContextMiddleware` minted — into the request's zone
+  values, and mints one only when it runs without that middleware outside it.
+- **`TomMessageOutbox.start` after `close`** throws `messaging.outbox.closed`, as
+  `send` does.
 - **The server records metrics.** `doc/server.md` no longer states that the
   module has no metrics facility and that a metrics route is an ordinary
   endpoint: the pipeline now opens with the scrape endpoint (when configured)
@@ -661,6 +705,13 @@
 
 ### Tests
 
+- **`test/structured_logs_readiness_test.dart`** covers the request context
+  (trace continued or started, the request id kept by authentication and named
+  on the response, the fields of a JSON line), `logFormat`, and the framework
+  readiness checks without a database — including a started server answering
+  `/ready` `503` after a failed migration while `/health` stays `200`;
+  **`test/structured_logs_readiness_db_test.dart`** (tag `db`) the data source
+  check against MariaDB or PostgreSQL.
 - **`test/metrics_test.dart`** covers the request series by route pattern, an
   unmatched path, an escaping error counted as `500`, the scrape (not counted,
   token refusals, `HEAD`), one scrape carrying request, rate-limit, cache and

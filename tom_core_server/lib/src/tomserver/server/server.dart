@@ -15,6 +15,8 @@ import '../configuration/base_server_configuration.dart';
 import '../configuration/runtime_environment.dart';
 import '../endpoints/endpoint_pipeline.dart';
 import '../endpoints/openapi_document_endpoint.dart';
+import '../healthcheck/framework_readiness.dart';
+import '../healthcheck/health_check.dart';
 import '../metrics/metrics_middleware.dart';
 import '../metrics/otlp_exporter.dart';
 import '../authorization/authorization_cache.dart';
@@ -65,6 +67,51 @@ Middleware tomRequestLogInfoMiddleware() => (innerHandler) {
     ),
   );
 };
+
+/// The header a server echoes the request id in, so a caller can quote it.
+const String tomRequestIdHeader = 'X-Request-Id';
+
+/// A [Middleware] that gives every request its correlation ids before
+/// anything else runs: a [TomRequestId], and the W3C trace context its
+/// `traceparent` header continues — a new span of the caller's trace, or a
+/// new trace when the request carries none or an invalid one.
+///
+/// Both are published into the zone the rest of the pipeline runs in, so the
+/// access-log line, an error logged during authentication and every line a
+/// handler writes carry the same `request_id`, `trace_id` and `span_id` (see
+/// `TomJsonLogOutput`). [tomDefaultAuthenticationMiddleware] keeps the request
+/// id it finds here rather than minting a second one, so the id on a server
+/// exception and in the audit trail is this one too.
+///
+/// Building it registers the `request_id` field of structured log lines
+/// ([TomLogContext]).
+///
+/// The response carries the request id in [tomRequestIdHeader], which is what
+/// a user quotes to support, and the server span as `traceparent`, so a
+/// tracing client can attach the server's part of the trace to its own.
+Middleware tomRequestContextMiddleware() {
+  TomLogContext.register(
+    'request_id',
+    () => getFromCurrentZone<TomRequestId>()?.uuid,
+  );
+  return (innerHandler) => (request) {
+    final requestId = TomRequestId();
+    final incoming = TomTraceContext.parse(request.headers['traceparent']);
+    final trace = incoming?.child() ?? TomTraceContext.newRoot();
+    return runZoned(
+      zoneValues: {TomRequestId: requestId},
+      () => TomTraceContext.run(trace, () async {
+        final response = await innerHandler(request);
+        return response.change(
+          headers: {
+            tomRequestIdHeader: requestId.uuid,
+            'traceparent': trace.traceparent,
+          },
+        );
+      }),
+    );
+  };
+}
 
 /// Why a request carries the credentials it does — the third element of
 /// [extractAuthentication]'s result.
@@ -401,7 +448,7 @@ Middleware tomDefaultAuthenticationMiddleware(
         TomPrincipal: principal,
         TomClientJwtToken: clientToken,
         TomApiKeyIdentity: apiKey,
-        TomRequestId: TomRequestId(),
+        TomRequestId: getFromCurrentZone<TomRequestId>() ?? TomRequestId(),
       });
       zoneValues[TomZoneValues] = zoneValues;
       // Each request also gets its own current transaction, for the same reason
@@ -689,6 +736,11 @@ class TomServer {
     }
 
     _startMetricsExport();
+    _configureLogging();
+    if (configuration.frameworkReadiness &&
+        TomHealthServer.readinessAnalyzer is TomDefaultHealthAnalyzer) {
+      TomHealthServer.installReadinessAnalyzer(TomFrameworkReadinessAnalyzer());
+    }
 
     // let the router be set up...
     router = TomEndpointRouting().initializeRouter();
@@ -742,6 +794,7 @@ class TomServer {
                 )
               : (inner) => inner,
         )
+        .addMiddleware(tomRequestContextMiddleware())
         .addMiddleware(tomRequestMetricsMiddleware())
         .addMiddleware(loggingMiddleware)
         .addMiddleware(
@@ -797,6 +850,34 @@ class TomServer {
       'Server listening on port ${server.port} ${server.address} ${securityContext != null ? "SSL" : "no SSL"} at ${DateTime.now()}',
     );
     return server;
+  }
+
+  /// Applies [TomBaseServerConfiguration.logFormat]; see [applyLogFormat].
+  void _configureLogging() => applyLogFormat(configuration.logFormat);
+
+  /// Applies a `logFormat` setting — `text` or `json` — answering whether it
+  /// was recognised.
+  ///
+  /// `json` replaces only the default console output with a
+  /// [TomJsonLogOutput], so an application that installed an output of its
+  /// own keeps it; `text` (or empty) changes nothing. An unrecognised value is
+  /// logged as an error and changes nothing.
+  static bool applyLogFormat(String format) {
+    switch (format.trim().toLowerCase()) {
+      case '' || 'text':
+        return true;
+      case 'json':
+        if (tomLog.logOutput is TomConsoleLogOutput) {
+          tomLog.logOutput = TomJsonLogOutput();
+        }
+        return true;
+      default:
+        tomLog.error(
+          "Unknown logFormat '$format'; expected 'text' or 'json'. The log "
+          'output is left as it is.',
+        );
+        return false;
+    }
   }
 
   /// The exporter pushing metrics to the configured OTLP receiver, or `null`

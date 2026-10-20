@@ -13,6 +13,11 @@ job run). It is not the **organization**, a business unit inside a tenant; the
 framework never infers one from the other. The `'tenant'` entry in the quick
 start below is an ordinary named value.
 
+The **trace** the work belongs to has a slot too, `TomTraceContext`, in the W3C
+Trace Context form: a server request continues the caller's `traceparent` (or
+starts a trace) and runs inside it, and the structured log output writes its
+ids into every line as `trace_id` and `span_id`.
+
 ## Key types
 
 | Type | Responsibility |
@@ -25,6 +30,7 @@ start below is an ordinary named value.
 | `TomTenantException` | `tenancy.id.invalid` / `tenancy.context.missing`. |
 | `TomTenantScopedCommand` | Runs a `TomCommand` inside a tenant wherever it executes, a worker isolate included. |
 | `TomTenantEvent` | An event-triggered job's event, naming the tenant the run belongs to. |
+| `TomTraceContext` | The W3C trace and span in the zone: `parse` a `traceparent` (`null` when invalid), `newRoot`, `child`, `traceparent`, `current`, `run`. |
 
 ## Quick start
 

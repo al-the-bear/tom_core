@@ -131,6 +131,7 @@ export 'src/tomserver/file_storage/database_blob_sql.dart';
 export 'src/tomserver/file_storage/database_blob_store.dart';
 export 'src/tomserver/file_storage/directory_blob_store.dart';
 export 'src/tomserver/file_storage/s3_blob_store.dart';
+export 'src/tomserver/healthcheck/framework_readiness.dart';
 export 'src/tomserver/healthcheck/health_check.dart';
 export 'src/tomserver/item_authorization/item_authority.dart';
 export 'src/tomserver/item_authorization/item_authority_scope_source.dart';

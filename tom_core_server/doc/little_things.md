@@ -34,7 +34,7 @@ the exception constructor recovers from the zone — plus one function,
 
 | Type | Kind | Purpose |
 | ---- | ---- | ------- |
-| `TomRequestId` | class | Per-request v4-UUID correlation id, published into the request zone by the server's authentication middleware |
+| `TomRequestId` | class | Per-request v4-UUID correlation id, minted per request by the server's request-context middleware and published into the request zone |
 | `TomServerException` | class | Base class for all server-raised exceptions; extends the kernel's `TomException` |
 | `TomLoginException` | class | A failed login, raised by the authentication services; extends `TomServerException` and adds a `TomLoginFailure` reason |
 | `tomErrorEnvelope` | function | Renders any error into the package's wire error body — the shape every error response uses |
@@ -54,8 +54,10 @@ print(id);           // TomRequestId: 4f8c…
 
 A request id is an identity and nothing else: a UUID generated in the
 constructor and a `toString` that prints it. It is *produced* by the server
-module — `tomDefaultAuthenticationMiddleware` puts a fresh one into `zoneValues`
-for every incoming request — and *consumed* here, by the `TomServerException`
+module — `tomRequestContextMiddleware` mints one for every incoming request and
+`tomDefaultAuthenticationMiddleware` carries it into `zoneValues` (minting one
+itself only when it runs without that middleware outside it) — and *consumed*
+here, by the `TomServerException`
 constructor, as well as by the endpoints pipeline (which logs it) and the audit
 trail (which stores it on every entry).
 
@@ -230,8 +232,9 @@ named worker, sends one back, and reads the name on the other side.
 
 ## Request Correlation
 
-`tomDefaultAuthenticationMiddleware` sets a `TomRequestId` in the zone for the
-lifetime of a request. When a `TomServerException` is constructed inside that
+`tomRequestContextMiddleware` sets a `TomRequestId` in the zone for the
+lifetime of a request, and `tomDefaultAuthenticationMiddleware` keeps it in the
+request's zone values. When a `TomServerException` is constructed inside that
 zone, its
 constructor reads the id via `getFromCurrentZone<TomRequestId>()` and copies the
 UUID into the inherited `requestUuid` field. The error is therefore linked to
@@ -466,12 +469,15 @@ without either reaching the other.
   <!-- pinned: test/documented_limitations_test.dart › the error envelope carries no message -->
 - **A request id cannot be adopted from the caller.** `TomRequestId` mints a v4
   UUID in its constructor and exposes no way to supply one, so an inbound
-  `X-Request-Id` from a proxy or an upstream service is ignored and a trace
-  spanning two services has two unrelated ids. Correlating them is the log
-  aggregator's job today.
+  `X-Request-Id` from a proxy or an upstream service is ignored and a request
+  spanning two services has two unrelated request ids. What joins them is the
+  W3C trace id, which the server continues from the caller's `traceparent` and
+  writes on every structured log line (see
+  [server.md](server.md#correlation-ids-and-structured-logs)).
   <!-- unpinned: absence — TomRequestId offers no way to supply an id -->
-- **Only a request gets an id.** `tomDefaultAuthenticationMiddleware` is the
-  single place one is seeded, so work outside the request path — a scheduled
+- **Only a request gets an id.** The server's request pipeline —
+  `tomRequestContextMiddleware`, or `tomDefaultAuthenticationMiddleware` without
+  it — is the only place one is seeded, so work outside the request path — a scheduled
   job, a start-up task, a script — raises exceptions with a null `requestUuid`
   and nothing to group them by. Nothing prevents a caller from establishing one
   with `runZoned`, but the framework does not do it.
@@ -512,7 +518,7 @@ transcript; `test/examples_test.dart` runs it, which is what keeps that true.
 ## Core Components
 
 - **`TomRequestId`** — a per-request v4 UUID and nothing else. Created once per
-  request by `tomDefaultAuthenticationMiddleware` and published into the request
+  request by `tomRequestContextMiddleware` and published into the request
   zone; recovered with `getFromCurrentZone<TomRequestId>()` by the exception
   base, the endpoints pipeline and `TomAuditTrail.currentRequestId`.
 - **`TomServerException`** — the base server exception. Adds `isolateName`

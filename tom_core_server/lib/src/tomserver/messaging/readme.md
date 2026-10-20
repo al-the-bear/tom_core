@@ -229,7 +229,7 @@ Source: `outbox.dart`
 
 | Type | What it is |
 | ---- | ---------- |
-| `TomMessageOutbox` | The send queue, on the kernel's job scheduler. A send that outlives the process that asked for it, with retry driven by the permanent/transient distinction above. |
+| `TomMessageOutbox` | The send queue, on the kernel's job scheduler. A send that outlives the process that asked for it, with retry driven by the permanent/transient distinction above. `start()` registers it in `TomMessageOutbox.started`, which the framework readiness check on `GET /ready` asks whether it is delivering. |
 | `tomOutboxJobName` | The scheduler job name the outbox registers under (`messaging.outbox`). |
 
 ### Application messaging

@@ -31,6 +31,7 @@ store before the configuration is built.
   - [Outbound SMS (HTTP Gateway)](#outbound-sms-http-gateway)
 - [Publishing the OpenAPI Document](#publishing-the-openapi-document)
 - [Publishing Metrics](#publishing-metrics)
+- [Log Format and Readiness](#log-format-and-readiness)
 - [Source Precedence](#source-precedence)
   - [A `SCREAMING_SNAKE_CASE` variable names a `lowerCamelCase` field](#a-screaming_snake_case-variable-names-a-lowercamelcase-field)
 - [Secret References](#secret-references)
@@ -796,6 +797,27 @@ otlpEndpoint: "http://otel-collector:4318"
 The series, the scrape endpoint and the export are described in
 [metrics.md](metrics.md); where the scrape sits in the pipeline, in
 [server.md](server.md#the-pipeline).
+
+## Log Format and Readiness
+
+Two settings decide what the server tells an operator's tooling about itself
+without being asked in code: the shape of its log lines, and whether `GET /ready`
+answers with the framework's own checks.
+
+| Setting | Type | Default | What it decides |
+| ------- | ---- | ------- | --------------- |
+| `logFormat` | `String` | `text` | `text` writes one human-readable line per entry; `json` one JSON object per line carrying `trace_id`, `span_id`, `request_id` and `tenant`, for a log collector to index. `TomServer.start` applies it when the output is still the default console output, so an application that installed its own keeps it. An unrecognised value is logged as an error and changes nothing. Environment name `LOG_FORMAT`. |
+| `frameworkReadiness` | `bool` | `true` | Whether `TomServer.start` answers `GET /ready` with `TomFrameworkReadinessAnalyzer` — every data source answering, no migration running or failed, every started outbox delivering — when the application installed no readiness analyzer of its own. Environment name `FRAMEWORK_READINESS`. |
+
+```yaml
+# assets/config-resources_default.yaml
+logFormat: json
+```
+
+The JSON line and the correlation ids it carries are described in
+[server.md](server.md#correlation-ids-and-structured-logs); the readiness checks,
+their body and how to compose them into an application's own analyzer, in
+[healthcheck.md](healthcheck.md#the-framework-readiness-checks).
 
 ## Source Precedence
 

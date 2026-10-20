@@ -192,6 +192,11 @@ const List<TourStop> tour = [
     'The health and readiness verdicts, and what a probe can act on',
   ),
   TourStop(
+    'example/healthcheck/readiness_logging_example.dart',
+    'The framework readiness checks behind /ready, and the JSON log line a '
+        'request writes with its trace and request ids',
+  ),
+  TourStop(
     'example/cmdline/cmdline_example.dart',
     'Reading a command line and an env file into a typed configuration',
   ),
