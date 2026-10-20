@@ -29,10 +29,10 @@ surface documented here.
 | Preferences | [api_summary_preferences.md](api_summary_preferences.md) | Server-stored per-principal preferences: the scoped `tom_user_preference` entity, the typed service over it, and the `/preferences/*` endpoints. |
 | Rate Limiting | [api_summary_ratelimit.md](api_summary_ratelimit.md) | Request rate limits per principal, API key or client address: the rules, the sliding-window arithmetic, the per-process and shared limiters, and the middleware answering `429` with `Retry-After`. |
 | Resources | [api_summary_resources.md](api_summary_resources.md) | Locale-aware text resolution: one bundle per locale, chosen by the recipient's language. |
-| Scheduling | [api_summary_scheduling.md](api_summary_scheduling.md) | The relational half of the job scheduler: the shared job queue, fencing leases, and the node roll call. |
+| Scheduling | [api_summary_scheduling.md](api_summary_scheduling.md) | The relational half of the job scheduler: the shared job queue, fencing leases, and the node roll call; and unique window instants for runs enqueued outside a schedule. |
 | Server | [api_summary_server.md](api_summary_server.md) | The HTTP server, per-request logging state and correlation ids, middleware, the log format, the paths whose credentials belong to the endpoint, and the graceful shutdown on SIGTERM. |
 | Tenancy | [api_summary_tenancy.md](api_summary_tenancy.md) | Multi-tenancy: the deployment's tenants, the three isolation models chosen per tenant, data-source routing, and the resolution of a request's tenant from its token, host or header. |
-| Transactions | [api_summary_transactions.md](api_summary_transactions.md) | Distributed transaction manager and participants. |
+| Transactions | [api_summary_transactions.md](api_summary_transactions.md) | Distributed transaction manager and participants, and sagas: work across services as local transactions undone by compensations, their orchestrator, stores and table. |
 
 ## Modules
 
@@ -791,6 +791,7 @@ surface documented here.
 | `defaultJobRunTable` / `defaultLeaseTable` / `defaultSchedulerNodeTable` | top-level | Default table names. |
 | `jobRunTable` / `leaseTable` / `schedulerNodeTable` | top-level | The table descriptors. |
 | `jobRunTableDdl` / `leaseTableDdl` / `schedulerNodeTableDdl` | top-level | The `CREATE TABLE` statements. |
+| `TomEventInstants` | abstract final class | Strictly increasing window instants for runs a component enqueues itself — the outbox, the saga orchestrator. |
 
 ### Server (`lib/src/tomserver/server/`)
 
@@ -835,6 +836,21 @@ surface documented here.
 | `TomTransactionResult` | class | What a conclusion did, and to whom. |
 | `TomTransactionOutcome` | enum | Committed, partially committed, rolled back, rolled back with failures. |
 | `TomTransactionException` | class | Transaction error. |
+| `TomSagaException` | class | A saga that cannot be declared, begun or stored (extends `TomServerException`). |
+| `TomSagaWork` | typedef | The work of a step or a compensation. |
+| `TomSagaStep` | class | One step of a saga: an action and, optionally, the compensation that undoes it. |
+| `TomSaga` | class | The declaration of a saga: its steps, in order, and how they are retried. |
+| `TomSagaContext` | class | What a step's action or compensation is given. |
+| `TomSagaStatus` | enum | Running, compensating, completed, compensated, failed. |
+| `TomSagaState` | class | The persisted progress of one saga. |
+| `TomSagaStore` | abstract class | Where saga states are kept, in the tenant in context. |
+| `TomMemorySagaStore` | class | Saga states in memory; for tests. |
+| `TomSqlSagaStore` | class | Saga states in `tom_saga` of a SQL data source, resolved by name per call. |
+| `TomSagaRow` | class | One row of the saga table. |
+| `tomSagaJobPrefix` | top-level | `saga`, the default prefix of the orchestrator's job names. |
+| `TomSagaOrchestrator` | class | Runs sagas: each step and compensation a job run of its own inline scheduler, in a local transaction guarded by the saga's version. |
+| `defaultSagaTable` | top-level | `tom_saga`, the saga table's default name. |
+| `sagaTable` / `sagaTableDdl` | top-level | The saga table's descriptor, and its `CREATE TABLE` statement. |
 
 ## Alphabetical Type Index
 
@@ -882,6 +898,7 @@ surface documented here.
 | `defaultNodeFailureSlack` | Scheduling |
 | `defaultOAuthStateTable` | Authentication |
 | `defaultRateLimitTable` | Rate Limiting |
+| `defaultSagaTable` | Transactions |
 | `defaultSchedulerNodeTable` | Scheduling |
 | `defaultScimResourceTable` | Authentication |
 | `defaultServiceAccountTable` | Authentication |
@@ -958,6 +975,8 @@ surface documented here.
 | `Regexp` | Object Persistence |
 | `RepositoryPrincipalDelegationStore` | Authorization |
 | `RepositoryPrincipalResourceGrantStore` | Authorization |
+| `sagaTable` | Transactions |
+| `sagaTableDdl` | Transactions |
 | `schedulerNodeFailedAfter` | Scheduling |
 | `schedulerNodeTable` | Scheduling |
 | `schedulerNodeTableDdl` | Scheduling |
@@ -1198,6 +1217,7 @@ surface documented here.
 | `TomEnvFile` | Command Line |
 | `tomErrorEnvelope` | Little Things |
 | `TomErrorHandler` | Endpoints |
+| `TomEventInstants` | Scheduling |
 | `TomExclusiveCanonicalizer` | Authentication |
 | `TomExportException` | Export |
 | `TomExportFormats` | Export |
@@ -1316,6 +1336,7 @@ surface documented here.
 | `TomMemoryMessageTransport` | Messaging |
 | `TomMemoryOAuthTokenStore` | Authentication |
 | `TomMemoryRateLimiter` | Rate Limiting |
+| `TomMemorySagaStore` | Transactions |
 | `TomMemoryScimStore` | Authentication |
 | `TomMessage` | Messaging |
 | `TomMessageBody` | Messaging |
@@ -1422,6 +1443,17 @@ surface documented here.
 | `TomRsaAuditAnchorVerifier` | Audit |
 | `TomS3BlobStore` | File Storage |
 | `TomS3BlobStoreBackend` | File Storage |
+| `TomSaga` | Transactions |
+| `TomSagaContext` | Transactions |
+| `TomSagaException` | Transactions |
+| `tomSagaJobPrefix` | Transactions |
+| `TomSagaOrchestrator` | Transactions |
+| `TomSagaRow` | Transactions |
+| `TomSagaState` | Transactions |
+| `TomSagaStatus` | Transactions |
+| `TomSagaStep` | Transactions |
+| `TomSagaStore` | Transactions |
+| `TomSagaWork` | Transactions |
 | `TomSamlCertificates` | Authentication |
 | `TomSamlException` | Authentication |
 | `TomSamlFlow` | Authentication |
@@ -1537,6 +1569,7 @@ surface documented here.
 | `TomSqlResult` | Datasources |
 | `TomSqlResultValues` | Datasources |
 | `TomSqlRow` | Datasources |
+| `TomSqlSagaStore` | Transactions |
 | `TomSqlSchedulerNodes` | Scheduling |
 | `TomSqlScimStore` | Authentication |
 | `TomSqlTypeFamily` | Datasources |

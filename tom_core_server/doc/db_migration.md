@@ -930,7 +930,7 @@ entry.
 The framework's tables — `tom_job_run`, `tom_lease`, `tom_scheduler_node`,
 `tom_blob`, `tom_blob_chunk`, `tom_audit_trail`, `tom_oauth_state`,
 `tom_scim_resource`, `tom_delivery_report`, `tom_message_inbox`,
-`tom_cache_invalidation`, `tom_idempotency_key` — are not
+`tom_cache_invalidation`, `tom_idempotency_key`, `tom_saga` — are not
 application entities
 and deliberately stay that way: making them entities would pull them into the
 application's reflection build and have `discoverEntityTypes()` report them
@@ -968,10 +968,12 @@ migrations, `example/scheduling/migrations/main/tomcore/[1]-create_tom_job_run.s
 and `example/messaging/migrations/main/tomcore/[1]-create_tom_delivery_report.sql`,
 declare them.
 
-Two of them can live where a tenant's data lives instead. `tom_message_inbox`
-belongs in the data source the consumer's work writes to, and
-`tom_idempotency_key` in the data source the idempotency store names — which,
-when tenancy routes that data source, is the tenant's own schema or database.
+Three of them can live where a tenant's data lives instead. `tom_message_inbox`
+belongs in the data source the consumer's work writes to,
+`tom_idempotency_key` in the data source the idempotency store names, and
+`tom_saga` in the data source the saga store names, beside the data the saga's
+steps change — which, when tenancy routes that data source, is the tenant's own
+schema or database.
 Their migrations then belong in the per-tenant tree; see
 [tenancy.md](tenancy.md#what-stays-deployment-wide).
 
@@ -1330,4 +1332,4 @@ here it cannot drift silently.
 | [messaging](messaging.md) | module | `framework_convergence.dart` | `defaultDeliveryReportTable`, `deliveryReportTable`, `defaultInboxTable`, `inboxTable` |
 | [object_persistence](object_persistence.md) | module | `framework_convergence.dart`, `sql_migration_adaptor.dart`, `schema_convergence.dart` | `TomDbTable` / `TomDbColumn` on `TomDbVersion` |
 | [scheduling](scheduling.md) | module | `framework_convergence.dart` | `defaultJobRunTable`, `defaultLeaseTable`, `defaultSchedulerNodeTable`, `jobRunTable`, `leaseTable`, `schedulerNodeTable` |
-| [transactions](transactions.md) | module | `postgres_migration_adapter.dart` | `TomTransactionManager.runInTransaction`, which runs a PostgreSQL script and its version row as one transaction |
+| [transactions](transactions.md) | module | `framework_convergence.dart`, `postgres_migration_adapter.dart` | `defaultSagaTable` and `sagaTable`; `TomTransactionManager.runInTransaction`, which runs a PostgreSQL script and its version row as one transaction |

@@ -2,6 +2,44 @@
 
 ### Added
 
+- **Sagas** (`transactions` module). `TomSagaOrchestrator` runs work that spans
+  services as a `TomSaga` of `TomSagaStep`s, each an `action` and an optional
+  `compensation` (`TomSagaWork`, given a `TomSagaContext` with the attempt, the
+  reason it compensates and the saga's JSON data, which a step may change and
+  which is saved with it). Every step and every compensation is a job run of an
+  inline `TomScheduler` the orchestrator owns — jobs `saga.<name>` and
+  `saga.<name>.compensation` (`tomSagaJobPrefix`, `stepJobName`,
+  `compensationJobName`) — run in `TomTransactionManager.runInTransaction`
+  together with the update that moves the saga on, written only over the
+  version the run was queued for: a step that throws leaves no trace and is
+  retried by `TomSaga.retryPolicy`, a step that committed never runs again. A
+  step that fails for good, or throws a `TomPermanentFailure`, turns the saga to
+  `compensating`, and the completed steps are compensated last first by
+  `compensationRetryPolicy` (ten attempts by default); a compensation that fails
+  for good ends the saga `failed` and raises the scheduler's alert
+  (`TomSagaStatus`: `running`, `compensating`, `completed`, `compensated`,
+  `failed`). `register`, `begin(name, data:, id:)` — for the tenant in context,
+  inside the caller's transaction when there is one — `find`, `start`, `tick`,
+  `close`, and `resume`, which re-queues every unfinished saga whose run is gone,
+  at start and every `sweepInterval` (five minutes), in every tenant of an
+  installed `TomTenancy`. States (`TomSagaState`) are kept in a `TomSagaStore`:
+  `TomMemorySagaStore`, or `TomSqlSagaStore` — a data source resolved by name
+  per call, so under tenancy a tenant's sagas live with its data, or bound with
+  `.over(datasource)` — in `tom_saga`, declared once by `sagaTable`
+  (`sagaTableDdl`, `defaultSagaTable`, read back as `TomSagaRow`), listed by
+  `frameworkOwnedTables` under the new `saga` parameter, and shipped as the
+  reference migration `example/transactions/migrations/main/tomcore/[1]-create_tom_saga.sql`
+  with its PostgreSQL form. `TomSagaException` carries
+  `transactions.saga.invalid_definition`, `…already_registered`, `…unknown`,
+  `…invalid_id`, `…id_taken`, `…data_not_json`, `…closed` and
+  `…no_datasource`. `doc/transactions.md` § Sagas, notes in `doc/tenancy.md`
+  and `doc/db_migration.md`; `example/transactions/saga_example.dart`, on the
+  package tour; `test/saga_test.dart`, `test/saga_db_test.dart`.
+- **`TomEventInstants`** (`scheduling` module): strictly increasing window
+  instants for the runs a component enqueues itself rather than through a
+  schedule — `next(now)` answers `now` in UTC, or one microsecond past the last
+  instant it gave out. Used by the outbox and the saga orchestrator.
+
 - **Idempotency keys** (`endpoints` module). `@TomIdempotent({retention})` on
   an endpoint lets a request carry an `Idempotency-Key` header (1 to 191
   characters): the first request runs and its response is stored; a retry with
@@ -881,6 +919,11 @@
 
 ### Fixed
 
+- **Two outbox messages queued in the same microsecond are both delivered.**
+  `TomMessageOutbox.send` gave a message's run the clock's reading as its window
+  instant, and `TomSqlJobStore` keeps one run per job, tenant and window — so a
+  second message queued in the same microsecond replaced the first in
+  `tom_job_run`. Each run now takes its instant from `TomEventInstants.next`.
 - **CORS reaches the response, not only the preflight.** Every response an
   endpoint returns — an error included — now carries the endpoint's
   `Access-Control-Allow-Origin` (`corsAllowedOrigins`, else

@@ -311,7 +311,8 @@ compute for itself.
 If a client ever does cache, this is what has to change: the contract gains a
 conditional read or a `since` window, the server compares against the stored
 value, and this section is rewritten. `test/preferences_dto_test.dart` fails the
-moment a comparison appears in shipped code, so the rewrite cannot be forgotten.
+moment a comparison appears in shipped code that handles preferences, so the
+rewrite cannot be forgotten.
 
 ## The Endpoints
 

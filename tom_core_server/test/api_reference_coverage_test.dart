@@ -5347,7 +5347,7 @@ class RealClass {}
       // subheadings is known to be read whole rather than to the first break.
       expect(_globalFunctionNames('scheduling'), hasLength(greaterThan(8)));
       // And a module that legitimately lists nothing still has a section.
-      expect(_globalFunctionNames('transactions'), isEmpty);
+      expect(_globalFunctionNames('cmdline'), isEmpty);
     });
 
     test('the parser reads a section the way the summaries write one', () {
@@ -7414,18 +7414,15 @@ class After {}
     test('an unnamed artefact is what the sweep reports', () {
       // Emptiness across twenty modules is only worth something if the
       // measurement can see the debt at all, so each shape is driven over text
-      // written to have it. `transactions` is the module named because it has
+      // written to have it. `cmdline` is the module named because it has
       // exactly one suite and one example, which keeps the expected strings
       // short; what is under test is the rule, not that module.
-      expect(_unnamedVerification('transactions'), isEmpty);
-      expect(
-        _unnamedVerificationIn('transactions', 'A guide naming nothing.'),
-        [
-          'does not name transactions_test.dart',
-          'names none of its examples '
-              '(example/transactions/transactions_example.dart)',
-        ],
-      );
+      expect(_unnamedVerification('cmdline'), isEmpty);
+      expect(_unnamedVerificationIn('cmdline', 'A guide naming nothing.'), [
+        'does not name cmdline_test.dart',
+        'names none of its examples '
+            '(example/cmdline/cmdline_example.dart)',
+      ]);
       // The fallback clause, which only a module with no name-matched suite
       // can reach. No module in the package is in that state — the `every
       // module has a suite that carries its name` group is what keeps it that
@@ -7440,20 +7437,20 @@ class After {}
       );
       expect(
         _unnamedVerificationIn(
-          'transactions',
-          'Covered by `test/transactions_test.dart`.',
+          'cmdline',
+          'Covered by `test/cmdline_test.dart`.',
         ),
         [
           'names none of its examples '
-              '(example/transactions/transactions_example.dart)',
+              '(example/cmdline/cmdline_example.dart)',
         ],
       );
       expect(
         _unnamedVerificationIn(
-          'transactions',
-          'Run `dart run example/transactions/transactions_example.dart`.',
+          'cmdline',
+          'Run `dart run example/cmdline/cmdline_example.dart`.',
         ),
-        ['does not name transactions_test.dart'],
+        ['does not name cmdline_test.dart'],
       );
 
       // Reference migrations are not an example a reader runs, and `audit.md`

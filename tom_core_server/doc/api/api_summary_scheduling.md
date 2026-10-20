@@ -2,7 +2,8 @@
 
 The relational half of the framework's job scheduler: a shared queue, a shared
 lock and a cluster roll call, all rows in the database the application already
-has, for nodes that do not share a filesystem.
+has, for nodes that do not share a filesystem — and the window instants of the
+runs a component enqueues itself.
 
 ## Table of Contents
 
@@ -18,6 +19,7 @@ has, for nodes that do not share a filesystem.
   - [TomSchedulerNode](#tomschedulernode)
   - [TomSqlSchedulerNodes](#tomsqlschedulernodes)
   - [TomSchedulerNodeRow](#tomschedulernoderow)
+  - [TomEventInstants](#tomeventinstants)
 - [Global Functions and Constants](#global-functions-and-constants)
 
 ## Overview
@@ -25,7 +27,8 @@ has, for nodes that do not share a filesystem.
 Source: `lib/src/tomserver/scheduling/sql_job_store.dart`,
 `lib/src/tomserver/scheduling/sql_lease_lock.dart`,
 `lib/src/tomserver/scheduling/sql_scheduler_nodes.dart`,
-`lib/src/tomserver/scheduling/sql_scheduling_sql.dart`.
+`lib/src/tomserver/scheduling/sql_scheduling_sql.dart`,
+`lib/src/tomserver/scheduling/event_instants.dart`.
 
 This module contains only the SQL-backed persistence half of scheduling. It
 implements two contracts and defines none of them: the scheduling *model* —
@@ -73,6 +76,12 @@ Instants are stored as UTC `DATETIME(6)` and carried through `String` fields in
 the row types, because the driver materialises a `DATETIME` as a *local*
 `DateTime` that would not compare equal to the UTC value written.
 
+`TomEventInstants` serves the components that enqueue runs themselves rather
+than through a schedule — the messaging outbox and the saga orchestrator. A job
+store keeps one run per job, tenant and scheduled instant, so two such runs of
+one job enqueued in the same microsecond would share that key and the second
+would replace the first; `TomEventInstants.next` gives each its own instant.
+
 ## Class Hierarchy
 
 ```
@@ -90,6 +99,8 @@ TomJobRunWindowRow
 TomJobBacklogRow
 TomLeaseRow
 TomSchedulerNodeRow
+
+TomEventInstants  (abstract final, static-only)
 ```
 
 ## Classes
@@ -425,6 +436,28 @@ TomSchedulerNodeRow()
 | `nodeId` | `String` | The node's identity, and the table's primary key. |
 | `checkinAt` | `String` | When the node last checked in, as stored UTC text. |
 | `checkinInterval` | `int` | The node's published cadence, in milliseconds. |
+
+### TomEventInstants
+
+Strictly increasing instants for runs enqueued outside a schedule. A job store
+keeps one run per `(job, tenant, scheduled instant)` — what makes a
+clock-driven window idempotent, enforced by `tom_job_run`'s unique key and the
+replacing write. A component that enqueues runs of its own gives each its own
+id, but two runs of one job enqueued in the same microsecond would still share
+an instant, and the second would replace the first. `TomMessageOutbox` and
+`TomSagaOrchestrator` take their runs' `scheduledFor` from here; the instant is
+the run's identity in the store, not when it is due.
+
+It holds within one isolate. Two nodes, or two isolates, enqueueing runs of one
+job for one tenant in the same microsecond can still meet.
+
+- **Abstract final.** Not instantiable or extendable; statics only.
+
+#### Static Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `next` | `static DateTime next(DateTime now)` | `now`, or one microsecond past the last instant answered when that is not before `now`; always in UTC. |
 
 ## Global Functions and Constants
 

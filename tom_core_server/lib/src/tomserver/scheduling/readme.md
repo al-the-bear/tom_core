@@ -237,6 +237,16 @@ restriction only the database enforces is a restriction discovered in
 production. The encode runs while the bind map is being built, so the refusal
 still precedes any statement.
 
+## Runs enqueued outside a schedule
+
+A store keeps one run per job, tenant and scheduled instant — `tom_job_run`'s
+unique key, and a run is written with a replacing write. A component that
+enqueues runs itself rather than through a schedule — the messaging outbox, the
+saga orchestrator — takes each run's instant from `TomEventInstants.next(now)`:
+the clock's reading, or one microsecond past the last instant it gave out, so
+two runs of one job queued in the same microsecond do not share a key and the
+second does not replace the first. It holds within one isolate.
+
 ## Time
 
 Instants are stored as UTC `DATETIME(6)` and carried through `String` columns.

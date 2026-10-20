@@ -128,6 +128,7 @@ const _stepCounts = <String, int>{
   'example/server/server_example.dart': 6,
   'example/ratelimit/rate_limit_example.dart': 7,
   'example/tenancy/tenancy_example.dart': 8,
+  'example/transactions/saga_example.dart': 6,
   'example/transactions/transactions_example.dart': 8,
 };
 

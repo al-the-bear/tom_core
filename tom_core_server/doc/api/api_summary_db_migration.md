@@ -830,7 +830,7 @@ TomSchemaConvergenceCheck({
 The convergence check for the tables the **framework itself** owns
 (`frameworkOwnedTables`): scheduling, file storage, audit, OAuth state, SCIM
 resources, messaging delivery reports, the messaging inbox, the
-cache-invalidation log and the idempotency keys. A
+cache-invalidation log, the idempotency keys and the sagas. A
 sibling of `TomSchemaConvergenceCheck` rather than the same class, because the
 application check can only run where an application's entities and migrations
 exist, while this one holds for the framework and is meaningful in an empty
@@ -1024,11 +1024,11 @@ here rather than on the dialect.
 
 | Name | Signature | Description |
 | ---- | --------- | ----------- |
-| `frameworkOwnedTables` | `List<TomFrameworkTable> frameworkOwnedTables({String jobRun = defaultJobRunTable, String lease = defaultLeaseTable, String schedulerNode = defaultSchedulerNodeTable, String blobManifest = defaultBlobManifestTable, String blobChunk = defaultBlobChunkTable, String auditTrail = defaultAuditTrailTable, String oauthState = defaultOAuthStateTable, String deliveryReport = defaultDeliveryReportTable, String invalidation = defaultInvalidationTable, String scimResource = defaultScimResourceTable, String inbox = defaultInboxTable, String idempotency = defaultIdempotencyTable})` | Every table the framework owns, at the names it uses when nothing overrides them — so that "all of them" is a thing a caller can name rather than a list each caller assembles and each forgets to extend. A deployment that renames a table passes the corresponding argument. The dependency runs one way: this module reads the descriptors of `scheduling/`, `file_storage/`, `audit/`, `authentication/`, `messaging/`, `cache/` and `endpoints/`, and none of them reads back, so the scheduler runs without loading a migration. |
+| `frameworkOwnedTables` | `List<TomFrameworkTable> frameworkOwnedTables({String jobRun = defaultJobRunTable, String lease = defaultLeaseTable, String schedulerNode = defaultSchedulerNodeTable, String blobManifest = defaultBlobManifestTable, String blobChunk = defaultBlobChunkTable, String auditTrail = defaultAuditTrailTable, String oauthState = defaultOAuthStateTable, String deliveryReport = defaultDeliveryReportTable, String invalidation = defaultInvalidationTable, String scimResource = defaultScimResourceTable, String inbox = defaultInboxTable, String idempotency = defaultIdempotencyTable, String saga = defaultSagaTable})` | Every table the framework owns, at the names it uses when nothing overrides them — so that "all of them" is a thing a caller can name rather than a list each caller assembles and each forgets to extend. A deployment that renames a table passes the corresponding argument. The dependency runs one way: this module reads the descriptors of `scheduling/`, `file_storage/`, `audit/`, `authentication/`, `messaging/`, `cache/`, `endpoints/` and `transactions/`, and none of them reads back, so the scheduler runs without loading a migration. |
 
 The signature names the defaulting constants rather than their values, and each
-is declared by the module that owns the table — so the twelve names the check
-actually covers in a deployment that renames nothing are spread across seven other
+is declared by the module that owns the table — so the thirteen names the check
+actually covers in a deployment that renames nothing are spread across eight other
 modules. They are, parameter → constant → table name (owner):
 
 - `jobRun` → `defaultJobRunTable` → `tom_job_run` (Scheduling)
@@ -1043,3 +1043,4 @@ modules. They are, parameter → constant → table name (owner):
 - `scimResource` → `defaultScimResourceTable` → `tom_scim_resource` (Authentication)
 - `inbox` → `defaultInboxTable` → `tom_message_inbox` (Messaging)
 - `idempotency` → `defaultIdempotencyTable` → `tom_idempotency_key` (Endpoints)
+- `saga` → `defaultSagaTable` → `tom_saga` (Transactions)

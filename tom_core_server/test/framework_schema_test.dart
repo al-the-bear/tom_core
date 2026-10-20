@@ -171,6 +171,12 @@ void main() {
       ]);
     });
 
+    test('the transactions chain builds the saga descriptor', () {
+      converges('example/transactions/migrations/main/tomcore', [
+        sagaTable(defaultSagaTable),
+      ]);
+    });
+
     test('the cache chain builds the invalidation-log descriptor', () {
       converges('example/cache/migrations/main/tomcore', [
         invalidationTable(defaultInvalidationTable),
@@ -239,6 +245,10 @@ void main() {
 
     test('the idempotency keys', () {
       maps(idempotencyTable(defaultIdempotencyTable), [TomIdempotencyRow]);
+    });
+
+    test('the sagas', () {
+      maps(sagaTable(defaultSagaTable), [TomSagaRow]);
     });
 
     test('the roll call', () {
@@ -544,6 +554,32 @@ void main() {
           await _issuing(() => store.deleteAll());
         },
       );
+    });
+
+    test('the saga store', () async {
+      final datasource = _RecordingDataSource();
+      final store = TomSqlSagaStore.over(datasource);
+      final now = DateTime.utc(2026, 10, 20, 12);
+      final state = TomSagaState(
+        id: 's1',
+        name: 'place_order',
+        tenant: '',
+        status: TomSagaStatus.running,
+        step: 0,
+        version: 0,
+        data: const {'order': 1},
+        runWindow: now,
+        createdAt: now,
+        updatedAt: now,
+      );
+      await audit(datasource, [sagaTable(defaultSagaTable)], () async {
+        await _issuing(() => store.insert(state));
+        await _issuing(() => store.load('s1'));
+        await _issuing(() => store.update(state, expectedVersion: 0));
+        await _issuing(() => store.unfinished());
+        await _issuing(() => store.purgeFinishedBefore(now));
+        await _issuing(() => store.deleteAll());
+      });
     });
 
     test('the database blob store', () async {

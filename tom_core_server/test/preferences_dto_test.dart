@@ -110,12 +110,15 @@ void main() {
   });
 
   group('nothing compares two of these, and the guide says why', () {
-    /// Every shipped library source, as (path, contents) pairs.
+    /// Every shipped library source that handles preferences, as (path,
+    /// contents) pairs. The decision is about a preference's `updatedAt`; a
+    /// source that never names a preference type cannot compare one, and its
+    /// own `updatedAt` — a saga's, say — is another fact.
     final library = [
       for (final entry in Directory('lib').listSync(recursive: true))
         if (entry is File && entry.path.endsWith('.dart'))
           (entry.path, entry.readAsStringSync()),
-    ];
+    ].where((source) => source.$2.contains('Preference')).toList();
 
     test('no shipped source compares an updatedAt against anything', () {
       // A comparison is what a conditional read, a list-since or a staleness

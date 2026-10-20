@@ -30,8 +30,9 @@ observable state, security, resources) and adds everything a service needs:
   builder, over pluggable **datasources** (MariaDB/MySQL and PostgreSQL
   drivers included);
 - **versioned schema migrations** — with a convergence check that the entities,
-  the migration chain and the live database still agree — and **local/XA
-  transaction** coordination;
+  the migration chain and the live database still agree — **local/XA
+  transaction** coordination, and **sagas** for work across services, each
+  step a local transaction undone by its compensation when a later step fails;
 - an **audit trail** that is attributable and tamper-evident, **outbound
   messaging** with a durable outbox and **per-recipient localized text**, an
   **idempotent receiver (inbox)** that lets a broker's consumer process a
@@ -130,6 +131,7 @@ added.
 | `MariadbMigrationAdaptor` / `PostgresMigrationAdaptor` | The MariaDB and PostgreSQL migrators — on PostgreSQL a script and its version row run as one transaction |
 | `TomSchemaConvergenceCheck` / `TomSchemaModel` / `TomEntitySchemaReader` / `TomSchemaDivergence` | Checks that the entities, the migrations and the live database still describe the same schema, and names each divergence |
 | `TomTransactionManager` / `TomTransaction` / `TomTransactionParticipant` | Local and two-phase transaction coordination (XA on MariaDB, prepared transactions on PostgreSQL) |
+| `TomSagaOrchestrator` / `TomSaga` / `TomSagaStep` / `TomSqlSagaStore` | Sagas: work across services run step by step, each step a local transaction with the saga's move guarded by its version, the steps already done compensated last first when a step fails for good — on the kernel's job scheduler, kept in `tom_saga`, resumed after a restart in every tenant |
 
 ### Platform services (`configuration`, `cache`, `authentication`, `authorization`, `item_authorization`, `tenancy`, `ratelimit`, `metrics`, `audit`, `messaging`, `resources`, `export`, `file_storage`, `scheduling`, `preferences`, `healthcheck`, `cmdline`, `little_things`)
 
@@ -215,7 +217,7 @@ there, or excluded with a stated reason.
 | [`example/object_persistence/`](example/object_persistence/) | Repositories, annotations, query builder |
 | [`example/datasources/`](example/datasources/) | SQL-typed values and dialect rendering |
 | [`example/db_migration/`](example/db_migration/) | Versioned schema migrations |
-| [`example/transactions/`](example/transactions/) | Local/XA transaction coordination |
+| [`example/transactions/`](example/transactions/) | Local/XA transaction coordination; `saga_example.dart` runs sagas — steps in order, compensation last first, a failed compensation and a saga resumed after a restart |
 | [`example/configuration/`](example/configuration/) | Typed config + YAML resources; `secrets_example.dart` walks secret references — precedence, an unloaded reference refused, rotation and a third-party provider |
 | [`example/cache/`](example/cache/) | Isolate-backed cache |
 | [`example/authentication/`](example/authentication/) · [`example/authorization/`](example/authorization/) | Login and second factors, external identity and SCIM provisioning; the authorization cache, graded grants, resource roles and delegation, and the grant-driven row scope those grants filter the database with |
@@ -454,6 +456,7 @@ See [`doc/authentication.md`](doc/authentication.md).
 | `TomQueryBuilder` | Builds type-safe queries from expression operators |
 | `TomDbMigrator` | Applies versioned schema migrations |
 | `TomTransactionManager` | Coordinates local and two-phase transactions |
+| `TomSagaOrchestrator` | Runs sagas: local transactions with compensations, across services |
 | `TomBaseServerConfiguration` | Server configuration root |
 
 ## Ecosystem

@@ -21,6 +21,11 @@ return a `TomTransactionResult` naming the `TomTransactionOutcome` and the
 participants involved, rather than a boolean that merged the four states with a
 fifth — whether every participant released its connection.
 
+Work that spans services, whose data no one transaction reaches, is a **saga**:
+`TomSagaOrchestrator` runs each step of a `TomSaga` as a local transaction and,
+when a step fails for good, runs the compensations of the steps already done,
+last first.
+
 ## Key types
 
 | Type | Responsibility |
@@ -28,6 +33,9 @@ fifth — whether every participant released its connection.
 | `TomTransactionManager` | Zone-scoped coordinator; `runInTransaction(body)` opens a transaction, commits it on return and rolls it back on a throw. Also `startTransaction([isReadOnly])` returning `(transaction, isNew)`, `getCurrentTransaction()`, `transactional`, plus `runInTransactionScope(body)` / `hasTransactionScope` for isolating one flow of work from another. Binds the transaction to a `@TomTransactional` endpoint call. |
 | `TomTransaction` | The running transaction (created via the manager); `registerParticipant` (all or nothing — a participant whose `startTransaction` refuses or throws is not enlisted, and the failure is raised naming it), `commitTransaction()` (prepare-all then commit-all, rolling back on any veto), `rollbackTransaction()`. Both answer a `TomTransactionResult` naming what became of the work and which participants did not do what they said. |
 | `TomTransactionParticipant` | Abstract resource that enlists in a transaction (`startTransaction`, `prepare`, `commit`, `rollback`, `endTransaction`, each handed the transaction it concerns — a data source serving several transactions at once holds a connection per transaction). `rollback` answers whether the work was undone; `false` is the outcome needing a human. The transaction is handed over on enlistment, which is how `isReadOnly` reaches the resource — `MariaDbDatasource` opens `START TRANSACTION READ ONLY` for one. Datasources implement this; `MariaDbXADatasource` maps `prepare` onto `XA END` + `XA PREPARE` and `commit` onto `XA COMMIT`. |
+| `TomSagaOrchestrator` | Runs sagas: `register(TomSaga)`, `begin(name, data:)`, `find(id)`, `start()` / `tick()` / `close()`, and `resume()`, which re-queues every unfinished saga whose run is gone — at start, every `sweepInterval`, and in every tenant of an installed `TomTenancy`. Each step and each compensation is a job run of its own inline scheduler, in a local transaction with the saga's move, which is written only over the version the run was queued for. |
+| `TomSaga` / `TomSagaStep` / `TomSagaContext` | A saga's declaration — its steps in order, each an action and an optional compensation (`TomSagaWork`), and the retry policies of both — and what an action or a compensation is given: the attempt, why the saga compensates, and the saga's data, which a step may change. |
+| `TomSagaStore` / `TomMemorySagaStore` / `TomSqlSagaStore` | Where saga states (`TomSagaState`, `TomSagaStatus`) are kept: in memory, or in `tom_saga` (`sagaTable`, `defaultSagaTable`) of a data source resolved by name per call, so a tenant's sagas live with its data. `TomSagaException` carries the `transactions.saga.*` keys. |
 
 ## Quick start
 
@@ -69,12 +77,31 @@ throw drives the transaction itself, with `runInTransactionScope`,
 `startTransaction` and its own `try`/`catch`; `doc/transactions.md` shows that
 form beside this one.
 
+A saga, on the memory stores:
+
+```dart
+final orchestrator = TomSagaOrchestrator()
+  ..register(TomSaga(name: 'place_order', steps: [
+    TomSagaStep('reserve', action: reserve, compensation: release),
+    TomSagaStep('charge', action: charge, compensation: refund),
+    TomSagaStep('ship', action: ship),
+  ]));
+final id = await orchestrator.begin('place_order', data: {'order': 42});
+await orchestrator.tick(); // reserve — then charge and ship, one per tick
+```
+
+A deployment passes a `TomSqlSagaStore` and the durable job store the
+application's scheduler uses, and calls `start()`.
+
 See [`doc/transactions.md`](../../../../doc/transactions.md) for the
 participant contract, what the prepare phase buys and what it cannot, and how a
 request acquires its scope, and
 `example/transactions/transactions_example.dart` for a walkthrough
 that checks its own results against an in-memory participant, so it needs no
-database. `test/transactions_test.dart` covers the module, runs the example, and
+database; `example/transactions/saga_example.dart` does the same for sagas, and
+`doc/transactions.md` § Sagas covers when to use one, compensation, what a
+step's local transaction does and does not cover, and resumption.
+`test/saga_test.dart` and `test/saga_db_test.dart` cover the sagas. `test/transactions_test.dart` covers the module, runs the example, and
 holds this readme, `doc/transactions.md` and the API summary to what
 `TomTransactionParticipant` actually declares — so the prepare phase being
 removed from the contract fails the suite rather than leaving four texts

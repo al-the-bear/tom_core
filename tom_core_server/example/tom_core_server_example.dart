@@ -94,6 +94,11 @@ const List<TourStop> tour = [
     'Local and XA transaction coordination',
   ),
   TourStop(
+    'example/transactions/saga_example.dart',
+    'Sagas: steps run in order, a failed step compensating the ones before it '
+        'last first, a failed compensation, and a saga resumed after a restart',
+  ),
+  TourStop(
     'example/configuration/configuration_example.dart',
     'Typed configuration from arguments, environment and YAML resources',
   ),

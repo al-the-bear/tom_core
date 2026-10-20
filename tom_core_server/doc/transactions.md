@@ -6,6 +6,11 @@ and `TomTransactionManager` provides ambient access to the current transaction s
 participants and the request pipeline can join or conclude it without passing a
 handle around.
 
+Work that spans services, whose data no one transaction can reach, is a
+**saga**: a `TomSagaOrchestrator` runs each step as a local transaction and,
+when a step fails for good, runs the compensations of the steps already done,
+last first — see [Sagas](#sagas).
+
 ## Table of Contents
 
 - [Overview](#overview)
@@ -19,6 +24,18 @@ handle around.
 - [Read-Only](#read-only)
 - [Sequential by design](#sequential-by-design)
 - [Concurrency Model](#concurrency-model)
+- [Sagas](#sagas)
+  - [A saga or a distributed transaction](#a-saga-or-a-distributed-transaction)
+  - [Declaring a saga](#declaring-a-saga)
+  - [Beginning a saga](#beginning-a-saga)
+  - [Failure and compensation](#failure-and-compensation)
+  - [One transition, one local transaction](#one-transition-one-local-transaction)
+  - [Other data sources and other services](#other-data-sources-and-other-services)
+  - [Sending a message from a step](#sending-a-message-from-a-step)
+  - [Resumption and the sweep](#resumption-and-the-sweep)
+  - [Sagas per tenant](#sagas-per-tenant)
+  - [The saga store and its table](#the-saga-store-and-its-table)
+  - [Saga failure keys](#saga-failure-keys)
 - [Not Yet Implemented](#not-yet-implemented)
 - [Verification](#verification)
 - [Core Components](#core-components)
@@ -36,6 +53,27 @@ handle around.
 | `TomTransactionOutcome` | enum | What became of the work: committed, partially committed, rolled back, rolled back with failures |
 | `TomTransactionManager` | abstract class | Zone-scoped ambient access to the current transaction, and `runInTransaction` to drive one. Statics only |
 | `TomTransactionException` | class | Raised on an invalid transaction operation |
+
+The sagas — work across services, undone by compensation rather than rolled
+back:
+
+| Symbol | Kind | Purpose |
+| ------ | ---- | ------- |
+| `TomSagaOrchestrator` | class | Registers sagas, begins them, runs every step and compensation as a job run of its own inline scheduler, and resumes unfinished sagas |
+| `TomSaga` | class | A saga's declaration: its name, its steps in order, how a step and a compensation are retried, and how long one attempt may take |
+| `TomSagaStep` | class | One step: its action and the compensation that undoes it, if any |
+| `TomSagaWork` | typedef | The signature of an action or a compensation: `FutureOr<void> Function(TomSagaContext)` |
+| `TomSagaContext` | class | What an action or a compensation is given: the saga, the step, the attempt, why the saga compensates, and the saga's data |
+| `TomSagaStatus` | enum | `running`, `compensating`, `completed`, `compensated`, `failed` |
+| `TomSagaState` | class | The persisted progress of one saga: status, cursor, version, data, error, the window instant of its current run |
+| `TomSagaStore` | abstract class | Where saga states are kept, in the tenant in context |
+| `TomMemorySagaStore` | class | Saga states in memory, for tests and for a process that may lose its sagas on restart |
+| `TomSqlSagaStore` | class | Saga states in the `tom_saga` table of a SQL data source, resolved by name on every call |
+| `TomSagaRow` | class | One row of the saga table, as `TomSqlSagaStore` reads it |
+| `TomSagaException` | class | Raised when a saga cannot be declared, begun or stored |
+| `tomSagaJobPrefix` | const String | `'saga'` — the default prefix of the orchestrator's job names |
+| `defaultSagaTable` | const String | `'tom_saga'` — the saga table's default name |
+| `sagaTable` / `sagaTableDdl` | function | The saga table's one declaration, and the DDL derived from it |
 
 ## The Participant Contract
 
@@ -462,6 +500,298 @@ holds a reference to the scope it is current in and clears *that* scope —
 identity-guarded, so a concluded transaction can never wipe a successor, and in
 a `finally`, so it clears it whatever happens on the way.
 
+## Sagas
+
+An order that reserves stock in one service, charges a card in a second and
+books a shipment in a third cannot commit in one transaction: the three own
+their data. A **saga** does each step as a local transaction and, when a later
+step fails for good, runs the **compensations** of the steps already done, in
+reverse order — the stock is released and the charge refunded, so the system
+ends where it started, by explicit undo rather than by rollback.
+
+`TomSagaOrchestrator` orchestrates: one coordinator drives each saga, and the
+saga's progress is a row in the saga store — which step comes next, the saga's
+data, and a version. A saga whose services merely react to each other's events
+(choreography) needs nothing from the framework; it is an application using its
+message bus.
+
+```dart
+final orchestrator = TomSagaOrchestrator(
+  store: TomSqlSagaStore('main'),
+  jobStore: TomSqlJobStore.named('main'),
+)..register(TomSaga(
+    name: 'place_order',
+    steps: [
+      TomSagaStep('reserve', action: reserve, compensation: release),
+      TomSagaStep('charge', action: charge, compensation: refund),
+      TomSagaStep('ship', action: ship),
+    ],
+  ));
+await orchestrator.start();
+final id = await orchestrator.begin('place_order', data: {'order': 42});
+```
+
+### A saga or a distributed transaction
+
+Use a distributed transaction — two XA data sources in one `TomTransaction` —
+when every resource is a database this process can enlist, and the work must
+be atomic: no reader may ever see one half committed. The coordinator holds the
+locks of every resource until the commit, so it suits short work over a handful
+of databases.
+
+Use a saga when a step is not a database the process can enlist — another
+service's API, a payment provider, a carrier — or when the work is long enough
+that holding locks across all of it is not acceptable. The price is isolation:
+between a step and its compensation the step's effect is visible to everyone,
+and a reader may see stock reserved for an order that is then cancelled. A saga
+is atomic in the end, not at every moment, and each compensation must be
+written to undo a step that others may already have seen.
+
+### Declaring a saga
+
+A `TomSaga` names its steps, in order. Each `TomSagaStep` has an `action` and,
+optionally, a `compensation` — a step with nothing to undo (a read, a
+notification, usually the last step) leaves it out. Both are `TomSagaWork`,
+`FutureOr<void> Function(TomSagaContext context)`.
+
+| Argument | Default | Meaning |
+| -------- | ------- | ------- |
+| `name` | — | 1 to 120 characters; the saga's state records it and its jobs are named after it |
+| `steps` | — | At least one, with distinct names |
+| `retryPolicy` | `TomRetryPolicy()` — three attempts | How a failing step is retried before the saga compensates |
+| `compensationRetryPolicy` | ten attempts, 30 s to 30 min apart | How a failing compensation is retried before the saga fails |
+| `timeout` | two minutes | How long one attempt of a step or a compensation may take |
+
+A declaration that breaks those rules is refused with
+`transactions.saga.invalid_definition`.
+
+`register` makes a saga known to the orchestrator: it can then be begun, and its
+runs are executed. **Every node that may run a saga registers it, under the same
+name** — the scheduler takes no run of a job it has not registered. A name
+registered twice is refused with `transactions.saga.already_registered`.
+
+The context an action or a compensation is given carries `sagaId`, `sagaName`,
+`stepName`, `attempt` (1-based), `isCompensating`, `failure` (while
+compensating: why) and `data`. **`data` is the saga's data, and a step may
+change it**: the change is saved with the step, so a later step — and the
+step's own compensation — sees what it recorded, a reservation id or a payment
+reference. It must stay JSON-encodable. Changes made by an attempt that fails
+are not saved; changes made by a compensation are.
+
+### Beginning a saga
+
+`begin(sagaName, data: …, id: …)` stores a new saga for the tenant in context,
+queues its first step, and answers its id — the `id` given, or a new UUID. It
+returns once the saga is stored and its first step queued; the steps run on the
+orchestrator's scheduler, not inside `begin`. Called inside a transaction on the
+saga store's data source, the saga begins only if that transaction commits, so
+an endpoint that records an order and begins the saga for it does both or
+neither.
+
+`find(id)` answers the saga's `TomSagaState` — its `status`, `step` cursor,
+`version`, `data` and `error` — or `null`.
+
+| Status | Meaning |
+| ------ | ------- |
+| `running` | Running its steps; `step` is the next one to run |
+| `compensating` | A step failed for good; `step` is the next one to compensate |
+| `completed` | Every step ran |
+| `compensated` | A step failed for good, and every step before it was compensated |
+| `failed` | A compensation failed for good: the saga is left half done, for an operator |
+
+`TomSagaStatus.isFinished` is `true` for the last three.
+
+### Failure and compensation
+
+A step that throws is retried by its saga's `retryPolicy`, each attempt a new
+run of the step's job. When its last attempt fails, or it throws a
+`TomPermanentFailure`, the saga turns to `compensating`, records why in
+`error` (`step '<name>': <error>`) and compensates the steps that completed,
+last first; a step without a compensation is passed over. A first step that
+fails leaves nothing to compensate, and the saga is `compensated` at once.
+
+A compensation is retried by `compensationRetryPolicy` — generously, because a
+compensation that gives up leaves the system half done. One that fails for good
+ends the saga `failed`, with the compensation's failure appended to `error`,
+and fails its run with a `TomPermanentJobFailure`: the scheduler's alert names
+the saga and the step, and what remains is for an operator. The steps before it
+stay done.
+
+```text
+reserve#1, charge#1, ship#1, ship#2          ship fails on both attempts
+undo charge, undo reserve                    compensated, last first
+```
+
+### One transition, one local transaction
+
+Every transition of a saga — one step, or one compensation — is one job run,
+and its work runs in a transaction (`TomTransactionManager.runInTransaction`)
+together with the update that moves the saga on. That update is
+`UPDATE … WHERE version = :expected`: it succeeds only for the version the run
+was queued for. So:
+
+- a step whose action throws leaves no trace — its work and the saga's move roll
+  back together, and the run is retried;
+- a step that committed is never run again: a run for an older version finds
+  the saga moved on and does nothing, however it came to run twice — a
+  redelivery, two nodes, a recovered run;
+- a process that dies mid-step rolls the step back, and the run is taken up
+  again — by the scheduler's recovery on another node, or by `start` on this
+  one.
+
+The run for the next transition is queued after that transaction commits. A
+process that dies between the two leaves a saga with no run, which
+[Resumption and the sweep](#resumption-and-the-sweep) finds.
+
+The orchestrator owns no retry logic. Like the [message
+outbox](messaging.md#delivery-semantics-one-retry-mechanism) it runs an inline
+scheduler of its own over a `TomJobStore`, so the retries and their backoff, one
+runner per run, the recovery of a run whose node died, and the alerts all come
+from the kernel's scheduler. Point it at the job store the outbox and the
+application's scheduler use; each takes only the runs of its own jobs. A saga
+`place_order` runs its steps as job `saga.place_order` and its compensations as
+`saga.place_order.compensation` (`stepJobName`, `compensationJobName`; the
+prefix is `jobPrefix`, `tomSagaJobPrefix` by default). The jobs allow overlap —
+sagas are independent — and request recovery, which is safe because an
+interrupted transition rolled back with its process.
+
+### Other data sources and other services
+
+The guarantee above holds for the work a step does **in the saga store's data
+source**. Two other kinds of work are reached from a step, and neither is
+covered the same way:
+
+| A step's work in | What happens |
+| ---------------- | ------------ |
+| The saga store's data source | Commits or rolls back with the transition: exactly once |
+| Another data source | Joins the same transaction only when both are two-phase data sources (`MariaDbXADatasource`, `PostgresXADatasource`) — see [the participant contract](#the-participant-contract). Otherwise it commits on its own, and a step that fails after it ran repeats it on the retry |
+| Another service | Is part of no local transaction: it runs at least once and must be idempotent — an idempotency key the service honours, or a lookup before the call |
+
+A call to another service that must not happen unless the step commits goes
+through the outbox, below.
+
+### Sending a message from a step
+
+A message sent through a `TomMessageOutbox` whose job store is a
+`TomSqlJobStore` on the saga store's data source is queued in the step's
+transaction: the job store enlists in it on its first statement. The message is
+delivered after the step commits, or not at all — a step that fails rolls the
+queued message back with the rest of its work. That turns "call the other
+service" into "queue a message to it" for every step that must not call twice.
+
+```dart
+TomSagaStep(
+  'confirm',
+  action: (context) => outbox.send(TomMessage.email(
+    to: [TomRecipient(context.data['email']! as String)],
+    subject: 'Order ${context.data['order']} confirmed',
+    text: '…',
+  )),
+)
+```
+
+### Resumption and the sweep
+
+A saga's progress is in its store, so a restart loses nothing.
+`resume()` re-queues the run of every unfinished saga whose run is no longer in
+the job store — a run lost between a transition's commit and the queueing of
+the next one, or one whose attempts ran out — and answers how many it
+re-queued. A saga whose run is still queued is left alone, and a saga whose name
+is not registered on this node is passed over.
+
+`start()` calls `resume()`, then lets the scheduler run transitions on its tick
+(`tickInterval`, fifteen seconds by default) and calls `resume()` again every
+`sweepInterval` (five minutes by default); a sweep that fails is logged as a
+warning and the next one tries again. `tick()` runs one pass of due transitions
+and waits for them to finish, for tests and for a caller that wants a saga moved
+on now; while the orchestrator is started, a pass of its own may be under way,
+and `tick()` then returns at once. `close()` stops running sagas and closes the
+scheduler, releasing its leases; the sagas stay where they are, and the next
+`start()` resumes them.
+
+`TomSagaOrchestrator`'s store and job store both default to memory, which is
+right for tests and wrong for any deployment: a saga kept in memory is lost by a
+restart, which is what a saga exists to survive. Give it a `TomSqlSagaStore`
+and a durable job store.
+
+### Sagas per tenant
+
+A saga belongs to the tenant `begin` was called in: its state records the
+tenant, its runs carry it, and the scheduler runs every step and compensation
+inside it. `find` and the store see only the tenant in context's sagas.
+`TomSqlSagaStore` resolves its data source by name on every call, so under
+tenancy a tenant's sagas live in the tenant's data source, beside the data its
+steps change — which is what lets a step's work and its transition commit
+together.
+
+`resume()` looks in the context's tenant and, when a `TomTenancy` is installed,
+in every tenant's, so one sweep finds every tenant's unfinished sagas. See
+[tenancy.md](tenancy.md#what-stays-deployment-wide).
+
+### The saga store and its table
+
+`TomSagaStore` is the contract: `prepare` (create the table for the data source
+this context resolves), `insert` (`false` when the id is taken), `load`,
+`update(state, expectedVersion:)` (`false` when the stored version differs),
+`unfinished` and `purgeFinishedBefore(before)`. Every operation works in the
+tenant in context.
+
+| Store | Keeps sagas in |
+| ----- | -------------- |
+| `TomMemorySagaStore` | Memory — tests, and a process that may lose its sagas |
+| `TomSqlSagaStore(datasourceName, {table, createSchema})` | The `tom_saga` table of the data source registered under that name, resolved per call; a name not registered raises `transactions.saga.no_datasource` |
+| `TomSqlSagaStore.over(datasource, {table, createSchema})` | The table of that data source itself, resolved once |
+
+The table is declared once, by `sagaTable` in `saga_sql.dart`, as every
+framework table is (see
+[Schema Convergence](db_migration.md#schema-convergence)):
+
+| Column | Type | Meaning |
+| ------ | ---- | ------- |
+| `tenant` | `VARCHAR(32)` | The tenant, `''` outside tenancy; with `saga_id`, the primary key |
+| `saga_id` | `VARCHAR(191)` | The saga's id |
+| `saga_name` | `VARCHAR(120)` | Which `TomSaga` it runs |
+| `status` | `VARCHAR(16)` | The `TomSagaStatus` name |
+| `step` | `INT` | The cursor: the next step to run, or to compensate |
+| `version` | `INT` | Grows by one with every transition; the optimistic lock |
+| `data` | `LONGTEXT` | The saga's data, as JSON |
+| `error` | `TEXT NULL` | Why it compensates or failed |
+| `run_window` | `DATETIME(6)` | The window instant of the job run carrying the current version — how a resumption tells whether that run still exists |
+| `created_at`, `updated_at` | `DATETIME(6)` | When the saga began, and last moved |
+
+`(status, updated_at)` is indexed for resumption and the purge. With
+`createSchema` (the default) the store creates the table on first use in each
+data source; a deployment whose database user may not run DDL applies
+`example/transactions/migrations/main/tomcore/[1]-create_tom_saga.sql` (or its
+`migrations_postgresql/` twin) and passes `createSchema: false`. Under tenancy
+with a database or schema per tenant the migration belongs in each tenant's
+tree.
+
+Finished sagas stay in the table: `purgeFinishedBefore(before)` removes the
+tenant in context's sagas that finished before `before`, and nothing calls it on
+a deployment's behalf.
+
+### Saga failure keys
+
+Every one is a `TomSagaException`, a `TomServerException` raised to the caller
+rather than to a client (`clientThrow: false`).
+
+| Key | Meaning |
+| --- | ------- |
+| `transactions.saga.invalid_definition` | A saga's name is empty or longer than 120 characters, it has no steps, or two steps share a name. |
+| `transactions.saga.already_registered` | A saga of that name is registered with the orchestrator already. |
+| `transactions.saga.unknown` | `begin` names a saga that is not registered. |
+| `transactions.saga.invalid_id` | The saga id given to `begin` is empty or longer than 128 characters. |
+| `transactions.saga.id_taken` | A saga with that id exists already. |
+| `transactions.saga.data_not_json` | The saga's data is not JSON-encodable. |
+| `transactions.saga.closed` | The orchestrator has been closed. |
+| `transactions.saga.no_datasource` | The data source a `TomSqlSagaStore` names is not registered. |
+| `transactions.saga.superseded` | A transition found its saga moved on since its run was queued — another node, or a redelivered run, got there first. Raised inside the transition's transaction to roll it back and caught by the orchestrator; it never reaches a caller. |
+
+A step or a compensation that fails is not a `TomSagaException`: it is the
+step's own error, retried and then answered by compensation, and it reaches an
+operator through the saga's `error` and the scheduler's alert.
+
 ## Not Yet Implemented
 
 - **A participant that breaks its promise leaves the transaction partially
@@ -493,6 +823,27 @@ a `finally`, so it clears it whatever happens on the way.
   resource's round trip should cost. (That participants are driven *one at a
   time* is not part of this — see [Sequential by design](#sequential-by-design).)
   <!-- unpinned: decision — timeouts belong to the participant -->
+- **Nothing purges finished sagas.** A completed, compensated or failed saga
+  stays in `tom_saga`; `TomSagaStore.purgeFinishedBefore` removes those that
+  finished before a cutoff, and how long to keep them is a deployment's decision,
+  so nothing calls it on its behalf.
+  <!-- unpinned: absence — no automatic purge exists -->
+- **A saga's definition must not change while sagas of it are in flight.** A
+  saga's state records its name and the index of its next step, not the steps
+  themselves; a deployment that reorders, inserts or removes steps while sagas
+  are running moves their cursor onto other steps. Give the changed saga a new
+  name, and let the old one finish under the old definition.
+  <!-- unpinned: decision — versioning saga definitions is the deployment's -->
+- **Resumption across tenants needs the `TomTenancy` installed.** `resume()`
+  looks in the context's tenant and in the tenants of `TomTenancy.current`; an
+  orchestrator started before the tenancy is installed, or in a process that
+  never installs it, sweeps only the context's tenant — the sagas of the others
+  are resumed by the next sweep after the tenancy is installed, or not at all.
+  <!-- pinned: test/saga_test.dart › resume looks into every tenant of the installed tenancy -->
+- **A compensation that fails for good is left to an operator.** The saga ends
+  `failed`, half done, and the scheduler's alert names it; nothing retries it
+  later or escalates further.
+  <!-- pinned: test/saga_test.dart › a compensation that fails for good ends the saga failed and alerts -->
 
 ## Verification
 
@@ -530,6 +881,28 @@ production the participants are data sources — `TomDataSource` implements
 `TomTransactionParticipant` — and the endpoint pipeline opens and closes the
 transaction around a `@TomTransactional` endpoint.
 
+`test/saga_test.dart` covers the sagas in memory: steps in order, data a step
+records seen by the steps after it and by its compensation, compensation last
+first after a retried and after a permanently failed step, a step without a
+compensation passed over, a failed compensation ending the saga `failed` with
+an alert, a run for a version the saga has left doing nothing, a restart mid-saga
+and a lost run resumed — in every tenant of the installed tenancy — and every
+`transactions.saga.*` key. `test/saga_db_test.dart` runs the flows over
+`TomSqlSagaStore` and `TomSqlJobStore` against a live database: each step
+committing in its own transaction, a failed step rolled back while the steps
+before it are compensated, a restart resumed from the store, the version guard
+refusing a stale write, and a message sent through the outbox committing with
+its step and rolled back with a failed one. It is tagged `db` and skips without
+a server.
+
+```bash
+dart run example/transactions/saga_example.dart
+```
+
+`example/transactions/saga_example.dart` runs sagas on the memory stores and
+checks the order of the steps and compensations, a failed compensation, a saga
+resumed by a second orchestrator, and an unknown saga refused.
+
 ## Core Components
 
 - **`TomTransactionParticipant`** — the enlist/commit/rollback/end contract,
@@ -542,14 +915,25 @@ transaction around a `@TomTransactional` endpoint.
   a transaction.
 - **`TomTransactionException`** — invalid-state signalling (a
   `TomServerException`).
+- **`TomSagaOrchestrator`** (`saga.dart`) — sagas: registration, `begin`,
+  every step and compensation as a job run of its own inline scheduler, each a
+  local transaction guarded by the saga's version, and resumption.
+- **`TomSagaStore`**, **`TomMemorySagaStore`**, **`TomSqlSagaStore`** — where
+  saga states are kept; `sagaTable` (`saga_sql.dart`) declares the table.
 
 ## Dependencies
 
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
-| `dart:async` | dart | every file | `Future`, `Zone` |
-| `tom_core_kernel` | package | `transaction_manager.dart` | `tomLog`, for the coordinator's own account of a veto, a participant that threw, and a partial commit |
-| [little_things](little_things.md) | module | every file | `TomServerException` (base of `TomTransactionException`) |
+| `dart:async` | dart | `saga.dart`, `transaction_manager.dart` | `Future`, `FutureOr`, `Timer`, `Zone`, `unawaited` |
+| `dart:convert` | dart | `saga.dart` | `jsonEncode` / `jsonDecode`, for a saga's data and its copy |
+| `tom_core_kernel` | package | `saga.dart`, `transaction_manager.dart` | `tomLog`, for the coordinator's own account of a veto, a participant that threw, and a partial commit; and the scheduling a saga runs on — `TomScheduler`, `TomJobStore`, `TomMemoryJobStore`, `TomJobDefinition`, `TomEventSchedule`, `TomInlineJobDispatcher`, `TomRetryPolicy`, `TomPermanentFailure`, `TomPermanentJobFailure`, `TomJobAlertSink`, `TomLeaseLock`, `TomCommand`, `TomClosable` — plus `TomTenantContext` and `tomReflector` |
+| `uuid` | package | `saga.dart` | `UuidV4`, for a saga id when `begin` is given none |
+| [datasources](datasources.md) | module | `saga.dart`, `saga_sql.dart` | `TomFrameworkTable`, the saga table's single declaration; `TomDataSource`, `TomDataSourceInfo` and `TomSchemaProvisioning`, to resolve and provision the store's data source; `sqlInstant` / `parseSqlInstant` |
+| [little_things](little_things.md) | module | `saga.dart`, `transaction_manager.dart` | `TomServerException` (base of `TomTransactionException` and `TomSagaException`) |
+| [object_persistence](object_persistence.md) | module | `saga.dart` | `TomDbTable` / `TomDbColumn` on `TomSagaRow` |
+| [scheduling](scheduling.md) | module | `saga.dart` | `TomEventInstants`, the window instant of each saga run |
+| [tenancy](tenancy.md) | module | `saga.dart` | `TomTenancy.current`, whose tenants `resume` looks into |
 
 - The datasources module — `TomDataSource` is the concrete
   `TomTransactionParticipant`.

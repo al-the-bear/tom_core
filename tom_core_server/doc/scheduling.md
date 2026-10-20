@@ -4,7 +4,10 @@ The relational half of the framework's job scheduler: a shared queue and a
 shared lock, in the database a server already has, for a cluster whose nodes do
 not share a filesystem.
 
-This module implements two contracts and defines nothing. The scheduling *model*
+This module implements two contracts and defines no scheduling of its own —
+its one addition, `TomEventInstants`, keeps apart the runs a component enqueues
+itself (see [Runs Enqueued Outside a Schedule](#runs-enqueued-outside-a-schedule)).
+The scheduling *model*
 — schedules, windows, retries, missed-window policy, lease semantics, the
 execution guarantee — lives in `tom_core_kernel` and is documented in
 `tom_core_kernel/doc/scheduling/scheduling.md`. Read that first; this document
@@ -29,6 +32,7 @@ covers only what changes when the substrate is a database.
 - [Time](#time)
 - [Wiring a Cluster Node](#wiring-a-cluster-node)
 - [Runs per Tenant](#runs-per-tenant)
+- [Runs Enqueued Outside a Schedule](#runs-enqueued-outside-a-schedule)
 - [Operating Notes](#operating-notes)
 - [Not Yet Implemented](#not-yet-implemented)
 - [Verification](#verification)
@@ -52,6 +56,7 @@ covers only what changes when the substrate is a database.
 | `TomJobRunRow` / `TomLeaseRow` / `TomSchedulerNodeRow` | class | The reflected row types the stores' result mappers materialise, one per table |
 | `TomJobRunWindowRow` | class | The single aggregate column `TomSqlJobStore.lastWindow` projects — its own row type because the mapper binds by column name and that select has no other columns |
 | `TomJobBacklogRow` | class | One job's aggregate row of `TomSqlJobStore.backlog`: its due, unclaimed runs and the earliest `run_at` among them |
+| `TomEventInstants` | abstract final class | Strictly increasing window instants for the runs a component enqueues itself — the outbox, the saga orchestrator — so two of them never share a window key. Statics only |
 
 Two things the stores lean on hardest belong to `datasources`, because nothing
 about them is specific to scheduling:
@@ -568,6 +573,29 @@ This module stores it:
 
 See [tenancy.md](tenancy.md) for where tenants come from.
 
+## Runs Enqueued Outside a Schedule
+
+A job store keeps one run per `(job, tenant, scheduled instant)`. That is what
+makes a clock-driven window idempotent — re-planning a window overwrites its
+run — and `TomSqlJobStore` enforces it with the unique key on
+`(job_name, tenant, scheduled_for)` and writes a run with a replacing write.
+
+Two components enqueue runs of their own instead of letting a schedule plan
+them: the messaging outbox (one run per message, see
+[messaging.md](messaging.md#delivery-semantics-one-retry-mechanism)) and the saga
+orchestrator (one run per transition, see
+[transactions.md](transactions.md#sagas)). Each run has an id of its own, but
+two runs of one job enqueued in the same microsecond would still share a
+scheduled instant, and in `tom_job_run` the second would replace the first — a
+message lost without a trace.
+
+`TomEventInstants.next(now)` is the window instant those components give their
+runs: the clock's reading in UTC, or one microsecond past the last instant it
+answered when the clock has not moved on. The instant is the run's identity in
+the store, not when it is due — `runAt` says that. It holds within one isolate;
+two nodes, or two isolates, enqueueing runs of one job for one tenant in the same
+microsecond can still meet.
+
 ## Operating Notes
 
 - **The queue is a table, so it can be inspected.** `SELECT state, COUNT(*) FROM
@@ -633,6 +661,11 @@ See [tenancy.md](tenancy.md) for where tenants come from.
   idempotent has to make itself so — which is the same requirement the retry
   path already imposes.
   <!-- pinned: test/scheduling_db_test.dart › an interrupted run whose job opts in is re-queued -->
+- **`TomEventInstants` keeps instants apart within one isolate only.** Two
+  nodes, or two isolates, enqueueing runs of one job for one tenant in the same
+  microsecond can still give them one window instant, and the second run then
+  replaces the first. Nothing coordinates the instants across processes.
+  <!-- unpinned: untestable — two processes enqueueing in one microsecond cannot be staged -->
 
 ## Verification
 
@@ -652,6 +685,12 @@ gauges — to the answer the in-memory store gives.
 
 It is tagged `db` and skips when no server is reachable, so the default
 `testkit :test` run stays green without one.
+
+`TomEventInstants` is covered where its callers are: the group
+`TomEventInstants` in `test/saga_test.dart` holds that one clock reading gives
+two instants and that two outbox messages queued in one instant get runs of
+their own, and `test/saga_db_test.dart`'s `two outbox messages queued in one
+instant are both kept` holds the same against `tom_job_run`'s unique key.
 
 Three suites always run. `test/scheduling_schema_test.dart` covers DDL drift,
 schema invariants and instant encoding.
@@ -716,6 +755,7 @@ of wall clock, so it is run deliberately, not by `testkit :test`.
 | `lib/src/tomserver/scheduling/sql_lease_lock.dart` | `TomSqlLeaseLock` and its row type |
 | `lib/src/tomserver/scheduling/sql_scheduler_nodes.dart` | `TomSqlSchedulerNodes`, `TomSchedulerNode` and the failure formula |
 | `lib/src/tomserver/scheduling/sql_scheduling_sql.dart` | The three table descriptors, their derived DDL, table-name defaults |
+| `lib/src/tomserver/scheduling/event_instants.dart` | `TomEventInstants` — unique window instants for runs enqueued outside a schedule |
 | `lib/src/tomserver/datasources/sql_failure_mode.dart` | `classifySqlFailure` — definite or ambiguous |
 | `example/scheduling/scheduling_example.dart` | The connection-free surface, runnable |
 | `example/scheduling/migrations/main/tomcore/` | The shipped reference migrations |
@@ -728,7 +768,7 @@ of wall clock, so it is run deliberately, not by `testkit :test`.
 | `dart:async` | dart | `sql_job_store.dart`, `sql_lease_lock.dart` | `Future` |
 | `dart:convert` | dart | `sql_job_store.dart` | `jsonDecode` |
 | `tom_core_kernel` | package | `sql_job_store.dart`, `sql_lease_lock.dart`, `sql_scheduler_nodes.dart` | `TomJobStore`, `TomLeaseLock`, `TomJobRun`, `TomLease` and the scheduler that drives them |
-| [datasources](datasources.md) | module | every file | `TomDataSource` / `TomDataSourceInfo` for connections and parameterised statements |
+| [datasources](datasources.md) | module | `sql_job_store.dart`, `sql_lease_lock.dart`, `sql_scheduler_nodes.dart`, `sql_scheduling_sql.dart` | `TomDataSource` / `TomDataSourceInfo` for connections and parameterised statements |
 | [little_things](little_things.md) | module | `sql_job_store.dart`, `sql_lease_lock.dart`, `sql_scheduler_nodes.dart` | `TomServerException` |
 | [object_persistence](object_persistence.md) | module | `sql_job_store.dart`, `sql_lease_lock.dart`, `sql_scheduler_nodes.dart` | `TomDbColumn`, `TomDbTable` |
 

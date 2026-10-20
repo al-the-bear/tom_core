@@ -494,6 +494,7 @@ claimed organization is the session's.
 | Messaging outbox | a message is queued for the tenant in context and delivered inside it; its receipt and its delivery correlation name the tenant | [messaging](messaging.md#messages-per-tenant) |
 | Delivery reports | `tom_delivery_report.tenant` attributes a carrier's report, which arrives carrying nothing but the carrier's id, to its tenant | [messaging](messaging.md#messages-per-tenant) |
 | Idempotency keys | a key is scoped to the tenant in context, its principal and the operation; the SQL store resolves its data source by name per request, so a routed data source keeps a tenant's keys in the tenant's schema or database | [endpoints](endpoints.md#stores-clusters-and-tenants) |
+| Sagas | a saga belongs to the tenant it began in, and its steps and compensations run inside it; `TomSqlSagaStore` resolves its data source by name on every call, so a routed data source keeps a tenant's sagas beside the data its steps change; a resumption looks into every tenant | [transactions](transactions.md#sagas-per-tenant) |
 
 A tenant-scoped key is spelled one way everywhere —
 `TomTenantContext.qualify(name, tenant)`, which is `tenant:<id>/<name>`, or the
@@ -562,6 +563,20 @@ idempotency:
 ```
 
 See [endpoints.md](endpoints.md#stores-clusters-and-tenants).
+
+**The sagas live with the data their steps change.** A saga's step runs in a
+local transaction with the update that moves the saga on, so `tom_saga` has to
+be in the data source the steps write to. `TomSqlSagaStore('main')` looks `main`
+up by name on every call, inside the tenant the saga runs for: when `main` is
+one of `TomTenancy.datasources`, a `schema` or `database` tenant's sagas are
+kept in that tenant's schema or database, created there on first use or, with
+`createSchema: false`, by the migration in the per-tenant tree. A shared
+tenant's sagas go to the one table, where the `tenant` column keeps them apart.
+The orchestrator's job runs stay in the deployment-wide queue and carry the
+tenant, and `TomSagaOrchestrator.resume` — at start and on every sweep — runs in
+every tenant of the installed tenancy, so each tenant's unfinished sagas are
+found in its own data source. See
+[transactions.md](transactions.md#sagas-per-tenant).
 
 ## Working in a Tenant Outside a Request
 

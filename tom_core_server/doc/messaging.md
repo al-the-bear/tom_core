@@ -1331,7 +1331,12 @@ same `TomJobStore` as the application's scheduler and the two coexist by design
 The scheduler collapses events arriving in the same clock instant into a single
 windowed run. That is correct for a trigger — two ticks of the same moment are
 one moment — and catastrophic for an outbox, where two messages composed in the
-same microsecond are two messages.
+same microsecond are two messages. For the same reason each run gets a window
+instant of its own from `TomEventInstants.next` (see
+[scheduling.md](scheduling.md#runs-enqueued-outside-a-schedule)): a job store
+keeps one run per job, tenant and scheduled instant, and two messages queued in
+the same microsecond would otherwise share that key, the second replacing the
+first. The instant is the run's identity in the store; the run is due at once.
 
 **The run id is the message id.** `'<jobName>:<messageId>'`, which makes the
 message its own idempotence key: submitting the same message twice replaces the
@@ -2200,4 +2205,5 @@ was processed before, and reads nothing out of a mailbox.
 | [object_persistence](object_persistence.md) | module | `inbox.dart`, `sql_delivery_report_store.dart` | `TomDbTable` / `TomDbColumn` on the reflected row types the driver maps |
 | [resources](resources.md) | module | `email_service.dart`, `push_service.dart`, `sms_service.dart` | `TomLocalizedTextResources` |
 | [resources](resources.md) | module | `email_service.dart`, `push_service.dart`, `sms_service.dart`, `templated_message_service.dart` | `TomLocalizedTextResources` and `TomTextLocale`, which `TomTemplatedMessageService` resolves every template through (see `doc/resources.md`) |
+| [scheduling](scheduling.md) | module | `outbox.dart` | `TomEventInstants`, the window instant of each message's run |
 | [transactions](transactions.md) | module | `inbox.dart` | `TomTransactionManager.runInTransaction`, which holds the inbox's record and the consumer's work in one transaction |
