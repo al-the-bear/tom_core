@@ -5,8 +5,8 @@
 
 Storage for Tom applications — a compare-and-swap storage port, keyed file
 media, a device-local cache and a durable offline commit journal — with the
-local filesystem, the browser and the cache cipher behind entry points of
-their own.
+local filesystem, a GitHub repository, the browser and the cache cipher behind
+entry points of their own.
 
 ## Overview
 
@@ -58,6 +58,8 @@ Dart SDK `^3.10.0`. No Flutter dependency.
 | `TomLfsPointer` | Recognises a Git-LFS pointer, so a backend refuses it by name instead of delivering 130 bytes as content. |
 | `TomTokenSource` | Where a remote backend's access token comes from. |
 | `TomLocalFileSystemStorage` | The local filesystem (`io.dart`): atomic multi-file commits through staged temps and a recorded intent. |
+| `TomGitHubStorage` | A GitHub repository (`github.dart`): one save is one commit, compare-and-swap on the branch head, conditional reads, rate-limit waits, LFS refusal, progress per object. |
+| `TomGitHubLocator` | `github:<owner>/<repo>[@<branch>]/<path>` — parsed and printed. |
 | `tomOpenBrowserMedium` | A medium over IndexedDB (`web.dart`). |
 | `TomAesGcmCacheCipher` | AES-256-GCM sealing of cache files (`cipher.dart`). |
 
@@ -67,6 +69,7 @@ Dart SDK `^3.10.0`. No Flutter dependency.
 | --- | --- | --- |
 | `package:tom_core_storage/tom_core_storage.dart` | the port, media, cache, journal and policies | all, the web included (no `dart:io`, no browser API, no cipher) |
 | `package:tom_core_storage/io.dart` | `TomLocalFileSystemStorage`, `TomDirectoryBundleMedium` | desktop, server, mobile |
+| `package:tom_core_storage/github.dart` | `TomGitHubStorage`, `tomGitHubWaitOf` | all, the web included (over `tom_github_api`) |
 | `package:tom_core_storage/web.dart` | `tomOpenBrowserMedium`, `TomBrowserStorageException` | browser (a VM test gets an in-memory stand-in) |
 | `package:tom_core_storage/cipher.dart` | `TomAesGcmCacheCipher` | all |
 
@@ -105,8 +108,9 @@ Future<void> main() async {
 
 ## Limits
 
-- **No remote backend here yet.** The GitHub backend is still the Webwork
-  application's; this package holds the port it implements.
+- **One remote backend.** GitHub, reached through its REST and git-data API;
+  Git-LFS pointers are refused rather than resolved, and a single object over
+  `TomGitHubStorage.maxBlobBytes` is refused before the commit spends anything.
 - **The cache cipher keeps its key through a port.** `TomCacheKeyStore` is two
   members; an application's own secret store implements it.
 
@@ -119,13 +123,15 @@ Future<void> main() async {
 | `yaml` | runtime | reading the journal back |
 | `meta` | runtime | `@visibleForTesting` |
 | `path` | runtime | paths on the local filesystem (`io.dart`) |
+| `tom_github_api` | runtime | the GitHub REST and git-data API (`github.dart`) |
 | `web` | runtime | IndexedDB (`web.dart`) |
 | `pointycastle` | runtime | AES-256-GCM (`cipher.dart`) |
-| `test`, `lints` | dev | the suite |
+| `test`, `lints` | dev | the suite (with `tom_github_api`'s in-memory GitHub from `package:tom_github_api/testing.dart`) |
 
 ## Status
 
 Version **0.1.0**. `dart test` runs the unit suite, the local-filesystem
-atomicity suite, a dart2js compile of the default and web entry points, and —
+atomicity suite, the GitHub backend against an in-memory GitHub, a dart2js
+compile of the default, GitHub and web entry points, and —
 through `test/browser_suite_test.dart` — the IndexedDB suite on Chrome
 (`TOM_SKIP_BROWSER_TESTS=1` skips it, saying so).

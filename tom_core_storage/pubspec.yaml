@@ -3,7 +3,7 @@ description: >-
   Storage for Tom applications: a compare-and-swap storage port, keyed file
   media, a device-local cache, a durable offline commit journal, and the local
   filesystem, browser (IndexedDB) and cache-cipher implementations behind
-  entry points of their own.
+  entry points of their own, and a GitHub repository as a backend.
 version: 0.1.0
 publish_to: none
 repository: https://github.com/al-the-bear/tom_ai_core
@@ -22,6 +22,9 @@ dependencies:
   # The structured diagnostics port, the YAML emitter and the content hash.
   tom_basics:
     path: ../../basics/tom_basics
+  # The GitHub REST and git-data API, for the GitHub backend (github.dart).
+  tom_github_api:
+    path: ../../devops/tom_github_api
   # IndexedDB, for the browser medium (web.dart).
   web: ^1.1.0
   # Reading the commit journal's entries back.

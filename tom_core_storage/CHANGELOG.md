@@ -23,6 +23,11 @@
 - **A device-local cache** (`TomStorageCache` with `TomCachePolicy`,
   `TomCacheSettings`, `TomCacheScrub`) and **a durable offline commit journal**
   (`TomCommitJournal`, `TomMemoryCommitJournal`, `TomMediumCommitJournal`).
+- **A GitHub repository as a backend** (`github.dart`): `TomGitHubStorage` —
+  one save is one commit, compare-and-swap on the branch head, conditional
+  reads, rate-limit waits (`tomGitHubWaitOf`), Git-LFS refusal, progress per
+  object, an optional `commitMessagePrefix` — and its locator
+  `TomGitHubLocator` in the default entry point.
 - **Entry points of their own**: `io.dart` (`TomLocalFileSystemStorage`,
   `TomDirectoryBundleMedium`), `web.dart` (`tomOpenBrowserMedium` over
   IndexedDB) and `cipher.dart` (`TomAesGcmCacheCipher` over a

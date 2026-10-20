@@ -8,8 +8,8 @@
 ///    none imports `package:web` or a cipher. `dart compile js` from the plain
 ///    Dart SDK *accepts* `dart:io` (the SDK ships a throwing stub), so only a
 ///    walk catches it before a web build does.
-/// 2. A real dart2js compile of a program using the default entry point and of
-///    one using `web.dart`. That catches codegen-level problems the VM never
+/// 2. A real dart2js compile of a program using the default entry point, one
+///    using `web.dart` and one using `github.dart`. That catches codegen-level problems the VM never
 ///    sees, such as integer literals above 2^53.
 ///
 /// The inverse is pinned too: `io.dart` is where `dart:io` actually lives, so
@@ -74,10 +74,20 @@ void main() {
       expect(uris, isNot(contains('dart:io')));
       expect(uris.where((u) => u.startsWith('package:web/')), isEmpty);
       expect(uris.where((u) => u.startsWith('package:pointycastle/')), isEmpty);
+      expect(
+        uris.where(
+          (u) =>
+              u.startsWith('package:tom_github_api/') ||
+              u.startsWith('package:http/'),
+        ),
+        isEmpty,
+        reason: 'the default entry point is network-free',
+      );
     });
 
     test('STORAGE-WEB-2: io.dart is where dart:io lives, cipher.dart where the '
-        'cipher lives, web.dart where the browser API lives', () {
+        'cipher lives, web.dart where the browser API lives, github.dart where '
+        'the network lives', () {
       expect(reached('lib/io.dart'), contains('dart:io'));
       expect(
         reached(
@@ -90,6 +100,17 @@ void main() {
         isNotEmpty,
       );
       expect(reached('lib/web.dart'), isNot(contains('dart:io')));
+      expect(
+        reached(
+          'lib/github.dart',
+        ).where((u) => u.startsWith('package:tom_github_api/')),
+        isNotEmpty,
+      );
+      expect(
+        reached('lib/github.dart'),
+        isNot(contains('dart:io')),
+        reason: 'a browser build stores documents on GitHub',
+      );
     });
 
     for (final (name, program) in [
@@ -110,6 +131,18 @@ Future<void> main() async {
       baseHead: null,
       version: 1);
   print((await journal.pending()).length);
+}
+''',
+      ),
+      (
+        'github',
+        '''
+import 'package:tom_core_storage/github.dart';
+import 'package:tom_core_storage/tom_core_storage.dart';
+
+Future<void> main() async {
+  final storage = TomGitHubStorage(tokens: TomInMemoryTokenSource());
+  print(storage.handles('github:o/r/notes.yaml'));
 }
 ''',
       ),
