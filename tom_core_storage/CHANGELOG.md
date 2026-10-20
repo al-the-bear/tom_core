@@ -4,6 +4,15 @@
 
 ### Added
 
+- **The asset store.** `TomAssetStore`: assets filed under the SHA-256 of
+  their bytes (`TomAsset`), deduplicated, read on demand and verified then
+  (`TomAssetCorruptException`), resolved as `TomAssetLive`,
+  `TomAssetHistorical` or `TomAssetMissing`, ingested under a
+  `TomObjectCeiling`, revived from history after an undo, copied between
+  stores. The accepted types are the application's (`TomAssetTypes`: MIME type
+  to extension and kind). `TomAssetBundleLayout` keeps a store in a
+  `TomBundleMedium`: `assets/<id>.<ext>`, an append-only history folder, and
+  the metadata map a manifest carries.
 - **The storage port.** `TomStorage`: list, read a container's bytes or its
   files (`readBundle`, a lazy read-only view), `commit` a `TomChangeset`
   against an expected head (compare-and-swap), delete, and read heads one at a

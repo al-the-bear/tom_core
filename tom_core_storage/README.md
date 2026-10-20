@@ -27,6 +27,10 @@ Around the port sit the parts every application with remote documents needs:
 - **A cache.** `TomStorageCache` keeps what a backend has read, keyed by
   content, so an unchanged container is served from the device and an
   unreachable backend can still be read offline.
+- **Assets.** `TomAssetStore` files bytes under their SHA-256, deduplicates
+  them, verifies them on first read, and resolves a reference as live, from
+  the container's history area, or missing; `TomAssetBundleLayout` keeps it in
+  a medium as `assets/<id>.<ext>` with an append-only history folder.
 - **An offline journal.** `TomCommitJournal` queues commits that could not be
   delivered; `TomMediumCommitJournal` keeps them in a medium, so they survive
   the process.
@@ -53,6 +57,8 @@ Dart SDK `^3.10.0`. No Flutter dependency.
 | `TomChangeset` | One commit's writes and deletes; `singleFile` for a container that is one file. |
 | `TomBundleMedium` | A keyed file store with atomic writes; `TomMemoryBundleMedium`, `TomReadOnlyBundleMedium`, `TomRecordingBundleMedium`. |
 | `TomStorageCache` | A device-local cache over any storage, with a quota and optional sealing. |
+| `TomAssetStore` | A content-addressed asset store over the asset types an application accepts (`TomAssetTypes`): ingest under a size ceiling, live / historical / missing resolution, revive after an undo, copy between stores. |
+| `TomAssetBundleLayout` | Assets in a medium: `assets/<id>.<ext>`, an append-only history folder, and the metadata map a manifest carries. |
 | `TomCommitJournal` | A durable queue of undelivered commits; `TomMemoryCommitJournal`, `TomMediumCommitJournal`. |
 | `TomObjectCeiling` | The largest object a commit may carry: the tighter of a configured and a backend limit. |
 | `TomLfsPointer` | Recognises a Git-LFS pointer, so a backend refuses it by name instead of delivering 130 bytes as content. |
@@ -67,7 +73,7 @@ Dart SDK `^3.10.0`. No Flutter dependency.
 
 | Import | Holds | Platforms |
 | --- | --- | --- |
-| `package:tom_core_storage/tom_core_storage.dart` | the port, media, cache, journal and policies | all, the web included (no `dart:io`, no browser API, no cipher) |
+| `package:tom_core_storage/tom_core_storage.dart` | the port, media, cache, journal, asset store and policies | all, the web included (no `dart:io`, no browser API, no cipher) |
 | `package:tom_core_storage/io.dart` | `TomLocalFileSystemStorage`, `TomDirectoryBundleMedium` | desktop, server, mobile |
 | `package:tom_core_storage/github.dart` | `TomGitHubStorage`, `tomGitHubWaitOf` | all, the web included (over `tom_github_api`) |
 | `package:tom_core_storage/web.dart` | `tomOpenBrowserMedium`, `TomBrowserStorageException` | browser (a VM test gets an in-memory stand-in) |

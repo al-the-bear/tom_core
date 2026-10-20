@@ -16,6 +16,8 @@
 /// - `package:tom_core_storage/cipher.dart` — AES-256-GCM for the cache.
 library;
 
+export 'src/assets/asset.dart';
+export 'src/assets/asset_bundle_layout.dart';
 export 'src/backoff_policy.dart';
 export 'src/bundle_medium.dart';
 export 'src/commit_journal.dart';

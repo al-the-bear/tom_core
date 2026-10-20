@@ -131,6 +131,17 @@ Future<void> main() async {
       baseHead: null,
       version: 1);
   print((await journal.pending()).length);
+  final assets = TomAssetStore(
+    types: const TomAssetTypes({'text/plain': (extension: 'txt', kind: 'text')}),
+  );
+  final asset = assets.ingest(
+    Uint8List.fromList([104, 105]),
+    mime: 'text/plain',
+    ceiling: const TomObjectCeiling(),
+  );
+  print(await const TomAssetBundleLayout(
+    types: TomAssetTypes({'text/plain': (extension: 'txt', kind: 'text')}),
+  ).save(assets, [asset.id], medium));
 }
 ''',
       ),
