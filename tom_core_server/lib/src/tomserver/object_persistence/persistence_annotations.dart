@@ -195,6 +195,75 @@ class TomVersion {
   const TomVersion();
 }
 
+/// Encrypts the annotated `String` column at rest — see `field_encryption.dart`.
+///
+/// A value is written as AES-256-GCM ciphertext under the data key the
+/// installed `TomFieldKeyring` holds active, bound to its table and column, and
+/// read back as plaintext: an entity holds plaintext, the database never does.
+/// The encryption is randomised, so two equal values store differently and an
+/// encrypted column cannot be filtered, grouped or joined on; a query that
+/// tries is refused. A field that must be found by value carries a companion
+/// [TomBlindIndex] column.
+///
+/// The column must be wide enough for the ciphertext — `TEXT`, or a
+/// `VARCHAR` of `TomFieldEncryption.storedLength` of the longest plaintext.
+///
+/// ```dart
+/// @TomEncrypted()
+/// @TomDbColumn(columnName: 'email')
+/// String? email;
+/// ```
+class TomEncrypted {
+  /// Marks the field as encrypted at rest.
+  const TomEncrypted();
+}
+
+/// How a [TomBlindIndex] normalises a value before indexing it, so the values
+/// the application treats as equal index equally.
+enum TomBlindIndexNormalization {
+  /// The value as it is.
+  exact,
+
+  /// Leading and trailing whitespace removed.
+  trim,
+
+  /// Trimmed and lower-cased — an e-mail address, a user name.
+  trimLowercase,
+}
+
+/// Makes the annotated `String` column the blind index of the [TomEncrypted]
+/// field [field]: an HMAC-SHA-256 of the normalised plaintext under the
+/// keyring's index key, written by the repository with every save.
+///
+/// Equal plaintexts give equal index values, so the index column can be
+/// compared — `TomFieldEncryption.blindIndexCondition` builds the condition
+/// to look for — while the plaintext is not recoverable from it. It reveals which rows
+/// share a value, which is the price of finding them; a field nobody filters on
+/// carries no index.
+///
+/// ```dart
+/// @TomEncrypted()
+/// @TomDbColumn(columnName: 'email')
+/// String? email;
+///
+/// @TomBlindIndex('email')
+/// @TomDbColumn(columnName: 'email_bidx')
+/// String? emailIndex;
+/// ```
+class TomBlindIndex {
+  /// Indexes the encrypted field [field], normalised by [normalization].
+  const TomBlindIndex(
+    this.field, {
+    this.normalization = TomBlindIndexNormalization.trimLowercase,
+  });
+
+  /// The declared name of the [TomEncrypted] field this column indexes.
+  final String field;
+
+  /// How the plaintext is normalised before it is indexed.
+  final TomBlindIndexNormalization normalization;
+}
+
 /// Marks an entity as owned by a tenant: every row carries its tenant in
 /// [field], and a repository reads and writes only the rows of the tenant in
 /// context (`TomTenantContext`).
@@ -442,7 +511,7 @@ class TomReference<
 /// of the isolate. A single assignment to [field] or [column] would therefore
 /// change what every subsequent query on that entity compiles to, at no point
 /// raising an error — the mistake would surface as wrong SQL somewhere else
-/// entirely. Nothing needs the mutability: the analyzer knows all ten values
+/// entirely. Nothing needs the mutability: the analyzer knows every value
 /// before it constructs the instance, and re-resolving an entity means clearing
 /// the analyzer's memo, not editing the metadata in place.
 class TomColumnInformation {
@@ -470,6 +539,12 @@ class TomColumnInformation {
   /// The optimistic-locking annotation, if this field is the row's version.
   final TomVersion? version;
 
+  /// The encryption annotation, if the column is encrypted at rest.
+  final TomEncrypted? encrypted;
+
+  /// The blind-index annotation, if the column indexes an encrypted field.
+  final TomBlindIndex? blindIndex;
+
   /// The resource key that gates this column (C-4): the column's own
   /// [TomDbColumn.authKey], else the field's [TomProtectedField] key, else
   /// `null` for an unrestricted column.
@@ -492,10 +567,11 @@ class TomColumnInformation {
   ///
   /// The five required parameters are the ones every mapped field has: the
   /// owning entity type ([tableType]) and its table ([table]), and the field's
-  /// own [declaredType], [declaredName] and mapped [field] name. The six
+  /// own [declaredType], [declaredName] and mapped [field] name. The eight
   /// optional ones each correspond to an annotation the field may or may not
   /// carry — [column], [entityId], [reference], [fileReference],
-  /// [protectedField], [version] — and are `null` when it does not.
+  /// [protectedField], [version], [encrypted], [blindIndex] — and are `null`
+  /// when it does not.
   ///
   /// All are named. Two pairs are the reason: [declaredName] and [field] are
   /// both `String`, and passing them the wrong way round type-checks — it maps
@@ -516,6 +592,8 @@ class TomColumnInformation {
     this.fileReference,
     this.protectedField,
     this.version,
+    this.encrypted,
+    this.blindIndex,
   });
 
   /// The owning entity type ([tableType]).

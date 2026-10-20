@@ -663,12 +663,35 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
     );
   }
 
+  /// [column], unless it is `@TomEncrypted`: randomised ciphertext never
+  /// compares equal to anything and sorts by chance, so a condition, group
+  /// key, aggregate or sort term on it would silently answer wrongly. Its
+  /// `@TomBlindIndex` column is what a query compares. [statement] names the
+  /// query in the refusal.
+  static TomColumnInformation comparable(
+    TomColumnInformation column,
+    String statement,
+  ) {
+    if (column.encrypted == null) return column;
+    throw TomQuerySyntaxException(
+      "query_sentence_compiler.encrypted_column",
+      "The query $statement uses ${column.tableType}.${column.declaredName}, "
+          "which is encrypted and cannot be compared, grouped, aggregated or "
+          "sorted. Compare its @TomBlindIndex column with "
+          "TomFieldEncryption.blindIndexCondition instead.",
+      parameters: {
+        'entity': '${column.tableType}',
+        'field': column.declaredName,
+      },
+    );
+  }
+
   /// Parses the comma-separated `over` field list into group-key columns.
   List<DbCol> _parseGroupColumns(List<String> tokens, String qs) {
     final columns = <DbCol>[];
     for (final token in tokens) {
       if (token == ",") continue;
-      final column = determineColumn(token);
+      final column = comparable(determineColumn(token), qs);
       final operator = _createColumn(column, token);
       columns.add(operator);
     }
@@ -775,7 +798,10 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
     String alias,
     String qs,
   ) {
-    final operand = _createColumn(determineColumn(field), field);
+    final operand = _createColumn(
+      comparable(determineColumn(field), qs),
+      field,
+    );
     switch (function) {
       case TomAggregateFunction.count:
         return countOf(operand, alias, distinct: distinct);
@@ -1759,7 +1785,7 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
         );
       } else {
         if (column == null) {
-          column = determineColumn(qp[i]);
+          column = comparable(determineColumn(qp[i]), qs);
           var (operator, indx) = _buildExpression<TomDbBool>(
             qp,
             qs,
@@ -1785,7 +1811,7 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
             );
           }
         } else {
-          var argColumn = determineColumn(qp[i]);
+          var argColumn = comparable(determineColumn(qp[i]), qs);
           var newColumn = _createColumn(argColumn, qp[i]);
 
           try {

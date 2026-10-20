@@ -281,6 +281,14 @@ values on both sides are replaced by `tomAuditRedactedPlaceholder` (`'***'`), so
 "changed, and you may not see to what" stays distinguishable from "did not
 change".
 
+**An encrypted field is redacted without being named.** The repository replaces
+the value of every `@TomEncrypted` field and every `@TomBlindIndex` column in
+both images with `[encrypted]` (`TomFieldEncryption.redacted`) before the record
+reaches the trail, so a table that keeps a field encrypted at rest does not get
+a plaintext copy of it in the audit trail. The record still shows that such a
+field changed; a field also listed in `redact` reads `'***'`. See
+[object_persistence.md](object_persistence.md#audit-records).
+
 Policies are resolved through the reflector once per type and cached
 (`TomAuditTrail.policyFor`, `resetPolicyCache`). A type with no annotation
 resolves to `TomAuditPolicy.defaultPolicy`, so mutation auditing needs no

@@ -17,6 +17,7 @@ import '../endpoints/endpoint_pipeline.dart';
 import '../endpoints/idempotency.dart';
 import '../endpoints/openapi_document_endpoint.dart';
 import '../healthcheck/framework_readiness.dart';
+import '../object_persistence/field_encryption.dart';
 import '../healthcheck/health_check.dart';
 import 'graceful_shutdown.dart';
 import '../metrics/metrics_middleware.dart';
@@ -705,6 +706,7 @@ class TomServer {
     // login included — runs under the configured policies.
     configureHttpClients();
     configureIdempotency();
+    await configureFieldEncryption();
     await _installServerPrincipal();
     warnOnUnenforcedResourceKeys();
 
@@ -935,6 +937,27 @@ class TomServer {
         config ?? TomServerConfigResourceProvider.getServerConfig();
     if (!provider.exists(idempotencyConfigurationKey)) return;
     TomIdempotency.configure(provider.get(idempotencyConfigurationKey));
+  }
+
+  /// Applies the [TomFieldEncryption.configurationKey] map of [config] (the
+  /// server configuration unless given) with [TomFieldEncryption.configure]:
+  /// the data-key table and the key-encryption keys `@TomEncrypted` columns
+  /// are encrypted under. Their keys are usually `secret:` references, which
+  /// [TomFieldEncryption.configure] resolves through the registered secrets
+  /// providers.
+  ///
+  /// Called by [start], before anything reads an entity. Without the key no
+  /// keyring is installed, and an encrypted column fails its first read or
+  /// write (`field_encryption.not_configured`) rather than storing plaintext.
+  static Future<void> configureFieldEncryption([
+    TomServerConfigResourceProvider? config,
+  ]) async {
+    final provider =
+        config ?? TomServerConfigResourceProvider.getServerConfig();
+    if (!provider.exists(TomFieldEncryption.configurationKey)) return;
+    await TomFieldEncryption.configure(
+      provider.get(TomFieldEncryption.configurationKey),
+    );
   }
 
   /// Applies [TomBaseServerConfiguration.logFormat]; see [applyLogFormat].

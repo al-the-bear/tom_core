@@ -25,7 +25,7 @@ surface documented here.
 | Little Things | [api_summary_little_things.md](api_summary_little_things.md) | The server-side base exception `TomServerException`, the `TomLoginFailure` reason its login subclass carries, the per-request correlation id `TomRequestId` it reads, and `tomErrorEnvelope`, the wire shape every error response uses. |
 | Messaging | [api_summary_messaging.md](api_summary_messaging.md) | Channel-neutral messages, delivery transports (SMTP, HTTP SMS gateway and stand-ins), MIME encoding, the durable outbox, resource-keyed email and SMS, and the idempotent receiver (inbox) for consuming a broker's messages once. |
 | Metrics | [api_summary_metrics.md](api_summary_metrics.md) | The request series, the Prometheus scrape endpoint answered ahead of authentication, and the OTLP/HTTP transport and metrics exporter. |
-| Object Persistence | [api_summary_object_persistence.md](api_summary_object_persistence.md) | Persistence annotations, repositories, query builder, operators/expressions, grouped queries and their aggregates, paging and sorting, file-reference columns, data scoping, column authorization. |
+| Object Persistence | [api_summary_object_persistence.md](api_summary_object_persistence.md) | Persistence annotations, repositories, query builder, operators/expressions, grouped queries and their aggregates, paging and sorting, file-reference columns, data scoping, column authorization, and field-level encryption with its keys, rotation and re-encryption. |
 | Preferences | [api_summary_preferences.md](api_summary_preferences.md) | Server-stored per-principal preferences: the scoped `tom_user_preference` entity, the typed service over it, and the `/preferences/*` endpoints. |
 | Rate Limiting | [api_summary_ratelimit.md](api_summary_ratelimit.md) | Request rate limits per principal, API key or client address: the rules, the sliding-window arithmetic, the per-process and shared limiters, and the middleware answering `429` with `Retry-After`. |
 | Resources | [api_summary_resources.md](api_summary_resources.md) | Locale-aware text resolution: one bundle per locale, chosen by the recipient's language. |
@@ -733,6 +733,24 @@ surface documented here.
 | `TomColumnAuthorizationException` | class | Column-auth error. |
 | `TomAnnotationAnalyzer` | mixin | Persistence-annotation analysis (static). |
 | `TomAnnotationAnalyzerException` / `TomAnnotationAnalyzerSyntaxException` | class | Analyzer errors. |
+| `TomEncrypted` | class | Marks a `String` field encrypted at rest. |
+| `TomBlindIndex` | class | Makes a `String` column the blind index of an encrypted field. |
+| `TomBlindIndexNormalization` | enum | `exact`, `trim` or `trimLowercase` — how a blind index normalises a value. |
+| `TomFieldEncryption` | abstract final class | The installed keyring, the cipher, blind-index lookups, raw reads and audit redaction (static). |
+| `TomFieldKeyring` | class | The data keys, unwrapped and cached; rotates data keys, index keys and key-encryption keys. |
+| `TomKeyEncryptionKey` | abstract class | What wraps the data keys. |
+| `TomAesKeyEncryptionKey` | class | An application-held AES-256 key-encryption key. |
+| `TomDataKeyStore` | abstract class | Where the wrapped data keys are kept. |
+| `TomSqlDataKeyStore` / `TomMemoryDataKeyStore` | class | The data keys in `tom_encryption_key` of a data source resolved by name per call / in memory. |
+| `TomDataKeyRecord` | class | One data key as stored, wrapped. |
+| `TomDataKeyRow` | class | One row of the data-key table. |
+| `TomDataKeyPurpose` / `TomDataKeyState` | enum | `encryption` or `blindIndex`; `active` or `previous`. |
+| `TomFieldReencryption` | class | The pass, and its scheduler job, rewriting values under a previous key, plaintext and stale blind indexes. |
+| `TomReencryptionReport` | class | What one re-encryption pass did. |
+| `TomFieldEncryptionException` | class | Field encryption that cannot proceed, keyed `field_encryption.*` (extends `TomServerException`). |
+| `encryptionKeyTable` / `encryptionKeyTableDdl` | top-level | The data-key table's descriptor, and its `CREATE TABLE` statement. |
+| `defaultEncryptionKeyTable` | top-level | `tom_encryption_key`, the data-key table's default name. |
+| `tomReencryptionJobName` | top-level | `object_persistence.reencrypt`, the re-encryption job's default name. |
 
 ### Preferences (`lib/src/tomserver/preferences/`)
 
@@ -890,6 +908,7 @@ surface documented here.
 | `defaultBlobChunkTable` | File Storage |
 | `defaultBlobManifestTable` | File Storage |
 | `defaultDeliveryReportTable` | Messaging |
+| `defaultEncryptionKeyTable` | Object Persistence |
 | `defaultIdempotencyTable` | Endpoints |
 | `defaultInboxTable` | Messaging |
 | `defaultInvalidationTable` | Cache |
@@ -906,6 +925,8 @@ surface documented here.
 | `deliveryReportTableDdl` | Messaging |
 | `DoubleCol` | Object Persistence |
 | `DoubleLiteral` | Object Persistence |
+| `encryptionKeyTable` | Object Persistence |
+| `encryptionKeyTableDdl` | Object Persistence |
 | `Eq` | Object Persistence |
 | `extractAuthentication` | Server |
 | `filterAuditEntries` | Audit |
@@ -1024,6 +1045,7 @@ surface documented here.
 | `Tom2FASubmission` | Authentication |
 | `tom2FATokenFingerprint` | Authentication |
 | `TomAccessibleItemsPage` | Item Authorization |
+| `TomAesKeyEncryptionKey` | Object Persistence |
 | `TomAggregate` | Object Persistence |
 | `TomAggregateFunction` | Datasources |
 | `TomAnnotationAnalyzer` | Object Persistence |
@@ -1095,6 +1117,8 @@ surface documented here.
 | `TomAwsV4Signer` | File Storage |
 | `TomBaseServerConfiguration` | Configuration |
 | `TomBinaryOperator` | Object Persistence |
+| `TomBlindIndex` | Object Persistence |
+| `TomBlindIndexNormalization` | Object Persistence |
 | `TomBlobChunkRow` | File Storage |
 | `TomBlobDigest` | File Storage |
 | `TomBlobExportStore` | Export |
@@ -1146,6 +1170,11 @@ surface documented here.
 | `TomDartType` | Object Persistence |
 | `TomDatabaseBlobStore` | File Storage |
 | `TomDatabaseBlobStoreBackend` | File Storage |
+| `TomDataKeyPurpose` | Object Persistence |
+| `TomDataKeyRecord` | Object Persistence |
+| `TomDataKeyRow` | Object Persistence |
+| `TomDataKeyState` | Object Persistence |
+| `TomDataKeyStore` | Object Persistence |
 | `TomDataScope` | Object Persistence |
 | `TomDataScopeAuthorizationException` | Object Persistence |
 | `TomDataScopeBypass` | Object Persistence |
@@ -1203,6 +1232,7 @@ surface documented here.
 | `TomEmailCode2FAService` | Authentication |
 | `TomEmailRequest` | Messaging |
 | `TomEmailService` | Messaging |
+| `TomEncrypted` | Object Persistence |
 | `TomEndpoint` | Endpoints |
 | `TomEndpointBase` | Endpoints |
 | `TomEndpointCredentials` | Server |
@@ -1236,9 +1266,13 @@ surface documented here.
 | `TomExternalTenancyMapping` | Authentication |
 | `TomFcmPushProtocol` | Messaging |
 | `TomFcmServiceAccountCredential` | Messaging |
+| `TomFieldEncryption` | Object Persistence |
+| `TomFieldEncryptionException` | Object Persistence |
+| `TomFieldKeyring` | Object Persistence |
 | `TomFieldMappedDeliveryReportProtocol` | Messaging |
 | `TomFieldMappedPushProtocol` | Messaging |
 | `TomFieldMappedSmsProtocol` | Messaging |
+| `TomFieldReencryption` | Object Persistence |
 | `TomFileAuditAnchorStore` | Audit |
 | `TomFileAuditSink` | Audit |
 | `TomFileEndpoint` | Endpoints |
@@ -1314,6 +1348,7 @@ surface documented here.
 | `TomJwtKeyException` | Authentication |
 | `TomJwtSigning` | Authentication |
 | `TomJwtSigningKey` | Authentication |
+| `TomKeyEncryptionKey` | Object Persistence |
 | `TomLeaseRow` | Scheduling |
 | `TomLiteralSelect` | Datasources |
 | `TomLocalInvalidationChannel` | Cache |
@@ -1328,6 +1363,7 @@ surface documented here.
 | `TomMemoryAuditSink` | Audit |
 | `TomMemoryBlobStore` | File Storage |
 | `TomMemoryBlobStoreBackend` | File Storage |
+| `TomMemoryDataKeyStore` | Object Persistence |
 | `TomMemoryDeliveryReportStore` | Messaging |
 | `TomMemoryExportStore` | Export |
 | `TomMemoryExternalIdentityStore` | Authentication |
@@ -1423,6 +1459,8 @@ surface documented here.
 | `TomRecipient` | Messaging |
 | `TomRecipientKind` | Messaging |
 | `TomRedirect` | Endpoints |
+| `tomReencryptionJobName` | Object Persistence |
+| `TomReencryptionReport` | Object Persistence |
 | `TomReference` | Object Persistence |
 | `TomRepository` | Object Persistence |
 | `TomRepositoryException` | Object Persistence |
@@ -1549,6 +1587,7 @@ surface documented here.
 | `TomSqlBranch` | Datasources |
 | `tomSqlBranchId` | Datasources |
 | `TomSqlConnectionLostException` | Datasources |
+| `TomSqlDataKeyStore` | Object Persistence |
 | `TomSqlDatasource` | Datasources |
 | `TomSqlDatasourceException` | Datasources |
 | `TomSqlDatasourceRepository` | Object Persistence |

@@ -167,6 +167,8 @@ export 'src/tomserver/object_persistence/column_authorization.dart';
 export 'src/tomserver/object_persistence/composite_key.dart';
 export 'src/tomserver/object_persistence/crud_repository.dart';
 export 'src/tomserver/object_persistence/data_scope.dart';
+export 'src/tomserver/object_persistence/field_encryption.dart';
+export 'src/tomserver/object_persistence/field_encryption_sql.dart';
 export 'src/tomserver/object_persistence/file_reference.dart';
 export 'src/tomserver/object_persistence/grouped_query.dart';
 export 'src/tomserver/object_persistence/mariadb_repository.dart';

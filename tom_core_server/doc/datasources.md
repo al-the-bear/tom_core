@@ -1275,6 +1275,16 @@ does not decode into its declared type is
 `error.result_processing.failed_json_conversion`; both carry the converter's
 or decoder's exception as the root.
 
+An entity's `@TomEncrypted` column is decrypted on the same path. Before the
+rows are mapped, the mapper collects the data-key ids the result's ciphertexts
+name and has the installed keyring load the ones it does not hold
+(`TomFieldEncryption.prepareRead`), so each value then decrypts in place
+(`TomFieldEncryption.decrypt`), raising a `field_encryption.*` key when it
+cannot. Inside `TomFieldEncryption.raw` the mapper skips both: an encrypted
+column is mapped as stored and no `@TomReference` is loaded — the read a
+maintenance pass makes of the row's own columns. See
+[object_persistence.md](object_persistence.md#writes-and-reads).
+
 A column the result does not carry is skipped on **every** shape, so a
 projection that selects a subset of an entity's columns maps rather than fails.
 A result type the reflector does not hold is refused where the mirror is taken,
@@ -2066,5 +2076,5 @@ test here requires this file in particular to keep using it.
 | `tom_basics` | package | `sql_failure_mode.dart` | `TomBaseException`, walked to find the driver exception at the root of a failure chain |
 | `tom_core_kernel` | package | 7 of 15 files | `TomObject`, `tomReflector` / `ClassMirror` / `InstanceMirror`, `TomException`, `TomZonedDate` / `TomZonedTime`, `TomExecutionContext`, `runChecked` / `runCheckedSync`, `tomLog` |
 | [little_things](little_things.md) | module | `connection_pool.dart`, `datasource_initialization.dart`, `sql_datasource.dart` | `TomServerException` |
-| [object_persistence](object_persistence.md) | module | `sql_datasource.dart`, `sql_dialects.dart` | `TomAnnotationAnalyzer`, `TomColumnInformation`, `TomDbTable`, `DbCol`, `TomQuerySentenceCompiler`, `TomGroupedSelect` / `TomGroupedRow` |
+| [object_persistence](object_persistence.md) | module | `sql_datasource.dart`, `sql_dialects.dart` | `TomAnnotationAnalyzer`, `TomColumnInformation`, `TomDbTable`, `DbCol`, `TomQuerySentenceCompiler`, `TomGroupedSelect` / `TomGroupedRow`, `TomFieldEncryption` (decrypting an entity's encrypted columns, and the raw read) |
 | [transactions](transactions.md) | module | `datasource_initialization.dart`, `sql_datasource.dart`, `mariadb_datasource.dart`, `postgres_datasource.dart`, `framework_table.dart` | `TomTransactionParticipant` for the contract `TomDataSource` implements, `TomTransaction` for the one a driver is handed on enlistment — which is where `isReadOnly` becomes a `READ ONLY` begin statement — and `TomTransactionManager.runInTransaction` for `TomFrameworkTable.replaceRow`'s two statements |

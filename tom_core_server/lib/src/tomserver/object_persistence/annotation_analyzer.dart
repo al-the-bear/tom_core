@@ -601,6 +601,7 @@ mixin TomAnnotationAnalyzer {
               "one version, so at most one field may carry it.",
         );
       }
+      _checkEncryptedColumns(dbType, result);
       final columns = List<TomColumnInformation>.unmodifiable(result);
       _columnInfoCache[dbType] = columns;
       return columns;
@@ -609,6 +610,76 @@ mixin TomAnnotationAnalyzer {
       return null;
     }
   }
+
+  /// Refuses an `@TomEncrypted` or `@TomBlindIndex` field the repository could
+  /// not maintain: either on a field that is not a `String`; encryption on a
+  /// key, version, reference or file column, which the database must be able to
+  /// compare or the framework to read; both on one field; and a blind index
+  /// naming a field of [dbType] that is not encrypted.
+  static void _checkEncryptedColumns(
+    Type dbType,
+    List<TomColumnInformation> columns,
+  ) {
+    Never refuse(String key, String message) =>
+        throw TomAnnotationAnalyzerSyntaxException(key, message);
+    bool isString(TomColumnInformation c) =>
+        '${c.declaredType}'.replaceAll('?', '') == 'String';
+    for (final c in columns) {
+      final name = '$dbType.${c.declaredName}';
+      if (c.encrypted == null && c.blindIndex == null) continue;
+      if (!isString(c)) {
+        refuse(
+          'annotation_analyzer.encryption.not_string',
+          '$name is ${c.declaredType}; @TomEncrypted and @TomBlindIndex apply '
+              'to String fields only.',
+        );
+      }
+      if (c.encrypted != null && c.blindIndex != null) {
+        refuse(
+          'annotation_analyzer.encryption.both',
+          '$name carries @TomEncrypted and @TomBlindIndex; the index is a '
+              'column of its own.',
+        );
+      }
+      if (c.encrypted != null &&
+          (c.entityId != null ||
+              c.version != null ||
+              c.reference != null ||
+              c.fileReference != null)) {
+        refuse(
+          'annotation_analyzer.encryption.structural_column',
+          '$name is a key, version, reference or file column; those are '
+              'compared by the database and cannot be encrypted.',
+        );
+      }
+      final index = c.blindIndex;
+      if (index != null &&
+          !columns.any(
+            (o) => o.declaredName == index.field && o.encrypted != null,
+          )) {
+        refuse(
+          'annotation_analyzer.encryption.index_without_field',
+          '$name is the blind index of ${index.field}, which is not a '
+              '@TomEncrypted field of $dbType.',
+        );
+      }
+    }
+  }
+
+  /// The `@TomEncrypted` columns of [dbType], in declaration order — empty for
+  /// an entity with none or a type that is not an entity.
+  static List<TomColumnInformation> encryptedColumns(Type dbType) => [
+    for (final c
+        in getPersistentColumns(dbType) ?? const <TomColumnInformation>[])
+      if (c.encrypted != null) c,
+  ];
+
+  /// The `@TomBlindIndex` columns of [dbType], in declaration order.
+  static List<TomColumnInformation> blindIndexColumns(Type dbType) => [
+    for (final c
+        in getPersistentColumns(dbType) ?? const <TomColumnInformation>[])
+      if (c.blindIndex != null) c,
+  ];
 
   static TomColumnInformation _getColumnInfo(
     Type dbType,
@@ -622,6 +693,8 @@ mixin TomAnnotationAnalyzer {
     TomFileReference? fileReference;
     TomProtectedField? protectedField;
     TomVersion? version;
+    TomEncrypted? encrypted;
+    TomBlindIndex? blindIndex;
     for (var md in decl.metadata) {
       if (md is TomDbColumn) {
         column = md;
@@ -635,6 +708,10 @@ mixin TomAnnotationAnalyzer {
         protectedField = md;
       } else if (md is TomVersion) {
         version = md;
+      } else if (md is TomEncrypted) {
+        encrypted = md;
+      } else if (md is TomBlindIndex) {
+        blindIndex = md;
       }
     }
     column ??= TomDbColumn(columnName: field);
@@ -662,6 +739,8 @@ mixin TomAnnotationAnalyzer {
         fileReference: fileReference,
         protectedField: protectedField,
         version: version,
+        encrypted: encrypted,
+        blindIndex: blindIndex,
       );
     } else {
       throw TomAnnotationAnalyzerException(

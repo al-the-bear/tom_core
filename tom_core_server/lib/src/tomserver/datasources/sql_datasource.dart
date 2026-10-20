@@ -30,6 +30,7 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../little_things/server_exception.dart';
 import '../object_persistence/annotation_analyzer.dart';
+import '../object_persistence/field_encryption.dart';
 import '../object_persistence/grouped_query.dart';
 import '../object_persistence/persistence_annotations.dart';
 import '../object_persistence/query_sentence_compiler.dart';
@@ -1370,6 +1371,20 @@ abstract class TomSqlDatasource implements TomDataSource {
       final persistentColumns = TomAnnotationAnalyzer.analysePersistentType(
         rType,
       ).columnInfo;
+      // Field-level encryption: a raw read maps stored values as they are;
+      // otherwise the data keys the result's ciphertexts name are loaded first,
+      // so every value below decrypts without waiting.
+      final raw = TomFieldEncryption.isRaw;
+      final encrypted = [
+        for (final col in persistentColumns)
+          if (col.encrypted != null && result.hasColumn(col.field)) col,
+      ];
+      if (!raw && encrypted.isNotEmpty) {
+        await TomFieldEncryption.prepareRead([
+          for (final row in result.rows)
+            for (final col in encrypted) row.text(col.field),
+        ]);
+      }
       for (var row in result.rows) {
         // Per row: the stack is drained at the end of this iteration.
         final refStack = <_PendingReference>[];
@@ -1382,6 +1397,8 @@ abstract class TomSqlDatasource implements TomDataSource {
           VariableMirror dm =
               classMirror.declarations[col.declaredName] as VariableMirror;
           if (col.reference != null) {
+            // A raw read is a maintenance read of the row's own columns.
+            if (raw) continue;
             // Deferred: the reference query binds values from this row, so it
             // can only run once every other field has been set.
             refStack.add((column: col, owner: classMirror, field: dm, row: im));
@@ -1397,7 +1414,13 @@ abstract class TomSqlDatasource implements TomDataSource {
             case double:
               im.invokeSetter(dm.simpleName, _readDouble(row, col.field));
             case String:
-              im.invokeSetter(dm.simpleName, row.text(col.field));
+              final text = row.text(col.field);
+              im.invokeSetter(
+                dm.simpleName,
+                col.encrypted != null && !raw
+                    ? TomFieldEncryption.decrypt(col, text)
+                    : text,
+              );
             case bool:
               im.invokeSetter(dm.simpleName, row.boolean(col.field));
             case DateTime:

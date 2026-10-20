@@ -177,6 +177,12 @@ void main() {
       ]);
     });
 
+    test('the object_persistence chain builds the data-key descriptor', () {
+      converges('example/object_persistence/migrations/main/tomcore', [
+        encryptionKeyTable(defaultEncryptionKeyTable),
+      ]);
+    });
+
     test('the cache chain builds the invalidation-log descriptor', () {
       converges('example/cache/migrations/main/tomcore', [
         invalidationTable(defaultInvalidationTable),
@@ -249,6 +255,10 @@ void main() {
 
     test('the sagas', () {
       maps(sagaTable(defaultSagaTable), [TomSagaRow]);
+    });
+
+    test('the data keys', () {
+      maps(encryptionKeyTable(defaultEncryptionKeyTable), [TomDataKeyRow]);
     });
 
     test('the roll call', () {
@@ -580,6 +590,29 @@ void main() {
         await _issuing(() => store.purgeFinishedBefore(now));
         await _issuing(() => store.deleteAll());
       });
+    });
+
+    test('the data-key store', () async {
+      final datasource = _RecordingDataSource();
+      final store = TomSqlDataKeyStore.over(datasource);
+      final record = TomDataKeyRecord(
+        id: 'k1',
+        purpose: TomDataKeyPurpose.encryption,
+        state: TomDataKeyState.active,
+        kekId: 'kek-1',
+        wrapped: 'AAAA',
+        createdAt: DateTime.utc(2026, 10, 20, 12),
+      );
+      await audit(
+        datasource,
+        [encryptionKeyTable(defaultEncryptionKeyTable)],
+        () async {
+          await _issuing(() => store.insert(record));
+          await _issuing(() => store.all());
+          await _issuing(() => store.update(record));
+          await _issuing(() => store.deleteAll());
+        },
+      );
     });
 
     test('the database blob store', () async {

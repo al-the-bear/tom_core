@@ -2834,3 +2834,122 @@ class FixtureTablelessColumnRecord {
   @TomDbColumn(columnName: 'name')
   String? name;
 }
+
+/// A reflected entity with encrypted personal data: two `@TomEncrypted`
+/// columns, a `@TomBlindIndex` over one of them, and a plain column.
+@tomReflector
+@TomDbTable(
+  datasource: 'tom_core_server_test',
+  table: 'fixture_patient',
+  primaryKeyFields: ['id'],
+)
+class FixturePatient {
+  /// Surrogate primary key.
+  @TomEntityId()
+  @TomDbColumn(columnName: 'id', isReadOnly: true)
+  int? id;
+
+  /// The patient's name, encrypted at rest.
+  @TomEncrypted()
+  @TomDbColumn(columnName: 'name')
+  String? name;
+
+  /// The patient's e-mail address, encrypted at rest and found by value.
+  @TomEncrypted()
+  @TomDbColumn(columnName: 'email')
+  String? email;
+
+  /// The blind index of [email].
+  @TomBlindIndex('email')
+  @TomDbColumn(columnName: 'email_bidx')
+  String? emailIndex;
+
+  /// A column stored as it is.
+  @TomDbColumn(columnName: 'ward')
+  String? ward;
+}
+
+/// The repository for [FixturePatient].
+class FixturePatientRepository
+    extends TomSqlDatasourceRepository<FixturePatient, int> {}
+
+/// An entity encrypting an `int` — refused by the analyzer: encryption applies
+/// to `String` fields only.
+@tomReflector
+@TomDbTable(
+  datasource: 'tom_core_server_test',
+  table: 'fixture_encrypted_number',
+  primaryKeyFields: ['id'],
+)
+class FixtureEncryptedNumberRecord {
+  /// Surrogate primary key.
+  @TomEntityId()
+  @TomDbColumn(columnName: 'id', isReadOnly: true)
+  int? id;
+
+  /// A number that cannot be encrypted.
+  @TomEncrypted()
+  @TomDbColumn(columnName: 'amount')
+  int? amount;
+}
+
+/// An entity encrypting its key — refused by the analyzer: the database must
+/// compare a key.
+@tomReflector
+@TomDbTable(
+  datasource: 'tom_core_server_test',
+  table: 'fixture_encrypted_key',
+  primaryKeyFields: ['code'],
+)
+class FixtureEncryptedKeyRecord {
+  /// A key that cannot be encrypted.
+  @TomEntityId()
+  @TomEncrypted()
+  @TomDbColumn(columnName: 'code')
+  String? code;
+}
+
+/// An entity with a blind index over a field that is not encrypted — refused
+/// by the analyzer.
+@tomReflector
+@TomDbTable(
+  datasource: 'tom_core_server_test',
+  table: 'fixture_stray_index',
+  primaryKeyFields: ['id'],
+)
+class FixtureStrayIndexRecord {
+  /// Surrogate primary key.
+  @TomEntityId()
+  @TomDbColumn(columnName: 'id', isReadOnly: true)
+  int? id;
+
+  /// A plain field.
+  @TomDbColumn(columnName: 'email')
+  String? email;
+
+  /// An index of a field that is not encrypted.
+  @TomBlindIndex('email')
+  @TomDbColumn(columnName: 'email_bidx')
+  String? emailIndex;
+}
+
+/// An entity whose field is both encrypted and an index — refused by the
+/// analyzer: the index is a column of its own.
+@tomReflector
+@TomDbTable(
+  datasource: 'tom_core_server_test',
+  table: 'fixture_both_annotations',
+  primaryKeyFields: ['id'],
+)
+class FixtureBothAnnotationsRecord {
+  /// Surrogate primary key.
+  @TomEntityId()
+  @TomDbColumn(columnName: 'id', isReadOnly: true)
+  int? id;
+
+  /// A field carrying both annotations.
+  @TomEncrypted()
+  @TomBlindIndex('email')
+  @TomDbColumn(columnName: 'email')
+  String? email;
+}

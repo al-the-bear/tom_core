@@ -28,10 +28,11 @@ dependencies:
   # StreamQueue drives the SMTP line protocol (messaging/smtp_transport.dart);
   # declared explicitly for the same reason as crypto above.
   async: ^2.11.0
-  # Needed by the generated reflection output, which imports
-  # `pointycastle/asymmetric/api.dart` directly to name RSAPrivateKey and
-  # RSAPublicKey. Hand-written code no longer imports it: tom_crypto 1.2.0
-  # re-exports both key types, so they arrive through the kernel barrel.
+  # The AES-GCM cipher of field-level encryption
+  # (object_persistence/field_encryption.dart), and the generated reflection
+  # output, which imports `pointycastle/asymmetric/api.dart` directly to name
+  # RSAPrivateKey and RSAPublicKey; tom_crypto 1.2.0 re-exports both key types,
+  # so hand-written code reaches them through the kernel barrel.
   pointycastle: ^3.9.1
   # Needed by the generated reflection output, and by
   # authentication/jwt_signing.dart, which imports it under a prefix. The names

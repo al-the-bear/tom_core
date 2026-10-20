@@ -2,6 +2,7 @@ import "package:tom_core_kernel/tom_core_kernel.dart";
 import "../object_persistence/annotation_analyzer.dart";
 import "../object_persistence/paging.dart";
 import "../object_persistence/persistence_annotations.dart";
+import "../object_persistence/query_sentence_compiler.dart";
 import "types_operator.dart";
 import "sql_dialects.dart";
 
@@ -215,9 +216,9 @@ abstract class TomGeneratedQuery extends TomQuery {
   }) {
     final resolved = <TomSortField>[];
     for (final term in sort) {
-      final column = TomAnnotationAnalyzer.determineColumn(
-        term.field,
-        persistenceInfo,
+      final column = TomQuerySentenceCompiler.comparable(
+        TomAnnotationAnalyzer.determineColumn(term.field, persistenceInfo),
+        'sorted by ${term.field}',
       );
       final name = column.getQueryFieldName();
       resolved.add(

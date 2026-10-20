@@ -35,6 +35,7 @@ store before the configuration is built.
 - [Graceful Shutdown](#graceful-shutdown)
 - [Outgoing HTTP Calls](#outgoing-http-calls)
 - [Idempotency Keys](#idempotency-keys)
+- [Field-Level Encryption](#field-level-encryption)
 - [Source Precedence](#source-precedence)
   - [A `SCREAMING_SNAKE_CASE` variable names a `lowerCamelCase` field](#a-screaming_snake_case-variable-names-a-lowercamelcase-field)
 - [Secret References](#secret-references)
@@ -976,6 +977,75 @@ the router is built. A deployment that installs a store of its own assigns
 `TomIdempotency.store` after `start()`, or leaves `datasource` out. The
 settings are per isolate. `idempotency` is not a field of the configuration
 base, so the startup warning about
+[unknown keys](#unknown-keys-in-the-configuration-resources) names it.
+
+## Field-Level Encryption
+
+An entity field annotated `@TomEncrypted` is stored as ciphertext under a data
+key, and the data keys are kept in a table, wrapped under a key-encryption key
+that never touches the database (see
+[object_persistence.md](object_persistence.md#field-level-encryption)). The
+`fieldEncryption` key of the configuration resources
+(`TomFieldEncryption.configurationKey`) names that table and the key-encryption
+keys. Like `idempotency` it is a nested map read through
+`TomServerConfigResourceProvider`, not a field of the configuration base:
+`TomServer.start` hands it to `TomFieldEncryption.configure` through
+`TomServer.configureFieldEncryption`, which installs the keyring. Without the
+key no keyring is installed, and an encrypted column fails its first write — or
+its first read of a ciphertext — with `field_encryption.not_configured` rather
+than storing plaintext.
+
+| Key | Type | Default | What it decides |
+| --- | ---- | ------- | --------------- |
+| `datasource` | `String` | required | The registered data source the data-key table is in: a `TomSqlDataKeyStore` over it. Resolved by name on every call, so under tenancy a routed data source keeps each tenant's data keys in the tenant's schema or database. |
+| `table` | `String` | `tom_encryption_key` | The table's name. |
+| `createSchema` | `bool` | `true` | Whether the store creates the table on first use in each data source. `false` for a database user that may not run DDL; the deployment then applies the reference migration `example/object_persistence/migrations/main/tomcore/[1]-create_tom_encryption_key.sql` (or its `migrations_postgresql` form). |
+| `keys` | list of maps | required | The key-encryption keys, **primary first**: each `{id, key}`, `id` its name (1 to 128 characters, recorded with every data key it wraps) and `key` the base64 of its 32 bytes, or a `secret:` reference to it. The primary wraps every data key created; the others only unwrap, so a rotated-out key stays listed until the data keys are re-wrapped. |
+| `refreshSeconds` | `int` | `300` | How often a node reads the data keys again, which is how it learns of a rotation another node made. |
+| `acceptPlaintext` | `bool` | `true` | Whether a stored value of an encrypted column that is not ciphertext reads as it is (`TomFieldEncryption.acceptPlaintext`). On while a column that held plaintext is being encrypted; off once every column is, and a plaintext value then fails its read with `field_encryption.plaintext_refused`. |
+
+```yaml
+# assets/config-resources_default.yaml
+fieldEncryption:
+  datasource: main
+  createSchema: false
+  keys:
+    - id: kek-2026
+      key: "secret:vault:secret/data/billing#fieldKek"
+  refreshSeconds: 300
+  acceptPlaintext: false
+```
+
+**A key belongs in a secret store.** The key-encryption key is what makes a
+database dump useless, so it is written as a [secret
+reference](#secret-references) rather than a value. `TomFieldEncryption.configure`
+resolves a reference in `keys[].key` itself, through the registered providers
+(`TomSecrets.resolve`), whatever path the configuration came through — the
+provider holds the resources as written, and the reference works there as it
+is. A reference that cannot be resolved stops the start with the
+`TomSecretsException` the [load](#boot-order-load-then-build) would raise.
+
+**Rotating a key-encryption key** is a configuration change: list the new key
+first and the old one second, restart, re-wrap the data keys
+(`TomFieldEncryption.keyring!.rewrap()`, in every tenant whose data keys are
+kept apart), then drop the old key from the list.
+
+**A value of the wrong shape stops the start.** `fieldEncryption` that is not a
+map, a missing `datasource` or `keys`, a `table` that is not a string, a
+`createSchema` or `acceptPlaintext` that is not a boolean, a `refreshSeconds`
+that is not a positive whole number, or a `keys` entry without an `id` and a
+`key` throws a `TomFieldEncryptionException` keyed
+`field_encryption.config.invalid` before anything is installed; a key that is
+not the base64 of 32 bytes throws `field_encryption.invalid_kek`. A data source
+the name does not resolve to throws `field_encryption.no_datasource` when the
+keyring first loads, which `start()` awaits.
+
+**When it applies.** `start()` applies the key right after `idempotency`, before
+the deployment's own login and before anything reads an entity; the data source
+must be registered by then. A deployment that installs a keyring of its own
+calls `TomFieldEncryption.install` and leaves the key out. The keyring is per
+isolate. `fieldEncryption` is not a field of the configuration base, so the
+startup warning about
 [unknown keys](#unknown-keys-in-the-configuration-resources) names it.
 
 ## Source Precedence

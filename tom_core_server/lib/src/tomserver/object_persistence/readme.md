@@ -28,6 +28,13 @@ A `@TomVersion` field turns on **optimistic locking**: every update and
 two saves of one loaded row the second raises `TomOptimisticLockException`
 instead of silently overwriting the first.
 
+A `String` field annotated `@TomEncrypted` is **encrypted at rest**: the
+repository stores AES-256-GCM ciphertext and the data source decrypts it on
+read, so the database, its backups and its replicas never hold the plaintext.
+The data keys live in `tom_encryption_key` wrapped under a key-encryption key
+that never touches the database, and rotate without downtime; a
+`@TomBlindIndex` column makes an encrypted field findable by value.
+
 ## Key types
 
 | Type | Responsibility |
@@ -46,6 +53,12 @@ instead of silently overwriting the first.
 | `TomResourceScopeSource` | The hook behind the `resource` kind, implemented and installed by the authorization module. |
 | `TomColumnAuthorization` · `TomColumnWriteDecision` | The per-column half of the same idea: which columns of a row this principal may *write*, resolved through a `TomColumnAuthResolver` — or a `TomRowColumnAuthResolver` when the answer depends on the row. |
 | `TomFileReference` · `TomFileReferenceKeys` | Marks a `String` column as holding a blob storage key rather than the bytes, and mints the keys for it. The bytes live in the file-storage module; the column holds the way back to them. |
+| `TomEncrypted` · `TomBlindIndex` · `TomBlindIndexNormalization` | Mark a `String` field encrypted at rest, and a companion column its blind index — an HMAC of the normalised plaintext, which a lookup compares. |
+| `TomFieldEncryption` | The cipher the repository and the data source call (`field_encryption.dart`): encrypt, decrypt, the blind-index lookup `blindIndexCondition`, raw reads and audit redaction, over the installed keyring. |
+| `TomFieldKeyring` · `TomKeyEncryptionKey` · `TomAesKeyEncryptionKey` | The data keys, unwrapped and cached, and the key-encryption key that wraps them; rotates data keys, index keys and key-encryption keys. |
+| `TomDataKeyStore` · `TomSqlDataKeyStore` · `TomMemoryDataKeyStore` · `TomDataKeyRecord` · `TomDataKeyRow` · `TomDataKeyPurpose` · `TomDataKeyState` | Where the wrapped data keys are kept — `tom_encryption_key`, declared once by `encryptionKeyTable` in `field_encryption_sql.dart` — and one key as stored. |
+| `TomFieldReencryption` · `TomReencryptionReport` | The background pass, runnable as a scheduler job, that rewrites values under a previous key, encrypts plaintext and fills blind indexes. |
+| `TomFieldEncryptionException` | Every refusal of field encryption, keyed `field_encryption.*`. |
 | `TomBlobMigration` · `TomBlobMigrationReport` | Moves the blobs those columns name from one blob store to another. The key list comes from the rows because a blob store cannot enumerate itself — which makes a file column the index of what a deployment stored, and the sweep read-only on the database. |
 | `MariadbRepository<T, K>` | The MariaDB binding of `TomSqlDatasourceRepository` — constructed directly, and the only thing it adds is a pinned `MariadbSqlDialect`. A repository extending `TomSqlDatasourceRepository` directly renders through its data source's dialect, so it serves MariaDB and PostgreSQL alike. |
 | `TomQuerySentenceCompiler` | Compiles a written sentence (`find by owner = :who order by created_at`) into the same operator tree the builder produces, so a query can be data. |
@@ -90,6 +103,9 @@ walkthrough that checks its own results, with its entities beside it in
 `example/object_persistence/optimistic_locking_example.dart` walks optimistic
 locking the same way, and `test/optimistic_locking_test.dart` and
 `test/optimistic_locking_db_test.dart` cover it without and with a server.
+`example/object_persistence/field_encryption_example.dart` walks field-level
+encryption, and `test/field_encryption_test.dart` and
+`test/field_encryption_db_test.dart` cover it without and with a server.
 `test/object_persistence_test.dart` covers the module and
 `test/object_persistence_db_test.dart` adds what only a live MariaDB or PostgreSQL can answer;
 `test/examples_test.dart` runs the example and

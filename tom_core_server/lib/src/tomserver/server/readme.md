@@ -84,6 +84,15 @@ long a response is replayed and when an abandoned claim is taken over. Without
 the key the records stay in memory, on one process — see
 [`doc/configuration.md`](../../../../doc/configuration.md#idempotency-keys).
 
+**Field-level encryption.** `start` then awaits the `fieldEncryption` key
+(`TomServer.configureFieldEncryption`, `TomFieldEncryption.configurationKey`):
+the data-key table and the key-encryption keys `@TomEncrypted` columns are
+encrypted under, from which it installs the keyring before the deployment's own
+login and before anything reads an entity. Without the key no keyring is
+installed, and an encrypted column fails its first write with
+`field_encryption.not_configured` — see
+[`doc/configuration.md`](../../../../doc/configuration.md#field-level-encryption).
+
 **Graceful shutdown.** `start` puts the shutdown gate outermost in the
 pipeline and registers `TomServer.gracefulShutdown` for SIGTERM and SIGINT: on
 either signal `/ready` turns to `503`, the listener closes, a new request is

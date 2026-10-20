@@ -74,6 +74,11 @@ const List<TourStop> tour = [
     'Optimistic locking: the version field, the update it guards, the migration',
   ),
   TourStop(
+    'example/object_persistence/field_encryption_example.dart',
+    'Field-level encryption: ciphertext at rest, the blind-index lookup, '
+        'data-key, index-key and key-encryption-key rotation, audit redaction',
+  ),
+  TourStop(
     'example/datasources/datasources_example.dart',
     'SQL-typed values and how each dialect renders them',
   ),

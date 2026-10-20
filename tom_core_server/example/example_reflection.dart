@@ -1,6 +1,6 @@
 /// The example suite's single reflection root.
 ///
-/// Seven of the examples need a live reflector and none can borrow the test
+/// Eight of the examples need a live reflector and none can borrow the test
 /// fixture's, because an example is not a test and cannot import from `test/`:
 ///
 ///  * the two-node cluster demonstration, whose SQL scheduler stores read every
@@ -16,6 +16,8 @@
 ///    column grades are all resolved from one entity's annotations;
 ///  * the optimistic-locking example, whose version column, guarded update and
 ///    migration check are resolved from `ExampleArticle`'s annotations;
+///  * the field-encryption example, whose blind-index lookup, audit redaction
+///    and refused query are resolved from `ExamplePatientRecord`'s annotations;
 ///  * the preferences example, whose object preference is encoded and rebuilt
 ///    through the registry rather than through the type's own name;
 ///  * the file-storage example, whose configured stores are built by backends
@@ -54,6 +56,7 @@ const List<Type> exampleReflectedTypes = <Type>[
   ExampleClaimRecord,
   ExampleDashboardPreference,
   ExampleDocumentRecord,
+  ExamplePatientRecord,
   ExampleSaleRecord,
   ExampleShelfBlobStoreBackend,
   // A framework row holder, named to keep the package barrel in the graph. The

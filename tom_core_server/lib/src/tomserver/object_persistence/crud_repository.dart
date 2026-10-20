@@ -21,6 +21,7 @@ import 'annotation_analyzer.dart';
 import 'column_authorization.dart';
 import 'composite_key.dart';
 import 'data_scope.dart';
+import 'field_encryption.dart';
 
 /// Raised when a repository operation cannot complete: the entity's data source
 /// was never registered, a primary-key lookup matched more than one row, a
@@ -1129,8 +1130,10 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
     action: action,
     target: _auditTarget,
     targetKey: key?.toString(),
-    before: before,
-    after: after,
+    // An encrypted field's value is redacted: the trail must not become a
+    // plaintext copy of what the table encrypts.
+    before: TomFieldEncryption.redact(T, before),
+    after: TomFieldEncryption.redact(T, after),
   );
 
   TomPreparedStatement<T>? get _deleteQuery =>
@@ -1807,10 +1810,37 @@ SELECT * FROM ${dbTable.table}
       }
     }
 
-    Object? dbValue(TomColumnInformation col) =>
+    Object? plainValue(TomColumnInformation col) =>
         overrides.containsKey(col.declaredName)
         ? overrides[col.declaredName]
         : dbConvert(col, col.getVariableValue(toSave));
+
+    // Field-level encryption, resolved before the statements are built because
+    // it is asynchronous: an encrypted column binds its ciphertext, and a blind
+    // index the HMAC of the plaintext of the field it indexes — whatever the
+    // entity itself holds in the index field.
+    final sealed = <String, Object?>{};
+    for (final col in writable) {
+      if (col.encrypted != null) {
+        sealed[col.declaredName] = await TomFieldEncryption.encrypt(
+          col,
+          plainValue(col) as String?,
+        );
+      } else if (col.blindIndex case final index?) {
+        final source = persistentColumns.firstWhere(
+          (c) => c.declaredName == index.field,
+        );
+        sealed[col.declaredName] = await TomFieldEncryption.blindIndex(
+          col,
+          plainValue(source) as String?,
+        );
+      }
+    }
+
+    Object? dbValue(TomColumnInformation col) =>
+        sealed.containsKey(col.declaredName)
+        ? sealed[col.declaredName]
+        : plainValue(col);
 
     if (insert) {
       // INSERT

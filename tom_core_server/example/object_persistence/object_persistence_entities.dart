@@ -110,3 +110,42 @@ class ExampleArticle {
   @TomDbColumn(columnName: 'body')
   String? body;
 }
+
+/// A patient record whose personal data is encrypted at rest: the entity the
+/// field-encryption example encrypts, indexes and redacts.
+///
+/// [name] and [email] are `@TomEncrypted`, so the table only ever holds their
+/// ciphertext; [emailIndex] is the blind index of [email], the column a lookup
+/// by e-mail address compares. [ward] is stored as it is, which is what lets a
+/// query filter or group on it.
+@tomReflector
+@TomDbTable(
+  datasource: 'unused_by_this_example',
+  table: 'example_patient',
+  primaryKeyFields: ['id'],
+)
+class ExamplePatientRecord {
+  /// Surrogate primary key.
+  @TomEntityId()
+  @TomDbColumn(columnName: 'id', isReadOnly: true)
+  int? id;
+
+  /// The patient's name, encrypted at rest.
+  @TomEncrypted()
+  @TomDbColumn(columnName: 'name')
+  String? name;
+
+  /// The patient's e-mail address, encrypted at rest and found by value.
+  @TomEncrypted()
+  @TomDbColumn(columnName: 'email')
+  String? email;
+
+  /// The blind index of [email].
+  @TomBlindIndex('email')
+  @TomDbColumn(columnName: 'email_bidx')
+  String? emailIndex;
+
+  /// The ward, stored as it is.
+  @TomDbColumn(columnName: 'ward')
+  String? ward;
+}

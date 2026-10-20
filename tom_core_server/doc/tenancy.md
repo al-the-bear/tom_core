@@ -495,6 +495,7 @@ claimed organization is the session's.
 | Delivery reports | `tom_delivery_report.tenant` attributes a carrier's report, which arrives carrying nothing but the carrier's id, to its tenant | [messaging](messaging.md#messages-per-tenant) |
 | Idempotency keys | a key is scoped to the tenant in context, its principal and the operation; the SQL store resolves its data source by name per request, so a routed data source keeps a tenant's keys in the tenant's schema or database | [endpoints](endpoints.md#stores-clusters-and-tenants) |
 | Sagas | a saga belongs to the tenant it began in, and its steps and compensations run inside it; `TomSqlSagaStore` resolves its data source by name on every call, so a routed data source keeps a tenant's sagas beside the data its steps change; a resumption looks into every tenant | [transactions](transactions.md#sagas-per-tenant) |
+| Field-encryption keys | `TomSqlDataKeyStore` resolves its data source by name on every call, so a routed data source keeps a tenant's data keys in the tenant's schema or database; the re-encryption pass runs in every tenant | [object_persistence](object_persistence.md#tenancy) |
 
 A tenant-scoped key is spelled one way everywhere —
 `TomTenantContext.qualify(name, tenant)`, which is `tenant:<id>/<name>`, or the
@@ -577,6 +578,19 @@ tenant, and `TomSagaOrchestrator.resume` — at start and on every sweep — run
 every tenant of the installed tenancy, so each tenant's unfinished sagas are
 found in its own data source. See
 [transactions.md](transactions.md#sagas-per-tenant).
+
+**The data keys live with the data they encrypt.** The data keys of
+`@TomEncrypted` columns are kept in `tom_encryption_key` of the data source the
+`fieldEncryption` configuration names, and `TomSqlDataKeyStore` looks that name
+up on every call. When it is one of `TomTenancy.datasources`, a `schema` or
+`database` tenant's data keys are kept in that tenant's schema or database —
+created there on first use or, with `createSchema: false`, by the migration in
+the per-tenant tree — so its values are encrypted under keys no other tenant's
+data shares. Shared tenants share the one table and its keys. A rotation acts on
+the keys of the tenant in context, so rotating every tenant's runs inside each
+(`forEachTenant`); `TomFieldReencryption.run` looks into every tenant of the
+installed tenancy on its own. See
+[object_persistence.md](object_persistence.md#tenancy).
 
 ## Working in a Tenant Outside a Request
 

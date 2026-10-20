@@ -2,6 +2,56 @@
 
 ### Added
 
+- **Field-level encryption with key rotation** (`object_persistence` module).
+  A `String` field annotated `@TomEncrypted` is stored as AES-256-GCM
+  ciphertext — `tomenc:v1:<data key id>:<base64url>`, randomised per write,
+  with `<table>.<column>` as additional authenticated data — and read as
+  plaintext: `TomSqlDatasourceRepository.save` encrypts it, the data source's
+  entity row mapping loads the data keys a result names
+  (`TomFieldEncryption.prepareRead`) and decrypts it, and
+  `TomFieldEncryption.raw` reads the stored values as they are without loading
+  references. `@TomBlindIndex(field, normalization:)`
+  (`TomBlindIndexNormalization`: `exact`, `trim`, `trimLowercase`) makes a
+  companion column an HMAC-SHA-256 of the normalised plaintext, filled on every
+  save; `TomFieldEncryption.blindIndexCondition` builds the lookup
+  (`<index> is in ( … )` over every index key, `blindIndexCandidates`),
+  `blindIndexOf` and `blindIndex` the single value. Data keys are kept in
+  `tom_encryption_key` (`encryptionKeyTable`, `encryptionKeyTableDdl`,
+  `defaultEncryptionKeyTable`, read back as `TomDataKeyRow`; listed by
+  `frameworkOwnedTables` under the new `encryptionKey` parameter; reference
+  migration `example/object_persistence/migrations/main/tomcore/[1]-create_tom_encryption_key.sql`
+  with its PostgreSQL form), wrapped under a `TomKeyEncryptionKey` —
+  `TomAesKeyEncryptionKey`, an application-held AES-256 key — by a
+  `TomDataKeyStore` (`TomSqlDataKeyStore`, resolved by name per call so a
+  routed tenant keeps its keys in its own schema or database, or `.over` a data
+  source; `TomMemoryDataKeyStore`) as `TomDataKeyRecord`s
+  (`TomDataKeyPurpose`, `TomDataKeyState`). `TomFieldKeyring` unwraps and
+  caches them, reloads every `refreshInterval` or for a key it has not seen,
+  and rotates: `rotateDataKey`, `rotateIndexKey` (`index-2`, `index-3`, …) and
+  `rewrap` for a key-encryption key. `TomFieldReencryption` — `run()` in every
+  tenant, or `job(schedule:)` as `object_persistence.reencrypt`
+  (`tomReencryptionJobName`) on an inline dispatcher — rewrites values under a
+  previous data key, plaintext (read while `acceptPlaintext` is on) and stale
+  blind indexes, each row under a guard on the values it read, reporting a
+  `TomReencryptionReport`. `TomServer.start` installs the keyring from the
+  `fieldEncryption` configuration (`TomServer.configureFieldEncryption`,
+  `TomFieldEncryption.configure`) after `idempotency`. Repository audit images
+  redact encrypted fields and blind indexes (`TomFieldEncryption.redact`,
+  `[encrypted]`). `TomAnnotationAnalyzer.encryptedColumns` /
+  `blindIndexColumns`, and `TomColumnInformation.encrypted` / `blindIndex`.
+  `TomFieldEncryptionException` carries `field_encryption.not_configured`,
+  `…unknown_key`, `…decrypt_failed`, `…plaintext_refused`, `…unknown_kek`,
+  `…invalid_kek`, `…config.invalid` and `…no_datasource`; the analyzer refuses
+  a misdeclared field (`annotation_analyzer.encryption.not_string`, `…both`,
+  `…structural_column`, `…index_without_field`) and the query compiler a
+  condition, group key or aggregate on an encrypted column
+  (`query_sentence_compiler.encrypted_column`). The cipher is `pointycastle`'s
+  AES-GCM, the blind index `crypto`'s HMAC. `doc/object_persistence.md` § Field-Level Encryption,
+  `doc/configuration.md` § Field-Level Encryption, notes in `doc/server.md`,
+  `doc/tenancy.md`, `doc/db_migration.md`, `doc/audit.md` and
+  `doc/datasources.md`; `example/object_persistence/field_encryption_example.dart`,
+  on the package tour; `test/field_encryption_test.dart`,
+  `test/field_encryption_db_test.dart`.
 - **Sagas** (`transactions` module). `TomSagaOrchestrator` runs work that spans
   services as a `TomSaga` of `TomSagaStep`s, each an `action` and an optional
   `compensation` (`TomSagaWork`, given a `TomSagaContext` with the attempt, the

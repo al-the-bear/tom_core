@@ -54,6 +54,20 @@ be expressed three ways — a parsed *query sentence*, a programmatically built
   - [Moving the bytes](#moving-the-bytes)
   - [Authorization, by construction](#authorization-by-construction)
   - [Blobs that nothing references](#blobs-that-nothing-references)
+- [Field-Level Encryption](#field-level-encryption)
+  - [Marking a field](#marking-a-field)
+  - [What is stored](#what-is-stored)
+  - [Writes and reads](#writes-and-reads)
+  - [Finding a row by value](#finding-a-row-by-value)
+  - [What cannot be queried](#what-cannot-be-queried)
+  - [Keys: envelope encryption](#keys-envelope-encryption)
+  - [Installing a keyring](#installing-a-keyring)
+  - [Rotating keys](#rotating-keys)
+  - [The re-encryption pass](#the-re-encryption-pass)
+  - [Encrypting a column that held plaintext](#encrypting-a-column-that-held-plaintext)
+  - [Tenancy](#tenancy)
+  - [Audit records](#audit-records)
+  - [How field encryption fails](#how-field-encryption-fails)
 - [Grouping and Aggregation](#grouping-and-aggregation)
   - [The aggregates](#the-aggregates)
   - [Building one](#building-one)
@@ -109,6 +123,22 @@ be expressed three ways — a parsed *query sentence*, a programmatically built
 | `TomBlobMigrationReport` | class | What one migration did: rows read, blobs copied, keys claimed, references it could not satisfy |
 | `TomBlobMigrationException` | class | Raised when a migration cannot proceed, or cannot be trusted |
 | `TomFileRepository<T, K>` | abstract class | The five-method file surface the HTTP file endpoint depends on |
+| `TomEncrypted` | class | Marks a `String` field encrypted at rest: stored as ciphertext, read as plaintext |
+| `TomBlindIndex` / `TomBlindIndexNormalization` | class / enum | Makes a `String` column the blind index of an encrypted field — what a lookup by value compares — and how it normalises the value first |
+| `TomFieldEncryption` | abstract final class | The isolate's field encryption: the installed keyring, the cipher, blind indexes and lookups, raw reads, audit redaction. Statics only |
+| `TomFieldKeyring` | class | The data keys, unwrapped and cached; creates them, and rotates data keys, index keys and key-encryption keys |
+| `TomKeyEncryptionKey` | abstract class | What wraps the data keys; never touches the database |
+| `TomAesKeyEncryptionKey` | class | A key-encryption key held by the application: a 256-bit AES key, wrapping with AES-GCM |
+| `TomDataKeyStore` | abstract class | Where the wrapped data keys are kept |
+| `TomSqlDataKeyStore` / `TomMemoryDataKeyStore` | class | The data keys in `tom_encryption_key` of a data source resolved by name per call / in memory |
+| `TomDataKeyRecord` | class | One data key as stored: wrapped, with its purpose, state and key-encryption key |
+| `TomDataKeyRow` | class | One row of the data-key table as `TomSqlDataKeyStore` reads it |
+| `TomDataKeyPurpose` / `TomDataKeyState` | enum | What a data key is for (`encryption`, `blindIndex`), and whether new values use it (`active`, `previous`) |
+| `TomFieldReencryption` | class | The pass that rewrites values under a previous key, plaintext and stale blind indexes, and its scheduler job |
+| `TomReencryptionReport` | class | What one pass did: rows examined, rewritten, in conflict, failed |
+| `TomFieldEncryptionException` | class | Field encryption that cannot proceed, keyed `field_encryption.*` |
+| `encryptionKeyTable` / `encryptionKeyTableDdl` | function | The data-key table's one declaration, and the DDL derived from it |
+| `defaultEncryptionKeyTable` / `tomReencryptionJobName` | const String | `tom_encryption_key`, the data-key table's default name / `object_persistence.reencrypt`, the re-encryption job's default name |
 | `TomRepositoryException` / `TomQuerySyntaxException` | class | A failed operation / a query sentence that will not parse |
 | `TomOptimisticLockException` | class | A save or delete of a versioned entity refused because the row's version moved since it was loaded; carries the version held and the one stored |
 | `TomAnnotationAnalyzerException` / `TomAnnotationAnalyzerSyntaxException` | class | An entity the analyzer cannot resolve / annotation arguments it cannot read |
@@ -1568,6 +1598,386 @@ Grades here are resolved **per row** where a resolver is registered — see
 An entity with no `@TomFileReference` column short-circuits every path above, so
 the feature costs nothing to the entities that do not use it.
 
+## Field-Level Encryption
+
+A `String` field marked `@TomEncrypted` is stored as ciphertext and read as
+plaintext. The repository encrypts it on every save and the data source decrypts
+it on every read, so an entity — and everything above the repository — only
+ever holds plaintext, while the database, its backups and its replicas only ever
+hold ciphertext. The keys rotate without downtime, and a column that held
+plaintext before it was marked is encrypted in place by a background pass. The
+implementation is `field_encryption.dart`; the data-key table is declared in
+`field_encryption_sql.dart`.
+
+### Marking a field
+
+```dart
+@tomReflector
+@TomDbTable(datasource: 'main', table: 'patient', primaryKeyFields: ['id'])
+class Patient {
+  @TomEntityId()
+  @TomDbColumn(columnName: 'id', isReadOnly: true)
+  int? id;
+
+  @TomEncrypted()
+  @TomDbColumn(columnName: 'name')
+  String? name;
+
+  @TomEncrypted()
+  @TomDbColumn(columnName: 'email')
+  String? email;
+
+  @TomBlindIndex('email')
+  @TomDbColumn(columnName: 'email_bidx')
+  String? emailIndex;
+
+  @TomDbColumn(columnName: 'ward')
+  String? ward;
+}
+```
+
+`TomAnnotationAnalyzer` refuses, when it resolves the entity's columns, every
+declaration the repository could not maintain:
+
+| Refused | Key |
+| ------- | --- |
+| `@TomEncrypted` or `@TomBlindIndex` on a field that is not a `String` | `annotation_analyzer.encryption.not_string` |
+| both on one field — the index is a column of its own | `annotation_analyzer.encryption.both` |
+| `@TomEncrypted` on the entity id, the version, a `@TomReference` or a `@TomFileReference` column — the database compares those, or the framework reads them | `annotation_analyzer.encryption.structural_column` |
+| a `@TomBlindIndex` naming a field of the entity that is not `@TomEncrypted` | `annotation_analyzer.encryption.index_without_field` |
+
+`TomAnnotationAnalyzer.encryptedColumns(type)` and `blindIndexColumns(type)`
+answer the two column sets in declaration order, empty for an entity with none.
+`TomColumnInformation.encrypted` and `blindIndex` carry the annotations.
+
+### What is stored
+
+The cipher is AES-256-GCM, **randomised**: every write draws a fresh 96-bit
+nonce, so two equal values store differently and the column reveals nothing
+about which rows share a value. A stored value reads
+
+```text
+tomenc:v1:<data key id>:<base64url of nonce, ciphertext and tag>
+```
+
+— `TomFieldEncryption.prefix` is `tomenc:v1:`, the key id names the data key the
+value was encrypted under, and the body is unpadded base64url.
+`TomFieldEncryption.isCiphertext(value)` and `keyIdOf(value)` read the format.
+
+The table and column, `<table>.<column>`, are the cipher's **additional
+authenticated data**. A value copied into another column, or another table,
+fails its authentication rather than decrypting into the wrong place; so does a
+value altered by one byte. `null` is stored as `NULL`, unencrypted: whether a
+field is set is visible, its content is not.
+
+**The column must be wide enough for the ciphertext.** A stored value is
+`TomFieldEncryption.storedLength(n)` characters for a plaintext of `n` UTF-8
+bytes — the prefix, a 36-character key id, the separator, and the base64url of
+the 12-byte nonce, the ciphertext and the 16-byte tag:
+
+| Plaintext (UTF-8 bytes) | Stored characters |
+| ----------------------- | ----------------- |
+| 0 | 85 |
+| 64 | 170 |
+| 254 — the longest e-mail address | 423 |
+
+Declare the column `TEXT`, or a `VARCHAR` of `storedLength` of the longest
+plaintext. A blind-index column holds 43 characters (an unpadded base64url
+HMAC-SHA-256); `VARCHAR(64)` leaves room.
+
+### Writes and reads
+
+**A save** encrypts every written `@TomEncrypted` column under the active data
+key, and fills every `@TomBlindIndex` column from the plaintext of the field it
+indexes — whatever the entity holds in the index field itself is overwritten.
+Encryption is resolved before the statements are built, so the plaintext never
+reaches a bound parameter.
+
+**A read** of an entity decrypts in the data source's row mapping. Before the
+rows are mapped, the data source collects the data-key ids every encrypted value
+of the result names and has the keyring load the ones it does not hold
+(`TomFieldEncryption.prepareRead`); each value then decrypts without waiting
+(`TomFieldEncryption.decrypt`). A value naming a data key the table does not
+hold either fails with `field_encryption.unknown_key`; one that does not
+authenticate fails with `field_encryption.decrypt_failed`.
+
+`TomFieldEncryption.raw(body)` runs `body` with decryption off: the data source
+maps an encrypted column's stored value as it is and loads no `@TomReference`.
+It is what the [re-encryption pass](#the-re-encryption-pass) reads through, and
+what a test or a maintenance script uses to see what the table holds:
+
+```dart
+final stored = await TomFieldEncryption.raw(() => patients.findById(id));
+// stored!.name starts with 'tomenc:v1:'
+```
+
+`TomFieldEncryption.isRaw` answers whether the current zone reads raw.
+
+### Finding a row by value
+
+Randomised ciphertext compares equal to nothing, so an encrypted column cannot
+be filtered on. A field that must be found by value carries a **blind index**: a
+companion `@TomBlindIndex` column holding an HMAC-SHA-256 of the normalised
+plaintext under an index key of its own. Equal plaintexts give equal index
+values, so the index column can be compared, while the plaintext is not
+recoverable from it. It does reveal which rows share a value — the price of
+finding them — so a field nobody looks up carries no index.
+
+`TomBlindIndexNormalization` says which values count as equal; the default is
+`trimLowercase`:
+
+| Normalization | Indexes |
+| ------------- | ------- |
+| `exact` | the value as it is |
+| `trim` | the value without leading and trailing whitespace |
+| `trimLowercase` | trimmed and lower-cased — an e-mail address, a user name |
+
+The HMAC also covers the table and the indexed field's name, so two index
+columns over equal values in different places hold different values.
+
+A lookup uses `TomFieldEncryption.blindIndexCondition(entity, field,
+plaintext)`, which answers a query-sentence condition with its parameters:
+
+```dart
+final c = await TomFieldEncryption.blindIndexCondition(Patient, 'email', email);
+// c.condition: 'emailIndex is in ( :emailIndex0 , :emailIndex1 )'
+final found = await patients.findByQuerySentence(
+  'find by ${c.condition}',
+  c.params,
+);
+```
+
+The condition lists the index value under **every index key** of the current
+context, the active one first (`blindIndexCandidates`), so a lookup finds every
+row while an [index-key rotation](#rotating-keys) is being rewritten. Outside a
+rotation there is one key and one value. `blindIndexOf(entity, field,
+plaintext)` answers the single value under the active index key, for a caller
+that compares it itself; `blindIndex(indexColumn, plaintext, keyId: …)` computes
+one under a named key. A field without a `@TomBlindIndex` is a programmer error
+and raises `ArgumentError`.
+
+### What cannot be queried
+
+The query compiler refuses an encrypted column in a **condition**, as a **group
+key**, inside an **aggregate** or as a **sort term** — an `order by` clause or a
+page request's sort — with `query_sentence_compiler.encrypted_column` naming the
+entity and the field: the query would otherwise compare ciphertext and silently
+match nothing, or order rows by chance. Compare its blind index instead. A condition on the
+blind index admits equality and `is in`; an ordering, a range or a `like` over
+it is meaningless, because the index preserves equality and nothing else.
+
+Nothing can sort encrypted values in the database, so a result that must be
+sorted by one is sorted after it is read.
+
+### Keys: envelope encryption
+
+Values are encrypted under **data keys**: random 256-bit keys kept in the
+data-key table, `tom_encryption_key` (`defaultEncryptionKeyTable`), one row per
+key. Each one is stored **wrapped** — itself encrypted — under a
+**key-encryption key** that never touches the database, so the table never holds
+a usable key and a dump of the database decrypts nothing without it.
+
+| Column | Holds |
+| ------ | ----- |
+| `key_id` | The key's id: a UUID for an encryption key, `index-<n>` for an index key. Written into every value encrypted under it. |
+| `purpose` | `encryption` (`TomDataKeyPurpose.encryption`) or `blindIndex` |
+| `state` | `active` for the key new values use, `previous` for a key kept so older values still read (`TomDataKeyState`) |
+| `kek_id` | The key-encryption key the row is wrapped under |
+| `wrapped_key` | The wrapped key, base64: nonce, sealed key and tag |
+| `created_at` | When the key was created |
+
+A `TomDataKeyRecord` is one row; a `TomDataKeyStore` keeps them —
+`TomSqlDataKeyStore` in a SQL data source, `TomMemoryDataKeyStore` in memory for
+tests and for a single process whose encrypted data is in memory too.
+`TomSqlDataKeyStore('main')` resolves the data source by name on every call and
+creates the table on first use in each data source it reaches; with
+`createSchema: false` the deployment applies the reference migration
+`example/object_persistence/migrations/main/tomcore/[1]-create_tom_encryption_key.sql`
+(or its `migrations_postgresql` form) instead. `TomSqlDataKeyStore.over(datasource)`
+binds one data source once. A name that resolves to no registered data source
+raises `field_encryption.no_datasource`.
+
+A `TomKeyEncryptionKey` wraps and unwraps; the wrapping binds the data key's id,
+so a wrapped key cannot be passed off as another's. `TomAesKeyEncryptionKey` is
+a 256-bit AES key held by the application, wrapping with AES-GCM — built from 32
+bytes, or from their base64 with `TomAesKeyEncryptionKey.base64(id, key)`. A key
+with an empty id, an id longer than 128 characters, other than 32 bytes or
+undecodable base64 raises `field_encryption.invalid_kek`. The key itself comes
+from wherever the deployment keeps secrets — typically a `secret:` reference
+resolved from Vault, AWS Secrets Manager or Azure Key Vault, which
+`TomFieldEncryption.configure` resolves through the registered providers (see
+[configuration.md](configuration.md#secret-references)).
+
+A `TomFieldKeyring` holds the key-encryption keys — the first is the
+**primary**, which wraps every data key it creates; the others only unwrap — and
+caches the unwrapped data keys in memory:
+
+- `load()` reads the data keys of the current context, unwraps the ones not yet
+  cached and, when the table has none, creates the first encryption key and the
+  first index key, `index-1` (`TomFieldKeyring.indexKeyId`). Two nodes creating
+  `index-1` at once insert one row. A data key wrapped under a key-encryption
+  key the keyring was not given, or one that does not unwrap under it, raises
+  `field_encryption.unknown_kek`.
+- `activeKeyId()`, `indexKeyIdInUse()` and `indexKeyIds()` answer the active
+  encryption key, the active index key, and every index key with the active one
+  first; `records()` the rows as stored; `materialOf(id)` an unwrapped key, or
+  `null` when it is not cached.
+- `ensure(ids)` reads the table again when one of `ids` is not cached, and
+  answers the ids still unknown — how a node reads a value written under a key
+  another node created.
+- Every `refreshInterval` (five minutes by default) the keyring reads the table
+  again, which is how a node learns of a rotation another node made.
+
+### Installing a keyring
+
+A server installs one from the [`fieldEncryption`
+configuration](configuration.md#field-level-encryption) when it starts. Without
+it, `TomFieldEncryption.install` does the same in code:
+
+```dart
+await TomFieldEncryption.install(
+  TomFieldKeyring(
+    store: TomSqlDataKeyStore('main'),
+    keys: [TomAesKeyEncryptionKey.base64('kek-2026', base64Key)],
+  ),
+);
+```
+
+`install` loads the keys of the current context; `TomFieldEncryption.keyring`
+answers the installed keyring, and `reset()` removes it and restores the
+defaults (for tests). `TomFieldEncryption.configure(settings)` builds and
+installs one from a `fieldEncryption` map. With no keyring installed, a write of
+an encrypted column — or a read of one holding ciphertext — fails with
+`field_encryption.not_configured` rather than storing plaintext.
+
+### Rotating keys
+
+Every rotation happens while the application runs, and none of them makes a
+stored value unreadable at any point.
+
+| Key | Rotated by | What changes |
+| --- | ---------- | ------------ |
+| A data key | `keyring.rotateDataKey()` | A key is created and becomes active; the one it replaces turns `previous` and still decrypts. New writes use the new key at once; a [re-encryption pass](#the-re-encryption-pass) moves the old values over. Blind indexes are unaffected. |
+| The index key | `keyring.rotateIndexKey()` | The next index key — `index-2`, `index-3`, … — is created and becomes active; the previous one is kept. Saved rows are indexed under the new key at once, and the pass recomputes the rest. `blindIndexCondition` matches every index key meanwhile, so no row goes missing. The numbering makes two nodes rotating at once create one key, not two. |
+| A key-encryption key | the new key first in the keyring's list, then `keyring.rewrap()` | Every data key not wrapped under the primary is wrapped again under it; `rewrap` answers how many. No value is touched. Once it has run, the old key-encryption key can leave the list. |
+
+`rotateDataKey` and `rotateIndexKey` answer the id they created. Other nodes pick a rotated key up
+within their keyring's refresh interval, or as soon as they read a value naming
+it; a value they write under the previous key meanwhile is still readable, and
+the next pass rewrites it. A key-encryption key is rotated in configuration —
+`keys` lists the new key first and the old one second until `rewrap` has run.
+
+### The re-encryption pass
+
+`TomFieldReencryption` rewrites what is not yet stored the way the keyring wants
+it: values under a previous data key, plaintext in an encrypted column, and blind
+indexes that are missing or computed under a previous index key.
+
+```dart
+final report = await TomFieldReencryption().run();
+// TomReencryptionReport(examined 1200, rewritten 37, conflicts 0, failures 0)
+```
+
+By default it covers every reflected `@TomDbTable` entity declaring a
+`@TomEncrypted` field; `entities:` narrows it, and `batchSize` (200) is how many
+rows each statement reads. It reads the rows raw, in primary-key order, and
+writes each row that needs it with an `UPDATE` **guarded by the values it
+read**: a concurrent save that changed the row in between makes the update
+match nothing, and the row is counted as a conflict for the next pass instead of
+overwriting the save. A row whose value does not decrypt is skipped and listed.
+
+| `TomReencryptionReport` field | Counts |
+| ----------------------------- | ------ |
+| `examined` | rows read |
+| `rewritten` | rows written: a value moved to the active key, plaintext encrypted, or a blind index filled |
+| `conflicts` | rows a concurrent save changed between the read and the write |
+| `failures` | one line per row that could not be decrypted, naming the entity, its key and the error key |
+
+Reports add up with `+`, and `toJson()` renders one as JSON-native values. A
+pass can always run again; a second one over a converged table rewrites nothing.
+
+`pass.job(schedule: …)` makes the pass a scheduler job, named
+`object_persistence.reencrypt` (`tomReencryptionJobName`) unless given another
+name, with a one-hour timeout, recovery requested, and the report as the run's
+result:
+
+```dart
+final scheduler = TomScheduler(
+  store: jobs,
+  dispatcher: const TomInlineJobDispatcher(),
+);
+scheduler.register(
+  TomFieldReencryption().job(schedule: TomCronSchedule('0 3 * * *')),
+);
+```
+
+The job uses the isolate's keyring, so it is registered on a scheduler with a
+`TomInlineJobDispatcher`; a worker isolate has no keyring.
+
+### Encrypting a column that held plaintext
+
+A column that already holds data is encrypted in four steps:
+
+1. Widen the column to hold ciphertext (see [What is stored](#what-is-stored)),
+   and add the blind-index column if the field is looked up.
+2. Mark the field `@TomEncrypted` (and the index `@TomBlindIndex`). Saves now
+   write ciphertext. While `TomFieldEncryption.acceptPlaintext` is on — the
+   default — a stored value that is not ciphertext reads as it is, so the rows
+   not yet encrypted keep reading.
+3. Run the re-encryption pass. It encrypts every plaintext value and fills every
+   blind index.
+4. Turn `acceptPlaintext` off (`acceptPlaintext: false` in the configuration).
+   A plaintext value then fails its read with `field_encryption.plaintext_refused`,
+   so a value written past the repository is noticed rather than served.
+
+### Tenancy
+
+The data keys live in the data source the store names, and
+`TomSqlDataKeyStore` resolves it by name on every call, through the tenant
+routing. When that data source is one of `TomTenancy.datasources`, a `schema` or
+`database` tenant's data keys are kept in that tenant's schema or database —
+created there on first use or, with `createSchema: false`, by the migration in
+the per-tenant tree — so each tenant's data is encrypted under keys of its own.
+Shared tenants share the one table and its keys. The keyring keeps what it read
+per data source.
+
+`rotateDataKey`, `rotateIndexKey`, `rewrap` and `load` act on the current
+context's keys; a deployment rotating every tenant's runs them in each
+(`tenancy.forEachTenant`). The re-encryption pass runs in the current context
+and then, when a `TomTenancy` is installed, in every tenant's. See
+[tenancy.md](tenancy.md#what-stays-deployment-wide).
+
+### Audit records
+
+The before and after images of a repository's audit record replace the value of
+every encrypted field and every blind index with `[encrypted]`
+(`TomFieldEncryption.redacted`), so the audit trail records *that* such a field
+changed and never becomes a plaintext copy of what the table encrypts.
+`TomFieldEncryption.redact(entity, image)` is the replacement; a `null` stays
+`null`. See [audit.md](audit.md#the-audit-record).
+
+### How field encryption fails
+
+`TomFieldEncryptionException` (extends `TomServerException`) carries every
+failure of this feature; none is client-visible, because each describes the
+deployment's keys rather than the caller's input.
+
+| Key | Raised when |
+| --- | ----------- |
+| `field_encryption.not_configured` | An encrypted column was written, or a ciphertext read, with no keyring installed. |
+| `field_encryption.unknown_key` | A stored value names a data key the keyring's table does not hold. |
+| `field_encryption.decrypt_failed` | A stored value failed its authentication: it was altered, is malformed, or belongs to another column. |
+| `field_encryption.plaintext_refused` | An encrypted column held plaintext while `acceptPlaintext` is off. |
+| `field_encryption.unknown_kek` | A data key is wrapped under a key-encryption key the keyring was not given, or does not unwrap under it. |
+| `field_encryption.invalid_kek` | A key-encryption key has no id, too long an id, or not 32 bytes; or a keyring was given none. |
+| `field_encryption.config.invalid` | The `fieldEncryption` configuration has the wrong shape. |
+| `field_encryption.no_datasource` | The data source a `TomSqlDataKeyStore`, or an entity the pass covers, names is not registered. |
+
+The four `annotation_analyzer.encryption.*` refusals are in
+[Marking a field](#marking-a-field), and the query compiler's
+`query_sentence_compiler.encrypted_column` (raised from
+`query_sentence_compiler.dart`) in [What cannot be queried](#what-cannot-be-queried).
+
 ## Grouping and Aggregation
 
 Everything above describes *rows*. A grouped query describes *groups*: rows
@@ -1973,6 +2383,38 @@ dart run example/object_persistence/optimistic_locking_example.dart
 decisions without a database, checking each result, and
 `test/examples_test.dart` runs it.
 
+[Field-Level Encryption](#field-level-encryption) is covered twice.
+`test/field_encryption_test.dart` needs no database: the cipher and its stored
+form — a round trip, two encryptions of one value differing, a value moved to
+another column or altered refusing to decrypt, plaintext accepted until it is
+not, `storedLength` covering what is stored — the envelope a first load creates
+and the key-encryption keys it refuses, the rotation of a data key, of the index
+key and of a key-encryption key, a second keyring reading a key another created,
+blind indexes and the lookup condition across an index-key rotation, audit
+redaction, and the refusals of the analyzer, the query compiler and the
+configuration. `test/field_encryption_db_test.dart`, tagged `db`, runs it
+through a repository against a live database — MariaDB or PostgreSQL: values
+stored as ciphertext and read as plaintext, a lookup by blind index, a data-key
+rotation re-encrypted by the pass as a scheduler job while reads go on, an
+index-key rotation found by the lookup before and after the pass, a plaintext
+column encrypted and indexed by the pass, and a keyring installed from
+configuration over the data-key table. `test/framework_schema_test.dart`
+converges the reference migration of `tom_encryption_key` with
+`encryptionKeyTable`.
+
+```bash
+dart run example/object_persistence/field_encryption_example.dart
+```
+
+`example/object_persistence/field_encryption_example.dart` walks the feature in
+ten steps without a database, over the in-memory data-key store: the data keys
+a first load creates, a value stored and read, the additional authenticated data
+refusing a moved value, the lookup condition, a data-key, index-key and
+key-encryption-key rotation, audit redaction, the refused query, and plaintext
+read until it is refused. Its entity, `ExamplePatientRecord`, lives in
+`example/object_persistence/object_persistence_entities.dart`. Every step checks its own result, and `test/examples_test.dart`
+runs it.
+
 [Tenant-Owned Rows](#tenant-owned-rows) is asserted by
 `test/tenancy_db_test.dart`, tagged `db`: two tenants writing and reading
 through one repository under each of the three isolation models, the tenant
@@ -2016,12 +2458,20 @@ table, in each tenant's schema or in each tenant's database.
   file-column declaration, the store resolution and key scheme it implies, and
   the five-method surface (`findById`, `saveFile`, `openFile`, `describeFile`,
   `clearFile`) that moves the bytes.
+- **`TomEncrypted` + `TomBlindIndex` + `TomFieldEncryption`** — the encrypted
+  field, its blind index, and the cipher, the lookup
+  (`blindIndexCondition`), raw reads and audit redaction the repository and the
+  data source call. **`TomFieldKeyring`** holds the data keys a
+  `TomDataKeyStore` keeps wrapped under a `TomKeyEncryptionKey`, and rotates
+  them; **`TomFieldReencryption`** rewrites what a rotation or a plaintext
+  column left behind, reporting a `TomReencryptionReport`; every failure is a
+  `TomFieldEncryptionException`. See [Field-Level Encryption](#field-level-encryption).
 
 ## Not Yet Implemented
 
-Both entries are about the *shape of a predicate*, and both are bounded by the
-same thing: an expression tree over the columns of the tables a query already
-names.
+The first two entries are about the *shape of a predicate*, and both are bounded
+by the same thing: an expression tree over the columns of the tables a query
+already names.
 
 - **A predicate cannot address an association's columns.** `@TomReference`
   declares an association, and the repository loads the other side with a
@@ -2037,6 +2487,28 @@ names.
   compiler's checking, not the injection safety.
   <!-- unpinned: absence — no subquery node exists -->
 
+The other three are about [Field-Level Encryption](#field-level-encryption).
+
+- **The key-encryption key is held by the application.**
+  `TomAesKeyEncryptionKey` is the only `TomKeyEncryptionKey`: its key bytes are
+  read into the process, usually from a secret store. A key-encryption key that
+  never leaves a key-management service — AWS KMS, Azure Key Vault keys,
+  HashiCorp Vault Transit — unwrapping each data key by a call, is not offered.
+  `TomKeyEncryptionKey` is the seam one implements, and its `wrap` and `unwrap`
+  are asynchronous for that reason.
+  <!-- unpinned: absence — no KMS-backed key-encryption key exists -->
+- **An observable `TomClass` entity cannot have encrypted fields.** The
+  repository encrypts, and the row mapping decrypts, the fields of a reflected
+  entity class; the mapping of a `TomClass` holder reads its observable members
+  as stored.
+  <!-- unpinned: absence — the TomClass row mapping does not decrypt -->
+- **A retired data key is never deleted.** A `previous` key stays in the
+  data-key table after the re-encryption pass has moved every value off it, and
+  nothing reports that a key is no longer named by any value. Deleting one is a
+  deployment's own decision — and a value restored from a backup that names a
+  deleted key no longer reads.
+  <!-- unpinned: absence — no retirement of data keys exists -->
+
 What is *not* listed here is a vocabulary of word-operators — *After*,
 *Containing*, *StartsWith* and their siblings. They are set in italics because
 none of them is code: they are not missing but declined, since a query sentence
@@ -2047,10 +2519,17 @@ is a string and `>` and `%` are directly writable in one. See
 
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
-| `dart:async` | dart | `blob_migration.dart`, `data_scope.dart` | `Future` |
-| `tom_core_kernel` | package | 7 of 14 files | `tomReflector` (mirrors), the `TomZoned*` date/time types |
-| `uuid` | package | `file_reference.dart` | `Uuid.v4`, for the file name in a blob key |
+| `dart:async` | dart | `blob_migration.dart`, `data_scope.dart`, `field_encryption.dart` | `Future`; `runZoned` and `Zone`, which carry a raw read |
+| `dart:convert` | dart | `field_encryption.dart` | `utf8`, `base64` and `base64Url`: a value's bytes, a wrapped key, the stored ciphertext and a blind index |
+| `dart:math` | dart | `field_encryption.dart` | `Random.secure`, for nonces and data keys |
+| `dart:typed_data` | dart | `field_encryption.dart` | `Uint8List`, the bytes the cipher works on |
+| `crypto` | package | `field_encryption.dart` | `Hmac` and `sha256`, the blind index |
+| `pointycastle` | package | `field_encryption.dart` | `GCMBlockCipher` over `AESEngine`, the AES-256-GCM cipher values and data keys are sealed with |
+| `tom_core_kernel` | package | 8 of 16 files | `tomReflector` (mirrors), the `TomZoned*` date/time types, and `TomJobDefinition` / `TomSchedule` / `TomCommand` / `TomTenantContext` for the re-encryption job and its run in every tenant |
+| `uuid` | package | `field_encryption.dart`, `file_reference.dart` | `Uuid.v4`, for the file name in a blob key; `UuidV4`, for a data key's id |
 | [audit](audit.md) | module | `crud_repository.dart` | `TomAuditAction`, `TomAuditTrail` |
-| [datasources](datasources.md) | module | 9 of 14 files | `TomDbType`/`TomOperator`/`SqlString`, `TomStandardSqlDialect` / `MariadbSqlDialect` (including the `aggregate`, `aliased`, `groupByClause` and `havingClause` fragments), `TomQuery` family (`TomSelect` / `TomCount` / `TomDelete` / `TomLiteralSelect`), `TomAggregateFunction`, `TomTypedPersistenceBase`, `TomTypePersistenceInfo`, `TomDataSourceInfo`, `TomPreparedStatement` |
+| [configuration](configuration.md) | module | `field_encryption.dart` | `TomSecrets.resolve` and `TomSecretReference.isReference`, which resolve a `secret:` reference to a key-encryption key in `configure` |
+| [datasources](datasources.md) | module | 11 of 16 files | `TomDbType`/`TomOperator`/`SqlString`, `TomStandardSqlDialect` / `MariadbSqlDialect` (including the `aggregate`, `aliased`, `groupByClause` and `havingClause` fragments), `TomQuery` family (`TomSelect` / `TomCount` / `TomDelete` / `TomLiteralSelect`), `TomAggregateFunction`, `TomTypedPersistenceBase`, `TomTypePersistenceInfo`, `TomDataSourceInfo`, `TomPreparedStatement`; `TomFrameworkTable`, `TomSchemaProvisioning` and `sqlInstant` / `parseSqlInstant` for the data-key table |
 | [file_storage](file_storage.md) | module | `blob_migration.dart`, `crud_repository.dart`, `file_reference.dart` | `TomBlobStore`, `TomBlobStoreInfo`, `TomStorageException`, `TomStoredBlob` |
-| [little_things](little_things.md) | module | `annotation_analyzer.dart`, `blob_migration.dart`, `column_authorization.dart`, `crud_repository.dart`, `data_scope.dart`, `operators_expressions.dart` | `TomServerException` (base of the module's exceptions) |
+| [little_things](little_things.md) | module | 7 of 16 files | `TomServerException` (base of the module's exceptions) |
+| [tenancy](tenancy.md) | module | `field_encryption.dart` | `TomTenancy.current` and its tenants, which the re-encryption pass runs in |
