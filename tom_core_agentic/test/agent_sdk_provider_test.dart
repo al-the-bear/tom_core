@@ -1,6 +1,6 @@
 // AgentSdkLlmProvider (session mode `none`). Drives the provider over a fake
 // `AgentSdkTransport` that replays a scripted `SDKMessage` sequence, proving the
-// SdkMessage → LlmStreamEvent translation, the anchor / provenance stamp, the
+// SdkMessage → LlmEvent translation, the anchor / provenance stamp, the
 // usage/cost read-off, and the failure paths — without a live VS Code bridge.
 //
 // Migrated from `tom_brain_run/test/r42_agent_sdk_provider_test.dart` when the
@@ -117,34 +117,36 @@ void main() {
 
     test('emits Started → Chunk(s) → Completed in order', () async {
       final events = await provider
-          .completeStream(_wire, LlmOptions.empty)
+          .run(LlmRequest(prompt: _wire, options: LlmOptions.empty))
           .toList();
 
-      expect(events.first, isA<LlmStreamStarted>());
-      expect(events.last, isA<LlmStreamCompleted>());
-      expect(events.whereType<LlmStreamFailed>(), isEmpty);
+      expect(events.first, isA<LlmRunStarted>());
+      expect(events.last, isA<LlmRunCompleted>());
+      expect(events.whereType<LlmRunFailed>(), isEmpty);
     });
 
     test('Started carries provider id + resolved model', () async {
       final events = await provider
-          .completeStream(_wire, LlmOptions.empty)
+          .run(LlmRequest(prompt: _wire, options: LlmOptions.empty))
           .toList();
-      final started = events.whereType<LlmStreamStarted>().single;
+      final started = events.whereType<LlmRunStarted>().single;
       expect(started.providerId, 'claude:sonnet:none');
       expect(started.modelId, 'claude-sonnet-4-6');
       // Pinned as a *relationship*, not as two literals that happen to match
       // the report's: consumers log the route from Started long before the
       // report exists, so a stream that announced one route and completed on
       // another would leave the two disagreeing with nothing to catch it.
-      final report = events.whereType<LlmStreamCompleted>().single.report;
+      final report = events.whereType<LlmRunCompleted>().single.report;
       expect(started.providerId, report.providerId);
       expect(started.modelId, report.modelId);
     });
 
     test('text blocks stream as chunks; thinking blocks are dropped', () async {
       final chunks =
-          (await provider.completeStream(_wire, LlmOptions.empty).toList())
-              .whereType<LlmStreamChunk>()
+          (await provider
+                  .run(LlmRequest(prompt: _wire, options: LlmOptions.empty))
+                  .toList())
+              .whereType<LlmTextDelta>()
               .map((c) => c.text)
               .toList();
       expect(chunks, <String>['The capital of France ', 'is Paris.']);
@@ -154,8 +156,10 @@ void main() {
       'terminal report stamps anchor, provenance, tokens, cost, wall-clock',
       () async {
         final completed =
-            (await provider.completeStream(_wire, LlmOptions.empty).toList())
-                .whereType<LlmStreamCompleted>()
+            (await provider
+                    .run(LlmRequest(prompt: _wire, options: LlmOptions.empty))
+                    .toList())
+                .whereType<LlmRunCompleted>()
                 .single;
         final report = completed.report;
         expect(report.anchorHash, 'anchor-hash-A1');
@@ -181,10 +185,15 @@ void main() {
       'options.model overrides the route default on report + Started',
       () async {
         final events = await provider
-            .completeStream(_wire, const LlmOptions(model: 'claude-opus-4-8'))
+            .run(
+              LlmRequest(
+                prompt: _wire,
+                options: const LlmOptions(model: 'claude-opus-4-8'),
+              ),
+            )
             .toList();
-        final started = events.whereType<LlmStreamStarted>().single;
-        final completed = events.whereType<LlmStreamCompleted>().single;
+        final started = events.whereType<LlmRunStarted>().single;
+        final completed = events.whereType<LlmRunCompleted>().single;
         expect(started.modelId, 'claude-opus-4-8');
         expect(completed.report.modelId, 'claude-opus-4-8');
         // Provenance travels as a pair: an override moves `modelId` on both
@@ -196,7 +205,9 @@ void main() {
     test(
       'wire prompt is handed to the SDK unmodified, no session id set',
       () async {
-        await provider.completeStream(_wire, LlmOptions.empty).toList();
+        await provider
+            .run(LlmRequest(prompt: _wire, options: LlmOptions.empty))
+            .toList();
         expect(transport.lastPrompt, _wire.combined);
         // Mode none: never a `resume` / `sessionId` on the SDK options.
         expect(transport.lastOptions, isNotNull);
@@ -222,7 +233,7 @@ void main() {
       );
       final report = await _provider(
         transport,
-      ).complete(_wire, LlmOptions.empty);
+      ).complete(LlmRequest(prompt: _wire, options: LlmOptions.empty));
       expect(report.tokensOut, 7);
       expect(report.anchorHash, 'anchor-hash-A1');
     });
@@ -265,12 +276,12 @@ void main() {
       expect(wire.combined, '${wire.system}\n\n${wire.user}');
     });
 
-    test('completeStream sends combined and hashes combined', () async {
+    test('run sends combined and hashes combined', () async {
       final transport = newTransport();
       final events = await _provider(
         transport,
-      ).completeStream(wire, LlmOptions.empty).toList();
-      final report = events.whereType<LlmStreamCompleted>().single.report;
+      ).run(LlmRequest(prompt: wire, options: LlmOptions.empty)).toList();
+      final report = events.whereType<LlmRunCompleted>().single.report;
 
       expect(transport.lastPrompt, wire.combined);
       expect(transport.lastPrompt, isNot(wire.system));
@@ -284,7 +295,7 @@ void main() {
         final transport = newTransport();
         final report = await _provider(
           transport,
-        ).complete(wire, LlmOptions.empty);
+        ).complete(LlmRequest(prompt: wire, options: LlmOptions.empty));
 
         expect(transport.lastPrompt, wire.combined);
         expect(report.anchorHash, wire.anchorHash);
@@ -298,29 +309,26 @@ void main() {
   });
 
   group('AgentSdkLlmProvider — failure paths', () {
-    test(
-      'an SDK error chunk → LlmStreamFailed (report still anchored)',
-      () async {
-        final transport = _FakeAgentSdkTransport(
-          messages: const <Map<String, dynamic>>[],
-          error: 'bridge exploded',
-        );
-        final events = await _provider(
-          transport,
-        ).completeStream(_wire, LlmOptions.empty).toList();
-        expect(events.first, isA<LlmStreamStarted>());
-        final failed = events.last as LlmStreamFailed;
-        expect(failed.failure.message, contains('bridge exploded'));
-        // A transport error carries no backend-specific meaning the provider
-        // could recover, so it stays `unknown` for the caller to classify.
-        expect(failed.failure.classCode, 'unknown');
-        expect(failed.report.anchorHash, 'anchor-hash-A1');
-        expect(failed.report.providerId, 'claude:sonnet:none');
-      },
-    );
+    test('an SDK error chunk → LlmRunFailed (report still anchored)', () async {
+      final transport = _FakeAgentSdkTransport(
+        messages: const <Map<String, dynamic>>[],
+        error: 'bridge exploded',
+      );
+      final events = await _provider(
+        transport,
+      ).run(LlmRequest(prompt: _wire, options: LlmOptions.empty)).toList();
+      expect(events.first, isA<LlmRunStarted>());
+      final failed = events.last as LlmRunFailed;
+      expect(failed.failure.message, contains('bridge exploded'));
+      // A transport error carries no backend-specific meaning the provider
+      // could recover, so it stays `unknown` for the caller to classify.
+      expect(failed.failure.classCode, 'unknown');
+      expect(failed.report!.anchorHash, 'anchor-hash-A1');
+      expect(failed.report!.providerId, 'claude:sonnet:none');
+    });
 
     test(
-      'a result with is_error → LlmStreamFailed carrying the costed report',
+      'a result with is_error → LlmRunFailed carrying the costed report',
       () async {
         final transport = _FakeAgentSdkTransport(
           messages: <Map<String, dynamic>>[
@@ -337,14 +345,14 @@ void main() {
         );
         final events = await _provider(
           transport,
-        ).completeStream(_wire, LlmOptions.empty).toList();
-        final failed = events.last as LlmStreamFailed;
+        ).run(LlmRequest(prompt: _wire, options: LlmOptions.empty)).toList();
+        final failed = events.last as LlmRunFailed;
         expect(failed.failure.message, contains('turn limit exceeded'));
         // A costed error result is well-formed but its *meaning* is the
         // backend's; the provider does not guess a class for it.
         expect(failed.failure.classCode, 'unknown');
-        expect(failed.report.cost, 0.0005);
-        expect(failed.report.tokensIn, 10);
+        expect(failed.report!.cost, 0.0005);
+        expect(failed.report!.tokensIn, 10);
       },
     );
 
@@ -365,8 +373,8 @@ void main() {
         );
         final events = await _provider(
           transport,
-        ).completeStream(_wire, LlmOptions.empty).toList();
-        final failed = events.last as LlmStreamFailed;
+        ).run(LlmRequest(prompt: _wire, options: LlmOptions.empty)).toList();
+        final failed = events.last as LlmRunFailed;
         // `format`, not `unknown`: a stream that ended without a terminal result
         // is malformed in a way the provider observed for itself. It is the only
         // class the provider settles, and the second of the two a consumer of
@@ -375,20 +383,29 @@ void main() {
       },
     );
 
-    test('complete() throws on a failed stream', () async {
-      final transport = _FakeAgentSdkTransport(
-        messages: const <Map<String, dynamic>>[],
-        error: 'nope',
-      );
-      expect(
-        () => _provider(transport).complete(_wire, LlmOptions.empty),
-        throwsA(isA<AgentSdkQueryException>()),
-      );
-    });
+    test(
+      'complete() throws the contract failure, carrying the SDK error',
+      () async {
+        final transport = _FakeAgentSdkTransport(
+          messages: const <Map<String, dynamic>>[],
+          error: 'nope',
+        );
+        expect(
+          () => _provider(
+            transport,
+          ).complete(LlmRequest(prompt: _wire, options: LlmOptions.empty)),
+          throwsA(
+            isA<LlmTransportException>()
+                .having((e) => e.kind, 'kind', LlmErrorKind.remote)
+                .having((e) => e.cause, 'cause', isA<AgentSdkQueryException>()),
+          ),
+        );
+      },
+    );
   });
 
   group('AgentSdkLlmProvider — rebindBridgePort (/cli_server_port)', () {
-    // A success result so a completeStream call resolves the memoised client.
+    // A success result so a run resolves the memoised client.
     List<Map<String, dynamic>> successMessages() => <Map<String, dynamic>>[
       {
         'type': 'result',
@@ -418,7 +435,9 @@ void main() {
         );
 
         // First call memoises a client on the original port.
-        await provider.completeStream(_wire, LlmOptions.empty).toList();
+        await provider
+            .run(LlmRequest(prompt: _wire, options: LlmOptions.empty))
+            .toList();
         expect(factoryPorts, <int>[19900]);
 
         // Rebind to a new port: returns true, evicts + disposes the old client.
@@ -428,7 +447,9 @@ void main() {
         expect(disposed, hasLength(1));
 
         // The next call reconnects on the new port.
-        await provider.completeStream(_wire, LlmOptions.empty).toList();
+        await provider
+            .run(LlmRequest(prompt: _wire, options: LlmOptions.empty))
+            .toList();
         expect(factoryPorts, <int>[19900, 20000]);
       },
     );

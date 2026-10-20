@@ -10,7 +10,7 @@
 //
 //   * `none`  — [NoSessionStrategy]: every call is a first call.
 //   * `brain` — [BrainSessionStrategy]: the Claude session id is persisted in a
-//      JSON store keyed by the caller's session id ([LlmOptions.brainSessionId]);
+//      JSON store keyed by the caller's session id ([LlmOptions.sessionId]);
 //      successive calls of the same session resume the same Claude session. A
 //      session-shaped error evicts the stored id so the provider can retry once
 //      fresh.
@@ -29,7 +29,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'llm_options.dart' show LlmOptions;
+import 'package:tom_core_llm/tom_core_llm.dart' show LlmOptions;
 
 /// Decides, per call, whether the provider resumes a stored Claude-Code session
 /// or starts fresh, and records the session id a successful call produced.
@@ -163,9 +163,9 @@ final class AgentSdkSessionStore {
 }
 
 /// Session mode `brain`: persists the Claude-Code session id keyed by the
-/// caller's session id ([LlmOptions.brainSessionId]).
+/// caller's session id ([LlmOptions.sessionId]).
 ///
-/// A call with a null `brainSessionId` (a background / boot call that reached an
+/// A call with a null `sessionId` (a background / boot call that reached an
 /// agent-SDK route) is treated as session-less — it always starts fresh and is
 /// never recorded, so background work never pollutes a user session's Claude
 /// memory.
@@ -177,21 +177,21 @@ final class BrainSessionStrategy implements AgentSdkSessionStrategy {
 
   @override
   Future<String?> resumeIdFor(LlmOptions options) async {
-    final key = options.brainSessionId;
+    final key = options.sessionId;
     if (key == null) return null;
     return store.lookup(key);
   }
 
   @override
   Future<void> record(LlmOptions options, String claudeSessionId) async {
-    final key = options.brainSessionId;
+    final key = options.sessionId;
     if (key == null) return;
     await store.put(key, claudeSessionId);
   }
 
   @override
   Future<void> evict(LlmOptions options) async {
-    final key = options.brainSessionId;
+    final key = options.sessionId;
     if (key == null) return;
     await store.remove(key);
   }

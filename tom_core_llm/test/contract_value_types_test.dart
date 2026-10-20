@@ -1,9 +1,8 @@
-// The llm unit's value types, which the provider tests reach only in passing.
+// The contract's value types, which a provider test reaches only in passing.
 //
-// `agent_sdk_provider_test.dart` and `agent_sdk_session_test.dart` drive the
-// provider and the session strategies, and between them they construct an
-// `LlmOptions` and a `WirePrompt` on the way to something else. That is enough
-// to catch a type that fails to build and nothing else: the two behaviours
+// A provider's own suite constructs an `LlmOptions` and a `WirePrompt` on the
+// way to something else. That is enough to catch a type that fails to build
+// and nothing else: the two behaviours
 // below are both *distinctions* — omit versus clear, and which channels are
 // present — so a test that exercises one arm of each proves nothing about the
 // other.
@@ -15,7 +14,7 @@
 library;
 
 import 'package:test/test.dart';
-import 'package:tom_core_agentic/tom_core_agentic.dart';
+import 'package:tom_core_llm/tom_core_llm.dart';
 
 void main() {
   group('LlmOptions.copyWith distinguishes omitting from clearing', () {
@@ -25,7 +24,7 @@ void main() {
       maxOutputTokens: 256,
       stopSequences: ['STOP'],
       responseFormat: {'type': 'json'},
-      brainSessionId: 's-1',
+      sessionId: 's-1',
     );
 
     test('omitting a nullable field keeps its value', () {
@@ -38,7 +37,7 @@ void main() {
       expect(copy.temperature, 0.5);
       expect(copy.maxOutputTokens, 256);
       expect(copy.responseFormat, {'type': 'json'});
-      expect(copy.brainSessionId, 's-1');
+      expect(copy.sessionId, 's-1');
     });
 
     test('passing null to a nullable field clears it', () {
@@ -49,14 +48,14 @@ void main() {
         temperature: null,
         maxOutputTokens: null,
         responseFormat: null,
-        brainSessionId: null,
+        sessionId: null,
       );
 
       expect(cleared.model, isNull);
       expect(cleared.temperature, isNull);
       expect(cleared.maxOutputTokens, isNull);
       expect(cleared.responseFormat, isNull);
-      expect(cleared.brainSessionId, isNull);
+      expect(cleared.sessionId, isNull);
     });
 
     test('each nullable field clears independently', () {
@@ -65,9 +64,9 @@ void main() {
       // realistic defect and is invisible to the all-at-once tests above.
       expect(populated.copyWith(model: null).temperature, 0.5);
       expect(populated.copyWith(temperature: null).model, 'm-1');
-      expect(populated.copyWith(maxOutputTokens: null).brainSessionId, 's-1');
+      expect(populated.copyWith(maxOutputTokens: null).sessionId, 's-1');
       expect(populated.copyWith(responseFormat: null).maxOutputTokens, 256);
-      expect(populated.copyWith(brainSessionId: null).responseFormat, {
+      expect(populated.copyWith(sessionId: null).responseFormat, {
         'type': 'json',
       });
     });
@@ -192,9 +191,9 @@ void main() {
     });
   });
 
-  group('the sealed event family', () {
-    test('every variant is reachable from an exhaustive switch', () {
-      // `LlmStreamToolCallProposed` is never emitted by the shipped provider —
+  group('the run events', () {
+    test('each run event is told apart by its type', () {
+      // `LlmToolCall` is never emitted by the shipped provider —
       // Claude Code owns its own tool loop — but it is a variant of a *sealed*
       // family, so every consumer that switches must still handle it. This is
       // the shape that consumer takes, and it is what makes the variant part
@@ -209,17 +208,16 @@ void main() {
         retries: 0,
         wallClockMs: 0,
       );
-      final events = <LlmStreamEvent>[
-        const LlmStreamStarted(callId: 'c', providerId: 'p', modelId: 'm'),
-        const LlmStreamChunk(callId: 'c', text: 'hello'),
-        const LlmStreamToolCallProposed(
-          callId: 'c',
-          toolCallId: 'tc-1',
-          toolName: 'search',
+      final events = <LlmEvent>[
+        const LlmRunStarted(callId: 'c', providerId: 'p', modelId: 'm'),
+        const LlmTextDelta('hello'),
+        const LlmToolCall(
+          callId: 'tc-1',
+          name: 'search',
           arguments: {'q': 'anchor'},
         ),
-        const LlmStreamCompleted(callId: 'c', report: report),
-        const LlmStreamFailed(
+        const LlmRunCompleted(callId: 'c', report: report),
+        const LlmRunFailed(
           callId: 'c',
           failure: LlmFailure(classCode: 'unknown', message: 'nope'),
           report: report,
@@ -229,11 +227,12 @@ void main() {
       final seen = [
         for (final event in events)
           switch (event) {
-            LlmStreamStarted() => 'started',
-            LlmStreamChunk() => 'chunk',
-            LlmStreamToolCallProposed() => 'tool',
-            LlmStreamCompleted() => 'completed',
-            LlmStreamFailed() => 'failed',
+            LlmRunStarted() => 'started',
+            LlmTextDelta() => 'chunk',
+            LlmToolCall() => 'tool',
+            LlmRunCompleted() => 'completed',
+            LlmRunFailed() => 'failed',
+            _ => 'other',
           },
       ];
 
@@ -241,24 +240,23 @@ void main() {
     });
 
     test('a proposed tool call carries what a caller needs to resolve it', () {
-      const proposed = LlmStreamToolCallProposed(
-        callId: 'c',
-        toolCallId: 'tc-1',
-        toolName: 'search',
+      const proposed = LlmToolCall(
+        callId: 'tc-1',
+        name: 'search',
         arguments: {'q': 'anchor'},
       );
 
       // The id is what pairs the caller's answer back to the proposal; the
       // name is what it resolves against its own catalogue.
-      expect(proposed.toolCallId, 'tc-1');
-      expect(proposed.toolName, 'search');
+      expect(proposed.callId, 'tc-1');
+      expect(proposed.name, 'search');
       expect(proposed.arguments['q'], 'anchor');
     });
 
-    test('a failed stream still carries an attributable report', () {
+    test('a failed run still carries an attributable report', () {
       // The property that makes a failure auditable: the call is still
       // attributed to a route even though it produced no answer.
-      const failed = LlmStreamFailed(
+      const failed = LlmRunFailed(
         callId: 'c',
         failure: LlmFailure(classCode: 'unknown', message: 'nope'),
         report: LlmCallReport(
@@ -273,8 +271,8 @@ void main() {
         ),
       );
 
-      expect(failed.report.providerId, 'p');
-      expect(failed.report.retries, 1);
+      expect(failed.report!.providerId, 'p');
+      expect(failed.report!.retries, 1);
       expect(failed.failure.cause, isNull);
     });
   });

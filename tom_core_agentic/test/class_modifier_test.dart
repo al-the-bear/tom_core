@@ -86,9 +86,9 @@ void main() {
         if (_classHeader.firstMatch(d.header)!.group(1)!.contains('sealed'))
           _classHeader.firstMatch(d.header)!.group(2)!,
     };
-    // The package has two sealed event hierarchies (LlmStreamEvent and
-    // AgentSendEvent); losing sight of either would empty this test.
-    expect(sealed, containsAll(['LlmStreamEvent', 'AgentSendEvent']));
+    // The package has one sealed event hierarchy (AgentSendEvent); losing
+    // sight of it would empty this test.
+    expect(sealed, contains('AgentSendEvent'));
 
     final leaves = [
       for (final d in declarations)

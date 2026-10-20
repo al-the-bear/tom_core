@@ -18,7 +18,7 @@ without gaining one fails too.
 | ---- | ------- | ------ |
 | `agent` | [api_summary_agent.md](api_summary_agent.md) | The editor-facing agent layer: eleven YAML sidecars and their models, bridge discovery and binding, the reconnect loop, and the send engine. |
 | `isolate_streaming` | [api_summary_isolate_streaming.md](api_summary_isolate_streaming.md) | The primitives a host and a worker isolate share: cancellation tokens, close signals, backpressure credit, request guards, and typed-error reconstruction. |
-| `llm` | [api_summary_llm.md](api_summary_llm.md) | The provider contract and its value types, the Anthropic Agent SDK provider, and the three session strategies. |
+| `llm` | [api_summary_llm.md](api_summary_llm.md) | The Anthropic Agent SDK provider over the `tom_core_llm` contract, and the three session strategies. |
 | `placeholders` | [api_summary_placeholders.md](api_summary_placeholders.md) | The placeholder engine: the four forms, the lexical scope chain, the expression seam, and the three wire-coded failures. |
 
 ## Which units get one
@@ -31,8 +31,8 @@ three types with one each.
 | Unit | Members | Types | Summary |
 | ---- | ------: | ----: | ------- |
 | `agent` | 345 | 52 | yes |
-| `llm` | 107 | 20 | yes |
 | `isolate_streaming` | 47 | 12 | yes |
+| `llm` | 35 | 6 | yes |
 | `placeholders` | 35 | 6 | yes |
 | `bearer_auth` | 5 | 3 | yes, and `doc/bearer_auth.md` |
 | `mcp_auth` | 0 | 0 | yes, and `doc/mcp_auth.md` |
@@ -188,23 +188,9 @@ Summary: [api_summary_llm.md](api_summary_llm.md)
 | `AgentSdkLlmProvider` | final class | One Anthropic-Agent-SDK backend, exposed as an [LlmProvider]. |
 | `AgentSdkSessionStore` | final class | A small JSON-backed `session id → Claude-Code session id` map, persisted at [file]. |
 | `AgentSdkSessionStrategy` | abstract interface class | Decides, per call, whether the provider resumes a stored Claude-Code session or starts fresh, and records the session id a successful call produced. |
-| `BrainSessionStrategy` | final class | Session mode `brain`: persists the Claude-Code session id keyed by the caller's session id ([LlmOptions.brainSessionId]). |
-| `CapturedWirePrompt` | final class |  |
-| `LlmCallReport` | final class | Report produced when an LLM call completes (successfully or with a failure the caller could classify). |
-| `LlmFailure` | final class | Typed failure envelope. |
-| `LlmOptions` | final class | Per-call provider-tunable knobs. |
-| `LlmProvider` | abstract class | One LLM backend a caller can route a call to. |
-| `LlmStreamChunk` | final class | One chunk of streamed text. |
-| `LlmStreamCompleted` | final class | Successful completion. |
-| `LlmStreamEvent` | sealed class | Events emitted on a `Stream<LlmStreamEvent>` from [LlmProvider.completeStream]. |
-| `LlmStreamFailed` | final class | Terminal failure. |
-| `LlmStreamStarted` | final class | First event on every stream. |
-| `LlmStreamToolCallProposed` | final class | The provider proposed a tool call. |
+| `BrainSessionStrategy` | final class | Session mode `brain`: persists the Claude-Code session id keyed by the caller's session id ([LlmOptions.sessionId]). |
 | `NoSessionStrategy` | final class | Session mode `none`: every call is a first call. |
 | `QuestSessionStrategy` | final class | Session mode `quest`: resumes the Claude-Code session recorded in the VS Code window's quest history file, read-only. |
-| `ToolCatalogue` | final class | The catalogue of tools a role may invoke during a completion. |
-| `ToolDescriptor` | final class | One tool the LLM may propose calling during a completion. |
-| `WirePrompt` | final class | The post-assembly, post-anchor-injection prompt a provider sees. |
 | `agentSdkLooksLikeSessionError` | function | True when [message] looks like a Claude-Code rejection of a stale / unknown session id, so the `brain`-mode provider should evict the stored id and retry once with a fresh session. |
 
 ### Mcp Auth (`lib/src/mcp_auth/`)

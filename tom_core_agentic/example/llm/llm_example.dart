@@ -3,7 +3,7 @@
 // The unit is a contract other people implement, so the useful demo is not
 // "call a provider" — it is "write one, and see what the contract actually
 // demands". `EchoProvider` below is a complete, correct implementation in
-// about sixty lines: it streams, it reports, and it obeys the three invariants
+// about fifty lines: it streams, it reports, and it obeys the three invariants
 // an implementer most easily breaks.
 //
 //   1. **The anchor stamp.** Every report carries the prompt's `anchorHash`
@@ -11,16 +11,16 @@
 //      anchor was present on every emitted prompt.
 //   2. **No prompt mutation.** The body goes to the backend as it arrived. A
 //      provider translates the shape, never the text.
-//   3. **One route, announced once.** `LlmStreamStarted` carries the same
+//   3. **One route, announced once.** `LlmRunStarted` carries the same
 //      `providerId` and `modelId` as the terminal report, because consumers log
 //      the route from the first event and a stream that opens on one route and
 //      completes on another makes the two disagree.
 //
 // The demo then drives the provider through both entry points and shows the
 // third thing an implementer gets wrong: `complete()` surfaces a failure as an
-// **exception**, while `completeStream()` surfaces the same failure as a
-// terminal `LlmStreamFailed` event carrying a report. Both are the contract;
-// they are not two spellings of one behaviour.
+// **exception**, while `run()` surfaces the same failure as a terminal
+// `LlmRunFailed` event carrying a report. A provider implements `run` only:
+// `complete` is the contract's own buffering of it.
 //
 // No network and no API key: the provider echoes. That is the point — the
 // seam is what is being demonstrated, and a real backend would only add noise
@@ -48,7 +48,7 @@ Future<void> main() async {
 // ---------------------------------------------------------------------------
 // A complete provider. Everything below the constructor is contract.
 // ---------------------------------------------------------------------------
-final class EchoProvider implements LlmProvider {
+final class EchoProvider extends LlmProvider {
   EchoProvider({this.id = 'echo', this.defaultModel = 'echo-1', this.fail});
 
   @override
@@ -64,10 +64,9 @@ final class EchoProvider implements LlmProvider {
   final String? fail;
 
   @override
-  Stream<LlmStreamEvent> completeStream(
-    WirePrompt prompt,
-    LlmOptions options,
-  ) async* {
+  Stream<LlmEvent> run(LlmRequest request) async* {
+    final prompt = request.prompt;
+    final options = request.options;
     final stopwatch = Stopwatch()..start();
     // Resolved once and used everywhere: the started event, the report, and —
     // in a real provider — the backend request. Resolving it twice is how the
@@ -75,14 +74,14 @@ final class EchoProvider implements LlmProvider {
     final modelId = options.model ?? defaultModel;
     final callId = 'echo-${DateTime.now().microsecondsSinceEpoch}';
 
-    yield LlmStreamStarted(callId: callId, providerId: id, modelId: modelId);
+    yield LlmRunStarted(callId: callId, providerId: id, modelId: modelId);
 
     if (fail == null) {
       // The body goes out unchanged. `combined` is what a backend with no
       // channel separation sends, and it begins with the anchor because
       // `system` leads it.
       for (final line in prompt.combined.split('\n')) {
-        yield LlmStreamChunk(callId: callId, text: '$line\n');
+        yield LlmTextDelta('$line\n');
       }
     }
 
@@ -90,7 +89,7 @@ final class EchoProvider implements LlmProvider {
     final report = _report(prompt, modelId, stopwatch.elapsedMilliseconds);
 
     if (fail != null) {
-      yield LlmStreamFailed(
+      yield LlmRunFailed(
         callId: callId,
         // `unknown` because this provider cannot classify what its backend
         // meant; the caller maps it onto its own taxonomy.
@@ -102,26 +101,7 @@ final class EchoProvider implements LlmProvider {
       return;
     }
 
-    yield LlmStreamCompleted(callId: callId, report: report);
-  }
-
-  @override
-  Future<LlmCallReport> complete(WirePrompt prompt, LlmOptions options) async {
-    // Buffering `completeStream` is one legal implementation of `complete`,
-    // not a required one — the contract makes both entry points first-class.
-    // It is the right shape *here* because echoing has no cheaper path.
-    LlmCallReport? completed;
-    await for (final event in completeStream(prompt, options)) {
-      if (event is LlmStreamCompleted) {
-        completed = event.report;
-      } else if (event is LlmStreamFailed) {
-        // The contract's failure shape for the non-streaming path: throw, and
-        // let the caller classify. Returning a report with a failure flag on
-        // it would make every caller check something most callers forget.
-        throw StateError(event.failure.message);
-      }
-    }
-    return completed!;
+    yield LlmRunCompleted(callId: callId, report: report);
   }
 
   LlmCallReport _report(WirePrompt prompt, String modelId, int elapsedMs) =>
@@ -155,10 +135,10 @@ WirePrompt _prompt() => const WirePrompt(
 );
 
 // ---------------------------------------------------------------------------
-// completeStream: the event contract, asserted.
+// run: the event contract, asserted.
 // ---------------------------------------------------------------------------
 Future<void> _demoStreaming() async {
-  print('== completeStream ==');
+  print('== run ==');
 
   final provider = EchoProvider();
   final prompt = _prompt();
@@ -168,21 +148,26 @@ Future<void> _demoStreaming() async {
   // report — would look correct here. The override is what makes the
   // agreement below mean something.
   final events = await provider
-      .completeStream(prompt, const LlmOptions(model: 'echo-2'))
+      .run(
+        LlmRequest(
+          prompt: prompt,
+          options: const LlmOptions(model: 'echo-2'),
+        ),
+      )
       .toList();
 
   // Exactly one Started, first.
-  assert(events.first is LlmStreamStarted);
-  assert(events.whereType<LlmStreamStarted>().length == 1);
+  assert(events.first is LlmRunStarted);
+  assert(events.whereType<LlmRunStarted>().length == 1);
 
   // Exactly one terminal event, last.
   final terminal = events.last;
-  assert(terminal is LlmStreamCompleted);
-  assert(events.whereType<LlmStreamCompleted>().length == 1);
-  assert(events.whereType<LlmStreamFailed>().isEmpty);
+  assert(terminal is LlmRunCompleted);
+  assert(events.whereType<LlmRunCompleted>().length == 1);
+  assert(events.whereType<LlmRunFailed>().isEmpty);
 
-  final started = events.first as LlmStreamStarted;
-  final completed = terminal as LlmStreamCompleted;
+  final started = events.first as LlmRunStarted;
+  final completed = terminal as LlmRunCompleted;
 
   // The route is announced once and does not change under the caller.
   assert(started.providerId == completed.report.providerId);
@@ -191,13 +176,13 @@ Future<void> _demoStreaming() async {
   assert(started.modelId == 'echo-2');
   print(
     '  route: ${started.providerId}/${started.modelId} '
-    '(${events.whereType<LlmStreamChunk>().length} chunks, '
+    '(${events.whereType<LlmTextDelta>().length} chunks, '
     'route default is ${provider.defaultModel})',
   );
 
   // The body came back unchanged — no provider prepended or reordered it.
   final echoed = events
-      .whereType<LlmStreamChunk>()
+      .whereType<LlmTextDelta>()
       .map((c) => c.text)
       .join()
       .trimRight();
@@ -226,8 +211,10 @@ Future<void> _demoComplete() async {
   // A per-call model override. The resolved id — not the route default — is
   // what the report must carry.
   final report = await provider.complete(
-    prompt,
-    const LlmOptions(model: 'echo-2'),
+    LlmRequest(
+      prompt: prompt,
+      options: const LlmOptions(model: 'echo-2'),
+    ),
   );
 
   assert(report.providerId == 'echo');
@@ -248,26 +235,28 @@ Future<void> _demoFailure() async {
   // Streaming: a terminal event, carrying the failure *and* a report. The call
   // is attributable even though it produced no answer.
   final events = await provider
-      .completeStream(prompt, LlmOptions.empty)
+      .run(LlmRequest(prompt: prompt, options: LlmOptions.empty))
       .toList();
-  final failed = events.last as LlmStreamFailed;
-  assert(events.whereType<LlmStreamChunk>().isEmpty);
+  final failed = events.last as LlmRunFailed;
+  assert(events.whereType<LlmTextDelta>().isEmpty);
   assert(failed.failure.classCode == 'unknown');
-  assert(failed.report.anchorHash == prompt.anchorHash);
+  assert(failed.report!.anchorHash == prompt.anchorHash);
   print(
-    '  completeStream -> ${failed.failure.classCode}: '
+    '  run      -> ${failed.failure.classCode}: '
     '${failed.failure.message}',
   );
 
   // Buffered: the same failure, as an exception.
   Object? thrown;
   try {
-    await provider.complete(prompt, LlmOptions.empty);
+    await provider.complete(
+      LlmRequest(prompt: prompt, options: LlmOptions.empty),
+    );
   } catch (e) {
     thrown = e;
   }
   assert(thrown != null);
-  print('  complete       -> threw ${thrown.runtimeType}');
+  print('  complete -> threw ${thrown.runtimeType}');
 }
 
 // ---------------------------------------------------------------------------

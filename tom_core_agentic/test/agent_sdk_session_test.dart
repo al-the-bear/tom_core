@@ -185,7 +185,7 @@ void main() {
     test('NoSessionStrategy resolves null and never records', () async {
       const strategy = NoSessionStrategy();
       expect(
-        await strategy.resumeIdFor(const LlmOptions(brainSessionId: 'tb-1')),
+        await strategy.resumeIdFor(const LlmOptions(sessionId: 'tb-1')),
         isNull,
       );
       // record / evict are no-ops (must not throw).
@@ -206,7 +206,7 @@ void main() {
         await strategy.record(LlmOptions.empty, 'claude-zzz');
         expect(await store.lookup(''), isNull);
 
-        const opts = LlmOptions(brainSessionId: 'tb-7');
+        const opts = LlmOptions(sessionId: 'tb-7');
         expect(await strategy.resumeIdFor(opts), isNull);
         await strategy.record(opts, 'claude-bbb');
         expect(await strategy.resumeIdFor(opts), 'claude-bbb');
@@ -295,17 +295,22 @@ void main() {
         final provider = _provider(transport, BrainSessionStrategy(store));
 
         final events = await provider
-            .completeStream(_wire, const LlmOptions(brainSessionId: 'tb-1'))
+            .run(
+              LlmRequest(
+                prompt: _wire,
+                options: const LlmOptions(sessionId: 'tb-1'),
+              ),
+            )
             .toList();
 
-        expect(events.last, isA<LlmStreamCompleted>());
+        expect(events.last, isA<LlmRunCompleted>());
         // The first (only) query resumed the stored id.
         expect(transport.resumesSeen, <Object?>['claude-old']);
         // The returned Claude session id is written back for the next call.
         expect(await store.lookup('tb-1'), 'claude-new');
         // A first-shot success reports no retries — the other half of the count
         // the retry test pins at 1.
-        expect((events.last as LlmStreamCompleted).report.retries, 0);
+        expect((events.last as LlmRunCompleted).report.retries, 0);
       },
     );
 
@@ -335,12 +340,17 @@ void main() {
         final provider = _provider(transport, BrainSessionStrategy(store));
 
         final events = await provider
-            .completeStream(_wire, const LlmOptions(brainSessionId: 'tb-1'))
+            .run(
+              LlmRequest(
+                prompt: _wire,
+                options: const LlmOptions(sessionId: 'tb-1'),
+              ),
+            )
             .toList();
 
         // Exactly one Started (no duplicate on retry), terminal Completed.
-        expect(events.whereType<LlmStreamStarted>(), hasLength(1));
-        expect(events.last, isA<LlmStreamCompleted>());
+        expect(events.whereType<LlmRunStarted>(), hasLength(1));
+        expect(events.last, isA<LlmRunCompleted>());
         // First query resumed the stale id, the retry went fresh (resume null).
         expect(transport.resumesSeen, <Object?>['claude-stale', null]);
         // The fresh session id was written back over the evicted stale one.
@@ -351,7 +361,7 @@ void main() {
         // and the wait as well as the successful second one, so it is well above
         // the 50 ms the two scripted delays alone cost and nowhere near the
         // second attempt's own `duration_ms` of 12.
-        final report = (events.last as LlmStreamCompleted).report;
+        final report = (events.last as LlmRunCompleted).report;
         expect(report.retries, 1);
         expect(report.wallClockMs, greaterThanOrEqualTo(40));
       },
@@ -368,10 +378,15 @@ void main() {
       final provider = _provider(transport, BrainSessionStrategy(store));
 
       final events = await provider
-          .completeStream(_wire, const LlmOptions(brainSessionId: 'tb-1'))
+          .run(
+            LlmRequest(
+              prompt: _wire,
+              options: const LlmOptions(sessionId: 'tb-1'),
+            ),
+          )
           .toList();
 
-      expect(events.last, isA<LlmStreamFailed>());
+      expect(events.last, isA<LlmRunFailed>());
       expect(transport.resumesSeen, <Object?>['claude-old']);
       // No eviction on a non-session failure: the stored id is left intact.
       expect(await store.lookup('tb-1'), 'claude-old');
@@ -394,20 +409,25 @@ void main() {
       final provider = _provider(transport, BrainSessionStrategy(store));
 
       final events = await provider
-          .completeStream(_wire, const LlmOptions(brainSessionId: 'tb-1'))
+          .run(
+            LlmRequest(
+              prompt: _wire,
+              options: const LlmOptions(sessionId: 'tb-1'),
+            ),
+          )
           .toList();
 
       final completed = events.last;
-      expect(completed, isA<LlmStreamCompleted>());
+      expect(completed, isA<LlmRunCompleted>());
       // The report survives intact — the usage and cost of a call that really
       // happened are what a failed write must not be allowed to throw away.
-      final report = (completed as LlmStreamCompleted).report;
+      final report = (completed as LlmRunCompleted).report;
       expect(report.tokensIn, 5);
       expect(report.tokensOut, 9);
       expect(report.modelId, 'claude-sonnet-4-6');
       expect(report.anchorHash, 'anchor-hash-A1');
       // And nothing was misreported as a failure along the way.
-      expect(events.whereType<LlmStreamFailed>(), isEmpty);
+      expect(events.whereType<LlmRunFailed>(), isEmpty);
     });
 
     // `evict` reaches the same unguarded write, from `_shouldRetryFresh` —
@@ -431,10 +451,15 @@ void main() {
       final provider = _provider(transport, BrainSessionStrategy(store));
 
       final events = await provider
-          .completeStream(_wire, const LlmOptions(brainSessionId: 'tb-1'))
+          .run(
+            LlmRequest(
+              prompt: _wire,
+              options: const LlmOptions(sessionId: 'tb-1'),
+            ),
+          )
           .toList();
 
-      expect(events.last, isA<LlmStreamCompleted>());
+      expect(events.last, isA<LlmRunCompleted>());
       expect(transport.resumesSeen, <Object?>['claude-stale', null]);
     });
   });
@@ -471,10 +496,10 @@ void main() {
       );
 
       final events = await provider
-          .completeStream(_wire, LlmOptions.empty)
+          .run(LlmRequest(prompt: _wire, options: LlmOptions.empty))
           .toList();
 
-      expect(events.last, isA<LlmStreamCompleted>());
+      expect(events.last, isA<LlmRunCompleted>());
       expect(transport.resumesSeen, <Object?>['claude-quest-1']);
       // Quest history is read-only: a successful call never rewrites the file.
       expect(file.readAsStringSync(), before);
@@ -513,14 +538,14 @@ void main() {
       );
 
       final first = await provider
-          .completeStream(_wire, LlmOptions.empty)
+          .run(LlmRequest(prompt: _wire, options: LlmOptions.empty))
           .toList();
       final second = await provider
-          .completeStream(_wire, LlmOptions.empty)
+          .run(LlmRequest(prompt: _wire, options: LlmOptions.empty))
           .toList();
 
-      expect(first.last, isA<LlmStreamCompleted>());
-      expect(second.last, isA<LlmStreamCompleted>());
+      expect(first.last, isA<LlmRunCompleted>());
+      expect(second.last, isA<LlmRunCompleted>());
       // One failed resume, its fresh retry, then the second call starts fresh
       // without trying the rejected id again.
       expect(transport.resumesSeen, <Object?>['claude-stale', null, null]);

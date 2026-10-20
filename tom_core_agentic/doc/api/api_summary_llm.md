@@ -1,31 +1,16 @@
 # Tom Core Agentic API Reference: LLM Module
 
-The symbol-level mirror of `lib/src/llm/`: twenty exported types across nine
-libraries, one top-level function, and two public statics.
+The symbol-level mirror of `lib/src/llm/`: six types across two libraries and
+one top-level function. The barrel also re-exports `tom_core_llm`, whose
+provider contract these implement; that package mirrors its own symbols.
 
-[`doc/llm.md`](../llm.md) explains the seam — the invariants, the control
-inversion, why the retry is bounded the way it is. This document is arranged
+[`doc/llm.md`](../llm.md) explains the provider — the control inversion, why
+the retry is bounded the way it is. This document is arranged
 for lookup: one heading per symbol, grouped by the concern it belongs to.
 
 ## Table of Contents
 
 - [Overview](#overview)
-- [The contract](#the-contract)
-  - [LlmProvider](#llmprovider)
-  - [WirePrompt](#wireprompt)
-  - [LlmOptions](#llmoptions)
-  - [ToolCatalogue](#toolcatalogue)
-  - [ToolDescriptor](#tooldescriptor)
-  - [LlmCallReport](#llmcallreport)
-  - [CapturedWirePrompt](#capturedwireprompt)
-- [The stream events](#the-stream-events)
-  - [LlmStreamEvent](#llmstreamevent)
-  - [LlmStreamStarted](#llmstreamstarted)
-  - [LlmStreamChunk](#llmstreamchunk)
-  - [LlmStreamToolCallProposed](#llmstreamtoolcallproposed)
-  - [LlmStreamCompleted](#llmstreamcompleted)
-  - [LlmStreamFailed](#llmstreamfailed)
-  - [LlmFailure](#llmfailure)
 - [The Agent SDK provider](#the-agent-sdk-provider)
   - [AgentSdkLlmProvider](#agentsdkllmprovider)
   - [agentSdkLooksLikeSessionError](#agentsdklookslikesessionerror)
@@ -39,147 +24,16 @@ for lookup: one heading per symbol, grouped by the concern it belongs to.
 
 ## Overview
 
-Sources: `lib/src/llm/agent_sdk_llm_provider.dart`, `lib/src/llm/agent_sdk_session.dart`, `lib/src/llm/captured_wire.dart`, `lib/src/llm/llm.dart`, `lib/src/llm/llm_call_report.dart`, `lib/src/llm/llm_options.dart`, `lib/src/llm/llm_provider.dart`, `lib/src/llm/llm_stream_event.dart`, `lib/src/llm/wire_prompt.dart`.
+Sources: `lib/src/llm/agent_sdk_llm_provider.dart`, `lib/src/llm/agent_sdk_session.dart`, `lib/src/llm/llm.dart`.
 
 The module `lib/src/llm/` is barrelled by `llm.dart`.
 
-Three layers, and the grouping below follows them:
+Two concerns, and the grouping below follows them:
 
-- **The contract** — `LlmProvider`, and the value types that cross it. These
-  import nothing outside the folder, so a second provider can be written
-  against the seam without taking the Agent SDK with it.
-- **The stream events** — a sealed family a consumer switches on exhaustively.
-- **The Agent SDK provider** — the package's one shipped implementation, plus
-  the three session strategies it consults per call.
-
-## The contract
-
-### LlmProvider
-
-`abstract class`. One backend a caller can route to. `String get id` keys it in
-a caller's provider map and is stamped on every report;
-`Future<LlmCallReport> complete(WirePrompt, LlmOptions)` and
-`Stream<LlmStreamEvent> completeStream(WirePrompt, LlmOptions)` are both
-first-class — neither is defined in terms of the other.
-
-Three obligations bind every implementation: stamp the prompt's `anchorHash`
-onto the report, never mutate the prompt body, and fill the provenance fields
-(`providerId` equal to `id`, the resolved `modelId`, the body's `promptHash`).
-An abstract class rather than a typedef so the analyzer enforces method-set
-completeness.
-
-### WirePrompt
-
-`final class`. The post-assembly, post-anchor prompt. `system` is the standing
-framing and **begins with the anchor block**; `user` is the call-specific
-content and defaults to empty; `combined` joins them with a blank line, dropping
-empty parts — and because `system` leads, `combined` begins with the anchor too.
-A backend with no channel separation *sends* `combined`; one with channels routes
-`system` and `user` instead. Every provider *hashes* `combined` either way, since
-`promptHash` is its content hash, so the join belongs to the hash contract.
-`anchorHash` is the anchor block's content hash; `roleId` and `templateSha` are
-carried for observability and never branched on.
-
-`final` because every provider must consume the same shape, and a subtype would
-invite per-provider variants that bypass the anchor guarantee.
-
-### LlmOptions
-
-`final class`. The per-call knobs: `model` (overriding the route default),
-`temperature`, `maxOutputTokens`, `stopSequences`, `toolCatalogue`,
-`responseFormat`, and `brainSessionId`. `copyWith` produces a variant.
-
-`LlmOptions.empty` is the all-defaults instance. `stopSequences` is
-non-nullable with an empty-list default, so passing `null` cannot defeat it.
-`brainSessionId` is ignored by every provider except the Agent SDK one in
-`brain` session mode.
-
-### ToolCatalogue
-
-`final class`. The tools a role may invoke: a `tools` list with `isEmpty` /
-`isNotEmpty`. `ToolCatalogue.empty` is the no-tools instance, and an empty
-catalogue means no tool call is permitted.
-
-### ToolDescriptor
-
-`final class`. One proposable tool: `name`, `description`, and a
-`parametersSchema` map.
-
-### LlmCallReport
-
-`final class`. The provenance record a completed call produces:
-`providerId`, `modelId`, `anchorHash`, `promptHash`, `tokensIn`, `tokensOut`,
-`retries`, `wallClockMs`, `cost`, `templateSha` and `notes`.
-
-Three of those carry a rule rather than a value. `retries` counts in-call
-retries before this report, so a retried call cannot present as a first-shot
-success. `wallClockMs` is measured from submission and **includes** the retry
-waits. `cost` is `null` when no price is known for the route — never silently
-zero.
-
-### CapturedWirePrompt
-
-`final class`. A data-only mirror of the wire body for a trail writer: `body`,
-`anchorHash`, `roleId`, `templateSha`. It exists because `WirePrompt` is
-provider-facing and a consumer must not be able to construct one and bypass
-assembly.
-
-## The stream events
-
-### LlmStreamEvent
-
-`sealed class`. One step of a streamed completion. Sealed so a consumer
-switches exhaustively over the five below.
-
-### LlmStreamStarted
-
-`final class`. Emitted once, first, carrying `callId`, `providerId` and
-`modelId` — which must match the terminal report's, because consumers log the
-route from this event long before a report exists.
-
-### LlmStreamChunk
-
-`final class`. One chunk of streamed text: `callId` and `text`. Granularity is
-the provider's; chunks arrive in order.
-
-### LlmStreamToolCallProposed
-
-`final class`. A proposed tool call: `toolCallId`, `toolName` and `arguments`.
-The stream pauses while the caller's adapter resolves it. The Agent SDK
-provider never emits this — its tool loop runs inside Claude Code.
-
-#### Properties and Methods — further members
-
-| Member | Declaration | Description |
-| ------ | ----------- | ----------- |
-| `callId` | `final String callId` |  |
-
-### LlmStreamCompleted
-
-`final class`. Successful completion, carrying the terminal `report` and an
-optional `wire` (the `CapturedWirePrompt` a trail writer records).
-
-#### Properties and Methods — further members
-
-| Member | Declaration | Description |
-| ------ | ----------- | ----------- |
-| `callId` | `final String callId` |  |
-
-### LlmStreamFailed
-
-`final class`. Terminal failure, carrying both the typed `failure` and the
-`report` the call had accumulated — so a failed call is still attributable.
-
-#### Properties and Methods — further members
-
-| Member | Declaration | Description |
-| ------ | ----------- | ----------- |
-| `callId` | `final String callId` |  |
-
-### LlmFailure
-
-`final class`. The failure envelope: a `classCode`, a `message` and an optional
-`cause`.
+- **The Agent SDK provider** — an `LlmProvider` over the VS Code bridge's
+  Agent SDK client.
+- **Session strategies** — the three ways it decides, per call, whether to
+  resume a Claude session.
 
 ## The Agent SDK provider
 
@@ -194,11 +48,12 @@ use, so the asynchronous bridge connect is deferred to the first call and
 shared by every later one; `rebindBridgePort(newPort)` drops that memo, which
 is how a caller follows a bridge that moved.
 
-`complete` and `completeStream` implement the contract. The stream translation:
-one `LlmStreamStarted`; each assistant message's text blocks become chunks,
-with thinking blocks dropped from the answer text though their tokens still
-count; the terminal result becomes `LlmStreamCompleted` with tokens, cost and
-wall-clock read off it; any SDK failure becomes `LlmStreamFailed`.
+`run` implements the contract, and `complete` is the contract's buffering of
+it. The event translation: one `LlmRunStarted`; each assistant message's text
+blocks become `LlmTextDelta`s, with thinking blocks dropped from the answer text
+though their tokens still count; the terminal result becomes `LlmRunCompleted`
+with tokens, cost and wall-clock read off it; any SDK failure becomes
+`LlmRunFailed`.
 
 **One retry, under four conditions together**: the call was resuming a stored
 session, it has not already retried, nothing has streamed yet, and the message
@@ -249,7 +104,7 @@ and evicts nothing. `const`-constructible.
 ### BrainSessionStrategy
 
 `final class`. Mode `brain`: reads and writes the Claude session id through an
-`AgentSdkSessionStore`, keyed by `LlmOptions.brainSessionId`. The only strategy
+`AgentSdkSessionStore`, keyed by `LlmOptions.sessionId`. The only strategy
 that writes.
 
 ### AgentSdkSessionStore

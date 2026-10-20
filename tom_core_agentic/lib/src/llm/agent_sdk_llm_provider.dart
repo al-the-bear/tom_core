@@ -1,8 +1,5 @@
 // AgentSdkLlmProvider — the Anthropic Agent SDK as an [LlmProvider].
 //
-// Migrated into `tom_core_agentic` from `tom_brain_run/lib/src/
-// agent_sdk_llm_provider.dart`.
-//
 // ── The control inversion, and why it still fits `LlmProvider` ──
 //
 // In the normal model a *caller* owns the loop: it requests one completion,
@@ -11,26 +8,25 @@
 // memory. We hand it a prompt; it runs its *own* agentic loop and streams back
 // assistant text plus a terminal result. That inversion is invisible at the
 // `LlmProvider` seam: from the caller's side the Agent SDK is a single very
-// capable black-box completion. So this provider implements the existing
-// `LlmProvider` interface unchanged. It depends on `tom_vscode_scripting_api`
-// and a live VS Code bridge — a run-layer integration concern.
+// capable black-box completion. It depends on `tom_vscode_scripting_api` and a
+// live VS Code bridge — a run-layer integration concern.
 //
-// ── Stream translation ──
+// ── Event translation ──
 //
-//   * one [LlmStreamStarted] first;
-//   * each `SdkAssistantMessage`'s `TextBlock`s → [LlmStreamChunk]
+//   * one [LlmRunStarted] first, naming the call;
+//   * each `SdkAssistantMessage`'s `TextBlock`s → [LlmTextDelta]
 //     (`ThinkingBlock`s are dropped from the answer text — they are not part of
 //     the assistant's reply — but their token cost is still counted, because the
 //     terminal usage figures already include them);
-//   * the terminal `SdkResultMessage` → [LlmStreamCompleted] with an
+//   * the terminal `SdkResultMessage` → [LlmRunCompleted] with an
 //     [LlmCallReport] whose tokens / cost / wall-clock are read off the result
-//     message (cost from `total_cost_usd` — never a substrate price table, which
-//     has no Claude entries);
-//   * any SDK failure → [LlmStreamFailed].
+//     message (cost from `total_cost_usd` — never a price table, which has no
+//     Claude entries);
+//   * any SDK failure → [LlmRunFailed].
 //
-// **Deliberately NOT surfaced:** [LlmStreamToolCallProposed]. Tool / MCP calls
-// run *inside* Claude Code; the caller never sees them, so the provider never
-// emits a tool-call event.
+// **Deliberately NOT surfaced:** [LlmToolCall]. Tool / MCP calls run *inside*
+// Claude Code; the caller never sees them, so the provider never emits a
+// tool-call event.
 //
 // ── Anchor invariant ──
 //
@@ -48,19 +44,16 @@ import 'dart:async';
 import 'package:tom_vscode_scripting_api/tom_vscode_scripting_api.dart';
 
 import '../prompt_sha256.dart' show promptSha256;
+import 'package:tom_core_llm/tom_core_llm.dart';
+
 import 'agent_sdk_session.dart';
-import 'llm_call_report.dart';
-import 'llm_options.dart';
-import 'llm_provider.dart';
-import 'llm_stream_event.dart';
-import 'wire_prompt.dart';
 
 /// One Anthropic-Agent-SDK backend, exposed as an [LlmProvider].
 ///
 /// The [clientFactory] is memoised on first use so the (async) bridge connect is
 /// deferred until the first call and shared across every subsequent call. Tests
 /// inject a factory over a fake `AgentSdkTransport`.
-final class AgentSdkLlmProvider implements LlmProvider {
+final class AgentSdkLlmProvider extends LlmProvider {
   @override
   final String id;
 
@@ -119,7 +112,7 @@ final class AgentSdkLlmProvider implements LlmProvider {
 
   /// Rebinds the provider to [newPort]: drops the memoised client (disposing it
   /// via [clientDisposer], so the old bridge socket disconnects) and records the
-  /// new port. The next call to [completeStream] lazily reconnects on [newPort].
+  /// new port. The next call to [run] lazily reconnects on [newPort].
   ///
   /// Returns `true` when the port actually changed (a reconnect will happen),
   /// `false` when [newPort] equals the current port (a no-op). Disposal failures
@@ -144,34 +137,19 @@ final class AgentSdkLlmProvider implements LlmProvider {
   }
 
   @override
-  Future<LlmCallReport> complete(WirePrompt prompt, LlmOptions options) async {
-    LlmCallReport? completedReport;
-    await for (final event in completeStream(prompt, options)) {
-      if (event is LlmStreamCompleted) {
-        completedReport = event.report;
-      } else if (event is LlmStreamFailed) {
-        // Per the `LlmProvider` contract, the non-streaming path surfaces a
-        // backend failure as an exception; the caller classifies it.
-        final cause = event.failure.cause;
-        if (cause is Object) throw cause;
-        throw AgentSdkQueryException(event.failure.message);
-      }
-    }
-    // `completeStream` always terminates with exactly one Completed or Failed
-    // event; reaching here without a report would be a provider defect.
-    return completedReport!;
-  }
-
-  @override
-  Stream<LlmStreamEvent> completeStream(
-    WirePrompt prompt,
-    LlmOptions options,
-  ) async* {
+  Stream<LlmEvent> run(LlmRequest request) async* {
+    final prompt = request.prompt;
+    final options = request.options;
     final stopwatch = Stopwatch()..start();
     final modelId = options.model ?? defaultModel;
     final callId = _newCallId(prompt);
 
-    yield LlmStreamStarted(callId: callId, providerId: id, modelId: modelId);
+    yield LlmRunStarted(
+      purpose: request.purpose,
+      providerId: id,
+      modelId: modelId,
+      callId: callId,
+    );
 
     // The session id to resume, or null for a fresh session. Mode `none` always
     // returns null; mode `brain` looks it up by the caller's session id; mode
@@ -214,7 +192,7 @@ final class AgentSdkLlmProvider implements LlmProvider {
             for (final block in message.content) {
               if (block is TextBlock && block.text.isNotEmpty) {
                 emittedChunk = true;
-                yield LlmStreamChunk(callId: callId, text: block.text);
+                yield LlmTextDelta(block.text);
               }
               // ThinkingBlock / tool blocks are not part of the assistant reply.
             }
@@ -241,8 +219,9 @@ final class AgentSdkLlmProvider implements LlmProvider {
           continue;
         }
         stopwatch.stop();
-        yield LlmStreamFailed(
+        yield LlmRunFailed(
           callId: callId,
+          duration: stopwatch.elapsed,
           failure: LlmFailure(
             // Unclassified here; the caller maps onto its failure taxonomy.
             classCode: 'unknown',
@@ -262,8 +241,9 @@ final class AgentSdkLlmProvider implements LlmProvider {
       // ── Stream closed without a terminal `result` message ──
       if (result == null) {
         stopwatch.stop();
-        yield LlmStreamFailed(
+        yield LlmRunFailed(
           callId: callId,
+          duration: stopwatch.elapsed,
           failure: const LlmFailure(
             classCode: 'format',
             message:
@@ -313,8 +293,9 @@ final class AgentSdkLlmProvider implements LlmProvider {
           continue;
         }
         stopwatch.stop();
-        yield LlmStreamFailed(
+        yield LlmRunFailed(
           callId: callId,
+          duration: stopwatch.elapsed,
           failure: LlmFailure(classCode: 'unknown', message: message),
           report: report,
         );
@@ -328,7 +309,11 @@ final class AgentSdkLlmProvider implements LlmProvider {
       if (claudeSessionId != null && claudeSessionId.isNotEmpty) {
         await sessionStrategy.record(options, claudeSessionId);
       }
-      yield LlmStreamCompleted(callId: callId, report: report);
+      yield LlmRunCompleted(
+        callId: callId,
+        duration: stopwatch.elapsed,
+        report: report,
+      );
       return;
     }
   }

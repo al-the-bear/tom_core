@@ -104,8 +104,8 @@ One prose page per module with a surface worth explaining, under
 | [`doc/api/api_summary_agent.md`](doc/api/api_summary_agent.md) | The symbol-level mirror of the same unit: every exported type, top-level function and constant with a section, held complete by `test/api_summary_test.dart` |
 | [`doc/bearer_auth.md`](doc/bearer_auth.md) | The transport-neutral bearer-token contract and its three failure reasons |
 | [`doc/mcp_auth.md`](doc/mcp_auth.md) | The MCP-specific `_meta` slot and JSON-RPC refusal code over that contract |
-| [`doc/llm.md`](doc/llm.md) | The provider seam: the `LlmProvider` contract and its anchor and provenance invariants, the value types that cross it, the Agent SDK provider's control inversion and single retry, and the three session strategies |
-| [`doc/api/api_summary_llm.md`](doc/api/api_summary_llm.md) | The symbol-level mirror of the same unit: twenty types with a section each, the session-error matcher, and both public statics |
+| [`doc/llm.md`](doc/llm.md) | The Agent SDK provider over the `tom_core_llm` contract: its control inversion and single retry, and the three session strategies |
+| [`doc/api/api_summary_llm.md`](doc/api/api_summary_llm.md) | The symbol-level mirror of the same unit: six types with a section each and the session-error matcher |
 | [`doc/isolate_streaming.md`](doc/isolate_streaming.md) | Streaming results back across an isolate boundary |
 | [`doc/api/api_summary_isolate_streaming.md`](doc/api/api_summary_isolate_streaming.md) | The symbol-level mirror of the same unit: twelve types with a section each, and which side of the boundary each lives on |
 | [`doc/placeholders.md`](doc/placeholders.md) | The placeholder engine: forms, scope stack, recursion and typed failures |
@@ -119,7 +119,7 @@ worth driving directly:
 
 | Example | Demonstrates |
 | ------- | ------------ |
-| [`example/llm/`](example/llm/llm_example.dart) | The provider seam from the implementer's side: a complete `EchoProvider`, the event contract and the route stamp asserted under a model override, and the two shapes one failure takes through `complete` and `completeStream` |
+| [`example/llm/`](example/llm/llm_example.dart) | The provider seam from the implementer's side: a complete `EchoProvider`, the event contract and the route stamp asserted under a model override, and the two shapes one failure takes through `complete` and `run` |
 | [`example/agent/`](example/agent/agent_example.dart) | The agent unit end to end without a network: a sidecar round-trip and its two degradation rules, bridge discovery and endpoint matching, the reconnect back-off resolving all three ways, and a send that refreshes a stale session |
 | [`example/placeholders/`](example/placeholders/placeholders_example.dart) | The placeholder forms, both entry points, the lexical scope stack, transitive recursion and the typed failures |
 | [`example/lifecycle_guards/`](example/lifecycle_guards/lifecycle_guards_example.dart) | Cooperative cancellation and the close-guard family |
