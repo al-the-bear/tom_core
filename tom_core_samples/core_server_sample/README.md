@@ -410,8 +410,12 @@ endpoints need. In order, `main()`:
    driver is auto-discovered through the `tom_core_server` barrel.
 5. Initialises the bean context (`initializeBeanContext`), which instantiates
    the `@tomComponent` endpoint server.
-6. Runs migrations: `TomDbMigrations.migrateDatabases(...)`.
-7. Starts HTTP: `TomServer(config).start()`, then logs the port **and the
+6. Runs an operator's migration repair instead, when the command line asks for
+   one — `TomDbMigrations.repairFromArgs(args)` — and exits; see
+   [Running it](#running-it).
+7. Runs migrations: `TomDbMigrations.migrateDatabases(...)`, under the
+   database's migration lock.
+8. Starts HTTP: `TomServer(config).start()`, then logs the port **and the
    resolved environment** — which overlay won is decided by a `.env` that is not
    visible in the process list, so it is worth naming where anyone will see it.
 
@@ -525,6 +529,25 @@ straight out of the database:
 The `states` wrapper is the reflected shape of `TodoFieldMatrixDto` — the wire
 type declared in `todo_domain` — not a hand-written envelope; the endpoint
 returns the DTO and the pipeline serializes it.
+
+**Repairing a failed migration.** A MariaDB script that fails part-way leaves
+its statements so far applied and its version recorded as failed, and every
+later start refuses the schema until the record is repaired. Put the schema
+right by hand, then run the boot with the two repair options; it repairs the
+record and exits without starting:
+
+```sh
+# undid what [001] left behind: apply it again on the next start
+dart run bin/server_start.dart \
+  --repair-migration=todo_db/todo_schema/1 --repair-action=remove
+# finished [001] by hand: count it as applied
+dart run bin/server_start.dart \
+  --repair-migration=todo_db/todo_schema/1 --repair-action=resolve
+```
+
+Neither action runs a script. A version with no failed record, or a malformed
+request, is refused and nothing changes. See `tom_core_server`'s
+[db_migration.md](../../tom_core_server/doc/db_migration.md#repairing-a-failed-migration).
 
 ---
 

@@ -124,6 +124,11 @@ Two datasources are wired (`assets/datasources_default.yaml`): `app_db` (port
 **The app server only reads grants; it never writes them.** On first boot it
 applies the `database_migrations/app_db` tree (the app schema and demo seed).
 
+A migration that failed is repaired with the same script, which then exits
+instead of starting —
+`dart run bin/app_server_start.dart --repair-migration=app_db/app_schema/<version> --repair-action=remove|resolve`;
+see [Repairing a failed migration](../README_advanced_sample.md#repairing-a-failed-migration).
+
 The seeded users come from the auth server (sample only — never ship them):
 
 <!-- account-roster: auth-db -->

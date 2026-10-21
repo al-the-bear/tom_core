@@ -248,6 +248,23 @@ class MariaDbDatasource extends TomSqlDatasource {
   Future<TomSqlLink> openLink() async => _MariaDbLink(await openConnection());
 
   @override
+  Future<bool> tryLockOn(TomSqlLink link, String name) async {
+    final result = await runCommandOn(
+      link,
+      'SELECT GET_LOCK(:name, 0) AS got',
+      {'name': name},
+    );
+    return result.rows.single.text('got') == '1';
+  }
+
+  @override
+  Future<void> unlockOn(TomSqlLink link, String name) async {
+    await runCommandOn(link, 'SELECT RELEASE_LOCK(:name) AS released', {
+      'name': name,
+    });
+  }
+
+  @override
   Future<void> closeLink(TomSqlLink link) async {
     try {
       await (link as _MariaDbLink).connection.close();

@@ -7,6 +7,7 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 import '../little_things/server_exception.dart';
 import '../object_persistence/persistence_annotations.dart';
 import '../datasources/datasource_initialization.dart';
+import '../datasources/sql_datasource.dart';
 import 'db_migration.dart';
 
 /// Thrown for SQL migration failures (versioning-table creation, version
@@ -214,6 +215,108 @@ abstract class TomSqlMigrationAdaptor implements TomDbMigrator {
     versions = [];
   }
 
+  /// How long [withMigrationLock] waits for another process's run to finish.
+  ///
+  /// Generous on purpose: the process holding the lock is migrating, and a
+  /// long migration is not a dead process — a dead one releases at once.
+  static Duration lockWait = const Duration(minutes: 10);
+
+  /// The session-lock name of [databaseName]'s migration lock.
+  ///
+  /// MariaDB's lock names are server-wide and at most 64 characters, so the
+  /// name carries the database, hashed when it would not fit.
+  static String migrationLockName(String databaseName) {
+    const prefix = 'tom_db_migration:';
+    final named = '$prefix$databaseName';
+    return named.length <= 64
+        ? named
+        : '$prefix${checksumOf(databaseName).substring(0, 64 - prefix.length)}';
+  }
+
+  @override
+  Future<R> withMigrationLock<R>(
+    TomDataSourceInfo dsi,
+    Future<R> Function() body,
+  ) {
+    final datasource = dsi.datasource;
+    if (datasource is! TomSqlDatasource) {
+      throw migrationException(
+        "$initializeKeyPrefix.lock.not_a_sql_datasource",
+        "$adaptorLabel: datasource ${dsi.name} is a "
+            "${datasource.runtimeType}, which has no session lock to migrate "
+            "under.",
+      );
+    }
+    return datasource.withSessionLock(
+      migrationLockName(datasource.databaseName),
+      body,
+      wait: lockWait,
+    );
+  }
+
+  @override
+  Future<void> repair(
+    TomDataSourceInfo dsi,
+    String schemaName,
+    int version,
+    TomMigrationRepair action,
+  ) => withMigrationLock(dsi, () async {
+    // The history changes under the binding, so the next run reads it again.
+    reset();
+    final table = '${schemaName}_versioning';
+    final List<TomDbVersion> failed;
+    try {
+      failed = (await dsi.datasource.executeQuery<TomDbVersion>(
+        'SELECT installedRank, version, description, checksum, installedBy, '
+        'installedOn, executionTimeMs, success, script FROM $table '
+        'WHERE version = :version ORDER BY installedRank',
+        {'version': version},
+      )).where((v) => v.success != 1).toList();
+    } catch (error) {
+      throw migrationException(
+        "$initializeKeyPrefix.repair.failed",
+        "$adaptorLabel: could not read the history of schema $schemaName in "
+            "datasource ${dsi.name} to repair version $version: $error",
+        autoLog: true,
+        rootException: error,
+      );
+    }
+    if (failed.isEmpty) {
+      throw migrationException(
+        "$initializeKeyPrefix.repair.no_failed_record",
+        "$adaptorLabel: schema $schemaName in datasource ${dsi.name} has no "
+            "failed record of version $version to repair. Repair resolves a "
+            "migration recorded as failed; an applied one is not repaired.",
+        parameters: {
+          "schema": schemaName,
+          "datasource": dsi.name,
+          "version": version,
+        },
+      );
+    }
+    try {
+      await dsi.datasource.executeCommand(
+        action == TomMigrationRepair.remove
+            ? 'DELETE FROM $table WHERE version = :version AND success <> 1'
+            : 'UPDATE $table SET success = 1 '
+                  'WHERE version = :version AND success <> 1',
+        {'version': version},
+      );
+    } catch (error) {
+      throw migrationException(
+        "$initializeKeyPrefix.repair.failed",
+        "$adaptorLabel: could not ${action.name} the failed record of version "
+            "$version in schema $schemaName of datasource ${dsi.name}: $error",
+        autoLog: true,
+        rootException: error,
+      );
+    }
+    tomLog.info(
+      "$adaptorLabel: repaired version $version (${failed.first.description}) "
+      "of schema $schemaName in datasource ${dsi.name}: ${action.name}.",
+    );
+  });
+
   @override
   Future<void> applyMigration(
     TomDataSourceInfo dsi,
@@ -385,10 +488,11 @@ SELECT installedRank, version, description, checksum, installedBy, installedOn, 
   /// the damage is in the database the node is about to use, not in the tree it
   /// would have applied.
   ///
-  /// Repair is a human's: finish or undo what the script left, then correct or
-  /// delete the row. The message names the version, the description and the
-  /// schema, because an operator holding only "a migration failed" has to go
-  /// looking for which one.
+  /// Repair is a human's: finish or undo what the script left, then [repair]
+  /// the record — mark it resolved, or remove it to have it applied again.
+  /// The message names the version, the description and the schema, because
+  /// an operator holding only "a migration failed" has to go looking for
+  /// which one.
   void _refuseFailedHistory(
     TomDataSourceInfo dsi,
     String schemaName,
@@ -406,9 +510,11 @@ SELECT installedRank, version, description, checksum, installedBy, installedOn, 
           "failed: $named. A failed script leaves the schema part-applied — "
           "the database did not roll its DDL back — so the migration run has been "
           "abandoned rather than continued over a state nothing describes. "
-          "Finish or undo what the script left behind, then correct the "
-          "${schemaName}_versioning row (set success = 1) or delete it to have "
-          "the migration applied again.",
+          "Finish or undo what the script left behind, then repair its record "
+          "in ${schemaName}_versioning (TomDbMigrations.repair, or "
+          "--repair-migration=${dsi.name}/$schemaName/${failed.first.version} "
+          "with --repair-action=resolve to count it as applied or "
+          "--repair-action=remove to have it applied again).",
       parameters: {
         "schema": schemaName,
         "datasource": dsi.name,

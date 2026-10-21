@@ -2,6 +2,42 @@
 
 ### Added
 
+- **Migration lock and repair** (`db_migration` and `datasources` modules).
+  `TomDbMigrations.migrateDataSource` runs every schema of a data source under
+  that database's migration lock, `TomDbMigrator.withMigrationLock(dsi, body)`:
+  one migration run per database at a time across every process, so replicas
+  starting together apply each script once — a second process waits, then
+  finds the migrations applied. The SQL adaptors take it through the new
+  `TomSqlDatasource.withSessionLock(name, body, {wait, poll})`, a database-wide
+  session lock held on a connection of its own beside the pool: released when
+  `body` returns or throws and by the database when the holding process dies,
+  re-entrant within the zone per database and name, and refused after `wait`
+  with `error.datasource.session_lock_timeout`. Drivers supply the protected
+  `tryLockOn` / `unlockOn` — `GET_LOCK` / `RELEASE_LOCK` on MariaDB,
+  `pg_try_advisory_lock(hashtextextended(name, 0))` / `pg_advisory_unlock` on
+  PostgreSQL. `TomSqlMigrationAdaptor.migrationLockName(databaseName)`
+  (`tom_db_migration:<db>`, hashed past MariaDB's 64 characters) and
+  `TomSqlMigrationAdaptor.lockWait` (10 minutes) name and bound it; a data
+  source that is not a `TomSqlDatasource` is refused with
+  `<initialize>.lock.not_a_sql_datasource`.
+  `TomDbMigrations.withMigrationLock(datasourceName, body)` holds it around a
+  wider run, such as a whole per-tenant `forEachTenant` walk. A migration
+  recorded as failed is resolved with `TomDbMigrator.repair` /
+  `TomDbMigrations.repair(datasourceName, schemaName, version, action)` and
+  `TomMigrationRepair.remove` (the next run applies it again) or
+  `TomMigrationRepair.markResolved` (the next run skips it); repair runs under
+  the lock, never runs a script and touches only records with `success <> 1`,
+  refusing a version with none (`<initialize>.repair.no_failed_record`) and
+  reporting a failed read or write as `<initialize>.repair.failed`.
+  `TomDbMigrations.repairFromArgs(args)` reads
+  `--repair-migration=<datasource>/<schema>/<version>` and
+  `--repair-action=remove|resolve` (`repairMigrationOption`,
+  `repairActionOption`), answers whether it ran, and refuses a malformed
+  request with `db_migration.repair.invalid_arguments`. The failed-history
+  refusal names the repair. The four `tom_core_samples` servers run it before
+  migrating and exit. `example/db_migration/db_migration_repair_example.dart`
+  shows the connection-free half; `test/db_migration_lock_db_test.dart` covers
+  the lock and the repair against a live server.
 - **Read replicas** (`datasources` module, `read_replicas.dart`). A SQL data
   source takes `replicas` — one settings map per replica, each overriding the
   primary's settings (`[{host: db-replica-1}]`) — with `replicaStickinessMs`

@@ -22,6 +22,7 @@ implementations are provided on one database-neutral base
   - [Environment Tags](#environment-tags)
   - [The Tree Root Has to Be There](#the-tree-root-has-to-be-there)
 - [Running Migrations](#running-migrations)
+  - [One run per database at a time: the migration lock](#one-run-per-database-at-a-time-the-migration-lock)
   - [Per-tenant migrations](#per-tenant-migrations)
   - [Where the last run stands](#where-the-last-run-stands)
 - [Adaptor Discovery](#adaptor-discovery)
@@ -33,6 +34,10 @@ implementations are provided on one database-neutral base
   - [A recorded failure stops the next run](#a-recorded-failure-stops-the-next-run)
   - [The checksum has to outlive the process that wrote it](#the-checksum-has-to-outlive-the-process-that-wrote-it)
   - [An unreadable checksum is not an edited migration](#an-unreadable-checksum-is-not-an-edited-migration)
+- [Repairing a Failed Migration](#repairing-a-failed-migration)
+  - [Remove, or mark resolved](#remove-or-mark-resolved)
+  - [From the command line](#from-the-command-line)
+  - [What repair refuses](#what-repair-refuses)
 - [Schema Convergence](#schema-convergence)
   - [The Application's Entities](#the-applications-entities)
   - [When the Entity Model Contradicts Itself](#when-the-entity-model-contradicts-itself)
@@ -71,10 +76,11 @@ them run against a live server.
 | Type | Kind | Purpose |
 | ---- | ---- | ------- |
 | `TomDbMigrations` | class | The orchestrator; `migrateDatabases(directory)` drives a whole tree |
-| `TomDbMigrator` | abstract class | The per-database migrator contract (`initializeMigration` / `applyMigration` / `reset`) |
+| `TomDbMigrator` | abstract class | The per-database migrator contract (`initializeMigration` / `applyMigration` / `reset`, and `withMigrationLock` / `repair`) |
+| `TomMigrationRepair` | enum | What `repair` does with a migration recorded as failed: `remove` it or `markResolved` |
 | `TomDbMigrationAdaptor` | class | Binds a migrator to a data-source type for reflection discovery |
 | `TomMigrationFileName` | class | A migration file name parsed into version, description and environment tags |
-| `TomSqlMigrationAdaptor` | abstract class | Everything a SQL migrator does that does not depend on the database: the versioning history, checksum stability, rebinding per schema |
+| `TomSqlMigrationAdaptor` | abstract class | Everything a SQL migrator does that does not depend on the database: the versioning history, checksum stability, rebinding per schema, the migration lock and the repair of a failed record |
 | `MariadbMigrationAdaptor` | class | The MariaDB migrator |
 | `PostgresMigrationAdaptor` | class | The PostgreSQL migrator — a script and its version row in one transaction |
 | `TomDbVersion` | class | One row of a `<schema>_versioning` table |
@@ -440,7 +446,9 @@ For each `<datasourceName>` the orchestrator:
    `db_migration.migration.no_datasource_info_found`);
 2. resolves the migrator for the data source's `type` (missing →
    `db_migration.migration.no_migrator_found_for_datasource_type`);
-3. hands both to `TomDbMigrations.migrateDataSource`, which walks the schemas.
+3. hands both to `TomDbMigrations.migrateDataSource`, which takes the data
+   source's [migration lock](#one-run-per-database-at-a-time-the-migration-lock)
+   and walks the schemas while holding it.
 
 Then, **for each `<schemaName>` under that data source**, `migrateDataSource`:
 
@@ -460,6 +468,64 @@ version 1. A migrator that carried the first schema's history into the second
 would read the second's version 1 as already applied and skip it silently. The
 SQL adaptors enforce the same invariant from their own side — see below.
 
+### One run per database at a time: the migration lock
+
+Several replicas of one server starting together each run `migrateDatabases`
+against the same database. Without arbitration each reads an applied-version
+history that predates the others, and each applies the same scripts: a
+`CREATE TABLE` meets a table another process created a moment earlier, and the
+versioning table gains a row per process for one version. So
+`migrateDataSource` runs every schema of a data source under that data source's
+**migration lock**, `TomDbMigrator.withMigrationLock(dsi, body)`: one migration
+run per database at a time, across every process that migrates it. A second
+process waits for the first to finish, then reads a history that holds the
+first's migrations and skips them.
+
+The SQL adaptors take the lock through the data source's
+[session lock](datasources.md#session-locks), `TomSqlDatasource.withSessionLock`:
+
+| Database | Lock | Name |
+| -------- | ---- | ---- |
+| MariaDB | `GET_LOCK(name, 0)` / `RELEASE_LOCK(name)` | `tom_db_migration:<databaseName>` |
+| PostgreSQL | `pg_try_advisory_lock(hashtextextended(name, 0))` / `pg_advisory_unlock(…)` | the same name, hashed into the advisory lock's number |
+
+`TomSqlMigrationAdaptor.migrationLockName(databaseName)` is that name. MariaDB's
+lock names are server-wide and at most 64 characters, so the name carries the
+database — two databases on one server migrate side by side — and a database
+name too long to fit is replaced by the leading characters of its checksum.
+
+The lock is held on a **connection of its own**, opened beside the data
+source's pool for the length of the run and closed when it ends. The scripts run
+on the pool as usual; the lock is a mutual exclusion between processes, not a
+transaction. That is what makes it safe to leave to the database:
+
+- **Released on every exit.** It is released when the run returns and when it
+  throws, and the connection is closed either way.
+- **Released when the process dies.** A session lock belongs to the session
+  that took it, and the database ends the session when its connection goes —
+  a killed process, a lost host. There is no lease to expire and no row left
+  behind for an operator to clear: the next process takes the lock at once.
+- **Waited for, within a bound.** A process finding the lock held tries again
+  every 250 ms for up to `TomSqlMigrationAdaptor.lockWait` (10 minutes), then
+  gives up with `error.datasource.session_lock_timeout`, naming the lock and the
+  wait. The bound is generous on purpose: the process holding the lock is
+  migrating, and a long migration is not a dead process — a dead one releases
+  at once. Lower `lockWait` for a deployment whose migrations are known to be
+  short; raise it for one that rebuilds large tables.
+- **Re-entrant.** A run inside a run that already holds the lock of the same
+  database takes it without waiting for itself, so a caller may hold it around
+  several runs.
+
+A data source that is not a `TomSqlDatasource` has no session lock to migrate
+under, and the SQL adaptors refuse it with
+`<initialize>.lock.not_a_sql_datasource`
+(`mariadb_migration_adapter.lock.not_a_sql_datasource`,
+`postgres_migration_adapter.lock.not_a_sql_datasource`).
+
+`TomDbMigrations.withMigrationLock(datasourceName, body)` takes the lock of a
+registered data source by name, for a run wider than one `migrateDatabases`
+call — the per-tenant walk below.
+
 ### Per-tenant migrations
 
 `migrateDatabases` looks each data source up through
@@ -472,11 +538,23 @@ lands in each tenant's place, and each keeps its own versioning table:
 // The framework's own tables, once, outside any tenant.
 await TomDbMigrations.migrateDatabases('migrations/deployment');
 
-// The application's tenant tables, once per tenant.
-await TomTenancy.current!.forEachTenant(
-  (_) => TomDbMigrations.migrateDatabases('migrations/tenant'),
+// The application's tenant tables, once per tenant — every tenant under one
+// hold of the migration lock, so no other process migrates between two of them.
+await TomDbMigrations.withMigrationLock(
+  'main',
+  () => TomTenancy.current!.forEachTenant(
+    (_) => TomDbMigrations.migrateDatabases('migrations/tenant'),
+  ),
 );
 ```
+
+Each tenant's run takes its own data source's lock as well; the outer hold makes
+the walk one unit. A second replica starting during it waits for the whole walk
+rather than slipping in between two tenants, and the runs inside take the lock
+of their database without waiting for themselves, because it is re-entrant. The
+lock is named by database, so it covers the tenants that share the outer data
+source's database — every `shared` and, on PostgreSQL, every `schema` tenant. A
+tenant with a database of its own is serialised by its own run's lock.
 
 Keep the two trees apart. The framework's tables (below) are deployment-wide —
 their stores are built over a data source once and never routed — so their
@@ -728,9 +806,10 @@ tags mean it would never have run that script. Both follow from where the
 damage is: in the database the node is about to use, not in the tree it would
 have applied.
 
-Repair is a human's. Finish or undo what the script left, then set `success = 1`
-on the row to record it as applied, or delete the row to have the migration run
-again.
+Repair is a human's. Finish or undo what the script left, then repair the
+record — mark it resolved to count the migration as applied, or remove it to
+have the migration applied again. See
+[Repairing a Failed Migration](#repairing-a-failed-migration).
 
 ### The checksum has to outlive the process that wrote it
 
@@ -797,6 +876,109 @@ Anchoring the pattern is deliberate. An unanchored one would accept a padded or
 prefixed value (`" 9ad9167c… "`, `"sha256:9ad9167c…"`) as well-formed, and no
 string comparison could ever match it — an unreadable row would become a
 permanent, unexplainable mismatch instead.
+
+## Repairing a Failed Migration
+
+A failed MariaDB script leaves its schema part-applied and its record with
+`success = 0`, and every later run refuses the schema until the record is
+resolved ([A recorded failure stops the next run](#a-recorded-failure-stops-the-next-run)).
+Resolving it is two steps, and only the second is the module's:
+
+1. **The operator puts the schema right**, by hand — undoes what the script
+   left behind, or finishes what it set out to do. Nothing in the module can do
+   this: which statements ran is in the database, and what they should have
+   been is a judgement.
+2. **The operator repairs the record**, telling the next run which of the two
+   was done:
+
+```dart
+await TomDbMigrations.repair(
+  'app_db',                     // the data source
+  'app_schema',                 // the schema
+  7,                            // the version recorded as failed
+  TomMigrationRepair.remove,    // or TomMigrationRepair.markResolved
+);
+```
+
+`TomDbMigrations.repair(datasourceName, schemaName, version, action)` resolves
+the registered data source and its migrator as `migrateDatabases` does and
+calls `TomDbMigrator.repair(dsi, schemaName, version, action)`. Repair changes
+the history only — **it never runs a script** — and it runs under the
+[migration lock](#one-run-per-database-at-a-time-the-migration-lock), so it
+cannot interleave with a migration run of another process. It touches only the
+rows of that version whose `success` is not `1`, and it logs what it did, naming
+the version, its description and the action.
+
+On PostgreSQL a failed script is rolled back together with its record (see
+[A failed script](#a-failed-script-recorded-on-mariadb-rolled-back-on-postgresql)),
+so the case repair resolves arises chiefly on MariaDB. The PostgreSQL adaptor
+repairs the same way when its history holds such a record — one an imported
+history left behind.
+
+### Remove, or mark resolved
+
+The two actions answer what the operator did to the schema:
+
+| Action | The operator | The record | The next run |
+| ------ | ------------ | ---------- | ------------ |
+| `TomMigrationRepair.remove` (`--repair-action=remove`) | undid what the script left behind, and may have corrected the script | deleted | applies the migration again, from the script file as it is then |
+| `TomMigrationRepair.markResolved` (`--repair-action=resolve`) | finished by hand what the script set out to do | kept, with `success = 1` | skips the migration, as applied |
+
+Choose `remove` when the schema is back where it was before the script ran.
+The script file may be corrected first — its record is gone, so there is no
+checksum to disagree with — and that is the usual case: the script failed for a
+reason, and the reason is in the script.
+
+Choose `markResolved` when the schema is where the script meant to take it.
+The kept record carries the checksum of the script **as it was recorded**, so
+the script file must stay exactly as it was: a corrected file fails the next
+run's [checksum check](#the-checksum-has-to-outlive-the-process-that-wrote-it)
+with `<apply>.apply_migration.checksum_mismatch`. A correction that has to ship
+belongs in the next migration.
+
+### From the command line
+
+A repair is an operator's one-off command, not a step of every start, so a
+server's start script offers it as two options and exits once it ran:
+
+```dart
+// After the data sources are registered, before migrateDatabases:
+if (await TomDbMigrations.repairFromArgs(args)) {
+  tomLog.info('Migration repaired, exiting.');
+  exit(0);
+}
+```
+
+```sh
+dart run bin/server_start.dart \
+  --repair-migration=app_db/app_schema/7 --repair-action=remove
+dart run bin/server_start.dart \
+  --repair-migration=app_db/app_schema/7 --repair-action=resolve
+```
+
+`TomDbMigrations.repairFromArgs(args)` reads
+`--repair-migration=<datasource>/<schema>/<version>`
+(`TomDbMigrations.repairMigrationOption`) and `--repair-action=remove|resolve`
+(`TomDbMigrations.repairActionOption`), runs the repair and answers `true`.
+Without `--repair-migration` it does nothing and answers `false`, so the start
+goes on. A request it cannot read — a target that is not three `/`-separated
+parts with a whole-number version, or an action other than `remove` or
+`resolve`, including a missing one — throws
+`db_migration.repair.invalid_arguments`, naming the two options and what was
+given; nothing is repaired. The four servers in `tom_core_samples` wire it this
+way.
+
+### What repair refuses
+
+| Key | When |
+| --- | ---- |
+| `db_migration.repair.invalid_arguments` | `repairFromArgs` was given a malformed `--repair-migration` or `--repair-action` |
+| `db_migration.migration.no_datasource_info_found` | no data source is registered under the name |
+| `db_migration.migration.no_migrator_found_for_datasource_type` | no migrator is registered for the data source's `type` |
+| `<initialize>.repair.no_failed_record` (`mariadb_migration_adapter.repair.no_failed_record`, `postgres_migration_adapter.repair.no_failed_record`) | the schema holds no failed record of that version — it is applied, or was never attempted. An applied migration is not repaired; repair resolves failures only. The exception carries `schema`, `datasource` and `version` |
+| `<initialize>.repair.failed` (`mariadb_migration_adapter.repair.failed`, `postgres_migration_adapter.repair.failed`) | the history could not be read, or the record could not be deleted or updated; the database's error is the root cause |
+| `<initialize>.lock.not_a_sql_datasource` | the data source has no session lock to repair under |
+| `error.datasource.session_lock_timeout` | another process held the migration lock for longer than `lockWait` |
 
 ## Schema Convergence
 
@@ -1069,6 +1251,7 @@ else does:
 | `TomSchemaConvergenceCheck.checkAll` / `checkSchema` / `readChain` / `verify` | `TomDbMigrations.migrateDatabases` / `migrateDataSource` |
 | `TomFrameworkSchemaCheck.verifyChain` / `verifyRowTypes` | `TomDbMigrator.applyMigration` / `initializeMigration` |
 | `TomSchemaDdlReader.replay`, `TomDbMigrations.collectMigrationFiles` | `TomFrameworkSchemaCheck.verifyLive` |
+| `TomSqlMigrationAdaptor.migrationLockName` | `TomDbMigrations.withMigrationLock` / `repair` / `repairFromArgs`, `TomDbMigrator.withMigrationLock` / `repair` |
 
 An `async` method whose I/O is all synchronous never yields: the future is
 complete before the first `await`, so the signature promises the caller that the
@@ -1209,6 +1392,20 @@ Convergence](#schema-convergence).
 directory throws and leaves the record `failed`, and the readiness check then
 answers not ready — see [Where the last run stands](#where-the-last-run-stands).
 
+`test/db_migration_lock_db_test.dart` covers the [migration
+lock](#one-run-per-database-at-a-time-the-migration-lock) and
+[repair](#repairing-a-failed-migration) against a live server, two data sources
+on one database standing for two processes: two migrators started together, of
+which exactly one applies the script; a run that waits for the holder and one
+that gives up after `lockWait` with `error.datasource.session_lock_timeout`; a
+holder whose session ends — the process gone — releasing the lock to the next;
+a run inside `withMigrationLock` not waiting for itself; and repair — `remove`
+followed by a run that applies the corrected script, `markResolved` followed by
+a run that skips the migration, a version with no failed record refused with
+`repair.no_failed_record`, and `repairFromArgs` running the repair the command
+line names. Its last group needs no database: no repair option answers `false`,
+and a malformed request is refused with `db_migration.repair.invalid_arguments`.
+
 `test/postgres_migrations_test.dart` holds the generated PostgreSQL reference
 migrations to the generator's output for their canonical sources — see
 [Reference migrations for PostgreSQL](#reference-migrations-for-postgresql).
@@ -1237,7 +1434,10 @@ surface a caller touches — the `TomDbMigrationAdaptor` type binding, a
 `TomDbVersion` row with its checksum, the file-name grammar and the ordering
 rule. The names it exhibits are **parsed rather than printed**, so an example
 that claimed a legal name the parser rejects would throw instead of misinforming
-its reader.
+its reader. `example/db_migration/db_migration_repair_example.dart` shows the
+half of the lock and the repair that needs no database: the lock's name, a
+command line without a repair answered `false`, and malformed repair requests
+refused before anything is touched.
 
 One guard is worth naming separately, because it is the reason this page can be
 trusted on the subject it is most likely to be wrong about. The file-name
@@ -1256,7 +1456,11 @@ here it cannot drift silently.
   `TomMigrationRunState`), the record of the most recent call that readiness
   reads.
 - **`TomDbMigrator`** (+ the `TomDbMigrationAdaptor` annotation) — the migrator
-  contract.
+  contract, including `withMigrationLock` (one run per database at a time) and
+  `repair` with its **`TomMigrationRepair`** action.
+- **`TomDbMigrations.withMigrationLock` / `repair` / `repairFromArgs`** — the
+  migration lock by data-source name, the repair of a failed record, and its
+  command-line form (`--repair-migration`, `--repair-action`).
 - **`TomSqlMigrationAdaptor`**, **`MariadbMigrationAdaptor`**,
   **`PostgresMigrationAdaptor`** and **`TomDbVersion`** — the database-neutral
   SQL migrator, its MariaDB and PostgreSQL implementations, and the
@@ -1274,13 +1478,14 @@ here it cannot drift silently.
 
 ## Not Yet Implemented
 
-- **A failed MariaDB migration is not repaired, only refused.** `initializeMigration`
-  reads the history and stops the run when it holds a `success = 0` row, naming
-  the version, the description and the table to correct — see
-  [Idempotency and Stability](#idempotency-and-stability). That is the whole of
-  the handling: nothing retries the script and nothing undoes what it left, so a
-  failed migration wedges the schema until a human finishes or reverses the
-  part-applied change and then sets `success = 1` or deletes the row.
+- **A failed MariaDB migration is refused until an operator repairs it.**
+  `initializeMigration` reads the history and stops the run when it holds a
+  `success = 0` row, naming the version, the description, the schema and the
+  repair — see [Idempotency and Stability](#idempotency-and-stability). Nothing
+  retries the script and nothing undoes what it left: the operator finishes or
+  reverses the part-applied change by hand and then
+  [repairs the record](#repairing-a-failed-migration), which only changes the
+  history.
 
   On PostgreSQL the case does not arise: a failed script is rolled back with
   its version row and is simply applied again on the next run (see
@@ -1299,12 +1504,11 @@ here it cannot drift silently.
   `applyMigration` / `reset`; there is no down-migration and no `TomDbVersion`
   state for one. Undoing a release means writing the next migration.
   <!-- unpinned: absence — no down-migration exists -->
-- **Nothing arbitrates between two processes migrating at once.** There is no
-  lock of any kind — advisory, table-based or otherwise. Two servers starting
-  together both read an applied-version list that predates the other, and both
-  apply. What saves an ordinary deployment is that the versioning table's insert
-  is the only write either of them makes to shared state, not any guard here.
-  <!-- unpinned: absence — no migration lock exists -->
+- **The migration lock excludes only runs made through this module.** It is a
+  session lock the migrators take; SQL applied by anything else — a database
+  container's init hook running the same tree, a DBA's session, another
+  migration tool — does not ask for it and is not held back by it.
+  <!-- unpinned: absence — the lock is advisory; nothing outside the migrators takes it -->
 - **The application-entity check never reads a live database.**
   `TomFrameworkSchemaCheck` has [a live half](#what-the-live-check-adds);
   `TomSchemaConvergenceCheck` has no counterpart. It compares the entity model
@@ -1328,7 +1532,8 @@ here it cannot drift silently.
 | [audit](audit.md) | module | `framework_convergence.dart` | `auditTrailTable`, `defaultAuditTrailTable` |
 | [authentication](authentication.md) | module | `framework_convergence.dart` | `defaultOAuthStateTable`, `defaultScimResourceTable`, `oauthStateTable`, `scimResourceTable` |
 | [cache](cache.md) | module | `framework_convergence.dart` | `defaultInvalidationTable`, `invalidationTable` |
-| [datasources](datasources.md) | module | 8 of 8 files | `TomDataSourceInfo` (named data sources) and its `executeCommand` / `executeQuery`; `TomSqlLexer`, the statement splitter and quote scanner; the connected data source's dialect, which `verifyLive` classifies and queries the catalogue with |
+| [cmdline](cmdline.md) | module | `db_migration.dart` | `TomArgs.parseArgsToMap`, reading `--repair-migration` and `--repair-action` |
+| [datasources](datasources.md) | module | 8 of 8 files | `TomDataSourceInfo` (named data sources) and its `executeCommand` / `executeQuery`; `TomSqlLexer`, the statement splitter and quote scanner; the connected data source's dialect, which `verifyLive` classifies and queries the catalogue with; `TomSqlDatasource.withSessionLock`, which holds the migration lock |
 | [endpoints](endpoints.md) | module | `framework_convergence.dart` | `defaultIdempotencyTable`, `idempotencyTable` |
 | [file_storage](file_storage.md) | module | `framework_convergence.dart` | `blobChunkTable`, `blobManifestTable`, `defaultBlobChunkTable`, `defaultBlobManifestTable` |
 | [little_things](little_things.md) | module | `db_migration.dart`, `mariadb_migration_adapter.dart`, `postgres_migration_adapter.dart`, `sql_migration_adaptor.dart` | `TomServerException` |

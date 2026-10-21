@@ -113,8 +113,12 @@ dart run bin/auth_server_start.dart   # HTTP on port 8081
 
 On first boot the server applies the migrations (creating `auth_db` + the
 framework `tom_resource_grant` table and seeding its grant matrix), then
-hashes a **demo password** onto each seed account that has none. The seeded
-credentials are (sample only — never ship them):
+hashes a **demo password** onto each seed account that has none. A migration
+that failed is repaired with the same script, which then exits instead of
+starting —
+`dart run bin/auth_server_start.dart --repair-migration=auth_db/auth_schema/<version> --repair-action=remove|resolve`;
+see [Repairing a failed migration](../README_advanced_sample.md#repairing-a-failed-migration).
+The seeded credentials are (sample only — never ship them):
 
 <!-- account-roster: auth-db -->
 

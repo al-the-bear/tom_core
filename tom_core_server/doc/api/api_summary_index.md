@@ -357,7 +357,7 @@ surface documented here.
 | `TomStatementOutcome<T>` | class | What one execution of a prepared statement reported — its rows, the rows it changed and the key it generated — returned by that execution rather than kept on the shared handle. |
 | `TomDataSourceInfo` | class | Datasource descriptor. |
 | `TomDatasourceDriver` | class | Annotation tagging a driver. |
-| `TomSqlDatasource` | abstract class | The driver-neutral SQL data source: pool, transaction branches, statement paths, row mapping, settings binding. |
+| `TomSqlDatasource` | abstract class | The driver-neutral SQL data source: pool, transaction branches, statement paths, row mapping, settings binding, and the database-wide session lock. |
 | `TomSqlPreparedStatement<T>` | class | A prepared statement of a `TomSqlDatasource`, prepared on each pooled connection that runs it. |
 | `TomSqlRow` | abstract interface class | One result row, every column read as text in one convention. |
 | `TomSqlResult` | abstract interface class | What a statement produced: rows, affected-row count, generated key. |
@@ -412,16 +412,17 @@ surface documented here.
 
 | Type | Kind | Description |
 | ---- | ---- | ----------- |
-| `TomDbMigrations` | class | Migration runner/registry. |
-| `TomDbMigrator` | abstract class | Migrator contract. |
+| `TomDbMigrations` | class | Migration runner/registry; the migration lock by data-source name, and the repair of a failed migration from code or the command line. |
+| `TomDbMigrator` | abstract class | Migrator contract, including the migration lock and the repair of a failed record. |
 | `TomDbMigrationAdaptor` | class | Annotation tagging a migration adaptor. |
-| `TomSqlMigrationAdaptor` | abstract class | The database-neutral SQL migrator: versioning history, checksums, rebinding. |
+| `TomSqlMigrationAdaptor` | abstract class | The database-neutral SQL migrator: versioning history, checksums, rebinding, the migration lock and repair. |
 | `MariadbMigrationAdaptor` | class | MariaDB migration adaptor. |
 | `PostgresMigrationAdaptor` | class | PostgreSQL migration adaptor; a script and its version row in one transaction. |
 | `TomMigrationFileName` | class | Parses/validates migration file names. |
 | `TomDbVersion` | class | A schema version. |
 | `TomMigrationRun` | class | The process's most recent `migrateDatabases` call (`TomDbMigrations.lastRun`). |
 | `TomMigrationRunState` | enum | `notRun`, `running`, `succeeded` or `failed`. |
+| `TomMigrationRepair` | enum | What repair does with a failed migration: `remove` it or `markResolved`. |
 | `TomSchemaColumn` | class | One column, in the vocabulary the convergence check compares in. |
 | `TomSchemaTable` | class | One table: its columns, primary key and origin. |
 | `TomSchemaModel` | class | A whole schema — the tables of one datasource/schema pair. |
@@ -1421,6 +1422,7 @@ surface documented here.
 | `tomMetricsEndpointMiddleware` | Metrics |
 | `TomMigrationArtifact` | Database Migration |
 | `TomMigrationFileName` | Database Migration |
+| `TomMigrationRepair` | Database Migration |
 | `TomMigrationRun` | Database Migration |
 | `TomMigrationRunState` | Database Migration |
 | `TomMimeEncoder` | Messaging |

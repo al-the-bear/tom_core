@@ -273,6 +273,27 @@ class PostgresDatasource extends TomSqlDatasource {
     return _PostgresLink(connection);
   }
 
+  /// PostgreSQL's advisory locks take a number; the name is hashed into one
+  /// with `hashtextextended`, the same on every node.
+  @override
+  Future<bool> tryLockOn(TomSqlLink link, String name) async {
+    final result = await runCommandOn(
+      link,
+      'SELECT pg_try_advisory_lock(hashtextextended(:name, 0)) AS got',
+      {'name': name},
+    );
+    return result.rows.single.boolean('got') ?? false;
+  }
+
+  @override
+  Future<void> unlockOn(TomSqlLink link, String name) async {
+    await runCommandOn(
+      link,
+      'SELECT pg_advisory_unlock(hashtextextended(:name, 0)) AS released',
+      {'name': name},
+    );
+  }
+
   @override
   Future<void> closeLink(TomSqlLink link) async {
     try {

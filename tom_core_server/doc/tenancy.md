@@ -261,14 +261,30 @@ same tree applied inside each tenant lands in each tenant's schema or database:
 await TomDbMigrations.migrateDatabases('migrations/deployment');
 
 // Tenant tables, once per tenant: each run reaches that tenant's schema or
-// database, and a shared tenant's run is a no-op after the first.
-await TomTenancy.current!.forEachTenant(
-  (_) => TomDbMigrations.migrateDatabases('migrations/tenant'),
+// database, and a shared tenant's run is a no-op after the first. The whole
+// walk holds the migration lock, so no other process migrates between two
+// tenants.
+await TomDbMigrations.withMigrationLock(
+  'main',
+  () => TomTenancy.current!.forEachTenant(
+    (_) => TomDbMigrations.migrateDatabases('migrations/tenant'),
+  ),
 );
 ```
 
 Each tenant's schema or database keeps its own versioning table, so a tenant
-added later is brought to the current version by the same loop. Keeping the two
+added later is brought to the current version by the same loop.
+
+Every migration run takes its database's migration lock, so several replicas
+starting together apply each script once (see
+[db_migration.md](db_migration.md#one-run-per-database-at-a-time-the-migration-lock)).
+Holding the lock of the base data source around the whole walk makes the walk
+one unit: a replica starting during it waits for every tenant rather than
+slipping in between two, and the tenants' own runs take their lock without
+waiting for themselves, because it is re-entrant. The lock is named by
+database, so the outer hold covers the tenants sharing the base data source's
+database — the `shared` tenants and, on PostgreSQL, the `schema` tenants; a
+tenant with a database of its own is serialised by its own run's lock. Keeping the two
 trees apart is what keeps the framework's tables out of every tenant's schema —
 see [What Stays Deployment-Wide](#what-stays-deployment-wide).
 
@@ -686,7 +702,8 @@ configuration as well, so the next start does not provision it again.
 - **Migrations.** A `shared` deployment migrates once. Every `schema` or
   `database` tenant is one more migration run per release, and a release is
   complete only when every tenant's run succeeded — run the per-tenant loop as
-  part of the deployment, not on first request.
+  part of the deployment, not on first request, under the migration lock
+  ([Per-tenant migrations](#per-tenant-migrations)).
 - **Moving a tenant between models** is a copy of its rows into the new place
   and a configuration change: the rows already carry their tenant, so no schema
   changes.

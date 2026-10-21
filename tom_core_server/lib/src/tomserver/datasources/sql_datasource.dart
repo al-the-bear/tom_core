@@ -834,6 +834,83 @@ abstract class TomSqlDatasource implements TomDataSource {
     }
   }
 
+  /// Tries once to take the session lock [name] on [link]; `true` when this
+  /// session now holds it.
+  ///
+  /// A session lock belongs to the connection that took it, and the database
+  /// releases it when that connection ends — closed, or lost with the process
+  /// that held it. `GET_LOCK` on MariaDB, `pg_try_advisory_lock` on
+  /// PostgreSQL.
+  @protected
+  Future<bool> tryLockOn(TomSqlLink link, String name);
+
+  /// Releases the session lock [name] [tryLockOn] took on [link].
+  @protected
+  Future<void> unlockOn(TomSqlLink link, String name);
+
+  static final Object _sessionLocksKey = Object();
+
+  /// Runs [body] while this process holds the database-wide session lock
+  /// [name], waiting up to [wait] for another session to release it.
+  ///
+  /// The lock is taken on a connection of its own, opened beside the pool and
+  /// closed when [body] ends, so it is released when [body] returns, when it
+  /// throws, and — because the database ends the session — when the process
+  /// dies. No lease, no expiry, nothing left behind to recover.
+  ///
+  /// [body]'s own statements run on the pool as usual; the lock is a mutual
+  /// exclusion between processes, not a transaction.
+  ///
+  /// Re-entrant within the zone: a [body] that asks for the same lock on the
+  /// same database again runs without waiting for itself. Waiting longer than
+  /// [wait] throws `error.datasource.session_lock_timeout`.
+  Future<R> withSessionLock<R>(
+    String name,
+    Future<R> Function() body, {
+    Duration wait = const Duration(minutes: 10),
+    Duration poll = const Duration(milliseconds: 250),
+  }) async {
+    final held = Zone.current[_sessionLocksKey] as Set<String>? ?? const {};
+    final key = '$host:$port/$databaseName#$name';
+    if (held.contains(key)) return body();
+    final link = await _openLinkRecorded();
+    try {
+      final deadline = DateTime.now().add(wait);
+      while (!await tryLockOn(link, name)) {
+        if (!DateTime.now().isBefore(deadline)) {
+          throw datasourceException(
+            "error.datasource.session_lock_timeout",
+            "$driverLabel: the session lock '$name' on "
+                "$host:$port/$databaseName is held by another session and was "
+                "not released within ${wait.inMilliseconds}ms.",
+            parameters: {"lock": name, "waitMs": wait.inMilliseconds},
+          );
+        }
+        await Future<void>.delayed(poll);
+      }
+      tomLog.info("$driverLabel holds session lock '$name' on $databaseName");
+      try {
+        return await runZoned(
+          body,
+          zoneValues: {
+            _sessionLocksKey: {...held, key},
+          },
+        );
+      } finally {
+        try {
+          await unlockOn(link, name);
+        } catch (error) {
+          // Closing the connection below releases it all the same.
+          tomLog.warn(
+            "$driverLabel could not release session lock '$name': $error",
+          );
+        }
+      }
+    } finally {
+      await closeLink(link);
+    }
+  }
+
   /// Whether the data source is open and at least one of its connections is
   /// established.
   bool get connected =>

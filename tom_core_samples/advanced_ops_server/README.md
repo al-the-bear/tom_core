@@ -250,6 +250,26 @@ still has to apply the file the container never sees, and both alternatives are
 worse. Starting the server to migrate would also start its timers; applying the
 SQL by hand would leave the version table unaware `[100]` had run.
 
+Several ops servers — or the ops server and the app server — starting together
+migrate `app_db` one at a time: every run takes the database's migration lock,
+and a run that waited finds the other's migrations applied.
+
+### `--repair-migration` / `--repair-action`
+
+```sh
+dart run bin/ops_server_start.dart \
+  --repair-migration=app_db/app_schema/100 --repair-action=remove
+```
+
+Repairs the record of a migration that failed and exits, without migrating or
+starting a scheduler. A failed MariaDB script leaves its statements so far
+applied and the version recorded as failed, and every later start refuses the
+schema until the record is repaired. After undoing what the script left,
+`--repair-action=remove` deletes the record so the next start applies the
+migration again; after finishing it by hand, `--repair-action=resolve` marks it
+applied so the next start skips it. Neither runs a script. See
+[Repairing a failed migration](../README_advanced_sample.md#repairing-a-failed-migration).
+
 ## The migration this package owns
 
 `database_migrations/app_db/app_schema/[100]-ops_framework_tables.sql` creates

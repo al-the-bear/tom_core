@@ -368,6 +368,40 @@ what confirms the second half was done. Reproduced deliberately while building
 the check: adding one unreferenced field to a reflected DTO left `dart analyze`
 clean and the suite at 18/18, and `--check` still failed.
 
+### Repairing a failed migration
+
+Each server migrates its databases at start, under the database's migration
+lock, so the three servers — and any replicas of them — never apply one script
+twice. When a MariaDB script fails part-way, its statements so far stay applied
+and the migration is recorded as failed; every later start then refuses the
+schema with a message naming the version and the repair. Put the schema right
+by hand first — undo what the script left, or finish it — then repair the
+record with the server's own start script, which runs the repair instead of
+starting and exits:
+
+```sh
+# from advanced_app_server/: the schema is back as it was; apply [007] again
+# (after correcting the script, if that was the fault)
+dart run bin/app_server_start.dart \
+  --repair-migration=app_db/app_schema/7 --repair-action=remove
+
+# from advanced_auth_server/: [012] was finished by hand; count it as applied
+dart run bin/auth_server_start.dart \
+  --repair-migration=auth_db/auth_schema/12 --repair-action=resolve
+```
+
+`--repair-migration` names `<datasource>/<schema>/<version>` — the folder names
+under `database_migrations/` and the number in the file's `[NNN]`.
+`--repair-action=remove` deletes the failed record, so the next start applies
+the migration again; `--repair-action=resolve` marks it applied, so the next
+start skips it, and the script file must then stay as it was recorded, since a
+changed file fails the checksum check. Neither runs a script. A version with no
+failed record, or a malformed request, is refused and nothing is changed. The
+ops server (`bin/ops_server_start.dart`) and `core_server_sample`
+(`bin/server_start.dart`) take the same two options. The full rules are in
+`tom_core_server`'s
+[db_migration.md](../tom_core_server/doc/db_migration.md#repairing-a-failed-migration).
+
 ---
 
 ## Documentation index

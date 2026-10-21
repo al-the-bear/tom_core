@@ -43,6 +43,7 @@ both on one database-neutral base (`TomSqlMigrationAdaptor`): MariaDB
     - [PostgresMigrationException](#postgresmigrationexception)
 - [Enums](#enums)
   - [TomMigrationRunState](#tommigrationrunstate)
+  - [TomMigrationRepair](#tommigrationrepair)
   - [TomSchemaDivergenceKind](#tomschemadivergencekind)
 - [Extensions](#extensions)
   - [TomSqlTypeFamilyCompatibility](#tomsqltypefamilycompatibility)
@@ -67,6 +68,15 @@ applier and the reader are written on, `TomSqlLexer`, is documented with the
 through the data source's migrator, resolved from its `type` via the
 `@TomDbMigrationAdaptor` annotation; `migrateDataSource(migrator, dsi, dir, env)`
 is the per-data-source half of that walk, taking the migrator as a parameter.
+It runs every schema of the data source under the migrator's **migration lock**
+(`TomDbMigrator.withMigrationLock`): one run per database at a time across every
+process, released by the database when the holding process dies — the SQL
+adaptors take it as a session lock (`TomSqlDatasource.withSessionLock`).
+`TomDbMigrations.withMigrationLock` holds it around a wider run, such as a
+per-tenant walk. A migration recorded as failed is resolved with
+`TomDbMigrations.repair` and a `TomMigrationRepair` — removed, so the next run
+applies it again, or marked resolved, so the next run skips it — or from a start
+script's command line with `repairFromArgs`.
 `TomDbMigrator` is the per-database migrator contract (`initializeMigration` /
 `applyMigration` / `reset`), and a migrator serves **one `(data source, schema)`
 pair at a time** — the orchestrator resets and re-initialises it once per schema,
@@ -110,7 +120,8 @@ itself owns, and adds the one variant that needs a connection —
 files is synchronous throughout: `checkAll`, `checkSchema`, `readChain`,
 `verify`, `replay`, `verifyChain` and `verifyRowTypes` all return their result
 directly, and refuse directly. Only `migrateDatabases`, `migrateDataSource`,
-`applyMigration`, `initializeMigration` and `verifyLive` are asynchronous.
+`applyMigration`, `initializeMigration`, `verifyLive`, `withMigrationLock`,
+`repair` and `repairFromArgs` are asynchronous.
 
 ## Class Hierarchy
 
@@ -122,6 +133,7 @@ TomDbMigrator  (abstract)
 
 TomDbMigrations
     └── lastRun: TomMigrationRun  (state: TomMigrationRunState enum)
+TomMigrationRepair  (enum — the action of TomDbMigrator.repair)
 TomDbMigrationAdaptor  (annotation)
 TomMigrationFileName
 TomDbVersion
@@ -183,6 +195,8 @@ schemas.
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
+| `repairMigrationOption` | `static const String` | `repair-migration`: the command-line option naming the record to repair, `--repair-migration=<datasource>/<schema>/<version>`. |
+| `repairActionOption` | `static const String` | `repair-action`: the command-line option choosing the repair, `--repair-action=remove` or `--repair-action=resolve`. |
 | `lastRun` | `static TomMigrationRun get` | The state of this process's most recent `migrateDatabases` call — `notRun` until one is made. The fact the framework readiness check reads: a server whose migrations are still running, or failed, is not ready for traffic. Process-wide: in a per-tenant loop it describes the most recent tenant's call. |
 
 #### Static Methods
@@ -198,7 +212,10 @@ schemas.
 | `selectForEnvironment` | `static List<({String basename, TomMigrationFileName parsed})> selectForEnvironment(Iterable<({String basename, TomMigrationFileName parsed})> ordered, String environmentName)` | Filters an ordered migration list to those applying in `environmentName`, preserving order. |
 | `migrateDatabases` | `static Future<void> migrateDatabases(String directory)` | Runs all pending migrations under `directory`; throws `TomDbMigrationException` on a missing data source/migrator, malformed name, or failed script. Records the call in `lastRun` — `running` while it runs, then `succeeded`, or `failed` with the error before the exception is rethrown. |
 | `resetLastRun` | `static void resetLastRun()` | Forgets `lastRun`, as a fresh process starts (`notRun`). For tests. |
-| `migrateDataSource` | `static Future<void> migrateDataSource(TomDbMigrator migrator, TomDataSourceInfo dsInfo, Directory dataSourceDirectory, String environmentName)` | Applies every schema under `dataSourceDirectory` through `migrator`, resetting and re-initialising it **once per schema**. Split out of `migrateDatabases` so the walk can be driven with a caller-supplied migrator — the reflection-scanned registry is not injectable. |
+| `migrateDataSource` | `static Future<void> migrateDataSource(TomDbMigrator migrator, TomDataSourceInfo dsInfo, Directory dataSourceDirectory, String environmentName)` | Applies every schema under `dataSourceDirectory` through `migrator`, resetting and re-initialising it **once per schema**, all under `migrator.withMigrationLock(dsInfo, …)` — a second process migrating the same database waits, then finds the migrations applied. Split out of `migrateDatabases` so the walk can be driven with a caller-supplied migrator — the reflection-scanned registry is not injectable. |
+| `withMigrationLock` | `static Future<R> withMigrationLock<R>(String datasourceName, Future<R> Function() body)` | Runs `body` holding the migration lock of the registered data source `datasourceName` — see `TomDbMigrator.withMigrationLock`. For a run wider than one `migrateDatabases` call: a deployment migrating every tenant in turn holds it around the whole `forEachTenant` walk, so no other process migrates between two tenants. An unknown name or type throws `db_migration.migration.no_datasource_info_found` / `db_migration.migration.no_migrator_found_for_datasource_type`. |
+| `repair` | `static Future<void> repair(String datasourceName, String schemaName, int version, TomMigrationRepair action)` | Resolves the failed record of migration `version` in schema `schemaName` of the registered data source `datasourceName` by `action` — see `TomDbMigrator.repair`. Resolves the data source and its migrator as `migrateDatabases` does, with the same keys. |
+| `repairFromArgs` | `static Future<bool> repairFromArgs(List<String> args)` | Runs the repair `args` ask for — `--repair-migration=<datasource>/<schema>/<version>` with `--repair-action=remove` (`TomMigrationRepair.remove`) or `--repair-action=resolve` (`TomMigrationRepair.markResolved`) — and answers whether they asked for one. A start script calls it once its data sources are registered and exits on `true`. Without `repairMigrationOption` it does nothing and answers `false`. A target that is not three `/`-separated parts with a whole-number version, or a missing or unknown action, throws `db_migration.repair.invalid_arguments` before anything is looked up. |
 | `instantiateMigrator` | `static TomDbMigrator instantiateMigrator(Object? candidate, Object? Function() construct)` | Builds one scanned adaptor candidate, turning a throwing constructor or a class that does not implement `TomDbMigrator` into a `TomDbMigrationException` naming `candidate`. A constructor error and its trace are forwarded as the raised exception's **root cause**. Parameterised by `construct` rather than the reflected class, because the scan's registry is a global no test can populate. |
 
 ### TomDbMigrator
@@ -217,6 +234,8 @@ history.
 | `initializeMigration` | `Future<void> initializeMigration(TomDataSourceInfo dsi, String schemaName)` | Binds this migrator to the `(dsi, schemaName)` pair — **rebinding**, so the loaded version state is replaced, not accumulated — and prepares that pair's version tracking. Returns nothing: the applied-version history it loads is the useful output, and no single number stands for it, so representing it is left to the implementation (see `MariadbMigrationAdaptor.versions`). |
 | `applyMigration` | `Future<void> applyMigration(TomDataSourceInfo dsi, String schemaName, int version, String description, String sql)` | Applies — or verifies, if already applied — the identified migration. |
 | `reset` | `void reset()` | Releases the current `(data source, schema)` binding and its applied-version state, so this instance can serve the next pair. |
+| `withMigrationLock` | `Future<R> withMigrationLock<R>(TomDataSourceInfo dsi, Future<R> Function() body)` | Runs `body` holding `dsi`'s migration lock: one migration run per database at a time, across every process that migrates it. Released when `body` returns or throws, and by the database when the process holding it dies. Re-entrant, so a caller may hold it around several runs and the runs inside take it without waiting for themselves. |
+| `repair` | `Future<void> repair(TomDataSourceInfo dsi, String schemaName, int version, TomMigrationRepair action)` | Resolves the failed record of migration `version` in `schemaName` — the record that makes `initializeMigration` refuse the schema — by `action`, under the migration lock. Changes the history only; never runs a script. The next run applies a `remove`d migration again and skips a `markResolved` one. |
 
 ### TomDbMigrationAdaptor
 
@@ -283,9 +302,14 @@ One instance serves every schema of every data source of its type in turn, so
 adding to them, and `applyMigration` refuses to run against a pair the instance
 is not currently bound to.
 
+It also holds the migration lock — the data source's session lock named
+`migrationLockName(databaseName)`, waited for up to `lockWait` — and repairs a
+failed record.
+
 Every key it raises carries the adaptor's prefix — `applyKeyPrefix` for
 `applyMigration` and `recordMigration`, `initializeKeyPrefix` for
-`initializeMigration` — so a key names the database it came from:
+`initializeMigration`, `withMigrationLock` and `repair` — so a key names the
+database it came from:
 `mariadb_migration.apply_migration.checksum_mismatch`,
 `postgres_migration_adapter.initialize.version_query_failed`.
 
@@ -300,10 +324,17 @@ Every key it raises carries the adaptor's prefix — `applyKeyPrefix` for
 | `initializeKeyPrefix` | `String` | *(getter, protected, abstract)* The prefix of the keys `initializeMigration` raises — `mariadb_migration_adapter`, `postgres_migration_adapter`. |
 | `versions` | `List<TomDbVersion>` | The migrations already applied to the schema this instance is bound to — a snapshot taken by `initializeMigration`, **not** extended as `applyMigration` runs (an applied migration is written to the table, not added here). Ordered by **installation order, oldest first** (`installedRank`), which differs from version order whenever migrations were applied out of numeric order — ordinary once environment tags (C-16) are in play. Sort a copy by `version` if version order is what you need. |
 
+#### Static Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `lockWait` | `static Duration` | How long `withMigrationLock` waits for another process's run to finish before throwing `error.datasource.session_lock_timeout`; 10 minutes. Generous on purpose: the process holding the lock is migrating, and a long migration is not a dead process — a dead one releases at once. Settable. |
+
 #### Static Methods
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
+| `migrationLockName` | `static String migrationLockName(String databaseName)` | The session-lock name of `databaseName`'s migration lock: `tom_db_migration:<databaseName>`. MariaDB's lock names are server-wide and at most 64 characters, so the name carries the database, and a name that would not fit carries the leading characters of the database name's `checksumOf` instead. |
 | `checksumOf` | `static String checksumOf(String sql)` | The checksum recorded for a migration script: the lowercase hex SHA-256 of its UTF-8 bytes. Public because it *is* the definition of the stored value — a test pins it to a constant, and an operator repairing a row needs to compute what the adaptor expects. It replaced `String.hashCode`, which Dart guarantees only within one run. |
 | `isWellFormedChecksum` | `static bool isWellFormedChecksum(String checksum)` | Whether `checksum` is a value this adaptor could have written — exactly 64 lowercase hex characters, anchored. The counterpart of `checksumOf`: a stored value that fails it is not evidence of an edit but of a row written by something else (the column's `DEFAULT ''`, an older schema, a hand-written repair), and is reported as `checksum_unreadable` rather than `checksum_mismatch`. |
 
@@ -317,7 +348,9 @@ Every key it raises carries the adaptor's prefix — `applyKeyPrefix` for
 | `recordMigration` | `Future<void> recordMigration(TomDataSourceInfo dsi, String schemaName, int version, String description, String sql, {required bool success, required int elapsedMs})` | *(protected)* Inserts migration `version`'s row — every value a bound parameter, since a script routinely contains quote characters. A failure is `<applyKeyPrefix>.apply_migration.update_version_table_failed`. |
 | `reset` | `void reset()` | *(override)* Drops the `(data source, schema)` binding and the applied-versions list. |
 | `applyMigration` | `Future<void> applyMigration(TomDataSourceInfo dsi, String schemaName, int version, String description, String sql)` | *(override)* Throws `<applyKeyPrefix>.apply_migration.not_initialized_for_schema` unless bound to this exact pair; then skips (after verifying) an applied version, otherwise runs `applyScript`. Verification of an applied version fails with `description_mismatch`, `checksum_unreadable` (the stored value is not a digest this adaptor could have written) or `checksum_mismatch` (it is a digest, but a different one) — each message naming the data source, schema and version, since one instance walks them all. |
-| `initializeMigration` | `Future<void> initializeMigration(TomDataSourceInfo dsi, String schemaName)` | *(override)* Rebinds to `(dsi, schemaName)`, creating the versioning table if absent (`<initializeKeyPrefix>.initialize.schema_creation_failed`) and **replacing** `versions` with that schema's history, read `ORDER BY installedRank` (`<initializeKeyPrefix>.initialize.version_query_failed`). A history holding a row with `success` other than `1` is refused with `<initializeKeyPrefix>.initialize.failed_migration_recorded`, naming the versions, before any script is offered. `versions` is its whole output. |
+| `withMigrationLock` | `Future<R> withMigrationLock<R>(TomDataSourceInfo dsi, Future<R> Function() body)` | *(override)* `TomSqlDatasource.withSessionLock(migrationLockName(databaseName), body, wait: lockWait)` on `dsi`'s data source. A data source that is not a `TomSqlDatasource` is refused with `<initializeKeyPrefix>.lock.not_a_sql_datasource`. |
+| `repair` | `Future<void> repair(TomDataSourceInfo dsi, String schemaName, int version, TomMigrationRepair action)` | *(override)* Under the migration lock: `reset()`s the binding, so the next run reads the history again; reads `version`'s rows whose `success` is not `1` and refuses when there are none with `<initializeKeyPrefix>.repair.no_failed_record` (parameters `schema`, `datasource`, `version`); then deletes them (`remove`) or sets `success = 1` on them (`markResolved`) and logs the repair. A failed read or write is `<initializeKeyPrefix>.repair.failed`, carrying the database's error as its root cause. |
+| `initializeMigration` | `Future<void> initializeMigration(TomDataSourceInfo dsi, String schemaName)` | *(override)* Rebinds to `(dsi, schemaName)`, creating the versioning table if absent (`<initializeKeyPrefix>.initialize.schema_creation_failed`) and **replacing** `versions` with that schema's history, read `ORDER BY installedRank` (`<initializeKeyPrefix>.initialize.version_query_failed`). A history holding a row with `success` other than `1` is refused with `<initializeKeyPrefix>.initialize.failed_migration_recorded`, naming the versions and the repair, before any script is offered. `versions` is its whole output. |
 
 ### MariadbMigrationAdaptor
 
@@ -984,6 +1017,17 @@ Where a process's database migration stands — the `state` of
 | `running` | A migration is being applied now. Not ready. |
 | `succeeded` | The last call applied every migration. |
 | `failed` | The last call threw; `TomMigrationRun.error` says why. Not ready. |
+
+### TomMigrationRepair
+
+What `TomDbMigrator.repair` does with a migration recorded as failed. The
+operator chooses by what was done to the schema the failed script left
+part-applied.
+
+| Value | Meaning |
+| ----- | ------- |
+| `remove` | Deletes the failed record, so the next run applies the migration again — after the operator undid what the script left behind, and perhaps corrected the script. `--repair-action=remove`. |
+| `markResolved` | Marks the failed record applied, so the next run skips the migration — after the operator finished by hand what the script set out to do. The script file must stay as recorded: a changed one fails the next run's checksum check. `--repair-action=resolve`. |
 
 ### TomSchemaDivergenceKind
 

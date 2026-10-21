@@ -50,6 +50,7 @@ declared.
   - [One statement per call](#one-statement-per-call)
   - [Reading rows](#reading-rows)
   - [Transactions](#transactions)
+  - [Session locks](#session-locks)
   - [The MariaDB driver](#the-mariadb-driver)
   - [The PostgreSQL driver](#the-postgresql-driver)
 - [Read Replicas](#read-replicas)
@@ -1449,6 +1450,72 @@ situation. And it is thrown as the module's own type rather than a bare
 `catch` narrow enough to act on the one case the caller can fix cannot be
 written against it.
 
+### Session locks
+
+Some work must run in one process at a time across a whole deployment — every
+replica of a server sharing one database. Migrations are the case the framework
+has ([the migration lock](db_migration.md#one-run-per-database-at-a-time-the-migration-lock)).
+`withSessionLock` is the primitive under it:
+
+```dart
+Future<void> reindexOrders(TomSqlDatasource datasource) async {
+  await datasource.withSessionLock(
+    'reindex:orders',
+    () async {
+      // One process at a time, across every process using this database.
+    },
+    wait: const Duration(minutes: 2),
+  );
+}
+```
+
+`withSessionLock(name, body, {wait, poll})` runs `body` while this process holds
+the database-wide session lock `name`. A process finding it held tries again
+every `poll` (250 ms by default) for up to `wait` (10 minutes by default), and
+then throws `error.datasource.session_lock_timeout`, a `TomSqlDatasourceException`
+whose parameters carry the `lock` and the `waitMs`.
+
+The lock is a **session** lock, and that is the whole of its design. It is taken
+on a connection of its own, opened through `openLink` beside the pool rather
+than lent from it, and closed when `body` ends. So:
+
+- it is released when `body` returns and when it throws — explicitly, and by
+  the connection's close if the release itself fails, which is logged;
+- it is released by the **database** when the process holding it dies, because
+  a session lock belongs to the session and the session ends with its
+  connection. There is no lease to expire, no row left behind and nothing for an
+  operator to clear;
+- it holds no connection of the pool, so `body`'s own statements run on the pool
+  as usual — the lock is a mutual exclusion between processes, not a
+  transaction, and work inside it is not rolled back with it.
+
+**Re-entrant within the zone.** `body` runs in a zone recording the locks it
+holds, keyed by `host:port/databaseName` and `name`. A `body` that asks for the
+same lock on the same database again — directly, or through a call that takes
+it on its own — runs without waiting for itself. Two data sources on the same
+database share the key, so a lock taken through one is held for the other too.
+
+A name is the database's to interpret. On MariaDB a lock name is server-wide —
+two databases on one server share one namespace — and at most 64 characters, so
+a name should carry what it protects, database included. On PostgreSQL an
+advisory lock lives in its database.
+
+**What a driver supplies.** `TomSqlDatasource` declares two protected members,
+and the base does the rest — the dedicated connection, the waiting, the zone and
+the release:
+
+| Member | Obligation | MariaDB | PostgreSQL |
+| ------ | ---------- | ------- | ---------- |
+| `tryLockOn(link, name)` | try **once**, without waiting, to take lock `name` on `link`; `true` when this session now holds it | `SELECT GET_LOCK(:name, 0)` | `SELECT pg_try_advisory_lock(hashtextextended(:name, 0))` |
+| `unlockOn(link, name)` | release lock `name` that `tryLockOn` took on `link` | `SELECT RELEASE_LOCK(:name)` | `SELECT pg_advisory_unlock(hashtextextended(:name, 0))` |
+
+Both must run on the `link` they are given — the lock belongs to that
+connection's session — and the lock taken must be one the database releases when
+the session ends. `tryLockOn` must not block: the base waits, polling, so that
+the wait is bounded and timed the same way on every database. PostgreSQL's
+advisory locks take a number rather than a name, so the name is hashed into one
+with `hashtextextended`, which every node of a deployment computes alike.
+
 ### The MariaDB driver
 
 `MariaDbDatasource` (`@TomDatasourceDriver("mariadb")`) connects to MariaDB /
@@ -2024,6 +2091,14 @@ either way; it rolls one back and finds nothing; and it runs two transactions in
 succession, which is the cheapest assertion that no branch was stranded holding
 its locks.
 
+`test/db_migration_lock_db_test.dart` (tagged `db`) exercises `withSessionLock`
+through the migration lock on whichever database the DB suites run against, two
+data sources on one database standing for two processes: one holder at a time,
+a waiter that gets the lock once the holder is done and one that gives up with
+`error.datasource.session_lock_timeout`, a holder whose connection ends releasing
+the lock, and the re-entrant inner call — see
+[db_migration.md](db_migration.md#verification).
+
 The framework tables are covered by two files, because two different things
 have to be proved about them.
 
@@ -2193,8 +2268,9 @@ and `test/examples_test.dart` runs it.
   `TomSqlResult` / `TomSqlResultValues`, `TomSqlLink`, `TomSqlBranch`,
   `tomSqlBindValue` / `tomSqlBindParams`, `tomSqlBranchId`,
   `TomSqlDatasourceException`, `TomSqlConnectionLostException`) — everything a
-  SQL driver does that does not depend on the database, once. See
-  [The SQL Drivers](#the-sql-drivers).
+  SQL driver does that does not depend on the database, once, including
+  `withSessionLock`, the database-wide lock its holder's session releases. See
+  [The SQL Drivers](#the-sql-drivers) and [Session locks](#session-locks).
 - **`TomStatementOutcome`** — what one execution of a prepared statement
   reported, returned by `TomPreparedStatement.run` rather than kept on the
   shared handle. See [What one execution reports](#what-one-execution-reports).

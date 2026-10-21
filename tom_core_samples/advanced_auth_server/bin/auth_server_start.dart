@@ -437,6 +437,14 @@ Future<void> main(List<String> args) async {
 
   tomLog.setLogLevelByName(configuration.logLevel);
 
+  // An operator's repair of a failed migration
+  // (`--repair-migration=<datasource>/<schema>/<version>
+  // --repair-action=remove|resolve`) runs instead of the start, and exits.
+  if (await TomDbMigrations.repairFromArgs(args)) {
+    tomLog.info('Migration repaired, exiting.');
+    exit(0);
+  }
+
   await TomDbMigrations.migrateDatabases(
     configuration.databaseMigrationsDirectory,
   );

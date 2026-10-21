@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../cmdline/args.dart';
 import '../datasources/datasource_initialization.dart';
 import '../little_things/server_exception.dart';
 
@@ -79,6 +80,50 @@ abstract class TomDbMigrator {
   /// Releases the current `(data source, schema)` binding and its
   /// applied-version state, so this instance can serve the next pair.
   void reset();
+
+  /// Runs [body] holding [dsi]'s migration lock: one migration run per
+  /// database at a time, across every process that migrates it.
+  ///
+  /// A second process waits for the first to finish, then finds its
+  /// migrations applied and skips them. The lock is released when [body]
+  /// returns or throws, and by the database when the process holding it dies.
+  /// Re-entrant, so a caller may hold it around several runs — every tenant's
+  /// — and the runs inside take it without waiting for themselves.
+  Future<R> withMigrationLock<R>(
+    TomDataSourceInfo dsi,
+    Future<R> Function() body,
+  );
+
+  /// Resolves the failed record of migration [version] in [schemaName] — the
+  /// record that makes [initializeMigration] refuse the schema — by [action],
+  /// under the migration lock.
+  ///
+  /// Repair changes the history only; it never runs a script. The next
+  /// migration run applies a [TomMigrationRepair.remove]d migration again and
+  /// skips a [TomMigrationRepair.markResolved] one.
+  Future<void> repair(
+    TomDataSourceInfo dsi,
+    String schemaName,
+    int version,
+    TomMigrationRepair action,
+  );
+}
+
+/// What [TomDbMigrator.repair] does with a migration recorded as failed.
+///
+/// The operator chooses by what was done to the schema the failed script left
+/// part-applied.
+enum TomMigrationRepair {
+  /// Deletes the failed record, so the next run applies the migration again —
+  /// after the operator undid what the script left behind, and perhaps
+  /// corrected the script.
+  remove,
+
+  /// Marks the failed record applied, so the next run skips the migration —
+  /// after the operator finished by hand what the script set out to do. The
+  /// script file must stay as recorded: a changed one fails the next run's
+  /// checksum check.
+  markResolved,
 }
 
 /// A migration file name parsed into its numeric [version], [description] and
@@ -564,6 +609,101 @@ class TomDbMigrations {
   static void resetLastRun() =>
       _lastRun = const TomMigrationRun._(TomMigrationRunState.notRun, null);
 
+  /// The registered data source [datasourceName] and the migrator for its
+  /// type.
+  static (TomDataSourceInfo, TomDbMigrator) _migratorFor(
+    String datasourceName,
+  ) {
+    if (_migrationAdaptorTypes.isEmpty) {
+      _initializeMigrationAdaptorTypes();
+    }
+    final dsInfo = TomDataSourceInfo.getDataSourceInfo(datasourceName);
+    if (dsInfo == null) {
+      throw TomDbMigrationException(
+        "db_migration.migration.no_datasource_info_found",
+        "Database migration failed: No Datasource info found for datasource $datasourceName",
+        autoLog: true,
+      );
+    }
+    final migrator = _migrationAdaptorTypes[dsInfo.type];
+    if (migrator == null) {
+      throw TomDbMigrationException(
+        "db_migration.migration.no_migrator_found_for_datasource_type",
+        "Database migration for datasource $datasourceName failed. No Migrator found for type ${dsInfo.type}",
+        autoLog: true,
+      );
+    }
+    return (dsInfo, migrator);
+  }
+
+  /// Runs [body] holding the migration lock of the data source
+  /// [datasourceName] — see [TomDbMigrator.withMigrationLock].
+  ///
+  /// For a run wider than one [migrateDatabases] call: a deployment that
+  /// migrates every tenant in turn holds the lock around the whole
+  /// `forEachTenant` walk, so no other process migrates between two tenants.
+  static Future<R> withMigrationLock<R>(
+    String datasourceName,
+    Future<R> Function() body,
+  ) {
+    final (dsInfo, migrator) = _migratorFor(datasourceName);
+    return migrator.withMigrationLock(dsInfo, body);
+  }
+
+  /// Resolves the failed record of migration [version] in schema [schemaName]
+  /// of data source [datasourceName] by [action] — see
+  /// [TomDbMigrator.repair].
+  static Future<void> repair(
+    String datasourceName,
+    String schemaName,
+    int version,
+    TomMigrationRepair action,
+  ) {
+    final (dsInfo, migrator) = _migratorFor(datasourceName);
+    return migrator.repair(dsInfo, schemaName, version, action);
+  }
+
+  /// The command-line option naming the record to repair:
+  /// `--repair-migration=<datasource>/<schema>/<version>`.
+  static const String repairMigrationOption = 'repair-migration';
+
+  /// The command-line option choosing the repair: `--repair-action=remove`
+  /// or `--repair-action=resolve`.
+  static const String repairActionOption = 'repair-action';
+
+  /// Runs the repair [args] ask for, and answers whether they asked for one.
+  ///
+  /// A server's start script calls it once its data sources are registered
+  /// and exits when it answers `true`: a repair is an operator's one-off
+  /// command, not a step of every start. Without [repairMigrationOption] it
+  /// does nothing and answers `false`. A malformed request throws
+  /// `db_migration.repair.invalid_arguments`.
+  static Future<bool> repairFromArgs(List<String> args) async {
+    final options = TomArgs.parseArgsToMap(args);
+    final target = options[repairMigrationOption];
+    if (target == null) return false;
+    final parts = '$target'.split('/');
+    final action = switch ('${options[repairActionOption]}') {
+      'remove' => TomMigrationRepair.remove,
+      'resolve' => TomMigrationRepair.markResolved,
+      _ => null,
+    };
+    final version = parts.length == 3 ? int.tryParse(parts[2]) : null;
+    if (version == null || action == null) {
+      throw TomDbMigrationException(
+        "db_migration.repair.invalid_arguments",
+        "A migration repair is --$repairMigrationOption=<datasource>/<schema>/"
+            "<version> with --$repairActionOption=remove (apply it again on "
+            "the next run) or --$repairActionOption=resolve (count it as "
+            "applied); got --$repairMigrationOption=$target "
+            "--$repairActionOption=${options[repairActionOption]}.",
+        autoLog: true,
+      );
+    }
+    await repair(parts[0], parts[1], version, action);
+    return true;
+  }
+
   static Future<void> _migrateDatabases(String directory) async {
     Directory dir = Directory(directory);
     // Validated before the adaptor scan: the path is the argument this call was
@@ -577,22 +717,7 @@ class TomDbMigrations {
     await for (var database in dir.list()) {
       if (database is Directory) {
         String datasourceName = p.basename(database.path);
-        var dsInfo = TomDataSourceInfo.getDataSourceInfo(datasourceName);
-        if (dsInfo == null) {
-          throw TomDbMigrationException(
-            "db_migration.migration.no_datasource_info_found",
-            "Database migration failed: No Datasource info found for datasource $datasourceName",
-            autoLog: true,
-          );
-        }
-        var migrator = _migrationAdaptorTypes[dsInfo.type];
-        if (migrator == null) {
-          throw TomDbMigrationException(
-            "db_migration.migration.no_migrator_found_for_datasource_type",
-            "Database migration for datasource $datasourceName failed. No Migrator found for type ${dsInfo.type}",
-            autoLog: true,
-          );
-        }
+        final (dsInfo, migrator) = _migratorFor(datasourceName);
         await migrateDataSource(migrator, dsInfo, database, environmentName);
       }
     }
@@ -623,6 +748,25 @@ class TomDbMigrations {
       dataSourceDirectory,
       'Migrations directory for data source ${dsInfo.name}',
     );
+    // One run per database at a time: a second process waits here, then finds
+    // the first's migrations applied.
+    await migrator.withMigrationLock(
+      dsInfo,
+      () => _migrateSchemas(
+        migrator,
+        dsInfo,
+        dataSourceDirectory,
+        environmentName,
+      ),
+    );
+  }
+
+  static Future<void> _migrateSchemas(
+    TomDbMigrator migrator,
+    TomDataSourceInfo dsInfo,
+    Directory dataSourceDirectory,
+    String environmentName,
+  ) async {
     await for (var schema in dataSourceDirectory.list()) {
       if (schema is Directory) {
         String schemaName = p.basename(schema.path);

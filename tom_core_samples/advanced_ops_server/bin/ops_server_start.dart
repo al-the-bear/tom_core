@@ -309,6 +309,14 @@ Future<void> main(List<String> args) async {
 
   initializeBeanContext();
 
+  // An operator's repair of a failed migration
+  // (`--repair-migration=<datasource>/<schema>/<version>
+  // --repair-action=remove|resolve`) runs instead of the start, and exits.
+  if (await TomDbMigrations.repairFromArgs(args)) {
+    tomLog.info('Migration repaired, exiting.');
+    exit(0);
+  }
+
   // The ops server owns `[100]` and up of the `app_db/app_schema` chain (the
   // framework tables the scheduler, the leases and the trail need). Running the migration
   // from here means the deployment can add the back-office server without

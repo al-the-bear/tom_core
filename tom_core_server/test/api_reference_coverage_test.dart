@@ -5600,6 +5600,7 @@ final x = SampledType();
       // All three findings above are emptiness assertions, so a parser that
       // read nothing would report every summary as agreeing.
       expect(_enumSectionHeadingsOf(_summary('db_migration')), [
+        'TomMigrationRepair',
         'TomMigrationRunState',
         'TomSchemaDivergenceKind',
       ]);
@@ -7532,11 +7533,12 @@ class After {}
         ['names no test suite'],
       );
       // And the name-matched clause is the one that applies to every real
-      // module, so it is read off one: `db_migration` has three suites and all
+      // module, so it is read off one: `db_migration` has four suites and all
       // have to be named.
       expect(_moduleSuites('db_migration'), [
         'db_migration_db_test.dart',
         'db_migration_error_keys_test.dart',
+        'db_migration_lock_db_test.dart',
         'db_migration_test.dart',
       ]);
     });

@@ -1594,6 +1594,20 @@ Future<Object> _errorOf(Future<void> Function() action) async {
 /// [MariadbMigrationAdaptor] and the walk runs over the committed fixture tree
 /// exactly as it would in production.
 class _RecordingMigrator implements TomDbMigrator {
+  @override
+  Future<R> withMigrationLock<R>(
+    TomDataSourceInfo dsi,
+    Future<R> Function() body,
+  ) => body();
+
+  @override
+  Future<void> repair(
+    TomDataSourceInfo dsi,
+    String schemaName,
+    int version,
+    TomMigrationRepair action,
+  ) async {}
+
   /// Every call, in order: `reset`, `init:<schema>`,
   /// `apply:<schema>:<version>:<description>`.
   final List<String> events = [];

@@ -92,6 +92,11 @@ const List<TourStop> tour = [
     'Versioned schema migrations and the plan a chain produces',
   ),
   TourStop(
+    'example/db_migration/db_migration_repair_example.dart',
+    'The migration lock\'s name and wait, and repairing a failed migration '
+        'from the command line',
+  ),
+  TourStop(
     'example/ratelimit/rate_limit_example.dart',
     'Service accounts with scoped API keys, rotation, revocation, rate limits',
   ),
