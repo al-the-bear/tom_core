@@ -195,6 +195,9 @@ action already passes through:
   This is where data actually changes, so it is where mutation auditing lives.
   `deleteAllById` writes one entry per row, not one per call: the unit of audit
   is the row that was destroyed.
+  On a `@TomSoftDelete` entity a delete is recorded as `delete` like a hard
+  one, `restoreById` as `update` and `purgeById` as `delete` (see
+  [Soft delete](object_persistence.md#soft-delete)).
 - **The endpoint pipeline** — `TomEndpointHandler.handleMethodCall`
   (`endpoints/endpoint_pipeline.dart`). This covers the one auditable event the
   repository cannot see, because it happens before any data is reached: a

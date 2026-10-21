@@ -35,6 +35,18 @@ The data keys live in `tom_encryption_key` wrapped under a key-encryption key
 that never touches the database, and rotate without downtime; a
 `@TomBlindIndex` column makes an encrypted field findable by value.
 
+Around every repository write sits the **entity lifecycle**
+(`entity_lifecycle.dart`). `@TomSoftDelete` turns every repository delete into
+setting a deletion time and leaves the rows that carry one out of every read
+(`TomSoftDelete.includingDeleted` shows them; `restoreById` and `purgeById`
+undo and finish a delete). `@TomHistory` copies the row as it was into a history
+table before every update, delete and restore (`historyOf` reads it back). A
+`TomEntityListener` registered with `TomEntityLifecycle` runs before and after
+every save and delete of its entity, and a change listener is told of every
+change as a `TomEntityChange` — the feed of a transactional outbox, because an
+observed entity's write, its history and its listeners' writes run in one
+transaction.
+
 A repository's audit record carries, beside the before and after values, the
 data subject each `@TomPersonal` value belongs to, so that with the privacy
 module's subject keys installed the trail seals those values per person and an
@@ -66,6 +78,8 @@ erasure can make them unreadable (see
 | `TomDataKeyStore` · `TomSqlDataKeyStore` · `TomMemoryDataKeyStore` · `TomDataKeyRecord` · `TomDataKeyRow` · `TomDataKeyPurpose` · `TomDataKeyState` | Where the wrapped data keys are kept — `tom_encryption_key`, declared once by `encryptionKeyTable` in `field_encryption_sql.dart` — and one key as stored. |
 | `TomFieldReencryption` · `TomReencryptionReport` | The background pass, runnable as a scheduler job, that rewrites values under a previous key, encrypts plaintext and fills blind indexes. |
 | `TomFieldEncryptionException` | Every refusal of field encryption, keyed `field_encryption.*`. |
+| `TomSoftDelete` · `TomHistory` · `TomHistoryEntry` · `TomHistoryMeta` | Soft delete and history tables (`entity_lifecycle.dart`): the declarations, one past version as `historyOf` answers it, and the history table's own columns. |
+| `TomEntityListener` · `TomEntityLifecycle` · `TomEntityChange` · `TomEntityChangeKind` · `TomEntityChangeListener` · `TomEntityLifecycleException` | The hooks of one entity's writes, the registry of hooks and change listeners, one change and its JSON form, and the refusal of a declaration the repository cannot carry out. |
 | `TomBlobMigration` · `TomBlobMigrationReport` | Moves the blobs those columns name from one blob store to another. The key list comes from the rows because a blob store cannot enumerate itself — which makes a file column the index of what a deployment stored, and the sweep read-only on the database. |
 | `MariadbRepository<T, K>` | The MariaDB binding of `TomSqlDatasourceRepository` — constructed directly, and the only thing it adds is a pinned `MariadbSqlDialect`. A repository extending `TomSqlDatasourceRepository` directly renders through its data source's dialect, so it serves MariaDB and PostgreSQL alike. |
 | `TomQuerySentenceCompiler` | Compiles a written sentence (`find by owner = :who order by created_at`) into the same operator tree the builder produces, so a query can be data. |
@@ -103,7 +117,8 @@ void main() {
 ```
 
 See [`doc/object_persistence.md`](../../../../doc/object_persistence.md) for the
-mapping annotations, the repository contract, the query builder and paging, and
+mapping annotations, the repository contract, the query builder, paging and the
+entity lifecycle, and
 `example/object_persistence/object_persistence_example.dart` for a seventeen-step
 walkthrough that checks its own results, with its entities beside it in
 `example/object_persistence/object_persistence_entities.dart`.
@@ -113,6 +128,9 @@ locking the same way, and `test/optimistic_locking_test.dart` and
 `example/object_persistence/field_encryption_example.dart` walks field-level
 encryption, and `test/field_encryption_test.dart` and
 `test/field_encryption_db_test.dart` cover it without and with a server.
+`example/object_persistence/entity_lifecycle_example.dart` walks soft delete,
+history, hooks and change events, and `test/entity_lifecycle_test.dart` and
+`test/entity_lifecycle_db_test.dart` cover them without and with a server.
 `test/object_persistence_test.dart` covers the module and
 `test/object_persistence_db_test.dart` adds what only a live MariaDB or PostgreSQL can answer;
 `test/examples_test.dart` runs the example and

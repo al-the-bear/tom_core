@@ -22,8 +22,10 @@ import 'annotation_analyzer.dart';
 import 'column_authorization.dart';
 import 'composite_key.dart';
 import 'data_scope.dart';
+import 'entity_lifecycle.dart';
 import 'field_encryption.dart';
 import '../privacy/personal_data.dart';
+import '../transactions/transaction_manager.dart';
 
 /// Raised when a repository operation cannot complete: the entity's data source
 /// was never registered, a primary-key lookup matched more than one row, a
@@ -414,14 +416,327 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
   /// scope kind that registers no write resolver writes exactly what it reads,
   /// so every other kind is unaffected.
   Future<TomDataScopePredicate?> _resolveScope({bool forWrite = false}) async {
-    final tenant = _tenantPredicate();
-    final scope = await _resolveDataScope(forWrite: forWrite);
-    if (tenant == null) return scope;
-    if (scope == null) return tenant;
-    return TomDataScopePredicate(and([tenant.predicate, scope.predicate]), {
-      ...tenant.parameters,
-      ...scope.parameters,
+    final parts = [
+      ?_tenantPredicate(),
+      ?await _resolveDataScope(forWrite: forWrite),
+      ?_liveRowsPredicate(),
+    ];
+    if (parts.isEmpty) return null;
+    if (parts.length == 1) return parts.single;
+    return TomDataScopePredicate(and([for (final p in parts) p.predicate]), {
+      for (final p in parts) ...p.parameters,
     });
+  }
+
+  // ─────────────────── Soft delete, history, lifecycle ────────────────────
+
+  /// The entity's [TomSoftDelete] column, or `null` when its deletes are hard.
+  late final TomColumnInformation? _deletedColumn = _resolveDeletedColumn();
+
+  TomColumnInformation? _resolveDeletedColumn() {
+    final softDelete = TomSoftDelete.of(queryTypes[0]);
+    if (softDelete == null) return null;
+    final column = TomAnnotationAnalyzer.determineColumn(softDelete.field, [
+      persistenceInfo,
+    ]);
+    if (column.declaredType != DateTime ||
+        column.reference != null ||
+        (column.column?.isReadOnly ?? false)) {
+      throw TomEntityLifecycleException(
+        'crud_repository.soft_delete.invalid_field',
+        '@TomSoftDelete on ${queryTypes[0]} names ${softDelete.field}, which '
+            'is not a writable DateTime column; the deletion time is stored '
+            'there.',
+        parameters: {'entity': '${queryTypes[0]}', 'field': softDelete.field},
+      );
+    }
+    return column;
+  }
+
+  /// Whether the entity's deletes are soft.
+  bool get isSoftDelete => _deletedColumn != null;
+
+  /// The entity's [TomHistory], or `null` when it keeps none.
+  late final TomHistory? _history = TomHistory.of(queryTypes[0]);
+
+  /// The parameter a soft delete binds the deletion time to.
+  static const String deletedAtParameter = '__tomdeleted_at';
+
+  /// The parameter a versioned soft delete binds the next version to.
+  static const String nextVersionParameter = '__tomversion_next';
+
+  /// The [_deletedColumn] as a query operand.
+  TomOperator<TomDbDateTime> _deletedOperand(TomColumnInformation column) =>
+      dateTimeF(column.getQueryFieldName(), column);
+
+  /// `<deleted> IS NULL` — the rows a repository read sees — or `null` when
+  /// the entity's deletes are hard or [TomSoftDelete.includingDeleted] is on.
+  TomDataScopePredicate? _liveRowsPredicate() {
+    final column = _deletedColumn;
+    if (column == null || TomSoftDelete.isIncludingDeleted) return null;
+    return TomDataScopePredicate(isNull(_deletedOperand(column)), const {});
+  }
+
+  /// Runs [body] in a transaction — the caller's, or one of its own — when a
+  /// write of the entity has listeners or a history to write, so they commit
+  /// or roll back with it.
+  Future<R> _observed<R>(Future<R> Function() body) =>
+      TomEntityLifecycle.isObserved(T)
+      ? TomTransactionManager.runInTransaction((_) => body())
+      : body();
+
+  /// Tells the change listeners of [kind] of the row [key].
+  Future<void> _emit(
+    TomEntityChangeKind kind,
+    Object? key, {
+    T? before,
+    T? after,
+    bool soft = false,
+  }) async {
+    if (!TomEntityLifecycle.hasChangeListeners(T)) return;
+    await TomEntityLifecycle.notify(
+      TomEntityChange(
+        entityType: T,
+        kind: kind,
+        key: key,
+        before: before,
+        after: after,
+        beforeValues: TomFieldEncryption.redact(T, _auditValues(before)),
+        afterValues: TomFieldEncryption.redact(T, _auditValues(after)),
+        soft: soft,
+      ),
+    );
+  }
+
+  /// The rows [where] selects as stored — encrypted columns as their
+  /// ciphertext — for the history table.
+  Future<List<T>> _historyRows(
+    TomOperator<TomDbBool> where,
+    Map<String, Object?> params,
+  ) async {
+    if (_history == null) return const [];
+    return TomFieldEncryption.raw(
+      () => _runPrepared<T>(TomSelect(queryTypes, query: where), params),
+    );
+  }
+
+  /// Copies [rows] into the history table as [action] (`update`, `delete`,
+  /// `restore`).
+  Future<void> _recordHistory(List<T> rows, String action) async {
+    final history = _history;
+    if (history == null || rows.isEmpty) return;
+    final columns = [
+      for (final col in persistenceInfo.columnInfo)
+        if (col.reference == null) col,
+    ];
+    final names = [for (final c in columns) c.getQueryFieldName()];
+    final sql =
+        'INSERT INTO ${history.table} (history_action, history_at, '
+        'history_by, ${names.join(', ')}) VALUES (:__tomhistory_action, '
+        ':__tomhistory_at, :__tomhistory_by, '
+        '${[for (final c in columns) ':${c.declaredName}'].join(', ')})';
+    final at = DateTime.now().toUtc();
+    final by = getFromCurrentZone<TomPrincipal>()?.id;
+    for (final row in rows) {
+      await datasourceInfo.datasource.executeCommand(sql, {
+        '__tomhistory_action': action,
+        '__tomhistory_at': at,
+        '__tomhistory_by': by,
+        for (final col in columns)
+          col.declaredName: switch (col.column?.toDbConverter) {
+            final convert? => convert(col.getVariableValue(row)),
+            null => col.getVariableValue(row),
+          },
+      });
+    }
+  }
+
+  /// Removes the rows [where] selects: a soft delete for a [TomSoftDelete]
+  /// entity unless [hard], otherwise a `DELETE` ([hardQuery] when given, to
+  /// keep its shaping) with the file cascade. Runs the delete hooks, the
+  /// history and the change events around it.
+  Future<int> _removeWhere(
+    TomOperator<TomDbBool> where,
+    Map<String, Object?> params, {
+    TomDelete? hardQuery,
+    bool hard = false,
+    Map<String, TomOperator<Object?>> alsoSet = const {},
+    Map<String, Object?> alsoBind = const {},
+  }) => _observed(() async {
+    // A delete cut to a window (`… LIMIT n`) is resolved to the keys the
+    // window holds first, so the hooks, the history and a soft delete reach
+    // exactly the rows a hard delete would.
+    final window = hardQuery;
+    if (window != null && window.top > 0) {
+      final chosen = await _runPrepared<T>(
+        TomSelect(queryTypes, query: where, sort: window.sort, top: window.top),
+        params,
+      );
+      if (chosen.isEmpty) return 0;
+      final keys = [for (final row in chosen) keyOf(row) as K];
+      final list = hasCompositeKey
+          ? _compositeKeyList(keys)
+          : TomDataScope.inList(
+              this,
+              primaryKeyColumns.single,
+              keys,
+              prefix: _idListPrefix,
+            );
+      where = list.predicate;
+      params = list.parameters;
+      hardQuery = null;
+    }
+    final listeners = TomEntityLifecycle.listenersOf(T);
+    final prior =
+        listeners.isNotEmpty || TomEntityLifecycle.hasChangeListeners(T)
+        ? await _runPrepared<T>(TomSelect(queryTypes, query: where), params)
+        : <T>[];
+    for (final row in prior) {
+      for (final listener in listeners) {
+        await listener.beforeDelete(keyOf(row)!, row);
+      }
+    }
+    final historyRows = await _historyRows(where, params);
+    final deleted = _deletedColumn;
+    final soft = deleted != null && !hard;
+    final int affected;
+    if (soft) {
+      affected = await _runPreparedAffecting(
+        TomUpdate(
+          queryTypes,
+          query: where,
+          set: {
+            deleted.getQueryFieldName(): p<TomDbDateTime>(deletedAtParameter),
+            ...alsoSet,
+          },
+        ),
+        {...params, ...alsoBind, deletedAtParameter: DateTime.now().toUtc()},
+      );
+    } else {
+      final doomed = await _rowsAboutToBeDeleted(where, params);
+      affected = await _runPreparedAffecting(
+        hardQuery ?? TomDelete(queryTypes, query: where),
+        params,
+      );
+      await _deleteReferencedFiles(doomed);
+    }
+    await _recordHistory(historyRows, 'delete');
+    for (final row in prior) {
+      for (final listener in listeners) {
+        await listener.afterDelete(keyOf(row)!, row);
+      }
+      await _emit(
+        TomEntityChangeKind.deleted,
+        keyOf(row),
+        before: row,
+        soft: soft,
+      );
+    }
+    return affected;
+  });
+
+  /// Restores the soft-deleted row [id]: clears its deletion time. Answers
+  /// how many rows it restored — `0` when the row is not deleted or not
+  /// there. Refused (`crud_repository.soft_delete.not_soft_delete`) for an
+  /// entity whose deletes are hard.
+  Future<int> restoreById(K id) async {
+    final deleted = _requireSoftDelete('restoreById');
+    return TomSoftDelete.includingDeleted(
+      () => _observed(() async {
+        await _assertRowWritable(id);
+        final before = await _selectById(id);
+        if (before == null || deleted.getVariableValue(before) == null) {
+          return 0;
+        }
+        final where = and([
+          _keyPredicate(),
+          isNotNull(_deletedOperand(deleted)),
+        ]);
+        final params = _keyParameters(id);
+        final historyRows = await _historyRows(where, params);
+        final affected = await _runPreparedAffecting(
+          TomUpdate(
+            queryTypes,
+            query: where,
+            set: {
+              deleted.getQueryFieldName(): p<TomDbDateTime>(deletedAtParameter),
+            },
+          ),
+          {...params, deletedAtParameter: null},
+        );
+        await _recordHistory(historyRows, 'restore');
+        await _audit(TomAuditAction.update, key: id);
+        await _emit(
+          TomEntityChangeKind.restored,
+          id,
+          before: before,
+          after: await _selectById(id),
+        );
+        return affected;
+      }),
+    );
+  }
+
+  /// Deletes the row [id] for good, soft-deleted or not — the hard delete of
+  /// a [TomSoftDelete] entity. Refused
+  /// (`crud_repository.soft_delete.not_soft_delete`) for an entity whose
+  /// deletes are hard; `deleteById` is that.
+  Future<int> purgeById(K id) async {
+    _requireSoftDelete('purgeById');
+    return TomSoftDelete.includingDeleted(() async {
+      await _assertRowWritable(id);
+      final affected = await _removeWhere(
+        _keyPredicate(),
+        _keyParameters(id),
+        hard: true,
+      );
+      await _audit(TomAuditAction.delete, key: id);
+      return affected;
+    });
+  }
+
+  TomColumnInformation _requireSoftDelete(String operation) =>
+      _deletedColumn ??
+      (throw TomEntityLifecycleException(
+        'crud_repository.soft_delete.not_soft_delete',
+        '$operation is for an entity marked @TomSoftDelete; '
+            '${queryTypes[0]} deletes for good.',
+        parameters: {'entity': '${queryTypes[0]}', 'operation': operation},
+      ));
+
+  /// The past versions of the row [id], oldest first: the row as it was
+  /// before each update, delete and restore. Refused
+  /// (`crud_repository.history.not_declared`) for an entity without
+  /// [TomHistory].
+  Future<List<TomHistoryEntry<T>>> historyOf(K id) async {
+    final history =
+        _history ??
+        (throw TomEntityLifecycleException(
+          'crud_repository.history.not_declared',
+          'historyOf is for an entity marked @TomHistory; ${queryTypes[0]} '
+              'keeps no history.',
+          parameters: {'entity': '${queryTypes[0]}'},
+        ));
+    final sql =
+        'SELECT * FROM ${history.table} WHERE ${_keyWhereClause()} '
+        'ORDER BY history_id';
+    final params = _keyParameters(id);
+    final datasource = datasourceInfo.datasource;
+    final rows = await datasource.executeQuery<T>(sql, params, T);
+    final meta = await datasource.executeQuery<TomHistoryMeta>(
+      sql,
+      params,
+      TomHistoryMeta,
+    );
+    return [
+      for (var i = 0; i < rows.length; i++)
+        TomHistoryEntry(
+          entity: rows[i],
+          action: meta[i].historyAction,
+          at: meta[i].historyAt,
+          by: meta[i].historyBy,
+        ),
+    ];
   }
 
   /// The parameter prefix of the tenant predicate, apart from the data scope's
@@ -1191,6 +1506,33 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
     final held = version == null
         ? null
         : _heldVersion(entity, version, 'delete');
+    if (isSoftDelete || TomEntityLifecycle.isObserved(T)) {
+      final affected = await _removeWhere(
+        and([
+          _keyPredicate(),
+          if (version != null)
+            TomDataScope.columnEqualsParam(this, version, versionParameter),
+          ?_liveRowsPredicate()?.predicate,
+        ]),
+        {..._keyParameters(id), if (held != null) versionParameter: held},
+        // A soft delete is a write like any other: it moves the version.
+        alsoSet: {
+          if (version != null)
+            version.getQueryFieldName(): p<TomDbInt>(nextVersionParameter),
+        },
+        alsoBind: {if (held != null) nextVersionParameter: held + 1},
+      );
+      if (version != null && affected == 0) {
+        await _versionConflict('delete', id, version, held!);
+      }
+      await _audit(
+        TomAuditAction.delete,
+        key: id,
+        before: before,
+        beforeRow: entity,
+      );
+      return;
+    }
     _deleteQuery ??= await datasourceInfo.datasource.prepareStatement(
       TomDelete(
         queryTypes,
@@ -1264,14 +1606,7 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
     // C-3: every named row must be within the principal's data scope.
     await _assertIdsWritable(ids);
     final (where, params) = await _idListPredicate(ids);
-    // Collected before the delete (the rows are about to be unreadable) but
-    // discarded after it — see [_rowsAboutToBeDeleted].
-    final doomed = await _rowsAboutToBeDeleted(where, params);
-    final affected = await _runPreparedAffecting(
-      TomDelete(queryTypes, query: where),
-      params,
-    );
-    await _deleteReferencedFiles(doomed);
+    final affected = await _removeWhere(where, params);
     // One record per row, not per call: an auditor asks what happened to a
     // record, and an entry naming a batch cannot answer that.
     for (final id in ids) {
@@ -1288,6 +1623,14 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
   Future<int> deleteById(K id) async {
     // C-3: a principal may only delete a row within its data scope.
     await _assertRowWritable(id);
+    if (isSoftDelete || TomEntityLifecycle.isObserved(T)) {
+      final affected = await _removeWhere(
+        and([_keyPredicate(), ?_liveRowsPredicate()?.predicate]),
+        _keyParameters(id),
+      );
+      await _audit(TomAuditAction.delete, key: id);
+      return affected;
+    }
     final doomed = <T>[];
     if (_fileColumns.isNotEmpty) {
       final stored = await _selectById(id);
@@ -1768,7 +2111,14 @@ SELECT * FROM ${dbTable.table}
   set _saveUpdateQuery(TomPreparedStatement<T>? statement) =>
       _keep('saveUpdateQuery', statement);
   @override
-  Future<T> save(T toSave) async {
+  Future<T> save(T toSave) => _observed(() => _save(toSave));
+
+  /// The row [row] stands for, as stored and unmasked — [row] itself when the
+  /// entity masks no column.
+  Future<T> _unmasked(K key, T row) async =>
+      _authColumns.isEmpty ? row : (await _selectById(key) ?? row);
+
+  Future<T> _save(T toSave) async {
     // The repository resolved this in its constructor, where a type that is
     // not a mapped entity is reported as one. Asking the analyzer again would
     // hit the same memo, so the only thing a second lookup could add is the
@@ -1787,6 +2137,13 @@ SELECT * FROM ${dbTable.table}
     }
 
     final insert = await _isInsert(primaryKey);
+
+    // First, so everything below — the scope checks, the values written, the
+    // audit — sees the entity as the hooks left it.
+    final listeners = TomEntityLifecycle.listenersOf(T);
+    for (final listener in listeners) {
+      await listener.beforeSave(toSave, insert: insert);
+    }
 
     // C-3 row-level write enforcement. An insert must carry a scope-field value
     // the principal is allowed (it cannot create a row outside its scope); an
@@ -1822,7 +2179,8 @@ SELECT * FROM ${dbTable.table}
         !insert &&
         (authColumns.isNotEmpty ||
             _fileColumns.isNotEmpty ||
-            _audits(TomAuditAction.update));
+            _audits(TomAuditAction.update) ||
+            TomEntityLifecycle.hasChangeListeners(T));
     final baseline = needsBaseline ? await _selectById(primaryKey as K) : null;
 
     if (authColumns.isNotEmpty) {
@@ -1929,6 +2287,13 @@ SELECT * FROM ${dbTable.table}
               : const {},
           afterRow: newRow,
         );
+        if (listeners.isNotEmpty || TomEntityLifecycle.hasChangeListeners(T)) {
+          final stored = await _unmasked(rowKey, newRow);
+          for (final listener in listeners) {
+            await listener.afterSave(stored, insert: true);
+          }
+          await _emit(TomEntityChangeKind.inserted, rowKey, after: stored);
+        }
         return newRow;
       }
       throw TomRepositoryException(
@@ -1965,12 +2330,17 @@ SELECT * FROM ${dbTable.table}
       // written and collected *before* the statement runs — afterwards the
       // baseline key is no longer anywhere to be read.
       final superseded = _supersededFiles(baseline, params);
+      final historyRows = await _historyRows(
+        _keyPredicate(),
+        _keyParameters(primaryKey),
+      );
       final updated = await _saveUpdateQuery!.run(params);
       // No row matched: another save moved the version first, or the row is
       // gone. Nothing was written, so nothing is discarded or audited.
       if (version != null && updated.affectedRows == 0) {
         await _versionConflict('save', primaryKey as K, version, held!);
       }
+      await _recordHistory(historyRows, 'update');
       // Discarded only once the row no longer points at them.
       for (final (column, key) in superseded) {
         await _discardBlob(_fileStore(column), key);
@@ -1992,6 +2362,18 @@ SELECT * FROM ${dbTable.table}
             after: diff.after,
             beforeRow: baseline,
             afterRow: newRow,
+          );
+        }
+        if (listeners.isNotEmpty || TomEntityLifecycle.hasChangeListeners(T)) {
+          final stored = await _unmasked(primaryKey, newRow);
+          for (final listener in listeners) {
+            await listener.afterSave(stored, insert: false);
+          }
+          await _emit(
+            TomEntityChangeKind.updated,
+            primaryKey,
+            before: baseline,
+            after: stored,
           );
         }
         return newRow;
@@ -2162,10 +2544,7 @@ SELECT * FROM ${dbTable.table}
     final scope = await _resolveScope();
     final effective = <String, Object?>{...params, ...?scope?.parameters};
     final scoped = _scopedDelete(select, scope);
-    final doomed = await _rowsAboutToBeDeleted(scoped.query, effective);
-    final affected = await _runPreparedAffecting(scoped, effective);
-    await _deleteReferencedFiles(doomed);
-    return affected;
+    return _removeWhere(scoped.query, effective, hardQuery: scoped);
   }
 
   @override
@@ -2228,10 +2607,7 @@ SELECT * FROM ${dbTable.table}
     final scope = await _resolveScope();
     final effective = <String, Object?>{...params, ...?scope?.parameters};
     final scoped = _scopedDelete(query, scope);
-    final doomed = await _rowsAboutToBeDeleted(scoped.query, effective);
-    final affected = await _runPreparedAffecting(scoped, effective);
-    await _deleteReferencedFiles(doomed);
-    return affected;
+    return _removeWhere(scoped.query, effective, hardQuery: scoped);
   }
 
   @override

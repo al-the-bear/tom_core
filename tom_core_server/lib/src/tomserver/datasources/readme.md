@@ -7,7 +7,7 @@ The SQL datasource layer: a database-neutral `TomDataSource` contract plus two
 SQL drivers — MariaDB/MySQL and PostgreSQL 15+ — a typed SQL-dialect renderer,
 and typed query objects. `TomStandardSqlDialect` (specialised by
 `MariadbSqlDialect` and `PostgresSqlDialect`) renders `TomSelect` / `TomCount` /
-`TomDelete`, the `TomDbType` column family and the framework's own canonical
+`TomDelete` / `TomUpdate`, the `TomDbType` column family and the framework's own canonical
 DDL into SQL strings. `TomSqlDatasource` is everything a SQL driver does that
 does not depend on the database: it draws connections from a
 `TomConnectionPool` — one per transaction, one per statement outside a
@@ -29,7 +29,7 @@ one convention. `MariaDbDatasource` and `PostgresDatasource` supply the wire;
 | `TomReplicaRouting` · `TomPrimaryReads` | Read replicas (`read_replicas.dart`). A `TomSqlDatasource` with `replicas` — one settings map per replica, each overriding the primary's settings — lets a replica serve a statement only when it is read-only work (a read-only transaction, a `GET`/`HEAD` request, a `TomReplicaRouting.readOnly` block), a repository read of an entity not marked `@TomPrimaryReads`, a read (`isReadStatement`), and the principal has not written within `replicaStickinessMs`; `TomReplicaRouting.primary` forces the primary. Replicas are used round-robin, a read-only transaction stays on one, and a replica that fails before serving is left out for `replicaRetryMs` while the primary serves. |
 | `TomPreparedStatement<T>` · `TomStatementOutcome<T>` | A compiled statement shared by every request that runs it; `run` returns what that one execution reported — rows, affected-row count, generated key — rather than leaving it on the shared handle, where an overlapping execution would overwrite it. |
 | `TomStandardSqlDialect` · `MariadbSqlDialect` | Render queries and types into SQL, and the framework's canonical DDL — MariaDB's spelling — and conflicting writes (`insertInto`, `replaceInto`, `incrementCounter`, `returningKey`) into each database's own words. |
-| `TomSelect` · `TomCount` · `TomDelete` · `TomLiteralSelect` | Typed generated queries. |
+| `TomSelect` · `TomCount` · `TomDelete` · `TomUpdate` · `TomLiteralSelect` | Typed generated queries; `TomUpdate` is the `UPDATE` a repository renders a soft delete and a restore as. |
 | `TomDbType<T>` family | Column types: `TomDbInt`, `TomDbDouble`, `TomDbString`, `TomDbBool`, `TomDbDateTime`, `TomDbDate`, `TomDbTime`. |
 | `sqlInstant` · `parseSqlInstant` | The one encoding of an instant in a `DATETIME(6)` column — see below. |
 | `sqlDate` · `parseSqlDate` · `sqlTimeOfDay` · `parseSqlTimeOfDay` | The two halves an instant splits into, written and read as labelled: a `DATE` and a `TIME` column. |

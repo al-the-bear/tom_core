@@ -83,6 +83,15 @@ column-level access rights (C-4) and field-level encryption at rest.
     - [TomFieldEncryption](#tomfieldencryption)
     - [TomReencryptionReport](#tomreencryptionreport)
     - [TomFieldReencryption](#tomfieldreencryption)
+  - [Entity Lifecycle](#entity-lifecycle)
+    - [TomSoftDelete](#tomsoftdelete)
+    - [TomHistory](#tomhistory)
+    - [TomHistoryEntry&lt;T&gt;](#tomhistoryentryt)
+    - [TomHistoryMeta](#tomhistorymeta)
+    - [TomEntityChangeKind](#tomentitychangekind)
+    - [TomEntityChange](#tomentitychange)
+    - [TomEntityListener&lt;T&gt;](#tomentitylistenert)
+    - [TomEntityLifecycle](#tomentitylifecycle)
   - [Exceptions](#exceptions)
 - [Enums](#enums)
 - [Global Functions and Constants](#global-functions-and-constants)
@@ -96,6 +105,7 @@ Source:
 `lib/src/tomserver/object_persistence/composite_key.dart`,
 `lib/src/tomserver/object_persistence/crud_repository.dart`,
 `lib/src/tomserver/object_persistence/data_scope.dart`,
+`lib/src/tomserver/object_persistence/entity_lifecycle.dart`,
 `lib/src/tomserver/object_persistence/field_encryption.dart`,
 `lib/src/tomserver/object_persistence/field_encryption_sql.dart`,
 `lib/src/tomserver/object_persistence/file_reference.dart`,
@@ -132,7 +142,11 @@ is stored as AES-256-GCM ciphertext and read as plaintext, under data keys a
 `TomFieldKeyring` keeps wrapped under a key-encryption key and rotates without
 downtime; a `@TomBlindIndex` column makes it findable by value, and
 `TomFieldReencryption` rewrites what a rotation or a plaintext column left
-behind.
+behind. `@TomSoftDelete` turns a repository delete into setting a timestamp and
+hides the rows that carry one, `@TomHistory` copies a row into a history table
+before every update, delete and restore, and `TomEntityLifecycle` registers the
+`TomEntityListener` hooks and change listeners every repository write of an
+entity runs, inside one transaction with it.
 
 ## Class Hierarchy
 
@@ -143,6 +157,7 @@ TomServerException  (little_things)
     ├── TomColumnAuthorizationException
     ├── TomDataScopeException
     ├── TomDataScopeAuthorizationException
+    ├── TomEntityLifecycleException
     ├── TomFieldEncryptionException
     ├── TomQuerySyntaxException
     └── TomRepositoryException
@@ -152,6 +167,8 @@ TomRepository<T, K>
     └── TomSqlDatasourceRepository<T, K>  (with TomQueryBuilder,
         │                                  implements TomFileRepository<T, K>)
         └── MariadbRepository<T, K>
+
+TomEntityListener<T>  (hooks — registered with TomEntityLifecycle)
 
 TomFileRepository<T, K>  (contract — the five methods the HTTP file
                           endpoint needs, no persistence stack)
@@ -681,6 +698,8 @@ TomSqlDatasourceRepository([List<Type>? queryTypes, Type? resultType])
 | Constant | Type | Value | Description |
 | -------- | ---- | ----- | ----------- |
 | `tenantParameterPrefix` | `String` | `'__tomtenant_'` | The parameter prefix of the `@TomTenantOwned` predicate, apart from the data scope's, so the two bind in one statement. |
+| `deletedAtParameter` | `String` | `'__tomdeleted_at'` | The bind name of the deletion time a soft delete sets (and a restore clears). |
+| `nextVersionParameter` | `String` | `'__tomversion_next'` | The bind name of the next version a versioned soft `delete(entity)` writes — a soft delete moves the version like any write. |
 | `versionParameter` | `String` | `'__tomversion_expected'` | The bind name of the version a versioned update or `delete(entity)` expects to find stored. Prefixed like the scope and tenant parameters so it cannot collide with a column's declared name. |
 
 ##### Properties
@@ -695,6 +714,7 @@ TomSqlDatasourceRepository([List<Type>? queryTypes, Type? resultType])
 | `sqlDialect` | `TomStandardSqlDialect` | *(getter)* The SQL dialect used to render queries; defaults to the data source's dialect. |
 | `queryTypes` | `List<Type>` | The entity types this repository can query (first is the primary entity). |
 | `resultType` | `Type` | The default row type for results. |
+| `isSoftDelete` | `bool` | *(getter)* Whether the entity's deletes are soft (`@TomSoftDelete`). |
 
 ##### Methods
 
@@ -704,6 +724,19 @@ scoping and C-4 column masking/enforcement on the SQL data source.
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `keyOf` | `Object? keyOf(T entity)` | The primary-key value of `entity`: the key field's value, or a `TomCompositeKey` of every key field's. |
+| `restoreById` | `Future<int> restoreById(K id)` | Clears the deletion time of the soft-deleted row `id`; answers `1`, or `0` when the row is not deleted or not there. Writes a `restore` history row and a `restored` change event. Refused (`crud_repository.soft_delete.not_soft_delete`) for an entity whose deletes are hard. |
+| `purgeById` | `Future<int> purgeById(K id)` | Deletes the row `id` for good, soft-deleted or not — a hard `DELETE` with the file cascade, the delete hooks, history and change event. Refused (`crud_repository.soft_delete.not_soft_delete`) for an entity whose deletes are hard. |
+| `historyOf` | `Future<List<TomHistoryEntry<T>>> historyOf(K id)` | The past versions of the row `id`, oldest first: the row as it was before each update, delete and restore. Refused (`crud_repository.history.not_declared`) for an entity without `@TomHistory`. |
+
+On a `@TomSoftDelete` entity every delete method sets the deletion time instead
+of removing the row, and the filter `<deleted> IS NULL` joins the row scope and
+the tenant predicate in every read, count, existence check and write guard —
+`TomSoftDelete.includingDeleted` lifts it. A delete cut to a window is resolved
+to the keys the window holds first. On an entity with a registered listener, a
+change listener or a `@TomHistory`, every write runs inside a transaction (the
+caller's or its own), so the history rows, the listeners' writes and the change
+commit or roll back together. See
+[Entity Lifecycle](../object_persistence.md#entity-lifecycle).
 
 #### MariadbRepository&lt;T, K&gt;
 
@@ -2143,6 +2176,217 @@ TomFieldReencryption({Iterable<Type>? entities, int batchSize = 200})
 | `run` | `Future<TomReencryptionReport> run()` | Runs one pass over every entity, in the current context and — when a `TomTenancy` is installed — in every tenant's. An entity whose data source is not registered throws `field_encryption.no_datasource`. |
 | `job` | `TomJobDefinition job({required TomSchedule schedule, String name = tomReencryptionJobName, Duration timeout = const Duration(hours: 1)})` | A scheduler job running a pass on `schedule`, recovery requested, its result the report's `toJson`. The body uses the isolate's keyring, so register it on a scheduler with a `TomInlineJobDispatcher`; a worker isolate has no keyring. |
 
+### Entity Lifecycle
+
+Source: `lib/src/tomserver/object_persistence/entity_lifecycle.dart`. Carried
+out by `TomSqlDatasourceRepository` and by no other code path; see
+[Entity Lifecycle](../object_persistence.md#entity-lifecycle) for the DDL of a
+history table and the transaction rule.
+
+#### TomSoftDelete
+
+Marks an entity whose repository deletes are soft: a delete sets `field`, a
+nullable `DateTime` column, to the time of the delete, and every repository read
+leaves out the rows whose `field` is set. `@tomReflector` metadata, read off the
+entity.
+
+##### Constructors
+
+```dart
+const TomSoftDelete({String field = 'deletedAt'})
+```
+
+##### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `field` | `String` | The entity field holding the deletion time — `null` while the row lives. |
+
+##### Static Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `includingDeleted` | `static Future<R> includingDeleted<R>(Future<R> Function() body)` | Runs `body` in a zone where repository reads see soft-deleted rows. |
+| `of` | `static TomSoftDelete? of(Type entity)` | The `TomSoftDelete` of `entity`, or `null` when its deletes are hard. |
+
+##### Static Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `isIncludingDeleted` | `bool` | *(getter)* Whether the current zone reads soft-deleted rows. |
+
+#### TomHistory
+
+Marks an entity whose rows keep their past: before every update and every
+delete — soft, hard or by query — and every restore, the row as it was is copied
+into `table`, which carries every column of the entity's table plus
+`history_id`, `history_action`, `history_at` and `history_by`. An encrypted
+column is copied as its ciphertext.
+
+##### Constructors
+
+```dart
+const TomHistory({required String table})
+```
+
+##### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `table` | `String` | The history table. |
+
+##### Static Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `of` | `static TomHistory? of(Type entity)` | The `TomHistory` of `entity`, or `null` when it keeps none. |
+
+#### TomHistoryEntry&lt;T&gt;
+
+One past version of a row, as `historyOf` answers it.
+
+- **Type Parameters:** `T extends Object` — the entity type.
+
+##### Constructors
+
+```dart
+const TomHistoryEntry({
+  required T entity,
+  required String action,
+  required DateTime at,
+  String? by,
+})
+```
+
+##### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `entity` | `T` | The row as it was. |
+| `action` | `String` | What replaced it: `update`, `delete` or `restore`. |
+| `at` | `DateTime` | When (UTC). |
+| `by` | `String?` | The principal that did it, if any. |
+
+#### TomHistoryMeta
+
+The history table's own columns, read beside the entity's by reflection. The
+`@TomDbTable` values are placeholders, as the table is named by each entity's
+`TomHistory`. `@tomReflector`.
+
+##### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `historyId` | `int` | `history_id`: the history row's own key, in insertion order. |
+| `historyAction` | `String` | `history_action`: `update`, `delete` or `restore`. |
+| `historyAt` | `DateTime` | `history_at`: when the version was replaced. |
+| `historyBy` | `String?` | `history_by`: the principal that replaced it, if any. |
+
+#### TomEntityChangeKind
+
+What a `TomEntityChange` reports.
+
+##### Enum Values
+
+| Value | Meaning |
+| ----- | ------- |
+| `inserted` | A row was inserted. |
+| `updated` | A row was updated. |
+| `deleted` | A row was deleted — or, for a `@TomSoftDelete` entity, marked deleted (`TomEntityChange.soft`). |
+| `restored` | A soft-deleted row was restored. |
+
+#### TomEntityChange
+
+One change of one row, as a `TomEntityChangeListener` is told of it. `before`
+and `after` are the row as stored, read without the current principal's column
+masks; either is `null` where the change has no such side.
+
+##### Constructors
+
+```dart
+TomEntityChange({
+  required Type entityType,
+  required TomEntityChangeKind kind,
+  required Object? key,
+  Object? before,
+  Object? after,
+  Map<String, Object?> beforeValues = const {},
+  Map<String, Object?> afterValues = const {},
+  bool soft = false,
+  DateTime? at,
+  String? principalId,
+  String? tenant,
+})
+```
+
+`at` defaults to now (UTC), `principalId` to the id of the `TomPrincipal` in the
+zone, `tenant` to `TomTenantContext.currentId`.
+
+##### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `entityType` | `Type` | The entity type. |
+| `kind` | `TomEntityChangeKind` | What happened. |
+| `key` | `Object?` | The row's key. |
+| `before` | `Object?` | The row before the change. |
+| `after` | `Object?` | The row after the change. |
+| `beforeValues` | `Map<String, Object?>` | `before`'s field values, encrypted fields redacted. |
+| `afterValues` | `Map<String, Object?>` | `after`'s field values, encrypted fields redacted. |
+| `soft` | `bool` | Whether a delete marked the row deleted rather than removing it. |
+| `at` | `DateTime` | When the change was made (UTC). |
+| `principalId` | `String?` | The principal that made it, if any. |
+| `tenant` | `String?` | The tenant it was made in, if any. |
+
+##### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `toJson` | `Map<String, Object?> toJson()` | The change as JSON-ready values — `entity`, `kind`, `key` (as a string), `soft`, `at` (ISO 8601 UTC), `principal`, `tenant`, `before`, `after` — an outbox row's payload. |
+| `toString` | `String toString()` | *(override)* `TomEntityChange(<type> <kind> <key>)`. |
+
+#### TomEntityListener&lt;T&gt;
+
+The hooks of one entity type's repository writes; override what it hooks. Each
+runs inside the write's transaction. A `before` hook may change the entity it is
+handed and may throw to refuse the write; an `after` hook sees the row as stored
+and may write elsewhere — its writes commit with the change, and its throw rolls
+the change back.
+
+- **Type Parameters:** `T extends Object` — the entity type.
+
+##### Constructors
+
+```dart
+const TomEntityListener()
+```
+
+##### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `beforeSave` | `FutureOr<void> beforeSave(T entity, {required bool insert})` | Before `entity` is inserted (`insert`) or updated. |
+| `afterSave` | `FutureOr<void> afterSave(T entity, {required bool insert})` | After `entity` was inserted or updated; `entity` is the row as stored. |
+| `beforeDelete` | `FutureOr<void> beforeDelete(Object key, T? entity)` | Before the row `key` is deleted. |
+| `afterDelete` | `FutureOr<void> afterDelete(Object key, T? entity)` | After the row `key` was deleted; `entity` is the row before it was. |
+
+#### TomEntityLifecycle
+
+The registry of `TomEntityListener`s and `TomEntityChangeListener`s. Statics
+only (`abstract final class`).
+
+##### Static Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `register` | `static void Function() register<T extends Object>(TomEntityListener<T> listener)` | Registers `listener` for the writes of `T`; the function returned removes it. |
+| `onChange` | `static void Function() onChange(TomEntityChangeListener listener, {Type? entity})` | Registers `listener` for the changes of `entity`, or of every entity when `entity` is `null`; the function returned removes it. |
+| `listenersOf` | `static List<TomEntityListener<Object>> listenersOf(Type entity)` | The listeners registered for `entity`. |
+| `hasChangeListeners` | `static bool hasChangeListeners(Type entity)` | Whether a change of `entity` has a listener to tell. |
+| `isObserved` | `static bool isObserved(Type entity)` | Whether a write of `entity` has a listener, a change listener or a history — and so runs inside a transaction. |
+| `notify` | `static Future<void> notify(TomEntityChange change)` | Tells every listener registered for `change`'s entity of it, in registration order. |
+| `reset` | `static void reset()` | Removes every listener. For tests. |
+
 ### Exceptions
 
 All extend the server `TomServerException`.
@@ -2154,6 +2398,7 @@ All extend the server `TomServerException`.
 | `TomAnnotationAnalyzerSyntaxException` | `annotation_analyzer.dart` | Persistence annotations are present but malformed (e.g. `@TomDbColumn` on a non-variable). |
 | `TomColumnAuthorizationException` | `column_authorization.dart` | A write changes a column visible-but-not-editable to the principal (C-4 violation). |
 | `TomDataScopeException` | `data_scope.dart` | A `@TomDbScope` names a scope kind no resolver is registered for. |
+| `TomEntityLifecycleException` | `entity_lifecycle.dart` | A lifecycle declaration cannot be carried out — a `@TomSoftDelete` field that is not a writable `DateTime` column (`crud_repository.soft_delete.invalid_field`) — or a method needs one the entity lacks: `restoreById` / `purgeById` on an entity whose deletes are hard (`crud_repository.soft_delete.not_soft_delete`), `historyOf` without `@TomHistory` (`crud_repository.history.not_declared`). `clientThrow` defaults to `false`. |
 | `TomFieldEncryptionException` | `field_encryption.dart` | Field-level encryption cannot proceed: no keyring installed (`field_encryption.not_configured`), a value naming an unknown data key (`unknown_key`) or failing its authentication (`decrypt_failed`), plaintext refused (`plaintext_refused`), a data key wrapped under a key-encryption key the keyring lacks (`unknown_kek`), a malformed key-encryption key (`invalid_kek`), a malformed `fieldEncryption` configuration (`config.invalid`), or an unregistered data source (`no_datasource`). `clientThrow` is always `false`. |
 | `TomDataScopeAuthorizationException` | `data_scope.dart` | A write targets a row outside the current principal's `@TomDbScope` (C-3). |
 | `TomQuerySyntaxException` | `operators_expressions.dart` | A query expression is malformed (e.g. `BETWEEN` without exactly two bounds; also raised by the query-sentence compiler, and by the repository when a sentence's verb does not match the method it was handed to). |
@@ -2206,7 +2451,7 @@ mistake in the *sentence*, which is the caller's to correct.
 
 ## Enums
 
-Four.
+Five.
 
 | Enum | Values | Members | Written up |
 | ---- | ------ | ------- | ---------- |
@@ -2214,11 +2459,13 @@ Four.
 | `TomBlindIndexNormalization` | `exact`, `trim`, `trimLowercase` | — | [Annotations & Metadata](#tomblindindexnormalization) |
 | `TomDataKeyPurpose` | `encryption`, `blindIndex` | — | [Field-Level Encryption](#tomdatakeypurpose) |
 | `TomDataKeyState` | `active`, `previous` | — | [Field-Level Encryption](#tomdatakeystate) |
+| `TomEntityChangeKind` | `inserted`, `updated`, `deleted`, `restored` | — | [Entity Lifecycle](#tomentitychangekind) |
 
 Each is filed beside the type that carries it — a direction is only ever met as
 one sort term's, a normalization as one blind index's, a purpose and a state as
-one data key's. This section accounts for them rather than repeating them: the
-rows above are an index, the sections linked from them are the documentation.
+one data key's, a change kind as one change's. This section accounts for them
+rather than repeating them: the rows above are an index, the sections linked
+from them are the documentation.
 
 ## Global Functions and Constants
 
@@ -2238,7 +2485,8 @@ rows above are an index, the sections linked from them are the documentation.
 
 ### Typedefs
 
-Four top-level typedefs are used by the scoping/authorization APIs:
+Five top-level typedefs: four used by the scoping/authorization APIs, one by the
+entity lifecycle:
 
 | Typedef | Definition | Source |
 | ------- | ---------- | ------ |
@@ -2246,3 +2494,4 @@ Four top-level typedefs are used by the scoping/authorization APIs:
 | `TomRowColumnAuthResolver` | `Future<TomAuthState> Function(TomPrincipal? principal, Object? rowId)` | `column_authorization.dart` |
 | `TomDataScopeResolver` | `List<Object?>? Function(TomPrincipal? principal)` | `data_scope.dart` |
 | `TomAsyncDataScopeResolver` | `Future<List<List<Object?>>?> Function(TomPrincipal? principal)` | `data_scope.dart` |
+| `TomEntityChangeListener` | `FutureOr<void> Function(TomEntityChange)` | `entity_lifecycle.dart` |

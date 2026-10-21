@@ -3,7 +3,7 @@
 The data-access foundation of the server: SQL-typed values (`TomDbType<T>`), a
 typed operator tree (`TomOperator<R>`), a SQL dialect that renders that tree to
 SQL fragments (`TomStandardSqlDialect`), reusable query objects (`TomSelect`,
-`TomCount`, `TomDelete`, `TomLiteralSelect`), and the data-source / driver
+`TomCount`, `TomDelete`, `TomUpdate`, `TomLiteralSelect`), and the data-source / driver
 abstraction (`TomDataSource`, `TomDatasourceDriver`, `TomDataSourceInfo`) with
 two SQL drivers — MariaDB and PostgreSQL — built on one driver-neutral base
 (`TomSqlDatasource`). Two smaller surfaces sit beside them because every
@@ -42,6 +42,7 @@ module builds its query DSL and repositories on top of this layer.
     - [TomLiteralSelect](#tomliteralselect)
     - [TomCount](#tomcount)
     - [TomDelete](#tomdelete)
+    - [TomUpdate](#tomupdate)
   - [Data Sources and Drivers](#data-sources-and-drivers)
     - [TomDataSource](#tomdatasource)
     - [TomPreparedStatement&lt;T&gt;](#tompreparedstatementt)
@@ -116,7 +117,7 @@ Source: `lib/src/tomserver/datasources/connection_pool.dart`,
 A `TomDbType<T>` boxes a Dart value together with its SQL column type; a
 `TomOperator<R>` is a node in a type-safe SQL expression tree that renders
 itself through a `TomStandardSqlDialect`. Query objects (`TomSelect`,
-`TomCount`, `TomDelete`, `TomLiteralSelect`) wrap a predicate into a full
+`TomCount`, `TomDelete`, `TomUpdate`, `TomLiteralSelect`) wrap a predicate into a full
 statement. `TomAggregateFunction` and four dialect fragments (`aggregate`,
 `aliased`, `groupByClause`, `havingClause`) are the whole SQL surface a grouped
 query renders through — the query object itself, `TomGroupedSelect`, is declared
@@ -188,6 +189,7 @@ TomTypedPersistenceBase
             │       ├── TomSelect
             │       ├── TomCount
             │       ├── TomDelete
+            │       ├── TomUpdate
             │       └── TomGroupedSelect  (object_persistence)
             └── TomLiteralSelect
 
@@ -940,6 +942,43 @@ qualify them with.
 | ------ | --------- | ----------- |
 | `generateQuery` | `String generateQuery(TomStandardSqlDialect t)` | *(override)* Renders the single-table `DELETE` statement. |
 | `toString` | `String toString()` | *(override)* Debug description prefixed `TomDelete:`. |
+
+#### TomUpdate
+
+An `UPDATE` of the first of the entity `types`: the columns of `set`, by their
+column names, assigned their operands, for the rows the predicate selects. What
+a repository renders a soft delete and a restore as (see
+[Soft delete](../object_persistence.md#soft-delete)) — the `WHERE` the matching
+hard delete would take, and the deletion-time column moved.
+
+- **Extends:** `TomGeneratedQuery`
+
+##### Constructors
+
+```dart
+TomUpdate(
+  List<Type> types, {
+  required TomOperator<TomDbBool> query,
+  required Map<String, TomOperator<Object?>> set,
+})
+```
+
+No shaping options: the statement updates every row the predicate selects. A
+repository delete cut to a window resolves the window to its keys first.
+
+##### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `set` | `Map<String, TomOperator<Object?>>` | The assignments: column name to its new value. |
+
+##### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `generateQuery` | `String generateQuery(TomStandardSqlDialect t)` | *(override)* Renders `UPDATE <table> SET <column> = <operand>, … WHERE <predicate>`. |
+| `getParameters` | `List<String> getParameters(TomStandardSqlDialect t)` | *(override)* The assignments' parameters first, then the predicate's — the order their placeholders appear in. |
+| `toString` | `String toString()` | *(override)* Debug description prefixed `TomUpdate:`. |
 
 ### Data Sources and Drivers
 

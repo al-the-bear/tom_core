@@ -23,6 +23,14 @@ be expressed three ways — a parsed *query sentence*, a programmatically built
   - [Handling a conflict](#handling-a-conflict)
   - [Adding a version to an existing table](#adding-a-version-to-an-existing-table)
   - [What is not checked](#what-is-not-checked)
+- [Entity Lifecycle](#entity-lifecycle)
+  - [Soft delete](#soft-delete)
+  - [History tables](#history-tables)
+  - [Lifecycle hooks](#lifecycle-hooks)
+  - [Change events](#change-events)
+    - [Feeding an outbox](#feeding-an-outbox)
+  - [One transaction](#one-transaction)
+  - [What the lifecycle does not reach](#what-the-lifecycle-does-not-reach)
 - [Query Sentences](#query-sentences)
   - [Which kind takes which option](#which-kind-takes-which-option)
   - [`IS IN` lists](#is-in-lists)
@@ -91,6 +99,14 @@ be expressed three ways — a parsed *query sentence*, a programmatically built
 | ---- | ---- | ------- |
 | `TomDbTable` / `TomDbColumn` / `TomEntityId` / `TomReference` | classes | The annotations that map an entity class and its fields to a table and columns |
 | `TomVersion` | class | Marks the `int` field holding the row's version, turning on optimistic locking for the entity |
+| `TomSoftDelete` | class | Marks an entity whose repository deletes set a deletion time, and whose deleted rows every repository read leaves out; `includingDeleted` shows them |
+| `TomHistory` | class | Marks an entity whose rows are copied into a history table before every update, delete and restore |
+| `TomHistoryEntry<T>` | class | One past version of a row, as `historyOf` answers it: the entity as it was, the action that replaced it, when and by whom |
+| `TomHistoryMeta` | class | The history table's own four columns, read beside the entity's by reflection |
+| `TomEntityListener<T>` | abstract class | The hooks of one entity type's repository writes: `beforeSave` / `afterSave`, `beforeDelete` / `afterDelete` |
+| `TomEntityChange` / `TomEntityChangeKind` | class / enum | One change of one row — inserted, updated, deleted or restored — with the row before and after, its redacted values and `toJson()` |
+| `TomEntityChangeListener` | typedef | What `onChange` registers: told of every change of its entity inside the change's transaction |
+| `TomEntityLifecycle` | abstract final class | The registry of entity listeners and change listeners, and whether a write of an entity is observed. Statics only |
 | `TomDartType` | class | Wraps a `Type` so it can be carried as a value, where a bare `Type` literal is awkward to pass |
 | `TomRepository<T, K>` | abstract class | The CRUD + query contract for entity `T` keyed by `K` |
 | `TomSqlDatasourceRepository<T, K>` | abstract class | SQL implementation of the contract |
@@ -143,6 +159,7 @@ be expressed three ways — a parsed *query sentence*, a programmatically built
 | `defaultEncryptionKeyTable` / `tomReencryptionJobName` | const String | `tom_encryption_key`, the data-key table's default name / `object_persistence.reencrypt`, the re-encryption job's default name |
 | `TomRepositoryException` / `TomQuerySyntaxException` | class | A failed operation / a query sentence that will not parse |
 | `TomOptimisticLockException` | class | A save or delete of a versioned entity refused because the row's version moved since it was loaded; carries the version held and the one stored |
+| `TomEntityLifecycleException` | class | A lifecycle declaration the repository cannot carry out, or a soft-delete or history method called on an entity without the declaration |
 | `TomAnnotationAnalyzerException` / `TomAnnotationAnalyzerSyntaxException` | class | An entity the analyzer cannot resolve / annotation arguments it cannot read |
 | `TomDataScopeException` / `TomDataScopeAuthorizationException` / `TomColumnAuthorizationException` | class | A mis-wired scope or column grade / a read or write the scope refused / a write to a column the caller may not write |
 
@@ -466,6 +483,15 @@ The `*ByQuerySentence` methods add three keys of their own,
 `TomQuerySyntaxException` because a sentence whose verb does not match the method
 is the caller's mistake and the caller's to correct.
 
+`TomEntityLifecycleException` covers [Entity Lifecycle](#entity-lifecycle),
+under `crud_repository.soft_delete.*` and `crud_repository.history.*` keys:
+
+| Key | Raised when |
+| --- | ----------- |
+| `crud_repository.soft_delete.invalid_field` | The entity's `@TomSoftDelete` names a field that is not a writable `DateTime` column. Raised the first time the repository needs the column, before any statement runs. |
+| `crud_repository.soft_delete.not_soft_delete` | `restoreById` or `purgeById` was called on an entity whose deletes are hard. |
+| `crud_repository.history.not_declared` | `historyOf` was called on an entity without `@TomHistory`. |
+
 `TomBlobMigrationException` covers the row-driven blob migration
 ([Migrating Between Backends](file_storage.md#migrating-between-backends)),
 under `storage.migration.*` keys:
@@ -526,9 +552,12 @@ silently dropped).
 
 ### Lifecycle work
 
-Work that has to happen just before a row is written, or just after one is read,
-is an **override of the repository method that performs it**. There is no
-annotation for it.
+Work that has to happen around a write of an entity, wherever it is written
+from, is a registered `TomEntityListener` (see
+[Lifecycle hooks](#lifecycle-hooks)): it runs in the write's transaction and is
+reached by every repository of the entity. Work that belongs to one repository
+class — and work just after a row is *read*, which no listener sees — is an
+**override of the repository method that performs it**:
 
 ```dart
 class TaskRepository extends TomSqlDatasourceRepository<Task, int> {
@@ -761,6 +790,277 @@ leaves nullable as `nullableVersionColumn`, an error (see
   repository, so nothing moves the version for them; an `UPDATE` written by hand
   should set `version = version + 1` itself, or the next versioned save of that
   row will overwrite it unknowingly.
+
+## Entity Lifecycle
+
+Four things can happen around a repository write besides the write itself, each
+declared or registered per entity and carried out by
+`TomSqlDatasourceRepository` (`entity_lifecycle.dart`):
+
+| Feature | Declared by | What it does |
+| ------- | ----------- | ------------ |
+| [Soft delete](#soft-delete) | `@TomSoftDelete` | A delete sets a timestamp instead of removing the row; every repository read leaves such rows out |
+| [History tables](#history-tables) | `@TomHistory` | The row as it was is copied into a history table before every update, delete and restore |
+| [Lifecycle hooks](#lifecycle-hooks) | `TomEntityLifecycle.register` | A `TomEntityListener` is called before and after every save and delete of its entity |
+| [Change events](#change-events) | `TomEntityLifecycle.onChange` | A listener is told of every insert, update, delete and restore as a `TomEntityChange` |
+
+No other code path writes any of them: a store that talks to its data source
+directly, or a statement written by hand, has none (see
+[What the lifecycle does not reach](#what-the-lifecycle-does-not-reach)).
+
+### Soft delete
+
+Mark the entity `@TomSoftDelete` and give it a nullable `DateTime` column for the
+deletion time — `deletedAt` by default, any other field through
+`@TomSoftDelete(field: '...')`:
+
+```dart
+@tomReflector
+@TomSoftDelete()
+@TomHistory(table: 'note_history')
+@TomDbTable(datasource: 'main', table: 'note', primaryKeyFields: ['id'])
+class Note {
+  @TomEntityId()
+  @TomDbColumn(columnName: 'id', isReadOnly: true)
+  int? id;
+
+  @TomVersion()
+  @TomDbColumn(columnName: 'version')
+  int? version;
+
+  @TomDbColumn(columnName: 'text')
+  String? text;
+
+  /// When the note was deleted; `null` while it lives.
+  @TomDbColumn(columnName: 'deleted_at')
+  DateTime? deletedAt;
+}
+```
+
+Every delete path of the repository — `delete(entity)`, `deleteById`,
+`deleteAllById`, `deleteByQuerySentence` and `deleteByQuery` — then issues an
+`UPDATE` setting the column to the current UTC time
+(`TomSqlDatasourceRepository.deletedAtParameter` is its bind name) instead of a
+`DELETE`, and no referenced file is removed: the row still names it. The count a
+delete returns is the rows it marked.
+
+The filter `<deleted> IS NULL` is part of the repository's data scope, beside
+the row scope and the tenant predicate, so it applies wherever they do: every
+finder, the counts, `existsById`, the query methods, and the write guards. A
+deleted row is therefore not found, not counted, not paged and not writable, and
+deleting it again marks nothing and answers `0`.
+
+| Method | What it does |
+| ------ | ------------ |
+| `TomSoftDelete.includingDeleted(body)` | Runs `body` with deleted rows visible to every repository read; `TomSoftDelete.isIncludingDeleted` says whether the current zone is inside one |
+| `restoreById(id)` | Clears the deletion time; answers `1`, or `0` when the row is not deleted or not there |
+| `purgeById(id)` | Deletes the row for good, deleted or not — a hard `DELETE` with the file cascade |
+| `isSoftDelete` | Whether the repository's deletes are soft |
+
+`restoreById` and `purgeById` are refused with
+`crud_repository.soft_delete.not_soft_delete` on an entity whose deletes are
+hard (`deleteById` is its purge). A `@TomSoftDelete` field that is not a
+writable `DateTime` column — the wrong type, an association, an `isReadOnly`
+column — is refused with `crud_repository.soft_delete.invalid_field` the first
+time the repository needs it, before any statement runs.
+
+A soft delete is a write like any other. On a `@TomVersion` entity,
+`delete(entity)` is version-checked exactly as a hard delete is
+(`crud_repository.delete.version_conflict`) and moves the version
+(`TomSqlDatasourceRepository.nextVersionParameter` binds the next one), so an
+editor still holding the row before the delete cannot save over it. `deleteById`,
+like its hard form, names no version and checks none.
+
+A delete cut to a window — a `TomDelete` with `top` and `sort`, as
+`deleteByQuery` and `delete first 10 by … order by …` produce — is resolved to
+the keys the window holds first; the hooks, the history and the soft `UPDATE` or
+hard `DELETE` then reach exactly those rows.
+
+Saving an entity writes its deletion time like any other column. An entity
+loaded inside `includingDeleted` and saved there with the field cleared is
+restored — recorded as an update, in the history and as a change event, where
+`restoreById` records a restore.
+
+### History tables
+
+`@TomHistory(table: ...)` keeps a row's past. Before every update, every delete —
+soft, hard, by id, by key list or by query — and every restore, the repository
+reads the rows the statement is about to change and inserts each into the
+history table, with four columns of its own:
+
+| Column | Holds |
+| ------ | ----- |
+| `history_id` | The history row's own key, generated; versions read back in its order |
+| `history_action` | What replaced the version: `update`, `delete` or `restore` |
+| `history_at` | When (UTC) |
+| `history_by` | The id of the `TomPrincipal` in the zone, or `NULL` |
+
+Beside them the table carries every column of the entity's table under the same
+name — the entity's key not unique, since a row has many versions — and no
+other `NOT NULL` column without a default. For the `Note` entity above, on
+MariaDB:
+
+```sql
+CREATE TABLE note_history (
+  history_id     BIGINT       NOT NULL AUTO_INCREMENT,
+  history_action VARCHAR(16)  NOT NULL,
+  history_at     DATETIME(6)  NOT NULL,
+  history_by     VARCHAR(255) NULL,
+  id             BIGINT       NOT NULL,
+  version        BIGINT       NOT NULL,
+  text           VARCHAR(255) NULL,
+  deleted_at     DATETIME(6)  NULL,
+  PRIMARY KEY (history_id)
+);
+```
+
+and on PostgreSQL:
+
+```sql
+CREATE TABLE note_history (
+  history_id     BIGINT       GENERATED BY DEFAULT AS IDENTITY,
+  history_action VARCHAR(16)  NOT NULL,
+  history_at     TIMESTAMP(6) NOT NULL,
+  history_by     VARCHAR(255) NULL,
+  id             BIGINT       NOT NULL,
+  version        BIGINT       NOT NULL,
+  text           VARCHAR(255) NULL,
+  deleted_at     TIMESTAMP(6) NULL,
+  PRIMARY KEY (history_id)
+);
+```
+
+The prior row is read raw: an encrypted column is copied as its ciphertext, so
+the history table holds no plaintext the entity's table does not, and a
+principal's column masks do not blank what is kept. An insert writes no history
+row — there is no prior version.
+
+`historyOf(id)` answers the row's past versions, oldest first, as
+`TomHistoryEntry<T>`: the `entity` as it was, the `action` that replaced it, `at`
+and `by`. It reads the four own columns through `TomHistoryMeta`, a reflected
+framework type. It is refused with `crud_repository.history.not_declared` for an
+entity without `@TomHistory`.
+
+### Lifecycle hooks
+
+A `TomEntityListener<T>` overrides the hooks it needs and is registered for its
+entity; `register` answers the function that removes it:
+
+```dart
+class NoteStamp extends TomEntityListener<Note> {
+  @override
+  void beforeSave(Note note, {required bool insert}) {
+    note.text = note.text?.trim();
+    if (note.text?.isEmpty ?? true) throw StateError('a note says something');
+  }
+
+  @override
+  Future<void> afterDelete(Object key, Note? note) =>
+      searchIndex.remove('note', key);
+}
+
+final remove = TomEntityLifecycle.register(NoteStamp());
+```
+
+| Hook | Runs | Sees |
+| ---- | ---- | ---- |
+| `beforeSave(entity, insert:)` | First in `save`, before the scope checks, the column partition and the statement | The entity being saved, which it may change; a throw refuses the save and nothing is written |
+| `afterSave(entity, insert:)` | After the row was written and read back | The row as stored, unmasked |
+| `beforeDelete(key, entity)` | Before the delete statement, once per row it is about to remove | The row as stored |
+| `afterDelete(key, entity)` | After the delete statement and the history row | The row as it was before the delete |
+
+Listeners run in registration order. Because `beforeSave` runs first, the scope
+checks, the values written and the audit record see the entity as the hooks
+left it. A delete by key list or by query runs the delete hooks once per row
+it reaches, which costs a read of those rows before the statement.
+
+`saveAll` saves through `save`, and `saveFile` and `clearFile` end in `save`, so
+all of them run the save hooks. `purgeById` runs the delete hooks; `restoreById`
+runs none.
+
+A repository subclass overriding `save` or a finder
+([Lifecycle work](#lifecycle-work)) is the other way to do work around a write.
+A registered listener runs inside the write's transaction and is reached by
+every repository of the entity; an override is reached only through that
+repository class.
+
+### Change events
+
+`TomEntityLifecycle.onChange(listener, {entity})` registers a
+`TomEntityChangeListener` for one entity type, or for every entity when `entity`
+is left out, and answers the function that removes it. The repository tells it
+of each change after the statement, as a `TomEntityChange`:
+
+| Field | Holds |
+| ----- | ----- |
+| `entityType` / `key` | The entity type and the row's key |
+| `kind` | `TomEntityChangeKind.inserted`, `updated`, `deleted` or `restored` |
+| `soft` | Whether a delete marked the row rather than removing it |
+| `before` / `after` | The row as stored before and after the change, unmasked; `null` where the change has no such side (an insert has no `before`, a delete no `after`) |
+| `beforeValues` / `afterValues` | Their field values, with every `@TomEncrypted` and `@TomBlindIndex` field redacted to `TomFieldEncryption.redacted` |
+| `at` / `principalId` / `tenant` | When (UTC), the principal in the zone and the current tenant |
+
+`toJson()` renders the change as JSON-ready values — the entity's name, the
+kind, the key as a string, the instants in ISO 8601 UTC, and the redacted values
+— the form an outbox row or a message carries. A delete by query reports one
+change per row. Listeners run in registration order; `notify(change)` is the
+call the repository makes, and `hasChangeListeners(type)` says whether a change
+of `type` has anyone to tell.
+
+#### Feeding an outbox
+
+A change listener runs inside the change's transaction, so a listener that
+inserts a row of its own is the transactional-outbox pattern: the outbox row
+commits exactly when the change does and rolls back with it, and a relay
+reading the outbox publishes exactly the committed changes.
+
+```dart
+TomEntityLifecycle.onChange(
+  (change) => outbox.executeCommand(
+    'INSERT INTO note_outbox (payload) VALUES (:payload)',
+    {'payload': jsonEncode(change.toJson())},
+  ),
+  entity: Note,
+);
+```
+
+The outbox table must live in the entity's data source, so the insert joins the
+same transaction. The relay that reads the outbox and hands its rows to
+[messaging](messaging.md) is the application's (see
+[Not Yet Implemented](#not-yet-implemented)).
+
+### One transaction
+
+An entity is *observed* when it has a registered listener, a change listener
+that hears it, or a `@TomHistory` — `TomEntityLifecycle.isObserved(type)`
+answers which. Every write of an observed entity runs inside a transaction:
+the caller's when there is one (see [transactions](transactions.md)), otherwise
+one of its own around that write. The history rows, the listeners' own writes
+and the change itself therefore commit or roll back together:
+
+- a throwing `beforeSave` or `beforeDelete` refuses the write;
+- a throwing `afterSave`, `afterDelete` or change listener rolls the write back,
+  with its history row;
+- a caller's transaction that rolls back takes the history rows and every
+  listener write with it.
+
+A soft delete of an entity with no listeners and no history runs its `UPDATE`
+like any other statement, outside a transaction of its own.
+
+### What the lifecycle does not reach
+
+- **A statement written by hand.** `executeQueryString`, and `executeQuery` or
+  `executeCommand` on the data source, bypass the repository: they see
+  soft-deleted rows, set no deletion time, write no history and run no hook or
+  change listener. A query written by hand on a soft-delete entity adds
+  `deleted_at IS NULL` itself.
+- **After the commit.** Every hook and change listener runs before the
+  transaction commits. Work that must happen only once the change is durable —
+  a message, a cache eviction on another node — is written to an outbox in the
+  transaction and done by whoever reads it.
+- **`restoreById`** runs no hooks; a change listener hears it as `restored`.
+- **Several repositories of one entity** share the registry: listeners are
+  registered per entity type, not per repository instance.
 
 ## Query Sentences
 
@@ -2471,6 +2771,30 @@ read until it is refused. Its entity, `ExamplePatientRecord`, lives in
 `example/object_persistence/object_persistence_entities.dart`. Every step checks its own result, and `test/examples_test.dart`
 runs it.
 
+[Entity Lifecycle](#entity-lifecycle) is covered twice.
+`test/entity_lifecycle_test.dart` needs no database: the annotations read back,
+the `includingDeleted` zone, the `TomUpdate` a soft delete renders and its bind
+order, a change's JSON form, and when a write is observed.
+`test/entity_lifecycle_db_test.dart`, tagged `db`, runs it through a repository
+against a live database — MariaDB or PostgreSQL: a deleted row hidden from every
+read and kept, every delete path soft, a restore and a purge, a soft delete
+version-checked, a delete cut to a window, the history of updates, deletes and a
+restore with the principal that made them, a rolled-back write leaving no
+history, the hooks in order with `beforeSave` changing the entity and vetoing
+it, a throwing `afterSave` rolling the write back, change events of every kind,
+and a change listener's outbox row committing and rolling back with the change.
+
+```bash
+dart run example/object_persistence/entity_lifecycle_example.dart
+```
+
+`example/object_persistence/entity_lifecycle_example.dart` walks the feature in
+six steps without a database: the declarations read back, the history table's
+own columns, the `includingDeleted` zone, a listener making a write observed, a
+change listener hearing its entity with an encrypted field redacted, and the
+change as JSON. Every step checks its own result, and `test/examples_test.dart`
+runs it.
+
 [Tenant-Owned Rows](#tenant-owned-rows) is asserted by
 `test/tenancy_db_test.dart`, tagged `db`: two tenants writing and reading
 through one repository under each of the three isolation models, the tenant
@@ -2523,6 +2847,12 @@ table, in each tenant's schema or in each tenant's database.
   column left behind, reporting a `TomReencryptionReport`; every failure is a
   `TomFieldEncryptionException`; **`TomAesGcm`** is the cipher, shared with the
   privacy module's sealing of audit values. See [Field-Level Encryption](#field-level-encryption).
+- **`TomSoftDelete` + `TomHistory` + `TomEntityLifecycle`** — the soft-delete
+  and history declarations, and the registry of `TomEntityListener` hooks and
+  `TomEntityChangeListener`s told of every `TomEntityChange`; `historyOf`
+  answers `TomHistoryEntry` versions read through `TomHistoryMeta`, and a
+  declaration the repository cannot carry out is a
+  `TomEntityLifecycleException`. See [Entity Lifecycle](#entity-lifecycle).
 
 ## Not Yet Implemented
 
@@ -2566,6 +2896,19 @@ The other three are about [Field-Level Encryption](#field-level-encryption).
   deleted key no longer reads.
   <!-- unpinned: absence — no retirement of data keys exists -->
 
+The last two are about [Entity Lifecycle](#entity-lifecycle).
+
+- **There is no after-commit hook.** Every `TomEntityListener` hook and change
+  listener runs inside the write's transaction, before it commits. Work that
+  must wait for the commit is written to an outbox in the transaction and done
+  by whatever reads it.
+  <!-- unpinned: absence — no after-commit hook exists -->
+- **There is no outbox relay.** A change listener writing an outbox row in the
+  change's transaction is the pattern ([Feeding an outbox](#feeding-an-outbox));
+  the outbox table, and the relay that reads it and publishes through
+  [messaging](messaging.md), are the application's.
+  <!-- unpinned: absence — no outbox table or relay exists -->
+
 What is *not* listed here is a vocabulary of word-operators — *After*,
 *Containing*, *StartsWith* and their siblings. They are set in italics because
 none of them is code: they are not missing but declined, since a query sentence
@@ -2576,18 +2919,19 @@ is a string and `>` and `%` are directly writable in one. See
 
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
-| `dart:async` | dart | `blob_migration.dart`, `data_scope.dart`, `field_encryption.dart` | `Future`; `runZoned` and `Zone`, which carry a raw read |
+| `dart:async` | dart | `blob_migration.dart`, `data_scope.dart`, `entity_lifecycle.dart`, `field_encryption.dart` | `Future` and `FutureOr`; `runZoned` and `Zone`, which carry a raw read and `TomSoftDelete.includingDeleted` |
 | `dart:convert` | dart | `field_encryption.dart` | `utf8`, `base64` and `base64Url`: a value's bytes, a wrapped key, the stored ciphertext and a blind index |
 | `dart:math` | dart | `field_encryption.dart` | `Random.secure`, for nonces and data keys |
 | `dart:typed_data` | dart | `field_encryption.dart` | `Uint8List`, the bytes the cipher works on |
 | `crypto` | package | `field_encryption.dart` | `Hmac` and `sha256`, the blind index |
 | `pointycastle` | package | `field_encryption.dart` | `GCMBlockCipher` over `AESEngine`, the AES-256-GCM cipher values and data keys are sealed with |
-| `tom_core_kernel` | package | 8 of 16 files | `tomReflector` (mirrors), the `TomZoned*` date/time types, and `TomJobDefinition` / `TomSchedule` / `TomCommand` / `TomTenantContext` for the re-encryption job and its run in every tenant |
+| `tom_core_kernel` | package | 9 of 17 files | `tomReflector` (mirrors), the `TomZoned*` date/time types, and `TomJobDefinition` / `TomSchedule` / `TomCommand` / `TomTenantContext` for the re-encryption job and its run in every tenant; `getFromCurrentZone` / `TomPrincipal` and `TomTenantContext` for the principal and tenant a change and a history row record |
 | `uuid` | package | `field_encryption.dart`, `file_reference.dart` | `Uuid.v4`, for the file name in a blob key; `UuidV4`, for a data key's id |
 | [audit](audit.md) | module | `crud_repository.dart` | `TomAuditAction`, `TomAuditTrail` |
 | [configuration](configuration.md) | module | `field_encryption.dart` | `TomSecrets.resolve` and `TomSecretReference.isReference`, which resolve a `secret:` reference to a key-encryption key in `configure` |
-| [datasources](datasources.md) | module | 11 of 16 files | `TomDbType`/`TomOperator`/`SqlString`, `TomStandardSqlDialect` / `MariadbSqlDialect` (including the `aggregate`, `aliased`, `groupByClause` and `havingClause` fragments), `TomQuery` family (`TomSelect` / `TomCount` / `TomDelete` / `TomLiteralSelect`), `TomAggregateFunction`, `TomTypedPersistenceBase`, `TomTypePersistenceInfo`, `TomDataSourceInfo`, `TomPreparedStatement`; `TomFrameworkTable`, `TomSchemaProvisioning` and `sqlInstant` / `parseSqlInstant` for the data-key table |
+| [datasources](datasources.md) | module | 11 of 17 files | `TomDbType`/`TomOperator`/`SqlString`, `TomStandardSqlDialect` / `MariadbSqlDialect` (including the `aggregate`, `aliased`, `groupByClause` and `havingClause` fragments), `TomQuery` family (`TomSelect` / `TomCount` / `TomDelete` / `TomUpdate` / `TomLiteralSelect`), `TomAggregateFunction`, `TomTypedPersistenceBase`, `TomTypePersistenceInfo`, `TomDataSourceInfo`, `TomPreparedStatement`; `TomFrameworkTable`, `TomSchemaProvisioning` and `sqlInstant` / `parseSqlInstant` for the data-key table |
 | [file_storage](file_storage.md) | module | `blob_migration.dart`, `crud_repository.dart`, `file_reference.dart` | `TomBlobStore`, `TomBlobStoreInfo`, `TomStorageException`, `TomStoredBlob` |
-| [little_things](little_things.md) | module | 7 of 16 files | `TomServerException` (base of the module's exceptions) |
+| [little_things](little_things.md) | module | 8 of 17 files | `TomServerException` (base of the module's exceptions) |
 | [privacy](privacy.md) | module | `crud_repository.dart` | `TomPersonalDataModel.sealingSubjects`, which names the data subject each `@TomPersonal` value of an audit record is sealed for |
 | [tenancy](tenancy.md) | module | `field_encryption.dart` | `TomTenancy.current` and its tenants, which the re-encryption pass runs in |
+| [transactions](transactions.md) | module | `crud_repository.dart` | `TomTransactionManager.runInTransaction`, the transaction an observed entity's write runs in |

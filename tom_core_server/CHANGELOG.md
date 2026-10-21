@@ -2,6 +2,40 @@
 
 ### Added
 
+- **Soft delete, history tables, lifecycle hooks and change events**
+  (`object_persistence` and `datasources` modules, `entity_lifecycle.dart`).
+  `@TomSoftDelete({field = 'deletedAt'})` makes every repository delete —
+  `delete`, `deleteById`, `deleteAllById`, `deleteByQuerySentence`,
+  `deleteByQuery` — an `UPDATE` setting a nullable `DateTime` column, and ANDs
+  `<deleted> IS NULL` into the repository's scope, so every read, count,
+  existence check and write guard leaves deleted rows out;
+  `TomSoftDelete.includingDeleted(body)` shows them, `restoreById(id)` clears
+  the deletion time and `purgeById(id)` deletes for good. A versioned
+  `delete(entity)` is version-checked and moves the version
+  (`TomSqlDatasourceRepository.deletedAtParameter`, `nextVersionParameter`); a
+  delete cut to a window is resolved to the window's keys first.
+  `@TomHistory(table:)` copies the row as it was — read raw, encrypted columns
+  as ciphertext — into a history table with `history_id`, `history_action`,
+  `history_at` and `history_by` before every update, delete and restore;
+  `historyOf(id)` answers `TomHistoryEntry` versions, oldest first, read through
+  the reflected `TomHistoryMeta`. `TomEntityLifecycle.register<T>(listener)`
+  registers a `TomEntityListener` whose `beforeSave` may change or refuse the
+  entity and whose `afterSave` / `beforeDelete` / `afterDelete` see the row as
+  stored; `TomEntityLifecycle.onChange(listener, {entity})` is told of every
+  `TomEntityChange` (`inserted`, `updated`, `deleted`, `restored`) with the rows
+  before and after, their values with encrypted fields redacted, the principal
+  and the tenant, and `toJson()`. The write of an entity with a listener, a
+  change listener or a history runs inside a transaction — the caller's or its
+  own — so the history, the listeners' writes and the change commit or roll
+  back together, and a change listener inserting an outbox row publishes
+  exactly the committed changes. `TomUpdate` is the generated `UPDATE` a soft
+  delete and a restore render as. Refusals are `TomEntityLifecycleException`
+  keyed `crud_repository.soft_delete.invalid_field`,
+  `crud_repository.soft_delete.not_soft_delete` and
+  `crud_repository.history.not_declared`.
+  `example/object_persistence/entity_lifecycle_example.dart` walks the
+  connection-free half; `test/entity_lifecycle_test.dart` and
+  `test/entity_lifecycle_db_test.dart` cover it without and with a server.
 - **Migration lock and repair** (`db_migration` and `datasources` modules).
   `TomDbMigrations.migrateDataSource` runs every schema of a data source under
   that database's migration lock, `TomDbMigrator.withMigrationLock(dsi, body)`:

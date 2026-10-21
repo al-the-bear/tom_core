@@ -3181,3 +3181,86 @@ class FixturePinnedNote {
 /// The repository for [FixturePinnedNote].
 class FixturePinnedNoteRepository
     extends TomSqlDatasourceRepository<FixturePinnedNote, int> {}
+
+/// A soft-deleted, versioned entity that keeps its history — the
+/// entity-lifecycle suite's subject.
+@tomReflector
+@TomSoftDelete(field: 'deletedAt')
+@TomHistory(table: 'fixture_soft_note_history')
+@TomDbTable(
+  datasource: 'tom_core_server_test',
+  table: 'fixture_soft_note',
+  primaryKeyFields: ['id'],
+)
+class FixtureSoftNote {
+  /// Surrogate primary key.
+  @TomEntityId()
+  @TomDbColumn(columnName: 'id', isReadOnly: true)
+  int? id;
+
+  /// The row's version, maintained by the repository.
+  @TomVersion()
+  @TomDbColumn(columnName: 'version')
+  int? version;
+
+  /// What the note says.
+  @TomDbColumn(columnName: 'text')
+  String? text;
+
+  /// When the note was deleted; `null` while it lives.
+  @TomDbColumn(columnName: 'deleted_at')
+  DateTime? deletedAt;
+}
+
+/// The repository for [FixtureSoftNote].
+class FixtureSoftNoteRepository
+    extends TomSqlDatasourceRepository<FixtureSoftNote, int> {}
+
+/// A plain entity whose writes the lifecycle hooks and change events observe.
+@tomReflector
+@TomDbTable(
+  datasource: 'tom_core_server_test',
+  table: 'fixture_hooked_note',
+  primaryKeyFields: ['id'],
+)
+class FixtureHookedNote {
+  /// Surrogate primary key.
+  @TomEntityId()
+  @TomDbColumn(columnName: 'id', isReadOnly: true)
+  int? id;
+
+  /// What the note says.
+  @TomDbColumn(columnName: 'text')
+  String? text;
+
+  /// Stamped by a `beforeSave` hook in the tests.
+  @TomDbColumn(columnName: 'stamp')
+  String? stamp;
+}
+
+/// The repository for [FixtureHookedNote].
+class FixtureHookedNoteRepository
+    extends TomSqlDatasourceRepository<FixtureHookedNote, int> {}
+
+/// A soft delete naming a field that is not a `DateTime` — refused.
+@tomReflector
+@TomSoftDelete(field: 'text')
+@TomDbTable(
+  datasource: 'tom_core_server_test',
+  table: 'fixture_hooked_note',
+  primaryKeyFields: ['id'],
+)
+class FixtureBadSoftNote {
+  /// Surrogate primary key.
+  @TomEntityId()
+  @TomDbColumn(columnName: 'id', isReadOnly: true)
+  int? id;
+
+  /// Not a deletion time.
+  @TomDbColumn(columnName: 'text')
+  String? text;
+}
+
+/// The repository for [FixtureBadSoftNote].
+class FixtureBadSoftNoteRepository
+    extends TomSqlDatasourceRepository<FixtureBadSoftNote, int> {}

@@ -433,3 +433,39 @@ class TomDelete extends TomGeneratedQuery {
         "${TomGeneratedQuery.limitClause(top)}";
   }
 }
+
+/// An `UPDATE` of the first of the entity [types]: the columns of [set], by
+/// their column names, assigned their operands, for the rows the predicate
+/// selects.
+///
+/// What a repository renders a soft delete and a restore as — the same `WHERE`
+/// the matching hard delete would take, and one column moved.
+class TomUpdate extends TomGeneratedQuery {
+  /// Builds an update of [set] for the rows the predicate `query` selects.
+  TomUpdate(super.types, {required super.query, required this.set});
+
+  /// The assignments: column name to its new value.
+  final Map<String, TomOperator<Object?>> set;
+
+  @override
+  String toString() => "TomUpdate: $set ${super.toString()}";
+
+  @override
+  String generateQuery(TomStandardSqlDialect t) {
+    final assignments = [
+      for (final entry in set.entries)
+        '${entry.key} = ${entry.value.generate(t)}',
+    ];
+    return "UPDATE ${persistenceInfo[0].table.table}"
+        " SET ${assignments.join(', ')}"
+        " WHERE ${query.generate(t)}";
+  }
+
+  /// The assignments' parameters first, then the predicate's — the order
+  /// their placeholders appear in.
+  @override
+  List<String> getParameters(TomStandardSqlDialect t) => [
+    for (final value in set.values) ...value.getParameters(t),
+    ...query.getParameters(t),
+  ];
+}

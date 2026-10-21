@@ -25,7 +25,7 @@ surface documented here.
 | Little Things | [api_summary_little_things.md](api_summary_little_things.md) | The server-side base exception `TomServerException`, the `TomLoginFailure` reason its login subclass carries, the per-request correlation id `TomRequestId` it reads, and `tomErrorEnvelope`, the wire shape every error response uses. |
 | Messaging | [api_summary_messaging.md](api_summary_messaging.md) | Channel-neutral messages, delivery transports (SMTP, HTTP SMS gateway and stand-ins), MIME encoding, the durable outbox, resource-keyed email and SMS, and the idempotent receiver (inbox) for consuming a broker's messages once. |
 | Metrics | [api_summary_metrics.md](api_summary_metrics.md) | The request series, the Prometheus scrape endpoint answered ahead of authentication, and the OTLP/HTTP transport and metrics exporter. |
-| Object Persistence | [api_summary_object_persistence.md](api_summary_object_persistence.md) | Persistence annotations, repositories, query builder, operators/expressions, grouped queries and their aggregates, paging and sorting, file-reference columns, data scoping, column authorization, and field-level encryption with its keys, rotation and re-encryption. |
+| Object Persistence | [api_summary_object_persistence.md](api_summary_object_persistence.md) | Persistence annotations, repositories, query builder, operators/expressions, grouped queries and their aggregates, paging and sorting, file-reference columns, data scoping, column authorization, field-level encryption with its keys, rotation and re-encryption, and the entity lifecycle: soft delete, history tables, lifecycle hooks and change events. |
 | Preferences | [api_summary_preferences.md](api_summary_preferences.md) | Server-stored per-principal preferences: the scoped `tom_user_preference` entity, the typed service over it, and the `/preferences/*` endpoints. |
 | Privacy | [api_summary_privacy.md](api_summary_privacy.md) | Data-protection operations: personal-data declarations on entities, erasure, subject-access export, retention, and crypto-shredding of personal values in the audit trail with per-subject keys. |
 | Rate Limiting | [api_summary_ratelimit.md](api_summary_ratelimit.md) | Request rate limits per principal, API key or client address: the rules, the sliding-window arithmetic, the per-process and shared limiters, and the middleware answering `429` with `Retry-After`. |
@@ -349,7 +349,7 @@ surface documented here.
 | `MariadbSqlDialect` | class | MariaDB dialect. |
 | `PostgresSqlDialect` | class | PostgreSQL dialect: canonical DDL translated, truth values, `ON CONFLICT`, `RETURNING`. |
 | `TomQuery` / `TomGeneratedQuery` | abstract class | Query base types. |
-| `TomSelect` / `TomLiteralSelect` / `TomCount` / `TomDelete` | class | Concrete queries. |
+| `TomSelect` / `TomLiteralSelect` / `TomCount` / `TomDelete` / `TomUpdate` | class | Concrete queries; `TomUpdate` is what a repository renders a soft delete and a restore as. |
 | `TomTypePersistenceInfo` | class | Type persistence metadata. |
 | `TomTypedPersistenceBase` | abstract class | Base for typed persistence. |
 | `TomDataSource` | abstract class | Datasource contract (a transaction participant). |
@@ -756,6 +756,16 @@ surface documented here.
 | `encryptionKeyTable` / `encryptionKeyTableDdl` | top-level | The data-key table's descriptor, and its `CREATE TABLE` statement. |
 | `defaultEncryptionKeyTable` | top-level | `tom_encryption_key`, the data-key table's default name. |
 | `tomReencryptionJobName` | top-level | `object_persistence.reencrypt`, the re-encryption job's default name. |
+| `TomSoftDelete` | class | Marks an entity whose repository deletes set a deletion time and whose deleted rows repository reads leave out; `includingDeleted` shows them. |
+| `TomHistory` | class | Marks an entity whose rows are copied into a history table before every update, delete and restore. |
+| `TomHistoryEntry<T>` | class | One past version of a row, as `historyOf` answers it. |
+| `TomHistoryMeta` | class | The history table's own four columns, read by reflection. |
+| `TomEntityListener<T>` | abstract class | The `beforeSave` / `afterSave` / `beforeDelete` / `afterDelete` hooks of one entity type's repository writes. |
+| `TomEntityChange` | class | One change of one row, with the row before and after and `toJson()`. |
+| `TomEntityChangeKind` | enum | `inserted`, `updated`, `deleted` or `restored`. |
+| `TomEntityChangeListener` | typedef | Told of every change of its entity inside the change's transaction. |
+| `TomEntityLifecycle` | abstract final class | The registry of entity listeners and change listeners (static). |
+| `TomEntityLifecycleException` | class | A lifecycle declaration that cannot be carried out, or a soft-delete or history method on an entity without one (extends `TomServerException`). |
 
 ### Preferences (`lib/src/tomserver/preferences/`)
 
@@ -1275,7 +1285,13 @@ surface documented here.
 | `TomEndpointRouteKey` | Endpoints |
 | `TomEndpointRouting` | Endpoints |
 | `TomEndpointRoutingInfo` | Endpoints |
+| `TomEntityChange` | Object Persistence |
+| `TomEntityChangeKind` | Object Persistence |
+| `TomEntityChangeListener` | Object Persistence |
 | `TomEntityId` | Object Persistence |
+| `TomEntityLifecycle` | Object Persistence |
+| `TomEntityLifecycleException` | Object Persistence |
+| `TomEntityListener` | Object Persistence |
 | `TomEntitySchemaReader` | Database Migration |
 | `TomEnvFile` | Command Line |
 | `TomErasure` | Privacy |
@@ -1340,6 +1356,9 @@ surface documented here.
 | `TomHealthService` | Health Check |
 | `TomHealthStatus` | Health Check |
 | `TomHealthVerdict` | Health Check |
+| `TomHistory` | Object Persistence |
+| `TomHistoryEntry` | Object Persistence |
+| `TomHistoryMeta` | Object Persistence |
 | `TomHttp1PushExchange` | Messaging |
 | `TomHttp2PushExchange` | Messaging |
 | `TomHttpOAuthTokenTransport` | Authentication |
@@ -1627,6 +1646,7 @@ surface documented here.
 | `TomSmtpSettings` | Messaging |
 | `TomSmtpTransport` | Messaging |
 | `TomSocketSmtpConnection` | Messaging |
+| `TomSoftDelete` | Object Persistence |
 | `TomSortDirection` | Object Persistence |
 | `TomSortField` | Object Persistence |
 | `TomSqlApiKeyStore` | Authentication |
@@ -1708,6 +1728,7 @@ surface documented here.
 | `TomTypedPersistenceBase` | Datasources |
 | `TomTypePersistenceInfo` | Datasources |
 | `TomUnaryOperator` | Object Persistence |
+| `TomUpdate` | Datasources |
 | `TomUserPreference` | Preferences |
 | `TomUserPreferenceException` | Preferences |
 | `TomUserPreferenceRepository` | Preferences |

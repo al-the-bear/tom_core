@@ -3,8 +3,8 @@
 The data-access foundation of the server: **SQL-typed values**
 (`TomDbType<T>`), a typed **operator tree** (`TomOperator<R>`), a **SQL dialect**
 that renders that tree to SQL fragments (`TomStandardSqlDialect`), reusable
-**query objects** (`TomSelect`, `TomCount`, `TomDelete`, `TomLiteralSelect`),
-and the **data-source / driver** abstraction (`TomDataSource`,
+**query objects** (`TomSelect`, `TomCount`, `TomDelete`, `TomUpdate`,
+`TomLiteralSelect`), and the **data-source / driver** abstraction (`TomDataSource`,
 `TomDatasourceDriver`, `TomDataSourceInfo`) with two **SQL drivers** —
 MariaDB and PostgreSQL 15+ — built on one driver-neutral base
 (`TomSqlDatasource`) that runs over a bounded **connection pool**
@@ -88,7 +88,7 @@ declared.
 | `classifySqlFailure` / `sqlFailureCauses` | function | Classifies a write failure, and walks the `rootException` chain it reads |
 | `isLostConnectionFailure` | function | Whether a failure left no live link to have run on, so one retry on another connection is worth it |
 | `TomQuery` / `TomGeneratedQuery` | abstract class | A query over a set of entity types |
-| `TomSelect` / `TomCount` / `TomDelete` / `TomLiteralSelect` | class | Concrete statements |
+| `TomSelect` / `TomCount` / `TomDelete` / `TomUpdate` / `TomLiteralSelect` | class | Concrete statements |
 | `TomTypePersistenceInfo` | class | Per-type persistence metadata (table + columns) |
 | `TomTypedPersistenceBase` | abstract class | Base for anything scoped to a set of entity types; analyses their annotations once and exposes the flattened column information |
 | `SqlPlaceholderScan` | class | Finds `:name` placeholders in generated SQL without mistaking one inside a quoted literal for a bind |
@@ -505,6 +505,7 @@ predicate with shaping options (`distinct`, `sort`, `top`, `offset`):
 | `TomSelect` | `SELECT … FROM … WHERE <predicate> [ORDER BY …] [LIMIT n [OFFSET m]]` |
 | `TomCount` | `SELECT COUNT(*) AS count FROM … WHERE <predicate>` |
 | `TomDelete` | `DELETE FROM <first table> WHERE <predicate> [ORDER BY …] [LIMIT n]` |
+| `TomUpdate` | `UPDATE <first table> SET <column> = <operand>, … WHERE <predicate>` — what a repository renders a soft delete and a restore as ([Soft delete](object_persistence.md#soft-delete)) |
 | `TomLiteralSelect` | a raw, hand-written SQL string with explicit parameters |
 
 ### What a statement reports about itself

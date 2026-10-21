@@ -125,6 +125,7 @@ added.
 | `TomQuerySentenceCompiler` | Compiles a readable query sentence (`find first 25 skip 50 by name = :name order by age desc name asc`) into the same query objects the builder produces |
 | `TomPageRequest` / `TomSortField` / `TomSortDirection` | The row window and the per-field sort a caller passes to `findAll`, `findAllById`, `findByQuery` and `findByQuerySentence` — cut out of the *scoped* rows, so `count()` reports the scoped total beside it |
 | `TomVersion` / `TomOptimisticLockException` | Optimistic locking — a versioned entity's update and `delete(entity)` match the row only at the version the caller loaded, so a second save of one loaded row is refused rather than silently overwriting the first |
+| `TomSoftDelete` / `TomHistory` / `TomEntityListener` / `TomEntityLifecycle` / `TomEntityChange` | The entity lifecycle — soft delete (a delete sets a deletion time and every repository read leaves the row out; `restoreById`, `purgeById`), history tables written before every update, delete and restore (`historyOf`), hooks before and after every save and delete, and change events for every insert, update, delete and restore; an observed entity's write, its history and its listeners' writes commit in one transaction, so a change listener writing an outbox row publishes exactly the committed changes |
 | `TomEncrypted` / `TomBlindIndex` / `TomFieldEncryption` / `TomFieldKeyring` / `TomFieldReencryption` | Field-level encryption at rest — an annotated field is stored as AES-256-GCM ciphertext and read as plaintext, found by value through a blind index, under data keys kept in `tom_encryption_key` wrapped by a key-encryption key from the `fieldEncryption` block, rotated without downtime and re-encrypted by a background pass in every tenant |
 | `TomDataScope` / `TomDataScopeRegistry` / `TomColumnAuthorization` | Row scoping ANDed into every query — `owner`, `group` and the grant-driven `resource` kind, the last applied automatically to any entity with a `resource_key` column — and per-column read/write rights enforced by the repository |
 | `TomDataSource` / `TomSqlDatasource` | The data-source contract, and the driver-neutral SQL base both drivers extend: pool, a connection per transaction, statement paths, row mapping, and `withSessionLock`, a database-wide lock released when its holder's session ends |
@@ -132,7 +133,7 @@ added.
 | `PostgresDatasource` / `PostgresXADatasource` | PostgreSQL 15+ drivers (`postgresql`, `postgresql_xa`) |
 | `TomReplicaRouting` / `TomPrimaryReads` | Read replicas — a data source's `replicas` serve the repository reads of read-only work (a read-only transaction, a `GET`/`HEAD` request, a `readOnly` block), round-robin, with read-your-writes per principal and a failed replica left out while the primary serves; `@TomPrimaryReads` pins an entity's reads to the primary |
 | `TomDbType` family / `TomStandardSqlDialect` / `MariadbSqlDialect` / `PostgresSqlDialect` | Typed columns and SQL rendering, including the framework's canonical DDL in each database's words |
-| `TomSelect` / `TomCount` / `TomDelete` / `TomGroupedSelect` / `TomLiteralSelect` | Generated query objects, plus the raw-SQL escape hatch |
+| `TomSelect` / `TomCount` / `TomDelete` / `TomUpdate` / `TomGroupedSelect` / `TomLiteralSelect` | Generated query objects, plus the raw-SQL escape hatch |
 
 ### Schema & transactions (`db_migration`, `transactions`)
 
@@ -227,7 +228,7 @@ there, or excluded with a stated reason.
 | ------ | ------------ |
 | [`example/server/`](example/server/) | The pieces `TomServer` composes its pipeline from; `graceful_shutdown_example.dart` runs a graceful shutdown step by step — readiness off, a new request refused, the request and the scheduled run in flight finished, the lease released |
 | [`example/endpoints/`](example/endpoints/) | Declaring routed endpoints; `idempotency_example.dart` sends a request, its retry, a reused key and another caller's key through the idempotency-key handling |
-| [`example/object_persistence/`](example/object_persistence/) | Repositories, annotations, query builder |
+| [`example/object_persistence/`](example/object_persistence/) | Repositories, annotations, query builder; `entity_lifecycle_example.dart` shows soft delete, history tables, the listener registry and a change event as JSON |
 | [`example/datasources/`](example/datasources/) | SQL-typed values and dialect rendering; `read_replicas_example.dart` shows which statements a read replica may serve, read-only work, the entities pinned to the primary and the replica settings |
 | [`example/db_migration/`](example/db_migration/) | Versioned schema migrations; `db_migration_repair_example.dart` shows the migration lock's name and wait and refuses malformed repair requests |
 | [`example/transactions/`](example/transactions/) | Local/XA transaction coordination; `saga_example.dart` runs sagas — steps in order, compensation last first, a failed compensation and a saga resumed after a restart |
