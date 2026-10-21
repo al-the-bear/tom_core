@@ -20,7 +20,7 @@ import 'transport/transport.dart';
 /// How long a completion may go without hearing anything at all before it is
 /// declared stalled.
 ///
-/// A **gap**, not a total budget — see [boundedAiCompletionText] for why that
+/// A **gap**, not a total budget — see [boundedAiRun] for why that
 /// distinction is the whole design. The bound is reset by *any*
 /// [AgentSdkCompletionEvent]: a delta, or the liveness a transport reports
 /// for `system/init`, a partial message, a tool call or an announced retry.
