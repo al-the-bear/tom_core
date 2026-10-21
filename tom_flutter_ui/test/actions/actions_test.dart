@@ -669,6 +669,57 @@ void main() {
     });
   });
 
+  group('TomActionTransaction applies its steps atomically', () {
+    TomActionTransaction recorded(
+      List<String> log, {
+      String? failUndo,
+      String? failRedo,
+    }) {
+      final tx = TomActionTransaction(label: 'steps');
+      for (final id in ['a', 'b', 'c']) {
+        tx.record(
+          actionId: id,
+          undo: () {
+            if (id == failUndo) throw StateError('$id refuses to undo');
+            log.add('undo $id');
+          },
+          redo: () {
+            if (id == failRedo) throw StateError('$id refuses to redo');
+            log.add('redo $id');
+          },
+        );
+      }
+      return tx..commit();
+    }
+
+    test('an undo that throws puts back the steps already undone and leaves '
+        'the transaction applied', () {
+      final log = <String>[];
+      final tx = recorded(log, failUndo: 'a');
+      expect(tx.undoAll, throwsStateError);
+      expect(log, ['undo c', 'undo b', 'redo b', 'redo c']);
+      expect(tx.isUndone, isFalse);
+    });
+
+    test('a redo that throws undoes the steps already redone and leaves the '
+        'transaction undone', () {
+      final log = <String>[];
+      final tx = recorded(log, failRedo: 'c')..undoAll();
+      log.clear();
+      expect(tx.redoAll, throwsStateError);
+      expect(log, ['redo a', 'redo b', 'undo b', 'undo a']);
+      expect(tx.isUndone, isTrue);
+    });
+
+    test('a failed undo leaves the history where it was', () {
+      final log = <String>[];
+      final history = TomUndoHistory()..push(recorded(log, failUndo: 'b'));
+      expect(history.undo, throwsStateError);
+      expect(history.undoCount, 1);
+      expect(history.redoCount, 0);
+    });
+  });
+
   group('TomUndoHistory', () {
     TomActionTransaction committedTx(IncrementAction inc, Counter counter) {
       final tx = TomActionTransaction(label: 'inc');

@@ -291,8 +291,8 @@ TomActionTransaction({required String label})
 | `record<TUndo>(TomAction action, TUndo undoState)` | `void` | Records an undo state obtained elsewhere. Throws `StateError` once committed or rolled back. |
 | `commit()` | `void` | Seals the transaction against further recording. |
 | `rollback()` | `void` | Reverses the entries in reverse order, marking the transaction undone. A second call is a silent no-op — it is the failure path. |
-| `undoAll()` | `void` | Reverses the entries in reverse order. Throws `StateError` when already undone, checked before any entry is touched. |
-| `redoAll()` | `void` | Re-applies the entries in the order they executed. Throws `StateError` when the transaction is not undone, and when `isRedoable` is false — naming the action that lacks the hook. |
+| `undoAll()` | `void` | Reverses the entries in reverse order. Throws `StateError` when already undone, checked before any entry is touched. When `isRedoable` is true the pass is atomic: an entry that throws has the ones already undone put back, and the transaction stays applied. |
+| `redoAll()` | `void` | Re-applies the entries in the order they executed. Throws `StateError` when the transaction is not undone, and when `isRedoable` is false — naming the action that lacks the hook. Atomic: an entry that throws has the ones already redone undone again, and the transaction stays undone. |
 | `toString()` | `String` | `TomActionTransaction(<label>, entries: <n>)`. |
 
 ### TomActionTrigger\<TContext, TUndo\>
@@ -334,7 +334,8 @@ TomActionTrigger({
 
 ### TomUndoHistory
 
-A bounded undo/redo stack of committed transactions.
+A bounded undo/redo stack of committed transactions, on `tom_forge_core`'s
+`ForgeUndoStack`: a transaction whose undo or redo throws stays where it was.
 
 **Kind:** `class`
 

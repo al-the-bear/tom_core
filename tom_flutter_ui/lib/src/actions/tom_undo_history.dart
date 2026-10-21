@@ -1,10 +1,14 @@
+import 'package:tom_forge_core/tom_forge_undo.dart';
+
 import 'tom_action.dart';
 import 'tom_action_context.dart';
 import 'tom_action_transaction.dart';
 
 /// Application-level undo/redo history.
 ///
-/// Manages a stack of [TomActionTransaction]s for undo/redo support.
+/// A [ForgeUndoStack] of [TomActionTransaction]s: a transaction is undone (or
+/// redone) first and moved between the stacks second, so a transaction whose
+/// undo throws stays where it was and the history is unchanged.
 ///
 /// ```dart
 /// final undoHistory = TomUndoHistory(maxSize: 50);
@@ -27,36 +31,29 @@ class TomUndoHistory {
   /// Maximum number of transactions to keep.
   final int maxSize;
 
-  final List<TomActionTransaction> _undoStack = [];
-  final List<TomActionTransaction> _redoStack = [];
+  final ForgeUndoStack<TomActionTransaction> _stack;
 
   /// Optional callback invoked when the undo/redo state changes.
   void Function()? onChanged;
 
-  TomUndoHistory({this.maxSize = 100, this.onChanged});
+  TomUndoHistory({this.maxSize = 100, this.onChanged})
+    : _stack = ForgeUndoStack(maxEntries: maxSize);
 
   /// Pushes a committed transaction onto the undo stack.
   ///
-  /// Clears the redo stack (new action invalidates redo history).
+  /// Clears the redo stack (new action invalidates redo history), and drops
+  /// the oldest transactions beyond [maxSize].
   void push(TomActionTransaction tx) {
     if (!tx.isCommitted) {
       throw StateError('Cannot push an uncommitted transaction');
     }
     if (!tx.hasEntries) return;
-
-    _undoStack.add(tx);
-    _redoStack.clear();
-
-    // Trim oldest entries if over max
-    while (_undoStack.length > maxSize) {
-      _undoStack.removeAt(0);
-    }
-
+    _stack.push(tx);
     onChanged?.call();
   }
 
   /// Whether there are transactions to undo.
-  bool get canUndo => _undoStack.isNotEmpty;
+  bool get canUndo => _stack.canUndo;
 
   /// Whether the next transaction can actually be redone.
   ///
@@ -66,7 +63,7 @@ class TomUndoHistory {
   /// opt-in, so a history can hold undone transactions that nothing can put
   /// back — and a Redo button that says so is worth more than one that enables
   /// itself and then does nothing.
-  bool get canRedo => _redoStack.isNotEmpty && _redoStack.last.isRedoable;
+  bool get canRedo => _stack.nextRedo?.isRedoable ?? false;
 
   /// Undoes the most recent transaction.
   ///
@@ -75,12 +72,7 @@ class TomUndoHistory {
   /// a transaction is already undone, and popping first would have left that
   /// failure with a transaction on neither stack. [redo] mirrors the ordering.
   void undo() {
-    if (!canUndo) return;
-    final tx = _undoStack.last;
-    tx.undoAll();
-    _undoStack.removeLast();
-    _redoStack.add(tx);
-    onChanged?.call();
+    if (_stack.undo((tx) => tx.undoAll()) != null) onChanged?.call();
   }
 
   /// Re-applies the most recently undone transaction and moves it back onto the
@@ -104,39 +96,35 @@ class TomUndoHistory {
   /// gets a [StateError] naming the action that is missing it.
   void redo() {
     if (!canRedo) return;
-    final tx = _redoStack.last;
-    tx.redoAll();
-    _redoStack.removeLast();
-    _undoStack.add(tx);
+    _stack.redo((tx) => tx.redoAll());
     onChanged?.call();
   }
 
   /// Clears all undo/redo history.
   void clear() {
-    _undoStack.clear();
-    _redoStack.clear();
+    _stack.clear();
     onChanged?.call();
   }
 
   /// The label of the next undo-able transaction.
-  String? get undoLabel => canUndo ? _undoStack.last.label : null;
+  String? get undoLabel => _stack.nextUndo?.label;
 
   /// The label of the next redo-able transaction.
   ///
   /// Null when [canRedo] is false, which includes a top transaction that is on
   /// the redo stack but cannot be re-applied — there is no label to offer for
   /// an action a button will not perform.
-  String? get redoLabel => canRedo ? _redoStack.last.label : null;
+  String? get redoLabel => canRedo ? _stack.nextRedo!.label : null;
 
   /// Number of transactions in the undo stack.
-  int get undoCount => _undoStack.length;
+  int get undoCount => _stack.undoCount;
 
   /// Number of transactions in the redo stack.
   ///
   /// Counts what has been undone, not what can be redone — an undone
   /// transaction stays here whether or not its actions implement redo. Use
   /// [canRedo] to drive a button.
-  int get redoCount => _redoStack.length;
+  int get redoCount => _stack.redoCount;
 }
 
 // =============================================================================

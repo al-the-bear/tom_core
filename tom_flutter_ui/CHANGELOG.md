@@ -1,5 +1,18 @@
 ## Unreleased
 
+### Undo
+
+- **`TomUndoHistory` runs on `tom_forge_core`'s `ForgeUndoStack`**, the one
+  undo/redo stack the workspace's editors share, through its platform-neutral
+  `tom_forge_undo.dart` entry point. The public behaviour is unchanged: a
+  transaction is undone or redone first and moved second, so one whose undo
+  throws stays where it was.
+- **`TomActionTransaction.undoAll` and `redoAll` are atomic.** A step that
+  throws has the steps already applied in that pass put back, newest first,
+  and the error is rethrown with the transaction in the state it had. An undo
+  is atomic when every step can be redone (`isRedoable`); a transaction with a
+  step that has no redo is undone step by step as before.
+
 ### Tests
 
 - **`test/package_compiles_test.dart`** fails the suite when `dart analyze`

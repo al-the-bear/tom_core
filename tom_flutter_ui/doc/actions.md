@@ -199,7 +199,7 @@ Undo is built from three cooperating pieces:
 | ----- | ---- |
 | `TomActionUndo` | Tag interface for the snapshot `execute` returns. |
 | `TomActionTransaction` | Collects one *or many* sub-action undo states into a single atomic entry, then `commit`s. |
-| `TomUndoHistory` | A bounded undo/redo stack of committed transactions. |
+| `TomUndoHistory` | A bounded undo/redo stack of committed transactions, on `tom_forge_core`'s `ForgeUndoStack`. |
 
 A transaction is the unit the history reverses. One user gesture that fans out
 to several sub-actions records each into the same transaction, so a single undo
@@ -229,7 +229,14 @@ the undo type and accepts anything.
 
 `TomUndoHistory` enforces the invariants: it refuses to `push` an uncommitted or
 empty transaction, clears the redo stack on every new push, and trims to
-`maxSize`. `TomUndoAction` and `TomRedoAction` are ready-made coordinator
+`maxSize`. The stack itself is `tom_forge_core`'s `ForgeUndoStack`, the one
+undo stack the workspace's editors share: a transaction is undone or redone
+first and moved second, so one whose undo throws stays where it was. A
+transaction applies its steps atomically through the same package's
+`forgeApplyAll` — a step that throws has the steps already applied in that pass
+put back, and the transaction keeps the state it had. An undo can be atomic only
+when every step can be redone, since putting an undone step back means redoing
+it. `TomUndoAction` and `TomRedoAction` are ready-made coordinator
 actions that wrap a history so undo/redo themselves become first-class,
 authorizable actions.
 
@@ -427,6 +434,7 @@ composite, and that says nothing about what the composite then reaches.
 | ---------- | ---- | ----------- | --- |
 | `flutter` | package | `tom_action_trigger.dart` | `package:flutter/widgets.dart` only — the trigger is a widget, not a Material one |
 | `tom_core_kernel` | package | `tom_action.dart`, `tom_action_controller.dart` | `TomAuthorizable`, `TomAuthorizationGroup`, `TomAuthState`, `TomAuthorization`, `TomAuthorizer`, `TomScope` |
+| `tom_forge_core` | package | `tom_action_transaction.dart`, `tom_undo_history.dart` | `ForgeUndoStack` under `TomUndoHistory`, and `forgeApplyAll` for a transaction's atomic undo and redo |
 | [widget_base](widget_base.md) | module | `tom_action.dart`, `tom_action_controller.dart` | `TomCtr` for `label` / `tooltip` / `iconName` resource resolution |
 
 > The action classes themselves are pure logic and need no widget tree. Because

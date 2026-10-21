@@ -1,3 +1,5 @@
+import 'package:tom_forge_core/tom_forge_undo.dart';
+
 import 'tom_action.dart';
 import 'tom_action_context.dart';
 
@@ -137,6 +139,12 @@ class TomActionTransaction {
   /// deleted record. The check runs before any entry is touched, so a refused
   /// call changes nothing. [redoAll] is what makes a transaction undoable
   /// again, by putting its effects back first.
+  ///
+  /// When every entry can be redone ([isRedoable]) the pass is atomic: an undo
+  /// that throws has the entries already undone in this pass put back, newest
+  /// first, the error is rethrown, and the transaction is still applied. An
+  /// entry without a redo cannot be put back, so a transaction holding one is
+  /// undone entry by entry and a throw leaves it part undone.
   void undoAll() {
     if (_undone) {
       throw StateError(
@@ -144,6 +152,17 @@ class TomActionTransaction {
         'apply the same undos a second time. Only redoAll() — which puts the '
         'effects back — makes it undoable again.',
       );
+    }
+    if (isRedoable) {
+      // Every entry can be put back, so a step that throws leaves the
+      // transaction exactly as it was, still applied and still undoable.
+      forgeApplyAll<_UndoEntry>(
+        _entries.reversed,
+        (e) => e.undo(),
+        (e) => e.redo!(),
+      );
+      _undone = true;
+      return;
     }
     _undone = true;
     for (final entry in _entries.reversed) {
@@ -168,6 +187,10 @@ class TomActionTransaction {
   /// redos would report a re-application that did not happen and would leave
   /// the transaction undoable again, which is exactly the corruption the two
   /// methods exist to prevent. The check runs before any entry is touched.
+  ///
+  /// The pass is atomic: a redo that throws has the entries already redone in
+  /// this pass undone again, newest first, the error is rethrown, and the
+  /// transaction is still undone.
   void redoAll() {
     if (!_undone) {
       throw StateError(
@@ -187,10 +210,10 @@ class TomActionTransaction {
         'this transaction, so a button bound to TomRedoAction stays disabled.',
       );
     }
+    // A step that throws puts back what the pass had re-applied, so the
+    // transaction stays undone and can be redone again as a whole.
+    forgeApplyAll<_UndoEntry>(_entries, (e) => e.redo!(), (e) => e.undo());
     _undone = false;
-    for (final entry in _entries) {
-      entry.redo!();
-    }
   }
 
   /// Whether this transaction has any recorded entries.
