@@ -4,6 +4,11 @@
 
 ### Added
 
+- **Test support.** `package:tom_core_storage/testing.dart`: `TomMemoryRemote`,
+  an in-memory compare-and-swap remote, and `TomMemoryStorage`, a per-device
+  view onto it whose reads, writes, quota (`rateLimitedUntil`), key
+  (`keyRequiredReason`) and replica lag (`TomStaleHead`) each fail on their
+  own switch.
 - **The asset store.** `TomAssetStore`: assets filed under the SHA-256 of
   their bytes (`TomAsset`), deduplicated, read on demand and verified then
   (`TomAssetCorruptException`), resolved as `TomAssetLive`,

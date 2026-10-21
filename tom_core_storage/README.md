@@ -68,6 +68,7 @@ Dart SDK `^3.10.0`. No Flutter dependency.
 | `TomGitHubLocator` | `github:<owner>/<repo>[@<branch>]/<path>` — parsed and printed. |
 | `tomOpenBrowserMedium` | A medium over IndexedDB (`web.dart`). |
 | `TomAesGcmCacheCipher` | AES-256-GCM sealing of cache files (`cipher.dart`). |
+| `TomMemoryRemote`, `TomMemoryStorage`, `TomStaleHead` | Test support (`testing.dart`): an in-memory compare-and-swap remote shared by per-device storages whose reads, writes, quota, key and replica lag each fail on their own switch. |
 
 ## Entry points
 
@@ -78,6 +79,7 @@ Dart SDK `^3.10.0`. No Flutter dependency.
 | `package:tom_core_storage/github.dart` | `TomGitHubStorage`, `tomGitHubWaitOf` | all, the web included (over `tom_github_api`) |
 | `package:tom_core_storage/web.dart` | `tomOpenBrowserMedium`, `TomBrowserStorageException` | browser (a VM test gets an in-memory stand-in) |
 | `package:tom_core_storage/cipher.dart` | `TomAesGcmCacheCipher` | all |
+| `package:tom_core_storage/testing.dart` | `TomMemoryRemote`, `TomMemoryStorage`, `TomStaleHead` — a test double; only a test imports it | all |
 
 ## Quick start
 

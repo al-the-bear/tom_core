@@ -3,9 +3,8 @@
 library;
 
 import 'package:test/test.dart';
+import 'package:tom_core_storage/testing.dart';
 import 'package:tom_core_settings/tom_core_settings.dart';
-
-import 'support/memory_storage.dart';
 
 const _deviceLocator = 'mem:/support/device.yaml';
 
@@ -45,9 +44,9 @@ class _Typed implements TomSecretStore {
 }
 
 void main() {
-  late MemoryStorage storage;
+  late TomMemoryStorage storage;
 
-  setUp(() => storage = MemoryStorage());
+  setUp(() => storage = TomMemoryStorage(TomMemoryRemote()));
 
   TomDeviceSettings device() =>
       TomDeviceSettings(locator: _deviceLocator, storage: storage);
@@ -71,10 +70,10 @@ void main() {
       'nothing', () async {
     final secrets = TomInMemorySecretStore();
     final first = await bootstrapWith(secrets).ensure();
-    final commits = storage.commits;
+    final commits = storage.remote.commits.length;
     final second = await bootstrapWith(secrets).ensure();
     expect(second, first);
-    expect(storage.commits, commits);
+    expect(storage.remote.commits.length, commits);
   });
 
   test('SETTINGS-BOOT-3: a wiped keychain re-mints the secret under the same '

@@ -71,7 +71,8 @@ dependencies:
 Dart SDK `^3.10.0`. No Flutter dependency. The default entry point,
 `package:tom_core_llm/tom_core_llm.dart`, imports no `dart:io` and compiles
 under dart2js; `package:tom_core_llm/io.dart` adds the machine half of the
-Node search.
+Node search, and `package:tom_core_llm/testing.dart` the test support: a
+fake provider's run, which only a test imports.
 
 ## Features
 
@@ -88,6 +89,7 @@ Node search.
 | `llmTrailEntries`, `LlmTrailEntry` and its kinds | The fold a trail view shows. |
 | `LlmTrailFileWriter`, `LlmTrailMedium`, `LlmTrailLog`, `LlmQuestTarget`, `LlmLiveTrailText`, `LlmLiveTrailSession`, `llmSummaryTrailPrepend` | The trail files in the VS Code extension's formats. |
 | `llmDiscoverNode`, `LlmNodeResolution`, `LlmNodeHost`, `llmNodeAt`; `LlmProcessNodeHost`, `llmNodeResolverFor` (`io.dart`) | The Node search: `PATH`, nvm, Homebrew and `/usr/local`, the newest at or above the floor. |
+| `llmFakeRun` (`testing.dart`) | A fake provider's run built from the text it answers: the prelude, the text deltas, a failure as the contract reports one, the end — so every fake gives the shape a real run has. |
 
 ## The union, member by member
 

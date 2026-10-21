@@ -8,14 +8,15 @@ import 'dart:typed_data';
 import 'package:test/test.dart';
 import 'package:tom_basics/diagnostics.dart';
 import 'package:tom_core_settings/tom_core_settings.dart';
+import 'package:tom_core_storage/testing.dart';
 import 'package:tom_core_storage/tom_core_storage.dart';
-
-import 'support/memory_storage.dart';
 
 const _locator = 'mem:/device/device.yaml';
 
 /// Refuses the first [refusals] commits, then behaves.
-class _RefusingStorage extends MemoryStorage {
+class _RefusingStorage extends TomMemoryStorage {
+  _RefusingStorage() : super(TomMemoryRemote());
+
   int refusals = 1;
   int attempts = 0;
 
@@ -42,7 +43,7 @@ class _RefusingStorage extends MemoryStorage {
   }
 }
 
-Future<Map<String, Object?>> _onDisk(MemoryStorage storage) async {
+Future<Map<String, Object?>> _onDisk(TomMemoryStorage storage) async {
   final reread = TomDeviceSettings(locator: _locator, storage: storage);
   await reread.load();
   return {for (final key in reread.keys) key: reread[key]};
@@ -51,7 +52,7 @@ Future<Map<String, Object?>> _onDisk(MemoryStorage storage) async {
 void main() {
   test('SETTINGS-DEVICE-1: saves started together all land — none is '
       'refused for the head an earlier one moved', () async {
-    final storage = MemoryStorage();
+    final storage = TomMemoryStorage(TomMemoryRemote());
     final device = TomDeviceSettings(locator: _locator, storage: storage);
     await device.load();
 
@@ -94,7 +95,7 @@ void main() {
 
   test('SETTINGS-DEVICE-3: the log level round-trips and states nothing by '
       'default; a value naming no level states nothing', () async {
-    final storage = MemoryStorage();
+    final storage = TomMemoryStorage(TomMemoryRemote());
     final device = TomDeviceSettings(locator: _locator, storage: storage);
     await device.load();
     expect(device.diagnosticsLogLevel, isNull);
@@ -117,7 +118,7 @@ void main() {
       'rather than failing the file', () async {
     final device = TomDeviceSettings(
       locator: _locator,
-      storage: MemoryStorage(),
+      storage: TomMemoryStorage(TomMemoryRemote()),
     );
     await device.load();
     device[TomDeviceSettings.cacheQuotaBytesKey] = -5;
@@ -132,7 +133,7 @@ void main() {
 
   test('SETTINGS-DEVICE-5: keys this build does not know survive a load and '
       'a save', () async {
-    final storage = MemoryStorage();
+    final storage = TomMemoryStorage(TomMemoryRemote());
     await storage.commit(
       _locator,
       TomChangeset.singleFile(
@@ -153,7 +154,7 @@ void main() {
 
   test('SETTINGS-DEVICE-6: a malformed file reads as empty, and the next save '
       'replaces it', () async {
-    final storage = MemoryStorage();
+    final storage = TomMemoryStorage(TomMemoryRemote());
     await storage.commit(
       _locator,
       TomChangeset.singleFile(Uint8List.fromList(utf8.encode('a: [1, 2\n'))),
@@ -186,8 +187,8 @@ void main() {
   });
 }
 
-class _RecordingStorage extends MemoryStorage {
-  _RecordingStorage(this.messages);
+class _RecordingStorage extends TomMemoryStorage {
+  _RecordingStorage(this.messages) : super(TomMemoryRemote());
   final List<String?> messages;
 
   @override

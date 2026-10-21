@@ -4,6 +4,8 @@
 
 ### Added
 
+- **Test support.** `package:tom_core_llm/testing.dart`: `llmFakeRun`, the
+  run of a fake provider built from the text it answers.
 - **The provider contract.** `LlmProvider` with `run(LlmRequest)` as a stream
   of `LlmEvent`s and `complete` derived from it, `capabilities`, availability
   with a reason, `trails` and a refusing `embed`; `LlmUnavailableProvider` for
