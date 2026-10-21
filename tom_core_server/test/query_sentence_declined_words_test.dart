@@ -1,6 +1,5 @@
 /// Tests for what the query-sentence grammar deliberately does **not** have —
-/// the declined Spring-Data words and the two stated boundaries — and for the
-/// forms that replace them.
+/// the declined Spring-Data words — and for the forms that replace them.
 ///
 /// `doc/object_persistence.md` §Words this grammar does not have declines eight
 /// Spring-Data keywords — *After*, *Before*, *StartsWith*, *EndsWith*,
@@ -17,9 +16,10 @@
 /// row added to it, or a word promoted to a keyword, fails a test rather than
 /// drifting away from what the compiler does.
 ///
-/// The two boundaries in §Not Yet Implemented are pinned the same way, and for
-/// the same reason: a limitation reads as live however old it is, so the one
-/// that has quietly been lifted is indistinguishable from the one that has not.
+/// *Exists*, *isEmpty* and *isNotEmpty* are replaced by the association path
+/// (`tags.name = :n`, `tags is empty`), which the guide describes in
+/// §Filtering on an association; the forms it names are run here too, so the
+/// replacement the table points at is one the compiler takes.
 ///
 /// Connection-free: only the entity's annotations are read.
 library;
@@ -182,20 +182,75 @@ void main() {
     });
   });
 
-  group('the two stated boundaries are still boundaries', () {
+  group('an association path is the form that replaces Exists and isEmpty', () {
     late TomQuerySentenceCompiler associations;
 
     setUpAll(() {
       associations = TomQuerySentenceCompiler([FixtureTaggedRecord]);
     });
 
-    test('a predicate cannot address an association\'s columns', () {
+    String predicate(String sentence) {
+      final sql = associations
+          .compileQuerySentence(sentence)
+          .generateQuery(dialect);
+      return sql.substring(sql.indexOf('WHERE '));
+    }
+
+    test('a predicate can address an association\'s columns', () {
       // `tags` is a `@TomReference` to FixtureTag through a join entity. The
-      // guide says the sentence refuses `tags.name` as a column it cannot
-      // resolve; if a join ever lands, this compiles and the guide's bullet
-      // has to go.
+      // term compiles to a correlated EXISTS over the join entity and target.
       expect(
-        () => associations.compileQuerySentence('find by tags.name = :n'),
+        predicate('find by tags.name = :n'),
+        contains(
+          'EXISTS (SELECT 1 FROM fixture_tag_link, fixture_tag WHERE '
+          '(fixture_tag_link.tagged_id = fixture_tagged.id AND '
+          'fixture_tag_link.tag_id = fixture_tag.id AND '
+          'fixture_tag.name = :n))',
+        ),
+      );
+    });
+
+    test('the sentences the guide shows compile as it says', () {
+      // §Filtering on an association: a term followed by `and`, a negated
+      // term, `<>` inside the subquery, and is empty / is not empty.
+      expect(
+        predicate("count by tags.name like 'r%' and label = :l"),
+        allOf(startsWith('WHERE EXISTS ('), endsWith('label = :l')),
+      );
+      expect(
+        predicate('delete by not tags.name = :n'),
+        startsWith('WHERE NOT EXISTS ('),
+      );
+      expect(
+        predicate('find by tags.name <> :n'),
+        allOf(startsWith('WHERE EXISTS ('), contains('fixture_tag.name <> :n')),
+      );
+      expect(
+        predicate('find by tags is empty'),
+        startsWith('WHERE NOT EXISTS ('),
+      );
+      expect(
+        predicate('find by tags is not empty'),
+        startsWith('WHERE EXISTS ('),
+      );
+    });
+
+    test('the association field itself is not a column', () {
+      expect(
+        () => associations.compileQuerySentence('find by tags = :n'),
+        throwsA(
+          isA<TomQuerySyntaxException>().having(
+            (e) => e.key,
+            'key',
+            'query_sentence_compiler.association.no_field',
+          ),
+        ),
+      );
+    });
+
+    test('a dotted name that is no association is refused as a column', () {
+      expect(
+        () => associations.compileQuerySentence('find by author.name = :n'),
         throwsA(
           isA<TomAnnotationAnalyzerSyntaxException>().having(
             (e) => e.key,
@@ -206,20 +261,7 @@ void main() {
       );
     });
 
-    test('the association field itself is not a column either', () {
-      expect(
-        () => associations.compileQuerySentence('find by tags = :n'),
-        throwsA(
-          isA<TomQuerySyntaxException>().having(
-            (e) => e.key,
-            'key',
-            endsWith('create_column.failed'),
-          ),
-        ),
-      );
-    });
-
-    test('the guide states both boundaries where they get swept', () {
+    test('the guide lists neither as a limitation', () {
       final guide = File('doc/object_persistence.md').readAsStringSync();
       final start = guide.indexOf('## Not Yet Implemented');
       expect(start, isNot(-1));
@@ -228,8 +270,8 @@ void main() {
       expect(
         section,
         allOf(
-          contains('association'),
-          contains('subquery'),
+          isNot(contains("association's columns")),
+          isNot(contains('subquery')),
           // The declined words are *not* limitations, and saying so here is
           // what stops the next reader from filing them as a backlog again.
           contains('declined'),

@@ -27,6 +27,7 @@ declared.
 - [The Operator Tree](#the-operator-tree)
 - [The SQL Dialect](#the-sql-dialect)
   - [A `LIKE` pattern is a language, not a value](#a-like-pattern-is-a-language-not-a-value)
+  - [Subqueries](#subqueries)
 - [Classifying Column Types](#classifying-column-types)
 - [Aggregate Fragments](#aggregate-fragments)
 - [Query Objects](#query-objects)
@@ -388,6 +389,26 @@ SQL defines no default escape character for `LIKE`, so without it whether
 of this rendering — and it does work on MariaDB, whose default escape is a
 backslash. That is exactly the shape in which a dependency on one driver's
 undocumented default survives being noticed, so the rendering states it.
+
+### Subqueries
+
+Three members render a subquery and the two predicates that test one. Each takes
+fragments already rendered, so the operator nodes decide what goes in and the
+dialect only how it is spelled:
+
+| Member | Renders |
+| ------ | ------- |
+| `subquery(projection, tables, conditions)` | `SELECT <projection> FROM <tables, comma-joined> WHERE (<c1>) AND (<c2>) …` — no `WHERE` when `conditions` is empty |
+| `exists(subquery)` | `EXISTS (<subquery>)` |
+| `inSubquery(operand, subquery)` | `<operand> IN (<subquery>)` |
+
+Every condition is parenthesised on its own, so an `OR` inside one cannot bind
+across the `AND` that joins it to the next — a subquery's own predicate and the
+live-row test a soft-deleted entity adds stay two conditions. The forms are
+standard SQL, and `MariadbSqlDialect` and `PostgresSqlDialect` inherit them
+unchanged. The nodes that call them, `TomSubquery`, `TomExists` and
+`TomInSubquery`, are object persistence's: see
+[object_persistence.md](object_persistence.md#subqueries).
 
 ## Classifying Column Types
 
@@ -1152,7 +1173,11 @@ prepares the statement's `command` the first time it runs it and keeps the
 server-side statement for the next run, so a repository prepares a statement
 once and keeps it for the life of the process. `prepareStatement` prepares it
 on the connection its own zone selects, so a statement the server cannot compile
-fails there rather than at its first execution. `deallocate` forgets the
+fails there rather than at its first execution. It does so through the driver's
+`prepareOn(link, command, parameterCount)`, which is told how many parameters
+the statement binds — the MariaDB driver does not prepare a statement that binds
+none and answers no rows (see [The MariaDB driver](#the-mariadb-driver)), so
+such a statement's errors surface at its first run instead. `deallocate` forgets the
 statement on every connection; each connection frees it the next time it is
 handed back, so nothing is freed under a statement that is running.
 
@@ -1541,6 +1566,21 @@ becomes `.91371`, which every parser reads as 0.91371 s. The driver restores the
 six-digit fraction in `temporalText` for exactly those rows: over the text
 protocol the *server* formats the value with the column's precision, so the same
 digits there mean what they say.
+
+**A statement that binds nothing and answers no rows runs over the text
+protocol.** For a statement with neither parameters nor result columns —
+`DELETE FROM t WHERE label IS NULL` — the server answers `PREPARE` with the
+`PREPARE_OK` packet alone, and `mysql_client` waits for an `EOF` packet that
+never comes, so the call would never return. With nothing to bind, the prepare
+step has nothing to offer either: `runPreparedOn` runs such a statement with the
+connection's `execute`, and `prepareOn` skips the prepare for it. What the
+server rejects in such a statement is therefore reported when it runs, not when
+`prepareStatement` returns. A statement answers rows when it starts with
+`SELECT`, `WITH`, `SHOW` or a bracket; such a statement keeps the prepared path
+even when it binds nothing, because the server sends its column definitions and
+the binary protocol is what its temporal columns are read through (above). Every
+statement binding a parameter is prepared on its connection and executed with
+its parameters bound.
 
 `MariaDbXADatasource` (`@TomDatasourceDriver("mariadb_xa")`) is the XA variant:
 `prepare` issues `XA END` and then `XA PREPARE`, as two calls (see
@@ -2007,6 +2047,13 @@ makes it correct and the agreement between what it escapes and what the
 rendered `ESCAPE` clause names; that the escaping actually changes which rows
 match is settled where it has to be, against a live server, by
 `object_persistence_db_test.dart`.
+
+The `subquery`, `exists` and `inSubquery` members are asserted through the
+object-persistence nodes that call them, by `query_associations_test.dart`; its
+server half, `query_associations_db_test.dart`, also runs a `DELETE` that binds
+no parameter, the statement the MariaDB driver runs over the text protocol.
+`datasources_test.dart` asserts that route without a server: a statement that
+binds nothing and answers no rows is executed and never prepared.
 
 Two things there are worth knowing about, because they are what let a
 connection-free suite assert connection behaviour at all. The **connection

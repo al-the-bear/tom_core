@@ -2,6 +2,27 @@
 
 ### Added
 
+- **Query sentences filter on associations; subqueries in the builder**
+  (`object_persistence` and `datasources` modules, `subquery.dart`). A
+  predicate term may name a field of a `@TomReference` association —
+  `find by tags.name = :n` — or test it, `tags is empty` / `tags is not empty`.
+  The term compiles to a correlated `EXISTS (SELECT 1 FROM <join>, <target>
+  WHERE …)` over the association's `leftSideColumns` and `rightSideColumns`, a
+  semi-join that answers an owning row once however many associated rows match;
+  it works in `find`, `count` and `delete` sentences and under a leading `not`.
+  `tags.name <> :n` means "has a tag whose name is not n"; "has no tag named n"
+  is `not tags.name = :n`. Refusals are `TomQuerySyntaxException` keyed
+  `query_sentence_compiler.association.no_field`, `.unknown_field`,
+  `.context_columns` and `.self_reference`.
+  `TomSubquery(types, {where, projection})` renders `SELECT <projection or 1>
+  FROM <tables> WHERE …`, adding the live-row test of every `@TomSoftDelete`
+  type unless `TomSoftDelete.includingDeleted` is on; `TomExists` and
+  `TomInSubquery` test it, built with `TomQueryBuilder.exists`, `notExists`,
+  `isInSubquery` and `isNotInSubquery`. A subquery is opaque to the walks over
+  the enclosing tree and contributes its parameters in place.
+  `TomStandardSqlDialect` gains `exists`, `inSubquery` and `subquery`.
+  `test/query_associations_test.dart` and `test/query_associations_db_test.dart`
+  cover them without and with a server.
 - **Soft delete, history tables, lifecycle hooks and change events**
   (`object_persistence` and `datasources` modules, `entity_lifecycle.dart`).
   `@TomSoftDelete({field = 'deletedAt'})` makes every repository delete —
@@ -1119,6 +1140,16 @@
 
 ### Fixed
 
+- **A write binding no parameter no longer hangs on MariaDB.** For a
+  statement with neither parameters nor result columns — `delete by label is
+  null` — the server answers `PREPARE` with the `PREPARE_OK` packet alone, and
+  `mysql_client` 0.0.27 waits for an `EOF` that never comes. `MariaDbDatasource`
+  runs a statement that binds nothing and answers no rows (one not starting
+  with `SELECT`, `WITH`, `SHOW` or a bracket) over the text protocol and skips
+  its prepare, so its errors surface when it runs; a parameterless read keeps
+  the prepared, binary path. The protected driver hook is
+  `prepareOn(link, command, parameterCount)`: a driver implementing
+  `TomSqlDatasource` adds the parameter count to its override.
 - **Two outbox messages queued in the same microsecond are both delivered.**
   `TomMessageOutbox.send` gave a message's run the clock's reading as its window
   instant, and `TomSqlJobStore` keeps one run per job, tenant and window — so a

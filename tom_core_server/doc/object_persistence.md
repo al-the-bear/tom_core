@@ -39,8 +39,10 @@ be expressed three ways — a parsed *query sentence*, a programmatically built
   - [Writing a value inline](#writing-a-value-inline)
     - [Inside a text literal](#inside-a-text-literal)
   - [Matching literal text](#matching-literal-text)
+  - [Filtering on an association](#filtering-on-an-association)
   - [Words this grammar does not have](#words-this-grammar-does-not-have)
 - [The Query Builder DSL](#the-query-builder-dsl)
+  - [Subqueries](#subqueries)
 - [Row Scopes](#row-scopes)
   - [Declaring a scope](#declaring-a-scope)
   - [Automatic scoping, and opting out](#automatic-scoping-and-opting-out)
@@ -117,6 +119,7 @@ be expressed three ways — a parsed *query sentence*, a programmatically built
 | `TomCountResult` | class | The row a `COUNT` projects into; the column alias *is* the binding, and nothing checks it |
 | `TomQuerySentenceCompiler` | class | Parses a query sentence into a `TomQuery` |
 | `TomQueryBuilder` | mixin | Fluent factory for the `TomOperator` expression tree |
+| `TomSubquery` | class | `SELECT <projection or 1> FROM <the tables of its entity types> WHERE …` — the subquery an `EXISTS` or `IN (SELECT …)` node tests |
 | `TomAggregate` | abstract class | An aggregate function node (`CountAll`, `Count`, `Sum`, `Avg`, `Min`, `Max`) |
 | `TomGroupedSelect` | class | A `SELECT … GROUP BY … HAVING` compiled from group keys and aggregates |
 | `TomGroupedRow` | class | One group's result: the group keys plus the aggregate values, keyed by alias |
@@ -174,6 +177,7 @@ query built the other:
 | `Eq` / `Neq` / `Gt` / `Gte` / `Lt` / `Lte` | class | The six comparisons |
 | `Like` / `NotLike` / `Regexp` | class | Pattern matching |
 | `Between` / `In` / `IsNull` / `IsNotNull` | class | Range, membership and nullity |
+| `TomExists` / `TomInSubquery<T>` | class | `EXISTS (<subquery>)` and `<operand> IN (<subquery>)` over a `TomSubquery` |
 | `DbCol<R>` | abstract class | A column reference, typed by what the column holds |
 | `BoolCol` / `IntCol` / `DoubleCol` / `StringCol` / `DateCol` / `DateTimeCol` / `TimeCol` | class | The seven concrete column references |
 | `BoolLiteral` / `IntegerLiteral` / `DoubleLiteral` / `StringLiteral` / `DateLiteral` / `DateTimeLiteral` / `TimeLiteral` | class | The seven inline literals |
@@ -379,6 +383,10 @@ an *n*-row read into *n(n+1)/2* reference queries. The answer would be the same
 recomputes the same list — which is why the cost is the only observable, and why
 `test/reference_association_db_test.dart` asserts it by counting statements
 rather than by inspecting rows.
+
+A query sentence can filter the owning rows on what an association reaches —
+`find by roles.name = :n`, `find by roles is empty` — without loading it; see
+[Filtering on an association](#filtering-on-an-association).
 
 ## The Repository Contract
 
@@ -1402,6 +1410,73 @@ no default one, so without the clause whether the escaping worked would be a
 property of the driver rather than of the query. See
 [datasources](datasources.md) for the dialect member.
 
+### Filtering on an association
+
+A predicate may name a field of what an association reaches. The association is
+a `@TomReference` field of the queried entity, and the term is written
+`<association>.<field>` followed by any test a column of that field's type
+takes:
+
+```text
+find by roles.name = :role
+count by roles.name like 'admin%' and active = true
+delete by not roles.name = :role
+find by roles is empty
+find by roles is not empty
+```
+
+A term about an association compiles to a **correlated `EXISTS`** over the join
+entity and the target. The association's own `leftSideColumns` and
+`rightSideColumns` become column comparisons — the left side correlates the
+subquery with the owning row — and the test applies to the target's column.
+With `User` mapped to `app_user`, `UserRole` to `user_role` and `Role` to
+`role`, and a `roles` association declared without `contextColumns`, the first
+sentence's predicate renders as:
+
+```text
+EXISTS (SELECT 1 FROM user_role, role WHERE (user_role.user_id = app_user.id
+  AND user_role.role_id = role.id AND role.name = :role))
+```
+
+It is a semi-join, not a join: an owning row is answered **once**, however many
+of its associated rows match, so a `find` returns no duplicates and a `count`
+counts owners rather than pairs. The term combines with the owner's own columns
+through `and`, `or`, `not` and brackets like any other predicate, its parameters
+take their place in sentence order, and it is accepted in `find`, `count` and
+`delete` sentences alike.
+
+`<association> is empty` and `<association> is not empty` test whether the
+association reaches any row at all — `NOT EXISTS` and `EXISTS` over the same
+join, with no test on a target column.
+
+**Negation reads as the subquery does.** `roles.name <> :role` asks for owners
+with *a* role whose name is not `role` — an owner holding only that role does
+not match, and an owner holding it and another one does. "Has no role named
+`role`" is the negation of the whole term: `not roles.name = :role`, which
+renders `NOT EXISTS (…)`.
+
+A join entity or target that is `@TomSoftDelete` contributes its
+`<deleted> IS NULL` inside the subquery, so a soft-deleted link or target is not
+reached — unless the query runs inside `TomSoftDelete.includingDeleted`, as for
+every other read. A row scope or tenant predicate of the join entity or the
+target is not applied inside the subquery: it narrows the owning rows, whose
+own scope the repository applies as for any read.
+
+What the compiler refuses, each with `TomQuerySyntaxException`:
+
+| Refused | Key | Why |
+| ------- | --- | --- |
+| the association named without a field, other than as `is empty` / `is not empty` | `query_sentence_compiler.association.no_field` | an association is a set of rows, and a set has no value to compare |
+| a field the target entity does not map | `query_sentence_compiler.association.unknown_field` | the term names the target's column, so it has to be one |
+| an association declaring `contextColumns` | `query_sentence_compiler.association.context_columns` | a context column is bound from the execution context when the association is *loaded*; a query sentence has no place to bind it |
+| an association whose join entity or target maps the queried table itself | `query_sentence_compiler.association.self_reference` | the subquery would name the table it correlates with, and the tree has no table aliases to tell the two apart |
+
+A dotted name whose first part is no association of the entity is not an
+association path; it is read as a column name and refused as one, with
+`annotation_analyzer.determine_column.no_column_match`. The same key refuses an
+association whose join term has no `=` or names no column of the join entity,
+the owner or the target — the refusal loading that association would meet.
+
 ### Words this grammar does not have
 
 A query sentence is a *string*, so every operator is directly writable — `>`,
@@ -1420,16 +1495,13 @@ The left column is set in italics because none of those words is code here.
 | *After*, *Before* | `>`, `<` — on a temporal column like any other |
 | *StartsWith*, *EndsWith*, *Containing* | `like` with the wildcard placed where you mean it: `'a%'`, `'%a'`, `'%a%'` |
 | *Between*, *Within* | `>= :lo and <= :hi`; the single `BETWEEN` node is reachable from the [builder DSL](#the-query-builder-dsl) |
-| *Exists* | — |
-| *isEmpty*, *isNotEmpty* | — |
+| *Exists* | a term on an association, `roles.name = :n`, which compiles to a correlated `EXISTS`; any other subquery through the builder's `exists` / `isInSubquery` ([Subqueries](#subqueries)) |
+| *isEmpty*, *isNotEmpty* | `<association> is empty`, `<association> is not empty` |
 
-The last two have no dash for a reason: **they have nothing to address.** A
-mapped column is one of eight scalar Dart types and none of them is a
-collection, and an association declared with `@TomReference` is loaded by a
-repository call rather than joined — so there is no collection-valued property
-for `isEmpty` to test. `Exists` needs a correlated subquery, which the operator
-tree has no node for. Both would be new machinery rather than new spellings, and
-neither is promised.
+The last two apply to associations only, because only an association is a
+collection: a mapped column is one of eight scalar Dart types. They are written
+as two words after the association's name, like `is null` after a column's —
+see [Filtering on an association](#filtering-on-an-association).
 
 ## The Query Builder DSL
 
@@ -1452,6 +1524,58 @@ interpolate directly and should be reserved for trusted values.
 
 `Between` takes exactly two bounds, and a node built with any other number is
 refused with `between_expression.must_have_two_values`.
+
+### Subqueries
+
+A predicate about another result set is built from a `TomSubquery`: the entity
+types it reads, an optional `where` predicate over their columns, and — for
+`IN` — the one column it selects as `projection` (`1` when there is none).
+
+| Factory | Renders |
+| ------- | ------- |
+| `exists(subquery)` | `EXISTS (<subquery>)` |
+| `notExists(subquery)` | `NOT EXISTS (<subquery>)` |
+| `isInSubquery<T>(what, subquery)` | `<what> IN (<subquery>)` |
+| `isNotInSubquery<T>(what, subquery)` | `NOT <what> IN (<subquery>)` |
+
+```dart
+// order.id IN (SELECT order_line.order_id FROM order_line
+//              WHERE (order_line.sku = :sku))
+final predicate = isInSubquery<TomDbInt>(
+  intF('id', orderId),
+  TomSubquery(
+    [OrderLine],
+    projection: intF('orderId', lineOrderId),
+    where: eq<TomDbInt>(intF('sku', lineSku), p<TomDbInt>('sku')),
+  ),
+);
+```
+
+The subquery renders `SELECT <projection> FROM <tables> WHERE (<where>)`, one
+table per entity type in the order given. Its `TomExists` and `TomInSubquery`
+nodes are what the expression tree holds, and both are ordinary predicates:
+they combine with `and`, `or` and `not` and render through the dialect's
+`exists`, `inSubquery` and `subquery` members (see
+[datasources](datasources.md)).
+
+**A subquery is opaque to the walks over the enclosing tree.** `TomExists` has
+no `children` and reports no fields, and `TomInSubquery` reports only its
+operand's: the columns inside the subquery belong to the subquery's tables, not
+to the enclosing query's. Its parameters are the enclosing statement's all the
+same, and `getParameters` reports them in place — the projection's, then the
+`where`'s — so binding follows the rendered text.
+
+**Correlation is by table name.** A column renders as `table.column`, so a
+subquery's `where` may name a column of the enclosing query's table and that
+makes it correlated — the shape [Filtering on an association](#filtering-on-an-association)
+compiles to. The one shape that cannot be written is a subquery over the
+enclosing query's own table that correlates with it: both sides would render as
+the same table name, and the tree has no aliases.
+
+**A soft-deleted entity in a subquery contributes its live-row test.** For each
+type that is `@TomSoftDelete`, the subquery adds `<table>.<deleted> IS NULL`
+beside its `where`, as a repository read would — unless it renders inside
+`TomSoftDelete.includingDeleted`, which leaves the test out.
 
 ## Row Scopes
 
@@ -2696,6 +2820,26 @@ declined word really is refused, and that the form named in its place really
 renders what the table says. It reads the table back, so a row added there
 without a test, or a word promoted to a keyword, fails rather than drifts.
 
+`test/query_associations_test.dart` renders
+[Filtering on an association](#filtering-on-an-association) and the
+[Subqueries](#subqueries) nodes without a database — the correlated `EXISTS`,
+`is empty`, the refusals by key, the opaque walk and the soft-delete test — and
+`test/query_associations_db_test.dart` runs them on MariaDB and PostgreSQL:
+an owner answered once however many associated rows match, a term combined with
+the owner's columns and with `or`, `is empty` / `is not empty`, a count and a
+delete by an association, a delete that binds no parameter, and the builder's
+`IN (SELECT …)`, `NOT IN`, correlated `EXISTS` and `NOT EXISTS`.
+
+```bash
+dart run example/object_persistence/subquery_example.dart
+```
+
+`example/object_persistence/subquery_example.dart` builds a correlated
+`EXISTS`, its `NOT EXISTS` and an `IN (SELECT …)` over the example entities in
+five steps without a database, checking the SQL each renders and that the
+enclosing tree references none of the subquery's columns; `test/examples_test.dart`
+runs it.
+
 Several neighbouring surfaces are covered by suites named after the type rather
 than the module, and are named where each is described:
 `crud_repository_exceptions_test.dart` and
@@ -2811,7 +2955,10 @@ table, in each tenant's schema or in each tenant's database.
 - **`TomColumnInformation`** — resolved per-field metadata + reflection accessors.
 - **`TomRepository` / `TomSqlDatasourceRepository` / `MariadbRepository`** — the
   CRUD/query contract and its SQL/MariaDB implementations.
-- **`TomQuerySentenceCompiler`** — query-sentence parser.
+- **`TomQuerySentenceCompiler`** — query-sentence parser, including the
+  association terms it compiles to a correlated `EXISTS`.
+- **`TomSubquery` + `TomExists` + `TomInSubquery`** — a subquery over entity
+  types and the two predicates that test it. See [Subqueries](#subqueries).
 - **`TomPageRequest` + `TomSortField` + `TomSortDirection`** — the caller-facing
   row window (offset, limit) and its ordered, per-field sort terms.
 - **`TomQueryBuilder` + the operators** (`Eq`, `Lt`, `Like`, `In`, `Between`,
@@ -2856,25 +3003,7 @@ table, in each tenant's schema or in each tenant's database.
 
 ## Not Yet Implemented
 
-The first two entries are about the *shape of a predicate*, and both are bounded
-by the same thing: an expression tree over the columns of the tables a query
-already names.
-
-- **A predicate cannot address an association's columns.** `@TomReference`
-  declares an association, and the repository loads the other side with a
-  second query rather than joining it — so `find by author.name = :n` has no
-  reading, and the sentence refuses `author.name` as a column it cannot
-  resolve. Filter on the foreign key, or query the other entity's repository
-  and pass the ids to an `IS IN` list.
-  <!-- pinned: test/query_sentence_declined_words_test.dart › a predicate cannot address an association's columns -->
-- **There is no subquery node**, so a predicate that is *about* another result
-  set — `EXISTS`, `IN (SELECT …)`, a correlated aggregate — cannot be built.
-  `executeQueryString` takes the SQL directly when a query genuinely needs one;
-  it binds its parameters like any other statement, so reaching for it costs the
-  compiler's checking, not the injection safety.
-  <!-- unpinned: absence — no subquery node exists -->
-
-The other three are about [Field-Level Encryption](#field-level-encryption).
+The first three entries are about [Field-Level Encryption](#field-level-encryption).
 
 - **The key-encryption key is held by the application.**
   `TomAesKeyEncryptionKey` is the only `TomKeyEncryptionKey`: its key bytes are
@@ -2925,13 +3054,13 @@ is a string and `>` and `%` are directly writable in one. See
 | `dart:typed_data` | dart | `field_encryption.dart` | `Uint8List`, the bytes the cipher works on |
 | `crypto` | package | `field_encryption.dart` | `Hmac` and `sha256`, the blind index |
 | `pointycastle` | package | `field_encryption.dart` | `GCMBlockCipher` over `AESEngine`, the AES-256-GCM cipher values and data keys are sealed with |
-| `tom_core_kernel` | package | 9 of 17 files | `tomReflector` (mirrors), the `TomZoned*` date/time types, and `TomJobDefinition` / `TomSchedule` / `TomCommand` / `TomTenantContext` for the re-encryption job and its run in every tenant; `getFromCurrentZone` / `TomPrincipal` and `TomTenantContext` for the principal and tenant a change and a history row record |
+| `tom_core_kernel` | package | 9 of 18 files | `tomReflector` (mirrors), the `TomZoned*` date/time types, and `TomJobDefinition` / `TomSchedule` / `TomCommand` / `TomTenantContext` for the re-encryption job and its run in every tenant; `getFromCurrentZone` / `TomPrincipal` and `TomTenantContext` for the principal and tenant a change and a history row record |
 | `uuid` | package | `field_encryption.dart`, `file_reference.dart` | `Uuid.v4`, for the file name in a blob key; `UuidV4`, for a data key's id |
 | [audit](audit.md) | module | `crud_repository.dart` | `TomAuditAction`, `TomAuditTrail` |
 | [configuration](configuration.md) | module | `field_encryption.dart` | `TomSecrets.resolve` and `TomSecretReference.isReference`, which resolve a `secret:` reference to a key-encryption key in `configure` |
-| [datasources](datasources.md) | module | 11 of 17 files | `TomDbType`/`TomOperator`/`SqlString`, `TomStandardSqlDialect` / `MariadbSqlDialect` (including the `aggregate`, `aliased`, `groupByClause` and `havingClause` fragments), `TomQuery` family (`TomSelect` / `TomCount` / `TomDelete` / `TomUpdate` / `TomLiteralSelect`), `TomAggregateFunction`, `TomTypedPersistenceBase`, `TomTypePersistenceInfo`, `TomDataSourceInfo`, `TomPreparedStatement`; `TomFrameworkTable`, `TomSchemaProvisioning` and `sqlInstant` / `parseSqlInstant` for the data-key table |
+| [datasources](datasources.md) | module | 12 of 18 files | `TomDbType`/`TomOperator`/`SqlString`, `TomStandardSqlDialect` / `MariadbSqlDialect` (including the `aggregate`, `aliased`, `groupByClause` and `havingClause` fragments, and the `exists`, `inSubquery` and `subquery` fragments), `TomQuery` family (`TomSelect` / `TomCount` / `TomDelete` / `TomUpdate` / `TomLiteralSelect`), `TomAggregateFunction`, `TomTypedPersistenceBase`, `TomTypePersistenceInfo`, `TomDataSourceInfo`, `TomPreparedStatement`; `TomFrameworkTable`, `TomSchemaProvisioning` and `sqlInstant` / `parseSqlInstant` for the data-key table |
 | [file_storage](file_storage.md) | module | `blob_migration.dart`, `crud_repository.dart`, `file_reference.dart` | `TomBlobStore`, `TomBlobStoreInfo`, `TomStorageException`, `TomStoredBlob` |
-| [little_things](little_things.md) | module | 8 of 17 files | `TomServerException` (base of the module's exceptions) |
+| [little_things](little_things.md) | module | 8 of 18 files | `TomServerException` (base of the module's exceptions) |
 | [privacy](privacy.md) | module | `crud_repository.dart` | `TomPersonalDataModel.sealingSubjects`, which names the data subject each `@TomPersonal` value of an audit record is sealed for |
 | [tenancy](tenancy.md) | module | `field_encryption.dart` | `TomTenancy.current` and its tenants, which the re-encryption pass runs in |
 | [transactions](transactions.md) | module | `crud_repository.dart` | `TomTransactionManager.runInTransaction`, the transaction an observed entity's write runs in |

@@ -9,6 +9,7 @@ import 'operators_expressions.dart';
 import 'paging.dart';
 import 'persistence_annotations.dart';
 import 'query_builder.dart';
+import 'subquery.dart';
 
 /// A two-operand comparison node factory: [TomQueryBuilder.eq],
 /// [TomQueryBuilder.neq], [TomQueryBuilder.lt], [TomQueryBuilder.lte],
@@ -1785,6 +1786,12 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
         );
       } else {
         if (column == null) {
+          // `roles.name = :n` / `roles is empty`: a predicate about the rows
+          // an association reaches, compiled to a correlated EXISTS.
+          if (_associationTerm(qp, qs, i) case (final term, final last)) {
+            final predicate = inNegationMode ? not(term) : term;
+            return (predicate as TomOperator<QT>, last);
+          }
           column = comparable(determineColumn(qp[i]), qs);
           var (operator, indx) = _buildExpression<TomDbBool>(
             qp,
@@ -1956,6 +1963,160 @@ class TomQuerySentenceCompiler extends TomTypedPersistenceBase
               : "Could not determine type for column $field @ $column",
         );
     }
+  }
+
+  /// The `@TomReference` field of a queried entity named [name], or `null`.
+  TomColumnInformation? _associationNamed(String name) {
+    for (final info in persistenceInfo) {
+      for (final column in info.columnInfo) {
+        if (column.reference != null && column.declaredName == name) {
+          return column;
+        }
+      }
+    }
+    return null;
+  }
+
+  /// The term at [at] when it is about an association, with the index of its
+  /// last token; `null` when [qp]\[[at]] names no association.
+  ///
+  /// `<association>.<field> <comparison>` becomes `EXISTS (SELECT 1 FROM
+  /// <join>, <target> WHERE <join terms> AND <comparison on target.field>)`
+  /// — a semi-join, so an owner row is answered once however many associated
+  /// rows match. `<association> IS EMPTY` and `IS NOT EMPTY` test whether it
+  /// reaches any row at all.
+  (TomOperator<TomDbBool>, int)? _associationTerm(
+    List<String> qp,
+    String qs,
+    int at,
+  ) {
+    final token = qp[at];
+    final dot = token.indexOf('.');
+    final association = _associationNamed(
+      dot < 0 ? token : token.substring(0, dot),
+    );
+    if (association == null) return null;
+    final (types, joins, target) = _associationJoin(association, qs);
+    if (dot < 0) {
+      final bool empty;
+      final int last;
+      if (_lookAhead(qp, at, 1, 'IS') && _lookAhead(qp, at, 2, 'EMPTY')) {
+        (empty, last) = (true, at + 2);
+      } else if (_lookAhead(qp, at, 1, 'IS') &&
+          _lookAhead(qp, at, 2, 'NOT') &&
+          _lookAhead(qp, at, 3, 'EMPTY')) {
+        (empty, last) = (false, at + 3);
+      } else {
+        throw TomQuerySyntaxException(
+          'query_sentence_compiler.association.no_field',
+          'The QuerySentence $qs names the association [$token] without a '
+              'field. Compare one of its fields ($token.<field>) or test '
+              '"$token is empty" / "$token is not empty".',
+        );
+      }
+      final reaches = TomExists(TomSubquery(types, where: and(joins)));
+      return (empty ? not(reaches) : reaches, last);
+    }
+    final field = token.substring(dot + 1);
+    final TomColumnInformation targetColumn;
+    try {
+      targetColumn = comparable(
+        TomAnnotationAnalyzer.determineColumn(field, [target]),
+        qs,
+      );
+    } on TomAnnotationAnalyzerSyntaxException catch (e) {
+      throw TomQuerySyntaxException(
+        'query_sentence_compiler.association.unknown_field',
+        'The QuerySentence $qs names [$token], but ${association.reference!.targetEntity} '
+            'has no column [$field].',
+        rootException: e,
+      );
+    }
+    final (comparison, last) = _buildExpression<TomDbBool>(
+      qp,
+      qs,
+      at + 1,
+      targetColumn,
+      _createColumn(targetColumn, field),
+    );
+    return (
+      TomExists(TomSubquery(types, where: and([...joins, comparison]))),
+      last,
+    );
+  }
+
+  /// The tables an association filter reads, the terms joining them to the
+  /// owner row, and the target's persistence info.
+  ///
+  /// The terms are the association's own `leftSideColumns` and
+  /// `rightSideColumns`, as columns on both sides. An association with
+  /// `contextColumns` is refused: those are bound from the execution context
+  /// when the association is *loaded*, and a query sentence has no place to
+  /// bind them. So is one whose join or target table is the queried table
+  /// itself — the subquery would name the table it correlates with, and the
+  /// tree has no aliases to tell the two apart.
+  (List<Type>, List<TomOperator<TomDbBool>>, TomTypePersistenceInfo)
+  _associationJoin(TomColumnInformation association, String qs) {
+    final reference = association.reference!;
+    final name = association.declaredName;
+    if (reference.contextColumns.isNotEmpty) {
+      throw TomQuerySyntaxException(
+        'query_sentence_compiler.association.context_columns',
+        'The QuerySentence $qs filters on [$name], an association with '
+            'context columns, which are bound when it is loaded and cannot be '
+            'bound in a query.',
+      );
+    }
+    final owner = TomAnnotationAnalyzer.analysePersistentType(
+      association.tableType,
+    );
+    final join = TomAnnotationAnalyzer.analysePersistentType(
+      reference.joinEntity,
+    );
+    final target = TomAnnotationAnalyzer.analysePersistentType(
+      reference.targetEntity,
+    );
+    if (join.table.table == owner.table.table ||
+        target.table.table == owner.table.table) {
+      throw TomQuerySyntaxException(
+        'query_sentence_compiler.association.self_reference',
+        'The QuerySentence $qs filters on [$name], whose rows live in the '
+            'queried table ${owner.table.table} itself; a subquery over the '
+            'table it correlates with cannot tell the two apart.',
+      );
+    }
+    final scope = [join, owner, target];
+    final joins = <TomOperator<TomDbBool>>[
+      for (final term in [
+        ...reference.leftSideColumns,
+        ...reference.rightSideColumns,
+      ])
+        _joinTerm(term, scope),
+    ];
+    return (
+      {reference.joinEntity, reference.targetEntity}.toList(),
+      joins,
+      target,
+    );
+  }
+
+  /// `Join.field=Other.field` as a column comparison. A term the
+  /// association could not be loaded with either — no `=`, or a name that is
+  /// no column — is refused by the column lookup, as loading it would be.
+  TomOperator<TomDbBool> _joinTerm(
+    String term,
+    List<TomTypePersistenceInfo> scope,
+  ) {
+    final at = term.indexOf('=');
+    final sides = at < 0
+        ? [term, '']
+        : [term.substring(0, at), term.substring(at + 1)];
+    DbCol side(String name) {
+      final column = TomAnnotationAnalyzer.determineColumn(name.trim(), scope);
+      return _createColumn(column, name.trim());
+    }
+
+    return Eq<Object?>(side(sides[0]), side(sides[1]));
   }
 
   Parameter<QT> _createParameter<QT>(

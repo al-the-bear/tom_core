@@ -25,7 +25,7 @@ surface documented here.
 | Little Things | [api_summary_little_things.md](api_summary_little_things.md) | The server-side base exception `TomServerException`, the `TomLoginFailure` reason its login subclass carries, the per-request correlation id `TomRequestId` it reads, and `tomErrorEnvelope`, the wire shape every error response uses. |
 | Messaging | [api_summary_messaging.md](api_summary_messaging.md) | Channel-neutral messages, delivery transports (SMTP, HTTP SMS gateway and stand-ins), MIME encoding, the durable outbox, resource-keyed email and SMS, and the idempotent receiver (inbox) for consuming a broker's messages once. |
 | Metrics | [api_summary_metrics.md](api_summary_metrics.md) | The request series, the Prometheus scrape endpoint answered ahead of authentication, and the OTLP/HTTP transport and metrics exporter. |
-| Object Persistence | [api_summary_object_persistence.md](api_summary_object_persistence.md) | Persistence annotations, repositories, query builder, operators/expressions, grouped queries and their aggregates, paging and sorting, file-reference columns, data scoping, column authorization, field-level encryption with its keys, rotation and re-encryption, and the entity lifecycle: soft delete, history tables, lifecycle hooks and change events. |
+| Object Persistence | [api_summary_object_persistence.md](api_summary_object_persistence.md) | Persistence annotations, repositories, query builder, operators/expressions, subqueries and association filters, grouped queries and their aggregates, paging and sorting, file-reference columns, data scoping, column authorization, field-level encryption with its keys, rotation and re-encryption, and the entity lifecycle: soft delete, history tables, lifecycle hooks and change events. |
 | Preferences | [api_summary_preferences.md](api_summary_preferences.md) | Server-stored per-principal preferences: the scoped `tom_user_preference` entity, the typed service over it, and the `/preferences/*` endpoints. |
 | Privacy | [api_summary_privacy.md](api_summary_privacy.md) | Data-protection operations: personal-data declarations on entities, erasure, subject-access export, retention, and crypto-shredding of personal values in the audit trail with per-subject keys. |
 | Rate Limiting | [api_summary_ratelimit.md](api_summary_ratelimit.md) | Request rate limits per principal, API key or client address: the rules, the sliding-window arithmetic, the per-process and shared limiters, and the middleware answering `429` with `Retry-After`. |
@@ -706,7 +706,9 @@ surface documented here.
 | `TomCompositeKey` | final class | The key value of an entity whose primary key spans several fields. |
 | `TomCountResult` | class | Count query result. |
 | `TomQueryBuilder` | mixin | Fluent query building. |
-| `TomQuerySentenceCompiler` | class | Compiles query sentences to SQL. |
+| `TomQuerySentenceCompiler` | class | Compiles query sentences to SQL, including terms on an association as a correlated `EXISTS`. |
+| `TomSubquery` | class | A subquery over entity types, with an optional predicate and projection. |
+| `TomExists` / `TomInSubquery<T>` | class | `EXISTS (<subquery>)` and `<operand> IN (<subquery>)`. |
 | `TomOperator` / `TomUnaryOperator` / `TomBinaryOperator` / `Parameter` | abstract class | The expression tree: a node, its one- and two-operand bases, and a bound parameter. The concrete nodes are `DbCol`/`IntCol`/`StringCol`/`DoubleCol`/`BoolCol`/`DateTimeCol`/`DateCol`/`TimeCol`, the `*Literal` set, the constant predicate `TruthPredicate`, and `And`/`Or`/`Not`/`Eq`/`Neq`/`Lt`/`Gt`/`Lte`/`Gte`/`Like`/`NotLike`/`In`/`Group`/`Between`/`Regexp`/`IsNull`/`IsNotNull`. |
 | `TomAggregate<R, V>` | abstract class | An aggregate function applied to a group: `COUNT(*)`, `SUM(t.amount)`, `MAX(t.created)`. |
 | `CountAll` / `Count<T>` / `Sum<T>` / `Avg<T>` / `Min<R, V>` / `Max<R, V>` | class | The concrete aggregate nodes. |
@@ -1301,6 +1303,7 @@ surface documented here.
 | `TomErrorHandler` | Endpoints |
 | `TomEventInstants` | Scheduling |
 | `TomExclusiveCanonicalizer` | Authentication |
+| `TomExists` | Object Persistence |
 | `TomExportException` | Export |
 | `TomExportFormats` | Export |
 | `TomExportService` | Export |
@@ -1376,6 +1379,7 @@ surface documented here.
 | `TomInboxOutcome` | Messaging |
 | `TomInboxRow` | Messaging |
 | `TomInformationSchemaColumnRow` | Database Migration |
+| `TomInSubquery` | Object Persistence |
 | `TomIntConfig` | Configuration |
 | `TomInvalidationChannel` | Cache |
 | `TomInvalidationKind` | Cache |
@@ -1697,6 +1701,7 @@ surface documented here.
 | `TomSubjectKeyRow` | Privacy |
 | `TomSubjectKeys` | Privacy |
 | `TomSubjectKeyStore` | Privacy |
+| `TomSubquery` | Object Persistence |
 | `TomTabularColumn` | Export |
 | `TomTabularRenderer` | Export |
 | `TomTabularResult` | Export |

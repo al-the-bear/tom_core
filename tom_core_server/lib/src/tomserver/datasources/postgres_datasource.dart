@@ -317,7 +317,7 @@ class PostgresDatasource extends TomSqlDatasource {
   }
 
   @override
-  Future<void> prepareOn(TomSqlLink link, String command) =>
+  Future<void> prepareOn(TomSqlLink link, String command, int parameterCount) =>
       (link as _PostgresLink).statement(command);
 
   /// Runs [command] on [link]'s prepared statement, preparing it on first use.

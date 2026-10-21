@@ -3264,3 +3264,56 @@ class FixtureBadSoftNote {
 /// The repository for [FixtureBadSoftNote].
 class FixtureBadSoftNoteRepository
     extends TomSqlDatasourceRepository<FixtureBadSoftNote, int> {}
+
+/// An owner whose association carries a context column — refused by an
+/// association filter, which has nowhere to bind one.
+@tomReflector
+@TomDbTable(
+  datasource: 'tom_core_server_test',
+  table: 'fixture_tagged',
+  primaryKeyFields: ['id'],
+)
+class FixtureContextTaggedRecord {
+  /// Surrogate primary key.
+  @TomEntityId()
+  @TomDbColumn(columnName: 'id', isReadOnly: true)
+  int? id;
+
+  /// The tags, narrowed by a context value when loaded.
+  @TomReference(
+    targetEntity: FixtureTag,
+    keyType: int,
+    repositoryType: FixtureTagRepository,
+    joinEntity: FixtureTagLink,
+    leftSideColumns: ['FixtureTagLink.taggedId=FixtureContextTaggedRecord.id'],
+    rightSideColumns: ['FixtureTagLink.tagId=FixtureTag.id'],
+    contextColumns: ['FixtureTagLink.tagId=:tag'],
+  )
+  List<FixtureTag> tags = [];
+}
+
+/// A tag related to other tags through the tag link — an association whose
+/// target is the owner's own table, which a filter cannot correlate.
+@tomReflector
+@TomDbTable(
+  datasource: 'tom_core_server_test',
+  table: 'fixture_tag',
+  primaryKeyFields: ['id'],
+)
+class FixtureRelatedTag {
+  /// Surrogate primary key.
+  @TomEntityId()
+  @TomDbColumn(columnName: 'id', isReadOnly: true)
+  int? id;
+
+  /// Tags linked to this one.
+  @TomReference(
+    targetEntity: FixtureTag,
+    keyType: int,
+    repositoryType: FixtureTagRepository,
+    joinEntity: FixtureTagLink,
+    leftSideColumns: ['FixtureTagLink.taggedId=FixtureRelatedTag.id'],
+    rightSideColumns: ['FixtureTagLink.tagId=FixtureTag.id'],
+  )
+  List<FixtureTag> related = [];
+}

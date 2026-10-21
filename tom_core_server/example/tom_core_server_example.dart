@@ -80,6 +80,11 @@ const List<TourStop> tour = [
         'registry and a change as JSON',
   ),
   TourStop(
+    'example/object_persistence/subquery_example.dart',
+    'Subqueries: a correlated EXISTS, NOT EXISTS and IN (SELECT …) built with '
+        'the query builder, and how the enclosing tree sees them',
+  ),
+  TourStop(
     'example/object_persistence/field_encryption_example.dart',
     'Field-level encryption: ciphertext at rest, the blind-index lookup, '
         'data-key, index-key and key-encryption-key rotation, audit redaction',

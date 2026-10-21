@@ -2,6 +2,7 @@ import '../datasources/types_operator.dart';
 import 'grouped_query.dart';
 import 'persistence_annotations.dart';
 import 'operators_expressions.dart';
+import 'subquery.dart';
 
 /// A fluent factory for the [TomOperator] expression tree.
 ///
@@ -24,6 +25,25 @@ mixin TomQueryBuilder {
   TomOperator<TomDbBool> isNotNull<T>(TomOperator<T> what) {
     return IsNotNull<T>(what);
   }
+
+  /// `EXISTS (<subquery>)`.
+  TomOperator<TomDbBool> exists(TomSubquery subquery) => TomExists(subquery);
+
+  /// `NOT EXISTS (<subquery>)`.
+  TomOperator<TomDbBool> notExists(TomSubquery subquery) =>
+      Not(TomExists(subquery));
+
+  /// `<what> IN (<subquery>)` — [subquery] selects the one column compared.
+  TomOperator<TomDbBool> isInSubquery<T>(
+    TomOperator<T> what,
+    TomSubquery subquery,
+  ) => TomInSubquery<T>(what, subquery);
+
+  /// `NOT <what> IN (<subquery>)`.
+  TomOperator<TomDbBool> isNotInSubquery<T>(
+    TomOperator<T> what,
+    TomSubquery subquery,
+  ) => Not(TomInSubquery<T>(what, subquery));
 
   /// `<what> IN (<choices...>)`.
   TomOperator<TomDbBool> isIn<T>(

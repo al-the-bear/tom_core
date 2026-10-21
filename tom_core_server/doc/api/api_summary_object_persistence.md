@@ -38,6 +38,9 @@ column-level access rights (C-4) and field-level encryption at rest.
   - [Query Building](#query-building)
     - [TomQueryBuilder](#tomquerybuilder)
     - [TomQuerySentenceCompiler](#tomquerysentencecompiler)
+    - [TomSubquery](#tomsubquery)
+    - [TomExists](#tomexists)
+    - [TomInSubquery&lt;T&gt;](#tominsubqueryt)
   - [Paging & Sorting](#paging--sorting)
     - [TomSortDirection](#tomsortdirection)
     - [TomSortField](#tomsortfield)
@@ -115,7 +118,8 @@ Source:
 `lib/src/tomserver/object_persistence/paging.dart`,
 `lib/src/tomserver/object_persistence/persistence_annotations.dart`,
 `lib/src/tomserver/object_persistence/query_builder.dart`,
-`lib/src/tomserver/object_persistence/query_sentence_compiler.dart`.
+`lib/src/tomserver/object_persistence/query_sentence_compiler.dart`,
+`lib/src/tomserver/object_persistence/subquery.dart`.
 
 An entity is a `@tomReflector` class annotated with `@TomDbTable`, its fields
 mapped with `@TomDbColumn` (and `@TomEntityId` on the primary key). A
@@ -127,7 +131,9 @@ return `TomGroupedRow`s rather than entities, because a group's shape is decided
 by the query rather than by any entity class. `TomAnnotationAnalyzer`
 resolves an entity's metadata by reflection into a `TomColumnInformation` per
 field; `TomQueryBuilder` and `TomQuerySentenceCompiler` assemble a `TomOperator`
-expression tree rendered through a `TomStandardSqlDialect`. `@TomDbScope`
+expression tree rendered through a `TomStandardSqlDialect`; a `TomSubquery`
+tested by `TomExists` or `TomInSubquery` is the predicate about another result
+set, and the shape a query sentence's term on an association compiles to. `@TomDbScope`
 (row-level, C-3) and `@TomDbColumn(authKey: …)` (column-level, C-4) add
 server-authoritative access control enforced by `TomDataScope` /
 `TomColumnAuthorization`, all binding values as prepared-statement parameters
@@ -188,6 +194,7 @@ TomOperator<R>  (types_operator)
     │       ├── CountAll / Count<T>
     │       ├── Sum<T> / Avg<T>
     │       └── Min<R, V> / Max<R, V>
+    ├── TomExists / TomInSubquery<T>  (over a TomSubquery)
     ├── TomUnaryOperator<T, R>
     │       ├── DbCol<R>
     │       │       ├── IntCol / StringCol / DoubleCol
@@ -204,6 +211,8 @@ TomOperator<R>  (types_operator)
             └── In<T> / Between<T>
 
 TomGroupedRow  (plain value holder)
+
+TomSubquery  (plain value holder — rendered by TomExists / TomInSubquery)
 
 TomKeyEncryptionKey  (contract — wraps the data keys)
     └── TomAesKeyEncryptionKey
@@ -876,6 +885,10 @@ return the matching SQL-typed operator.
 | ------ | --------- | ----------- |
 | `isNull` | `TomOperator<TomDbBool> isNull<T>(TomOperator<T> what)` | `<what> IS NULL`. |
 | `isNotNull` | `TomOperator<TomDbBool> isNotNull<T>(TomOperator<T> what)` | `<what> IS NOT NULL`. |
+| `exists` | `TomOperator<TomDbBool> exists(TomSubquery subquery)` | `EXISTS (<subquery>)`. |
+| `notExists` | `TomOperator<TomDbBool> notExists(TomSubquery subquery)` | `NOT EXISTS (<subquery>)`. |
+| `isInSubquery` | `TomOperator<TomDbBool> isInSubquery<T>(TomOperator<T> what, TomSubquery subquery)` | `<what> IN (<subquery>)` — `subquery` selects the one column compared. |
+| `isNotInSubquery` | `TomOperator<TomDbBool> isNotInSubquery<T>(TomOperator<T> what, TomSubquery subquery)` | `NOT <what> IN (<subquery>)`. |
 | `isIn` | `TomOperator<TomDbBool> isIn<T>(TomOperator<T> what, List<TomOperator<T>> choices)` | `<what> IN (<choices...>)`. |
 | `between` | `TomOperator<TomDbBool> between<T>(TomOperator<T> what, List<TomOperator<T>> betweenLimits)` | `<what> BETWEEN <lo> AND <hi>`. |
 | `like` | `TomOperator<TomDbBool> like(TomOperator<TomDbString> text, TomOperator<TomDbString> test)` | `<text> LIKE <test>`. |
@@ -984,6 +997,114 @@ rejected. A skip needs a cap, and only `find` and `group` accept one. The traili
 `order by` clause takes a direction per field, each keyword applying back to the
 previous one — `order by a b desc` sorts both descending, `order by a desc b asc`
 mixes them, and an undirected field sorts ascending.
+
+A predicate term may name a field of an association — a `@TomReference` field
+of the queried entity — as `<association>.<field> <test>`, or test the
+association as `<association> is empty` / `is not empty`. The term compiles to a
+correlated `EXISTS (SELECT 1 FROM <join>, <target> WHERE …)` whose conditions
+are the association's `leftSideColumns` and `rightSideColumns` as column
+comparisons plus the test on the target's column, so an owning row is answered
+once however many associated rows match; `is empty` is the `NOT EXISTS` of the
+join alone. A leading `not` negates the whole term. It is accepted in `find`,
+`count` and `delete` sentences. Refusals, as `TomQuerySyntaxException`:
+`query_sentence_compiler.association.no_field` (the association without a field),
+`.unknown_field` (a field the target does not map), `.context_columns` (an
+association declaring `contextColumns`, which only a load can bind),
+and `.self_reference` (a join or target table that is the queried table). A
+join term with no `=`, or naming no column, is refused by the column lookup with
+`annotation_analyzer.determine_column.no_column_match`.
+
+#### TomSubquery
+
+`SELECT <projection or 1> FROM <the tables of types> WHERE (<where>)` — the
+subquery `TomExists` and `TomInSubquery` test. A column renders as
+`table.column`, so `where` may name a column of the enclosing query's table and
+correlate with it; a subquery over the enclosing query's own table cannot
+correlate, as the tree has no aliases. Every `@TomSoftDelete` type read adds
+`<table>.<deleted> IS NULL` as a condition of its own, unless
+`TomSoftDelete.includingDeleted` is on.
+
+##### Constructors
+
+```dart
+TomSubquery(List<Type> types, {TomOperator<TomDbBool>? where, TomOperator<Object?>? projection})
+```
+
+##### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `types` | `List<Type>` | The entity types read (final). |
+| `where` | `TomOperator<TomDbBool>?` | The predicate over their rows, or `null` for all of them (final). |
+| `projection` | `TomOperator<Object?>?` | The selected column, or `null` for `1` (final). |
+
+##### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `generate` | `SqlString generate(TomStandardSqlDialect t)` | The subquery's SQL, through the dialect's `subquery`. |
+| `getParameters` | `List<String> getParameters(TomStandardSqlDialect t)` | Its parameters in the order their placeholders appear: the projection's, then the `where`'s. |
+| `toString` | `String toString()` | `TomSubquery(<types>, <where>)`. |
+
+#### TomExists
+
+`EXISTS (<subquery>)`. Opaque to the walks over the enclosing tree: it has no
+`children` and reports no fields, because the columns inside it are the
+subquery's. Its parameters are the enclosing statement's all the same, and
+`getParameters` reports them in place.
+
+- **Extends:** `TomOperator<TomDbBool>`
+
+##### Constructors
+
+```dart
+TomExists(TomSubquery subquery)
+```
+
+##### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `subquery` | `TomSubquery` | The subquery (final). |
+
+##### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `generate` | `SqlString generate(TomStandardSqlDialect t)` | `EXISTS (<subquery>)`, through the dialect's `exists`. |
+| `getParameters` | `List<String> getParameters(TomStandardSqlDialect t)` | The subquery's parameters. |
+| `getFields` | `Set<String> getFields(TomStandardSqlDialect t)` | Always empty. |
+| `analyze` | `String analyze(int l)` | The node's line in a tree dump. |
+
+#### TomInSubquery&lt;T&gt;
+
+`<operand> IN (<subquery>)`; the subquery's projection is the column compared.
+Its one child is `operand`, and it reports `operand`'s fields only.
+
+- **Extends:** `TomOperator<TomDbBool>`
+
+##### Constructors
+
+```dart
+TomInSubquery(TomOperator<T> operand, TomSubquery subquery)
+```
+
+##### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `operand` | `TomOperator<T>` | The value tested (final). |
+| `subquery` | `TomSubquery` | The subquery; its projection is the column compared (final). |
+| `children` | `List<TomOperator>` | *(getter)* `[operand]`. |
+
+##### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `generate` | `SqlString generate(TomStandardSqlDialect t)` | `<operand> IN (<subquery>)`, through the dialect's `inSubquery`. |
+| `getParameters` | `List<String> getParameters(TomStandardSqlDialect t)` | The operand's parameters, then the subquery's. |
+| `getFields` | `Set<String> getFields(TomStandardSqlDialect t)` | The operand's fields. |
+| `analyze` | `String analyze(int l)` | The node's line in a tree dump. |
 
 ### Paging & Sorting
 

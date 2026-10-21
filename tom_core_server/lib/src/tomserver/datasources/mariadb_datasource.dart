@@ -301,8 +301,17 @@ class MariaDbDatasource extends TomSqlDatasource {
   );
 
   @override
-  Future<void> prepareOn(TomSqlLink link, String command) =>
-      (link as _MariaDbLink).statement(command);
+  Future<void> prepareOn(
+    TomSqlLink link,
+    String command,
+    int parameterCount,
+  ) async {
+    // Nothing to bind and no rows to answer: [runPreparedOn] runs it over the
+    // text protocol, and preparing it would hang — see there. Its errors
+    // surface at the run.
+    if (parameterCount == 0 && !_answersRows(command)) return;
+    await (link as _MariaDbLink).statement(command);
+  }
 
   @override
   Future<TomSqlResult> runPreparedOn(
@@ -310,7 +319,18 @@ class MariaDbDatasource extends TomSqlDatasource {
     String command,
     List<Object?> parameters,
   ) async {
-    final stmt = await (link as _MariaDbLink).statement(command);
+    final mariaLink = link as _MariaDbLink;
+    // A statement with neither parameters nor result columns — a DELETE or
+    // UPDATE that binds nothing — is answered by the server with the
+    // PREPARE_OK packet alone, and mysql_client waits for an EOF packet that
+    // never comes. With nothing to bind, the text protocol runs the same
+    // statement without the prepare step. A statement answering rows keeps
+    // the prepared path: the server sends its column definitions, and the
+    // binary protocol is what its temporal columns are read through.
+    if (parameters.isEmpty && !_answersRows(command)) {
+      return _resultOf(await mariaLink.connection.execute(command));
+    }
+    final stmt = await mariaLink.statement(command);
     return _resultOf(await stmt.execute(parameters));
   }
 
@@ -375,6 +395,16 @@ class MariaDbDatasource extends TomSqlDatasource {
       SqlPlaceholderScan.toPositional(namedSql);
 
   /// [result] in the driver-neutral form the shared mapper reads.
+  /// Whether [command] answers rows — a `SELECT`, `WITH`, `SHOW`, or a
+  /// bracketed query — rather than only a count.
+  static bool _answersRows(String command) {
+    final head = command.trimLeft().toUpperCase();
+    return head.startsWith('SELECT') ||
+        head.startsWith('WITH') ||
+        head.startsWith('SHOW') ||
+        head.startsWith('(');
+  }
+
   static TomSqlResult _resultOf(IResultSet result) => _MariaDbResult(result);
 
   /// Maps the driver's [qResult] onto a list of [T]; see

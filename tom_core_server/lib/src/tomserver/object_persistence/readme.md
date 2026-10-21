@@ -9,7 +9,11 @@ the `TomAnnotationAnalyzer` reads that mapping. `TomRepository<T, K>` is the CRU
 contract (`save`, `findById`, `findAll`, `delete`, `count`, plus the
 `*ByQuery` variants); `TomSqlDatasourceRepository` implements it over a
 `datasources` `TomDataSource`. A typed query DSL (`TomQueryBuilder` mixin +
-column/operator expressions) builds `WHERE` clauses without raw SQL.
+column/operator expressions) builds `WHERE` clauses without raw SQL, and a
+`TomSubquery` tested by `TomExists` or `TomInSubquery` builds a predicate about
+another result set. A query sentence filters on what an association reaches —
+`find by roles.name = :n`, `find by roles is empty` — through a correlated
+`EXISTS`, so an owning row is answered once however many associated rows match.
 
 The four finders take an optional `TomPageRequest`, so a caller asks for page N
 of size M with a multi-column, mixed-direction sort instead of loading the table.
@@ -64,7 +68,8 @@ erasure can make them unreadable (see
 | `TomVersion` · `TomOptimisticLockException` | The `int` field holding a row's version, which the repository writes and checks on every update and `delete(entity)`; and the refusal of a write whose version moved, carrying the version held and the one stored. |
 | `TomCompositeKey` | The `K` of an entity whose `primaryKeyFields` lists several fields — a join table keyed by its two foreign keys — keyed by field name. |
 | `TomPageRequest` · `TomSortField` · `TomSortDirection` | The optional row window (`offset` + `limit`) and per-field sort the finders accept; an unsorted window gets every primary-key field appended so consecutive pages partition the result. |
-| `TomQueryBuilder` | Mixin offering `isNull` / `isNotNull` / `isIn` / `between` / `like` plus the `Eq` / `Neq` / `And` / `Or` / `Not` operators and the typed column references (`IntCol`, `StringCol`, …). |
+| `TomQueryBuilder` | Mixin offering `isNull` / `isNotNull` / `isIn` / `between` / `like` / `exists` / `notExists` / `isInSubquery` / `isNotInSubquery` plus the `Eq` / `Neq` / `And` / `Or` / `Not` operators and the typed column references (`IntCol`, `StringCol`, …). |
+| `TomSubquery` · `TomExists` · `TomInSubquery` | A subquery over entity types — `SELECT <projection or 1> FROM … WHERE …`, a `@TomSoftDelete` type's live-row test included — and the `EXISTS` and `IN (SELECT …)` predicates over it (`subquery.dart`). Opaque to the walks over the enclosing tree; correlated by naming a column of the enclosing query's table. |
 | `TomDbScope` | Annotation declaring an entity's row scope — its scope field and kind — or, as `TomDbScope.unscoped()`, the deliberate opt-out. |
 | `TomDataScopeRegistry` | The named scope-kind resolvers (`owner`, `group`, `resource`, plus application kinds), sync or async, read and write. |
 | `TomDataScope` | Renders a resolver's answer into a bound `IN` (or OR-union) predicate; `runUnscoped` is the recursion guard async resolvers run their own reads inside. |
@@ -82,7 +87,7 @@ erasure can make them unreadable (see
 | `TomEntityListener` · `TomEntityLifecycle` · `TomEntityChange` · `TomEntityChangeKind` · `TomEntityChangeListener` · `TomEntityLifecycleException` | The hooks of one entity's writes, the registry of hooks and change listeners, one change and its JSON form, and the refusal of a declaration the repository cannot carry out. |
 | `TomBlobMigration` · `TomBlobMigrationReport` | Moves the blobs those columns name from one blob store to another. The key list comes from the rows because a blob store cannot enumerate itself — which makes a file column the index of what a deployment stored, and the sweep read-only on the database. |
 | `MariadbRepository<T, K>` | The MariaDB binding of `TomSqlDatasourceRepository` — constructed directly, and the only thing it adds is a pinned `MariadbSqlDialect`. A repository extending `TomSqlDatasourceRepository` directly renders through its data source's dialect, so it serves MariaDB and PostgreSQL alike. |
-| `TomQuerySentenceCompiler` | Compiles a written sentence (`find by owner = :who order by created_at`) into the same operator tree the builder produces, so a query can be data. |
+| `TomQuerySentenceCompiler` | Compiles a written sentence (`find by owner = :who order by created_at`) into the same operator tree the builder produces, so a query can be data. A term on a `@TomReference` field — `<association>.<field> <test>`, `<association> is empty` — compiles to a correlated `EXISTS`. |
 | `TomGroupedSelect` · `TomGroupedRow` · `TomAggregate` | `GROUP BY` and its aggregates — `CountAll`, `Count`, `Sum`, `Avg`, `Min`, `Max` — projected under an alias and read back off the row by it. A `DateTime` alias reads back UTC, through the one instant convention the data source writes (`datasources/sql_instant.dart`). |
 
 ## Quick start
@@ -131,6 +136,10 @@ encryption, and `test/field_encryption_test.dart` and
 `example/object_persistence/entity_lifecycle_example.dart` walks soft delete,
 history, hooks and change events, and `test/entity_lifecycle_test.dart` and
 `test/entity_lifecycle_db_test.dart` cover them without and with a server.
+`example/object_persistence/subquery_example.dart` builds a correlated
+`EXISTS`, a `NOT EXISTS` and an `IN (SELECT …)`, and
+`test/query_associations_test.dart` and `test/query_associations_db_test.dart`
+cover association filters and subqueries without and with a server.
 `test/object_persistence_test.dart` covers the module and
 `test/object_persistence_db_test.dart` adds what only a live MariaDB or PostgreSQL can answer;
 `test/examples_test.dart` runs the example and

@@ -2072,19 +2072,37 @@ void main() {
   group('MariadbPreparedStatement.run', () {
     MariadbPreparedStatement<TomGroupedRow> statementOn(MariaDbDatasource ds) =>
         MariadbPreparedStatement<TomGroupedRow>(
-          const [],
+          const ['id'],
           ds,
           null,
-          'DELETE FROM t',
+          'DELETE FROM t WHERE id = ?',
           groupedProjection: const {},
         );
+
+    test('a statement that binds nothing and answers no rows runs over the '
+        'text protocol, unprepared', () async {
+      // The server answers such a PREPARE with the OK packet alone, which
+      // mysql_client waits on forever.
+      final link = _FakeConnection(connected: true);
+      final ds = _PooledFakeDatasource(queued: [link]);
+      await ds.connect();
+      await MariadbPreparedStatement<TomGroupedRow>(
+        const [],
+        ds,
+        null,
+        'DELETE FROM t',
+        groupedProjection: const {},
+      ).run();
+      expect(link.prepared, isEmpty);
+      expect(link.executed, ['DELETE FROM t']);
+    });
 
     test('reports the row count the execution returned', () async {
       final link = _FakeConnection(connected: true)
         ..preparedAffectedRows = BigInt.from(3);
       final ds = _PooledFakeDatasource(queued: [link]);
       await ds.connect();
-      final outcome = await statementOn(ds).run();
+      final outcome = await statementOn(ds).run({'id': 1});
       expect(outcome.affectedRows, 3);
       expect(outcome.generatedId, isNull);
     });
@@ -2094,7 +2112,7 @@ void main() {
         queued: [_FakeConnection(connected: true)],
       );
       await ds.connect();
-      expect((await statementOn(ds).run()).affectedRows, 0);
+      expect((await statementOn(ds).run({'id': 1})).affectedRows, 0);
     });
 
     test('the retry reports the count too', () async {
@@ -2109,7 +2127,7 @@ void main() {
       );
       await ds.connect();
       ds.first.dropOnNextPreparedExecution = true;
-      final outcome = await statementOn(ds).run();
+      final outcome = await statementOn(ds).run({'id': 1});
       expect(ds.opened, hasLength(2));
       expect(outcome.affectedRows, 5);
     });
@@ -2129,9 +2147,9 @@ void main() {
       final ds = _PooledFakeDatasource(queued: [slow, fast]);
       await ds.connect();
       final statement = statementOn(ds);
-      final first = statement.run();
+      final first = statement.run({'id': 1});
       await pumpEventQueue();
-      final second = await statement.run();
+      final second = await statement.run({'id': 1});
       held.complete();
       expect((await first).affectedRows, 1);
       expect(second.affectedRows, 0);

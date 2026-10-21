@@ -1237,7 +1237,10 @@ abstract class TomSqlDatasource implements TomDataSource {
     // Prepared now, on the connection this zone selects, so a statement the
     // server cannot compile fails here rather than at its first execution.
     // Every other connection prepares it when it first runs it.
-    await withLink("prepareStatement", (link) => prepareOn(link, q));
+    await withLink(
+      "prepareStatement",
+      (link) => prepareOn(link, q, params.length),
+    );
     return newPreparedStatement<T>(
       params,
       resultType,
@@ -1246,9 +1249,10 @@ abstract class TomSqlDatasource implements TomDataSource {
     );
   }
 
-  /// Prepares [command] on [link] without running it.
+  /// Prepares [command], which binds [parameterCount] parameters, on [link]
+  /// without running it.
   @protected
-  Future<void> prepareOn(TomSqlLink link, String command);
+  Future<void> prepareOn(TomSqlLink link, String command, int parameterCount);
 
   /// The prepared-statement handle this driver hands out.
   @protected

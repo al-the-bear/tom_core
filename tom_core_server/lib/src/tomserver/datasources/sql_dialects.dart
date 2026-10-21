@@ -322,6 +322,24 @@ class TomStandardSqlDialect {
     return list;
   }
 
+  /// `EXISTS (<subquery>)` over the rendered [subquery].
+  SqlString exists(SqlString subquery) => "EXISTS ($subquery)";
+
+  /// `<operand> IN (<subquery>)` over the rendered [operand] and [subquery].
+  SqlString inSubquery(SqlString operand, SqlString subquery) =>
+      "$operand IN ($subquery)";
+
+  /// A subquery: `SELECT <projection> FROM <tables> WHERE <conditions>`, every
+  /// condition parenthesised so an `OR` inside one cannot bind across the
+  /// `AND` that joins them.
+  SqlString subquery(
+    SqlString projection,
+    List<String> tables,
+    List<SqlString> conditions,
+  ) =>
+      "SELECT $projection FROM ${tables.join(', ')}"
+      "${conditions.isEmpty ? '' : ' WHERE ${conditions.map((c) => '($c)').join(' AND ')}'}";
+
   /// Joins the [operant1] predicates with ` OR `.
   SqlString or(List<TomOperator<TomDbBool>> operant1) {
     String list = "";

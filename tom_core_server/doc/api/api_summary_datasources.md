@@ -491,6 +491,9 @@ fragment.
 | `not` | `SqlString not(TomOperator<TomDbBool> operant1)` | Renders `NOT <operant1>`. |
 | `and` | `SqlString and(List<TomOperator<TomDbBool>> operant1)` | Joins the predicates with ` AND `. |
 | `or` | `SqlString or(List<TomOperator<TomDbBool>> operant1)` | Joins the predicates with ` OR `. |
+| `exists` | `SqlString exists(SqlString subquery)` | Renders `EXISTS (<subquery>)` over the rendered `subquery`. |
+| `inSubquery` | `SqlString inSubquery(SqlString operand, SqlString subquery)` | Renders `<operand> IN (<subquery>)` over the rendered `operand` and `subquery`. |
+| `subquery` | `SqlString subquery(SqlString projection, List<String> tables, List<SqlString> conditions)` | Renders `SELECT <projection> FROM <tables> WHERE (<c1>) AND (<c2>) …`, each condition parenthesised so an `OR` inside one cannot bind across the `AND` that joins them; no `WHERE` when `conditions` is empty. |
 | `text` | `SqlString text(String text)` | Renders a single-quoted string literal, escaping `\` and `'`. |
 | `intOp` | `SqlString intOp(int value)` | Renders an integer literal. |
 | `doubleOp` | `SqlString doubleOp(double value)` | Renders a double literal. |
@@ -1363,7 +1366,7 @@ or calls, not part of the surface an application reaches for.
 | `isLostConnection` | `bool isLostConnection(Object error, TomSqlLink link)` | *(protected, abstract)* Whether `error` means `link` was lost while the statement ran, so a retry on another connection may recover it. Both drivers answer with `isLostConnectionFailure`. |
 | `beginStatement` | `String beginStatement({required bool readOnly})` | *(protected, abstract)* The statement opening a transaction, read-only when `readOnly`. |
 | `toPositional` | `(String, List<String>) toPositional(String namedSql)` | *(abstract)* Translates the generated `:name` `namedSql` into the positional form this driver's protocol binds, returning the SQL and the placeholder names in slot order. |
-| `prepareOn` | `Future<void> prepareOn(TomSqlLink link, String command)` | *(protected, abstract)* Prepares `command` on `link` without running it. |
+| `prepareOn` | `Future<void> prepareOn(TomSqlLink link, String command, int parameterCount)` | *(protected, abstract)* Prepares `command`, which binds `parameterCount` parameters, on `link` without running it. `MariaDbDatasource` skips the prepare when `parameterCount` is `0` and the statement answers no rows (it does not start with `SELECT`, `WITH`, `SHOW` or a bracket), and runs such a statement over the text protocol in `runPreparedOn`, because the server answers the `PREPARE` of a statement with neither parameters nor result columns in a way `mysql_client` waits on forever; that statement's errors surface when it runs. |
 | `newPreparedStatement` | `TomSqlPreparedStatement<T> newPreparedStatement<T extends Object>(List<String> parameterList, Type? resultType, String command, Map<String, Type>? groupedProjection)` | *(protected)* The prepared-statement handle this driver hands out — a `TomSqlPreparedStatement` unless the driver returns its own subtype. |
 | `bindSettings` | `void bindSettings(Map<String, dynamic> settings)` | *(protected, abstract)* Binds `settings` onto the driver's fields by reflection. |
 | `newReplica` | `TomSqlDatasource newReplica()` | *(protected, abstract)* A new, unconfigured data source of this driver, to serve as a replica. It is bound with this data source's settings overlaid by the replica's map. |
