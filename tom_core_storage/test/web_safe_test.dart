@@ -78,6 +78,7 @@ void main() {
         uris.where(
           (u) =>
               u.startsWith('package:tom_github_api/') ||
+              u.startsWith('package:tom_git/') ||
               u.startsWith('package:http/'),
         ),
         isEmpty,
@@ -87,7 +88,7 @@ void main() {
 
     test('STORAGE-WEB-2: io.dart is where dart:io lives, cipher.dart where the '
         'cipher lives, web.dart where the browser API lives, github.dart where '
-        'the network lives', () {
+        'the network lives, git.dart where git lives', () {
       expect(reached('lib/io.dart'), contains('dart:io'));
       expect(
         reached(
@@ -110,6 +111,15 @@ void main() {
         reached('lib/github.dart'),
         isNot(contains('dart:io')),
         reason: 'a browser build stores documents on GitHub',
+      );
+      expect(
+        reached('lib/git.dart').where((u) => u.startsWith('package:tom_git/')),
+        isNotEmpty,
+      );
+      expect(
+        reached('lib/git.dart'),
+        isNot(contains('dart:io')),
+        reason: 'a git server is reached over HTTP, from a browser too',
       );
     });
 
@@ -154,6 +164,17 @@ import 'package:tom_core_storage/tom_core_storage.dart';
 Future<void> main() async {
   final storage = TomGitHubStorage(tokens: TomInMemoryTokenSource());
   print(storage.handles('github:o/r/notes.yaml'));
+}
+''',
+      ),
+      (
+        'git',
+        '''
+import 'package:tom_core_storage/git.dart';
+
+Future<void> main() async {
+  final storage = TomGitStorage(openClone: tomGitMemoryClones());
+  print(storage.handles('git:https://example.org/o/r.git::notes.yaml'));
 }
 ''',
       ),

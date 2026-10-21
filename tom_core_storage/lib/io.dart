@@ -5,4 +5,5 @@
 library;
 
 export 'src/io/directory_medium.dart';
+export 'src/io/git_clones.dart';
 export 'src/io/local_storage.dart';

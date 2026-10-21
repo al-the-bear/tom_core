@@ -4,6 +4,20 @@
 
 ### Added
 
+- **A git backend.** `package:tom_core_storage/git.dart`: `TomGitStorage`
+  over any git server that speaks smart HTTP, through `tom_git` and with no
+  git binary — a local clone as the medium (`tomGitMemoryClones`, or
+  `tomGitDirectoryClones` from `io.dart`), a head that is the document's
+  object id in the branch tip, a commit that is a compare-and-swap on it and
+  then a push, a lost race to another document's change rebuilt and pushed
+  again, a lost race to this document's a `TomCasConflictException`, and
+  `TomTokenRequiredException` / `TomTokenRejectedException` when the server
+  asks for a credential. Locators are `TomGitLocator`:
+  `git:<repository-url>[#<branch>]::<path>`.
+- **A storage contract.** `test/support/storage_contract.dart`: what a
+  caller may rely on from every backend, run against the local filesystem
+  and the git backend.
+
 - **Test support.** `package:tom_core_storage/testing.dart`: `TomMemoryRemote`,
   an in-memory compare-and-swap remote, and `TomMemoryStorage`, a per-device
   view onto it whose reads, writes, quota (`rateLimitedUntil`), key

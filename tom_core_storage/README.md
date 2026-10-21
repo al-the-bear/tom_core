@@ -5,8 +5,8 @@
 
 Storage for Tom applications — a compare-and-swap storage port, keyed file
 media, a device-local cache and a durable offline commit journal — with the
-local filesystem, a GitHub repository, the browser and the cache cipher behind
-entry points of their own.
+local filesystem, a GitHub repository, any git server over smart HTTP, the
+browser and the cache cipher behind entry points of their own.
 
 ## Overview
 
@@ -66,6 +66,9 @@ Dart SDK `^3.10.0`. No Flutter dependency.
 | `TomLocalFileSystemStorage` | The local filesystem (`io.dart`): atomic multi-file commits through staged temps and a recorded intent. |
 | `TomGitHubStorage` | A GitHub repository (`github.dart`): one save is one commit, compare-and-swap on the branch head, conditional reads, rate-limit waits, LFS refusal, progress per object. |
 | `TomGitHubLocator` | `github:<owner>/<repo>[@<branch>]/<path>` — parsed and printed. |
+| `TomGitStorage` | Any git server over smart HTTP (`git.dart`), with no git binary: a local clone is the medium, a head is the document's object id in the branch tip, a commit is a compare-and-swap on it and then a push; a push that lost the race to a change of another document is rebuilt on the new tip and pushed again, one that lost it to this document is a `TomCasConflictException`. |
+| `TomGitLocator` | `git:<repository-url>[#<branch>]::<path>` — parsed and printed; without a branch, the server's default. |
+| `tomGitMemoryClones`, `tomGitDirectoryClones` | Where the git backend keeps its clones: in memory (`git.dart`), or one bare repository per remote under a directory, in git's own layout (`io.dart`). |
 | `tomOpenBrowserMedium` | A medium over IndexedDB (`web.dart`). |
 | `TomAesGcmCacheCipher` | AES-256-GCM sealing of cache files (`cipher.dart`). |
 | `TomMemoryRemote`, `TomMemoryStorage`, `TomStaleHead` | Test support (`testing.dart`): an in-memory compare-and-swap remote shared by per-device storages whose reads, writes, quota, key and replica lag each fail on their own switch. |
@@ -75,8 +78,9 @@ Dart SDK `^3.10.0`. No Flutter dependency.
 | Import | Holds | Platforms |
 | --- | --- | --- |
 | `package:tom_core_storage/tom_core_storage.dart` | the port, media, cache, journal, asset store and policies | all, the web included (no `dart:io`, no browser API, no cipher) |
-| `package:tom_core_storage/io.dart` | `TomLocalFileSystemStorage`, `TomDirectoryBundleMedium` | desktop, server, mobile |
+| `package:tom_core_storage/io.dart` | `TomLocalFileSystemStorage`, `TomDirectoryBundleMedium`, `tomGitDirectoryClones` | desktop, server, mobile |
 | `package:tom_core_storage/github.dart` | `TomGitHubStorage`, `tomGitHubWaitOf` | all, the web included (over `tom_github_api`) |
+| `package:tom_core_storage/git.dart` | `TomGitStorage`, `TomGitLocator`, `tomGitMemoryClones` | all, the web included (over `tom_git` and `http`) |
 | `package:tom_core_storage/web.dart` | `tomOpenBrowserMedium`, `TomBrowserStorageException` | browser (a VM test gets an in-memory stand-in) |
 | `package:tom_core_storage/cipher.dart` | `TomAesGcmCacheCipher` | all |
 | `package:tom_core_storage/testing.dart` | `TomMemoryRemote`, `TomMemoryStorage`, `TomStaleHead` — a test double; only a test imports it | all |
@@ -116,9 +120,14 @@ Future<void> main() async {
 
 ## Limits
 
-- **One remote backend.** GitHub, reached through its REST and git-data API;
-  Git-LFS pointers are refused rather than resolved, and a single object over
+- **Two remote backends.** GitHub, reached through its REST and git-data API,
+  and any git server over smart HTTP(S), reached through `tom_git`. Git-LFS
+  pointers are refused rather than resolved by both, and a single object over
   `TomGitHubStorage.maxBlobBytes` is refused before the commit spends anything.
+- **The git backend fetches and pushes whole objects.** It fetches only the
+  branch a document is on, asks for no thin pack and writes no deltas; SSH
+  remotes, shallow clones and Git-LFS are not supported (`tom_git`'s README
+  states the subset).
 - **The cache cipher keeps its key through a port.** `TomCacheKeyStore` is two
   members; an application's own secret store implements it.
 
@@ -132,14 +141,23 @@ Future<void> main() async {
 | `meta` | runtime | `@visibleForTesting` |
 | `path` | runtime | paths on the local filesystem (`io.dart`) |
 | `tom_github_api` | runtime | the GitHub REST and git-data API (`github.dart`) |
+| `tom_git` | runtime | git objects, packs and smart HTTP in pure Dart (`git.dart`) |
+| `http` | runtime | the client the git backend's transport is given (`git.dart`) |
 | `web` | runtime | IndexedDB (`web.dart`) |
 | `pointycastle` | runtime | AES-256-GCM (`cipher.dart`) |
-| `test`, `lints` | dev | the suite (with `tom_github_api`'s in-memory GitHub from `package:tom_github_api/testing.dart`) |
+| `test`, `lints` | dev | the suite (with `tom_github_api`'s in-memory GitHub from `package:tom_github_api/testing.dart` and `tom_git`'s in-memory git server from `package:tom_git/testing.dart`) |
+| `tom_test_support` | dev | the live contract and the Gitea fixture, for the live git-backend suites |
 
 ## Status
 
 Version **0.1.0**. `dart test` runs the unit suite, the local-filesystem
-atomicity suite, the GitHub backend against an in-memory GitHub, a dart2js
-compile of the default, GitHub and web entry points, and —
+atomicity suite, the GitHub backend against an in-memory GitHub, the storage
+contract (`test/support/storage_contract.dart`) against the local filesystem
+and the git backend over an in-memory git server, a dart2js compile of the
+default, GitHub, git and web entry points, and —
 through `test/browser_suite_test.dart` — the IndexedDB suite on Chrome
 (`TOM_SKIP_BROWSER_TESTS=1` skips it, saying so).
+
+With `TOM_LIVE` set, `test/git_storage_test.dart` also runs the contract
+against GitHub (on `GITHUB_TEST_TOKEN`, a branch of its own in the scratch
+repository, deleted afterwards) and against a Gitea started in Docker.
