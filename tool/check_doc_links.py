@@ -96,6 +96,7 @@ import re
 import subprocess
 import sys
 from pathlib import Path
+from urllib.parse import unquote
 
 from gate_report import report_faults
 
@@ -203,7 +204,9 @@ def classify(source: Path, target: str) -> str | None:
         return None
     if target.startswith("/"):
         return "ABSOLUTE"
-    bare = target.split("#", 1)[0]
+    # A target is a URL: `%20` is a space to every renderer, and a file named
+    # with one is found only once the path is decoded.
+    bare = unquote(target.split("#", 1)[0])
     if not bare:
         return None
     if not (source.parent / bare).exists():
