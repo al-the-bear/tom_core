@@ -35,6 +35,12 @@ The data keys live in `tom_encryption_key` wrapped under a key-encryption key
 that never touches the database, and rotate without downtime; a
 `@TomBlindIndex` column makes an encrypted field findable by value.
 
+A repository's audit record carries, beside the before and after values, the
+data subject each `@TomPersonal` value belongs to, so that with the privacy
+module's subject keys installed the trail seals those values per person and an
+erasure can make them unreadable (see
+[`doc/privacy.md`](../../../../doc/privacy.md)).
+
 ## Key types
 
 | Type | Responsibility |
@@ -56,6 +62,7 @@ that never touches the database, and rotate without downtime; a
 | `TomEncrypted` · `TomBlindIndex` · `TomBlindIndexNormalization` | Mark a `String` field encrypted at rest, and a companion column its blind index — an HMAC of the normalised plaintext, which a lookup compares. |
 | `TomFieldEncryption` | The cipher the repository and the data source call (`field_encryption.dart`): encrypt, decrypt, the blind-index lookup `blindIndexCondition`, raw reads and audit redaction, over the installed keyring. |
 | `TomFieldKeyring` · `TomKeyEncryptionKey` · `TomAesKeyEncryptionKey` | The data keys, unwrapped and cached, and the key-encryption key that wraps them; rotates data keys, index keys and key-encryption keys. |
+| `TomAesGcm` | The AES-256-GCM cipher underneath field encryption and key wrapping, public because the privacy module seals audit values with it too. |
 | `TomDataKeyStore` · `TomSqlDataKeyStore` · `TomMemoryDataKeyStore` · `TomDataKeyRecord` · `TomDataKeyRow` · `TomDataKeyPurpose` · `TomDataKeyState` | Where the wrapped data keys are kept — `tom_encryption_key`, declared once by `encryptionKeyTable` in `field_encryption_sql.dart` — and one key as stored. |
 | `TomFieldReencryption` · `TomReencryptionReport` | The background pass, runnable as a scheduler job, that rewrites values under a previous key, encrypts plaintext and fills blind indexes. |
 | `TomFieldEncryptionException` | Every refusal of field encryption, keyed `field_encryption.*`. |

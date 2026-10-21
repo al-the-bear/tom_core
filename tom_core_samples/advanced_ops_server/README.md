@@ -7,7 +7,10 @@ A third server with **no HTTP surface and no database of its own**. It runs
 scheduled work against the app server's `app_db`: a nightly retention purge, a
 morning digest rendered from a text bundle and handed to the messaging outbox, a
 weekly report rendered into the blob store, and — deliberately *not* on the
-scheduler — an audit-anchor publisher on its own timer.
+scheduler — an audit-anchor publisher on its own timer. Because it is the one
+process that reaches both databases, it is also where the sample's personal data
+is registered for erasure and subject access
+([below](#a-users-personal-data-across-both-databases)).
 
 > **Part of the [Tom Core user guide](../README_advanced_sample.md#user-guide).**
 > This package is documented in context by
@@ -51,22 +54,23 @@ an abstraction: every job runs as a service account under a deliberately narrow
 server cap, and `test/ops_authorization_meet_test.dart` shows the *identical
 actor* refused work it could do uncapped.
 
-## The four pieces of recurring work
+## The five pieces of recurring work
 
-Three are scheduled jobs; the fourth is not, and that is the point.
+Four are scheduled jobs; the fifth is not, and that is the point.
 
 | Work | Schedule | Retry | Why that policy |
 | --- | --- | --- | --- |
 | `ops.purge` | `0 3 * * *` | 2 attempts, `requestsRecovery: true` | idempotent by construction — a destroyed row is not returned by the next scan, so a recovered run resumes rather than repeats |
 | `ops.digest` | `0 6 * * *` | **none**, `missedWindow: skip` | the retry budget belongs to the outbox, per message; a digest delivered at noon is contradicted by the board the reader is looking at |
+| `ops.blobSweep` | `0 4 * * 0` | **none**, `missedWindow: skip` | the sweep is a predicate over the table, not a window — a missed run costs one week of orphaned chunks, which the next run takes |
 | `ops.report` | `0 5 * * 0` | 3 attempts | `allowOverlap: false` matters most here — two runs would render two windows under two date-partitioned keys |
 | the anchor publisher | plain `Timer`, hourly | n/a | the trail is a hash chain **per writer**; a cluster-arbitrated anchor would leave every other node unanchored while the dashboard reported success |
 
 Job classes are four lines each. The scheduler instantiates a job per run with
 `newInstance('', const [])`, so a job class cannot take constructor arguments —
 it resolves its service from a named bean, and the logic lives in an ordinary
-testable class (`OpsRetentionService`, `OpsDigestService`, `OpsReportService`)
-that takes its collaborators through its constructor.
+testable class (`OpsRetentionService`, `OpsDigestService`, `OpsReportService`,
+`OpsBlobSweepService`) that takes its collaborators through its constructor.
 
 ## Two schedulers, on purpose
 
@@ -151,6 +155,53 @@ records a `denied` audit record *before* throwing `TomPermanentJobFailure`, so a
 refusal is evidence rather than a log line, and the scheduler does not spend a
 retry on a decision that will not change.
 
+## A user's personal data, across both databases
+
+A user's data is spread over both databases: their account, roles and group
+memberships in the auth server's `auth_db`, their workspaces, the items they
+report or are assigned and the comments they write in the app server's `app_db`.
+An erasure or a subject-access export has to reach all of it, and this server is
+the one process that holds both servers' repositories — which is why the
+registration lives here rather than in either of them.
+
+`bin/ops_server_start.dart` calls `registerOpsPersonalData()`
+(`lib/src/ops_privacy.dart`) right after the app server's scope and grade
+registrations. It enrols six repositories with `TomPrivacy`, in the order an
+erasure visits them. What each row does when its user is erased is not decided
+there: it is declared on the record, in the two servers' persistence models.
+
+| Record | Database | `@TomDataSubject` field | On erasure | `@TomPersonal` fields |
+| --- | --- | --- | --- | --- |
+| `WorkspaceRecord` | `app_db` | `ownerId` | deleted — and with it, by the schema's `ON DELETE CASCADE`, its projects, lists, items and comments | — |
+| `ItemRecord` | `app_db` | `assigneeId`, `reporterId` | unlinked: the field is cleared, the item stays in someone else's workspace | — |
+| `CommentRecord` | `app_db` | `authorId` | anonymized: the comment stays in its thread, its author cleared and its `body` replaced by `[removed]` | `body` |
+| `GroupMemberRecord` | `auth_db` | `userId` | deleted | — |
+| `UserRoleRecord` | `auth_db` | `userId` | deleted | — |
+| `UserRecord` | `auth_db` | `id` | deleted | `username`, `displayName`, `email` |
+
+Workspaces come first, so the rows their cascade removes are not visited twice;
+the account comes last. `TomPrivacy.erase(userId)` then deletes, unlinks and
+anonymizes through those repositories — audited, and unscoped, so the caller is
+the one who decides who may ask — and `TomPrivacy.subjectAccess` /
+`exportSubject` export every row naming the user, one section per record, as
+CSV, XLSX or PDF.
+
+**Registered, not exposed.** The boot only makes the operations available to
+code in this process. No job and no endpoint calls them — the server has no
+endpoints — so `test/ops_privacy_live_test.dart` is what drives them.
+
+**No subject keys at boot.** `@TomPersonal` values are sealed in the audit trail
+only when subject keys are installed — `TomPrivacy.installSubjectKeys`, or a
+`privacy` configuration section, which `TomServer.start()` applies through
+`TomServer.configurePrivacy`. None of the three servers carries that section,
+and this one never calls `TomServer.start()`, so in the running sample the trail
+records personal values as they are: an erasure removes the rows, and the
+values in the trail stay readable. The live suite installs `TomSubjectKeys` over
+a `TomSqlSubjectKeyStore('app_db')` itself, which is what lets it show the
+other half — the comment's `body` sealed in the trail, readable through
+`TomPrivacy.reveal` before the erasure and `[erased]` after it, while the hash
+chain still verifies.
+
 ## Running it
 
 Relative asset and migration paths resolve against the CWD, so run from the
@@ -223,7 +274,7 @@ Every public declaration the barrel (`lib/advanced_ops_server.dart`) exports,
 library by library, with its signature as the source declares it. The sections
 above are the narrative; this is the index. Annotations, initializer lists and
 bodies are left out — the schedule each job declares is in
-[The four pieces of recurring work](#the-four-pieces-of-recurring-work).
+[The five pieces of recurring work](#the-five-pieces-of-recurring-work).
 
 There is no `doc/` folder and no `doc/api/` summary: no sample carries one, a
 decision taken once for all sixteen in [the suite map](../README.md). This
@@ -417,6 +468,14 @@ void installOpsDeploymentPrincipal()
 Future<T> runAsOpsService<T>(Future<T> Function() body)
 ```
 
+### `lib/src/ops_privacy.dart`
+
+The sample's personal data, registered with `TomPrivacy` in the order an erasure visits it: workspaces, items, comments, group memberships, role assignments, the account.
+
+```dart
+void registerOpsPersonalData()
+```
+
 ### `lib/src/ops_runtime.dart`
 
 Assembly: the scheduler, the outbox, the anchoring, and their start and close order.
@@ -461,7 +520,8 @@ class OpsTexts
 
 ## Tests
 
-Fourteen suites; all but `ops_live_test.dart` need no socket at all.
+Fifteen suites; all but the two live ones, `ops_live_test.dart` and
+`ops_privacy_live_test.dart`, need no socket at all.
 
 | Suite | What it settles |
 | --- | --- |
@@ -479,14 +539,19 @@ Fourteen suites; all but `ops_live_test.dart` need no socket at all.
 | `examples_test.dart` | that `example/digest_composition_example.dart` runs under its documented command with no infrastructure: queued before delivered, `bob` in German and `carol` in English, the conditional lines only when true |
 | `readme_api_reference_test.dart` | that the README's `## API` section matches the source both ways: every listed signature occurs in its library, and every public declaration the barrel exports is listed |
 | `ops_live_test.dart` | **the consequences** — that the counted deletes produced audit rows, that the export bytes came back out of the database, that the scheduler's tables are the ones `[100]` built |
+| `ops_privacy_live_test.dart` | **a user exported and erased across both databases** — the subject-access export holds their account, role, workspace, both items and both comments; the erasure deletes what is theirs (their workspace's contents with it), unlinks them from the item they were assigned, keeps their comment in the other workspace's thread without their name or words, records the erasure, leaves their words `[erased]` in the audit trail while it still verifies, and finds nothing on a second run |
 
 ```sh
-dart test                                # every suite; the live one skips
+dart test                                # every suite; the live ones skip
 ./tool/run_ops_integration.sh            # boots both databases, applies [100], runs everything
 ```
 
-The live suite *skips* when `app_db` is unreachable, so a laptop with no docker
-stays green. A skip is only safe if something turns it back into a failure when
-the database was supposed to be there — that is the runner's job: it treats the
-string `All tests skipped` as a failure, boots both databases from fresh
-volumes, applies `[100]`, and tears everything down again.
+The live suites *skip* when `app_db` is unreachable, so a laptop with no docker
+stays green. Both bring the database up through `test/support/live_database.dart`
+— the boot sequence of `bin/ops_server_start.dart`, in its order, with the
+loaders imported from the boot rather than copied — and skip per test through
+its `liveDatabaseUnavailable()`. A skip is only safe if something turns it back
+into a failure when the database was supposed to be there — that is the
+runner's job: it treats the string `All tests skipped` as a failure, boots both
+databases from fresh volumes, applies `[100]`, runs both live suites and then the
+connection-free ones, and tears everything down again.

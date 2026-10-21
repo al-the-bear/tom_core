@@ -86,10 +86,10 @@ fills it column by column when mapping a result.
 | Property | Type | Column | Description |
 | -------- | ---- | ------ | ----------- |
 | `id` | `int` | `id` (read-only) | Surrogate primary key; `-1` until persisted. |
-| `principalId` | `String` | `principal_id` | The owning principal's `TomPrincipal.qualifiedId` — its id qualified by its tenant — the scope column, because that is what the built-in `owner` resolver yields. |
+| `principalId` | `String` | `principal_id` | The owning principal's `TomPrincipal.qualifiedId` — its id qualified by its tenant — the scope column, because that is what the built-in `owner` resolver yields. `@TomDataSubject()`: the row's data subject, so erasing the principal deletes the row. |
 | `preferenceKey` | `String` | `preference_key` | The preference key. |
 | `valueType` | `String` | `value_type` | The name of the type `valueJson` was written as. |
-| `valueJson` | `String` | `value_json` | The value's JSON text. |
+| `valueJson` | `String` | `value_json` | The value's JSON text. `@TomPersonal()`: personal data of the principal, sealed for them in the audit trail. |
 | `updatedAt` | `DateTime?` | `updated_at` | When the preference was last written (UTC). |
 
 #### Methods

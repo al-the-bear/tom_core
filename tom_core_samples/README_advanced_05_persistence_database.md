@@ -9,8 +9,8 @@ same kernel machinery: reflected **record** classes annotated with `@TomDbColumn
 loaded and saved through a singleton `TomSqlDatasourceRepository`, with the schema
 and demo data delivered as **migrations** under each package's
 `database_migrations/` tree. This part covers the persistence record shape and its
-mapping, the CRUD repositories, the two-database design and the cross-database
-logical references, the datasources YAML, the **file columns and per-database blob
+mapping, the CRUD repositories, the two-database design, the cross-database
+logical references and the personal-data declarations on them, the datasources YAML, the **file columns and per-database blob
 stores**, and the **schema-creation vs sample-data migration split** — the clean
 separation of DDL from demo content that this sample establishes.
 
@@ -43,6 +43,7 @@ class ItemRecord {
   @TomDbColumn(columnName: 'status')
   String? status;                            // TodoStatus.name token
 
+  @TomDataSubject(onErasure: TomErasure.unlink)
   @TomDbColumn(columnName: 'assignee_id')
   int? assigneeId;                           // cross-db logical ref to auth_users
   // …
@@ -116,6 +117,33 @@ plain columns there, resolved by the framework `TomDelegationResolver`).
 The two databases publish **3307** and **3308** — neither is **3306** — so
 `auth_db`, `app_db`, and any host-local MariaDB run side by side on one machine
 without colliding.
+
+### Personal data: `@TomDataSubject` and `@TomPersonal`
+
+The same user-id columns are what a privacy request follows. Each one carries
+`@TomDataSubject` — the column holds a person's id, and `onErasure` says what
+erasing that person does to the row — and a column holding that person's own
+data carries `@TomPersonal`. `TomPrivacy` (in `tom_core_server`) reads the
+declarations through reflection, like the column mapping, so a record states its
+privacy behaviour where it states its columns:
+
+| Record | `@TomDataSubject` | On erasure | `@TomPersonal` |
+| --- | --- | --- | --- |
+| `UserRecord` (`auth_db`) | `id` | delete | `username`, `displayName`, `email` |
+| `GroupMemberRecord`, `UserRoleRecord` (`auth_db`) | `userId` | delete | — |
+| `WorkspaceRecord` (`app_db`) | `ownerId` | delete — the workspace's projects, lists, items and comments follow by `ON DELETE CASCADE` | — |
+| `ItemRecord` (`app_db`) | `assigneeId`, `reporterId` | unlink — only the column is cleared | — |
+| `CommentRecord` (`app_db`) | `authorId` | anonymize — the author and the personal fields are cleared | `body` (`replacement: '[removed]'`) |
+
+A `@TomPersonal` field is cleared — set to its `replacement`, or `null` — when
+its row is anonymized, is exported with the rest of the row, and, when subject
+keys are installed, has its values in the audit trail sealed under its
+subject's key, so an erasure makes them unreadable there as well.
+
+Because the subjects span both databases, neither server enrols its records:
+the back-office `advanced_ops_server` holds both servers' repositories and
+registers them with `TomPrivacy` in the order an erasure visits them
+([Part 14](README_advanced_14_operations.md#a-users-erasure-across-both-databases)).
 
 ## Datasources YAML config
 
@@ -350,6 +378,7 @@ format (part [06](README_advanced_06_authentication.md)).
 
 - [`advanced_app_server/README.md`](advanced_app_server/README.md), [`advanced_auth_server/README.md`](advanced_auth_server/README.md)
 - `advanced_app_server/lib/src/persistence/app_persistence_model.dart`, `advanced_auth_server/lib/src/persistence/auth_persistence_model.dart`, and the `*_mapping.dart` converters
+- `advanced_ops_server/lib/src/ops_privacy.dart` (the privacy registration over both databases' records)
 - `*/assets/datasources_default.yaml`, `*/assets/blobstores_default.yaml`, `*/database_migrations/<datasource>/<schema>/`
 
 ---

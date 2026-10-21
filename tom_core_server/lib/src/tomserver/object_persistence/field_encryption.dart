@@ -227,17 +227,21 @@ class TomAesKeyEncryptionKey implements TomKeyEncryptionKey {
 
   @override
   Future<List<int>> wrap(List<int> dataKey, {required String keyId}) async =>
-      _TomAesGcm.seal(_key, dataKey, _aad(keyId));
+      TomAesGcm.seal(_key, dataKey, _aad(keyId));
 
   @override
   Future<List<int>> unwrap(List<int> wrapped, {required String keyId}) async =>
-      _TomAesGcm.open(_key, wrapped, _aad(keyId));
+      TomAesGcm.open(_key, wrapped, _aad(keyId));
 }
 
-/// AES-256-GCM with a random 96-bit nonce prepended to the sealed bytes.
-abstract final class _TomAesGcm {
+/// AES-256-GCM with a random 96-bit nonce prepended to the sealed bytes — the
+/// cipher of field encryption, of data-key wrapping and of the per-subject
+/// sealing of audit values.
+abstract final class TomAesGcm {
   static final Random _random = Random.secure();
 
+  /// [plaintext] sealed under the 32-byte [key], [aad] authenticated with it:
+  /// nonce, ciphertext and tag.
   static Uint8List seal(List<int> key, List<int> plaintext, String aad) {
     final nonce = Uint8List.fromList([
       for (var i = 0; i < 12; i++) _random.nextInt(256),
@@ -256,8 +260,9 @@ abstract final class _TomAesGcm {
     return Uint8List.fromList([...nonce, ...sealed]);
   }
 
-  /// Throws [ArgumentError] (pointycastle's `InvalidCipherTextException`
-  /// included) when [sealed] does not authenticate.
+  /// The plaintext [sealed] holds. Throws [ArgumentError] (pointycastle's
+  /// `InvalidCipherTextException` included) when [sealed] does not
+  /// authenticate under [key] and [aad].
   static Uint8List open(List<int> key, List<int> sealed, String aad) {
     if (sealed.length < 12 + 16) {
       // throws-outside-family: programmer error — the caller turns it into
@@ -733,6 +738,8 @@ class TomFieldKeyring {
   /// Wraps every data key of the current context under the primary
   /// key-encryption key that is not wrapped under it yet; answers how many it
   /// re-wrapped. The rotation of a key-encryption key: no value is touched.
+  /// The privacy module's subject keys, wrapped under the same keys, are
+  /// re-wrapped by `TomSubjectKeys.rewrap`.
   Future<int> rewrap() async {
     await load();
     final primary = keys.first;
@@ -905,7 +912,7 @@ abstract final class TomFieldEncryption {
     if (plaintext == null) return null;
     final keyring = _require();
     final keyId = await keyring.activeKeyId();
-    final sealed = _TomAesGcm.seal(
+    final sealed = TomAesGcm.seal(
       keyring.materialOf(keyId)!,
       utf8.encode(plaintext),
       _aad(column),
@@ -950,7 +957,7 @@ abstract final class TomFieldEncryption {
     try {
       final body = stored.substring(prefix.length + keyId!.length + 1);
       final sealed = base64Url.decode(base64Url.normalize(body));
-      return utf8.decode(_TomAesGcm.open(key, sealed, _aad(column)));
+      return utf8.decode(TomAesGcm.open(key, sealed, _aad(column)));
     } catch (error) {
       throw TomFieldEncryptionException(
         'field_encryption.decrypt_failed',

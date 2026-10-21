@@ -27,7 +27,7 @@
 /// `advanced_client_core/test/cross_tier_integration_test.dart`, and not a
 /// `skip:` argument on the group. A `skip:` expression is evaluated while
 /// `main()` builds the tree — before any `setUpAll` has run — so it could only
-/// ever read the *initial* value of [_available] and would skip unconditionally.
+/// ever read the *initial* value of the flag and would skip unconditionally.
 library;
 
 import 'dart:convert';
@@ -38,71 +38,7 @@ import 'package:advanced_todo_domain/advanced_todo_domain.dart';
 import 'package:test/test.dart';
 import 'package:tom_core_server/tom_core_server.dart';
 
-import '../bin/ops_server_start.dart'
-    show
-        blobStoreLoaderFunction,
-        datasourceLoaderFunction,
-        initializeRuntime,
-        initializeServerResources;
-import '../bin/ops_server_start.reflection.dart' show initializeReflection;
-
-/// The uniform skip message when the live database is unreachable.
-const String _skipMessage =
-    'app_db unreachable — start it with `docker compose up -d app-db` in '
-    'advanced_app_server, or run tool/run_ops_integration.sh';
-
-/// Whether `app_db` answered. Set once by [_bootstrap].
-bool _available = false;
-
-/// Marks the running test skipped when `app_db` did not answer.
-///
-/// Returns `true` when the caller should return without asserting.
-bool _unavailable() {
-  if (_available) return false;
-  markTestSkipped(_skipMessage);
-  return true;
-}
-
-/// Brings up the same picture of `app_db` the live server has.
-///
-/// Deliberately the boot sequence of `bin/ops_server_start.dart`, in its order,
-/// and not a shortcut. Two things depend on that order: the config-resource
-/// provider must exist before the datasource YAML's `${VAR:default}` terms can
-/// resolve, and `registerAppDataScopes` constructs repositories — which requires
-/// the datasource *info* to already be registered, `main` delegation included.
-/// Getting it wrong fails loudly here rather than subtly later, which is why the
-/// loaders are imported from the boot instead of copied.
-Future<void> _bootstrap() async {
-  TomPlatformUtils.setCurrentPlatform(standalonePlatformUtils);
-  initializeReflection();
-  registerProjectRoleVocabulary();
-  // `env=dev` rather than an empty argument list: the boot resolves the runtime
-  // environment from the command line first, and a test that runs from a
-  // directory without a `.env` would otherwise fall back to `prod`.
-  initializeRuntime(['env=dev']);
-  initializeServerResources();
-  try {
-    await TomDataSourceInfo.initializeDatasourceInfo(
-      datasourceLoaderFunction(),
-    );
-    await TomBlobStoreInfo.initializeBlobStores(blobStoreLoaderFunction());
-    registerAppDataScopes();
-    registerAppColumnGrades();
-    // A query that answers is the only proof worth having; a reachable host with
-    // an unmigrated schema would fail later and less clearly.
-    await TomDataScope.runUnscoped(
-      () => itemRepository.countByQuerySentence('COUNT BY id > :zero', {
-        'zero': 0,
-      }),
-    );
-    _available = true;
-  } on Object {
-    // Any failure — refused connection, missing table, bad credentials — means
-    // the same thing for this suite: there is no live database to assert
-    // against. The runner turns the resulting skip into a failure.
-    _available = false;
-  }
-}
+import 'support/live_database.dart';
 
 /// An item that is well past any plausible retention window.
 ItemRecord _expiredItem(String title) => ItemRecord()
@@ -112,14 +48,14 @@ ItemRecord _expiredItem(String title) => ItemRecord()
   ..createdAt = DateTime.utc(2000, 1, 1);
 
 void main() {
-  setUpAll(_bootstrap);
+  setUpAll(bootstrapLiveDatabase);
 
   group('a machine-initiated delete is audited exactly like a human one', () {
     late TomMemoryAuditSink sink;
     final seeded = <ItemRecord>[];
 
     setUp(() async {
-      if (!_available) return;
+      if (!liveDatabaseAvailable) return;
       sink = TomMemoryAuditSink();
       TomAuditTrail.install(sink);
       installOpsDeploymentPrincipal();
@@ -144,7 +80,7 @@ void main() {
     });
 
     tearDown(() async {
-      if (!_available) return;
+      if (!liveDatabaseAvailable) return;
       // Whatever the pass did not delete must not survive into the next test —
       // a leaked expired row would make a later count ambiguous.
       await TomAuditTrail.runUnaudited(() async {
@@ -164,7 +100,7 @@ void main() {
     test(
       'the pass destroys the seeded rows and the trail holds each one',
       () async {
-        if (_unavailable()) return;
+        if (liveDatabaseUnavailable()) return;
         final service = OpsRetentionService(
           store: const RepositoryRetentionStore(),
           retention: const Duration(days: 1),
@@ -202,7 +138,7 @@ void main() {
     test(
       'each record carries the before-image a bulk delete could not',
       () async {
-        if (_unavailable()) return;
+        if (liveDatabaseUnavailable()) return;
         final service = OpsRetentionService(
           store: const RepositoryRetentionStore(),
           retention: const Duration(days: 1),
@@ -228,7 +164,7 @@ void main() {
     );
 
     test('the deletes are attributed to the ops service account', () async {
-      if (_unavailable()) return;
+      if (liveDatabaseUnavailable()) return;
       final service = OpsRetentionService(
         store: const RepositoryRetentionStore(),
         retention: const Duration(days: 1),
@@ -250,7 +186,7 @@ void main() {
     });
 
     test('the pass sees rows the scoped read would have hidden', () async {
-      if (_unavailable()) return;
+      if (liveDatabaseUnavailable()) return;
       // The ops service account owns nothing and is shared nothing, so a scoped
       // read finds zero rows. Both halves are asserted, because the unscoped
       // result alone cannot show that the bypass was needed.
@@ -282,7 +218,7 @@ void main() {
 
   group('the export lands in the blob store the attachments live in', () {
     setUp(() {
-      if (!_available) return;
+      if (!liveDatabaseAvailable) return;
       installOpsDeploymentPrincipal();
     });
     tearDown(() {
@@ -291,8 +227,8 @@ void main() {
     });
 
     test('a rendered report is stored and can be read back', () async {
-      if (_unavailable()) return;
-      // The store comes from `assets/blobstores_default.yaml` via [_bootstrap],
+      if (liveDatabaseUnavailable()) return;
+      // The store comes from `assets/blobstores_default.yaml` via [bootstrapLiveDatabase],
       // not from a literal here: a test that declared its own would prove only
       // that *some* database store works, not that the one the deployment
       // configures is the app server's.
@@ -335,7 +271,7 @@ void main() {
     'the framework tables the migration created are the ones it addresses',
     () {
       test('the scheduler can plan, claim and complete a run', () async {
-        if (_unavailable()) return;
+        if (liveDatabaseUnavailable()) return;
         final datasource = TomDataSourceInfo.getDataSourceInfo(
           'app_db',
         )!.datasource;

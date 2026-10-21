@@ -85,7 +85,7 @@ rest are wiring to reuse or records to read.
 | `src/auth/passkeys.dart` | The second factors this server offers (`advancedTwoFactorMechanisms`: TOTP and passkeys) and `installPasskeyRelyingParty`, which binds passkeys to `localhost` and the origins in `ADVANCED_PASSKEY_ORIGINS` | reuse |
 | `src/auth/password_hashing.dart` | Four functions over the `auth_db` `UserRecord` shape — `hashPassword`, `verifyPassword`, `applyPassword`, `verifyUserPassword` — a thin adapter over the kernel's `TomPasswordHasher` | reuse |
 | `src/auth/two_factor_enrolment_store.dart` | The persistent second-factor enrolment store, with `LegacyBridging2FAEnrolmentStore` over accounts that predate it | reuse |
-| `src/persistence/auth_persistence_model.dart` | The `auth_db` records and their repositories — users, roles, groups, the two membership join tables, and the grant/delegation repositories | read |
+| `src/persistence/auth_persistence_model.dart` | The `auth_db` records and their repositories — users, roles, groups, the two membership join tables, and the grant/delegation repositories. A user's `id` and the join tables' `userId` carry `@TomDataSubject` (deleted on erasure), and `username`, `displayName` and `email` `@TomPersonal`; `advanced_ops_server` registers them with `TomPrivacy` | read |
 | `src/persistence/auth_mapping.dart` | Pure conversions between those records and the two shapes the server works with: the observable `advanced_todo_domain.User` and the `advanced_todo_contracts` DTOs | reuse |
 | `src/resources/auth_resource_bundles.dart` | `AuthResourceBundles` — the two text sets this server owns, the public login screen's and the authenticated one's | reuse |
 

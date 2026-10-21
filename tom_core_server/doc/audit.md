@@ -17,6 +17,7 @@ remembering to ask.
 - [Reads Are Not Audited](#reads-are-not-audited)
 - [The `@TomAudited` Annotation](#the-tomaudited-annotation)
 - [Attribution](#attribution)
+- [Personal Values: Sealed per Data Subject](#personal-values-sealed-per-data-subject)
 - [Sinks, Persistence and Retention](#sinks-persistence-and-retention)
   - [Reading a trail back is per sink, deliberately](#reading-a-trail-back-is-per-sink-deliberately)
 - [The Relational Sink](#the-relational-sink)
@@ -312,6 +313,39 @@ unset id — the empty user id (`TomUser.noId`), the `-1` of an unset
 organization or application — is normalised to `null` and then omitted, so the
 trail never claims an id that does not exist. The user id is a string, unique
 within the principal's tenant.
+
+## Personal Values: Sealed per Data Subject
+
+An append-only, hash-chained trail and a person's right to have their data
+erased pull in opposite directions: an entry cannot be changed without the
+chain showing it, so a person's values cannot be taken out of it afterwards. The
+privacy module resolves this by **crypto-shredding** — their values are never
+written in the clear in the first place (see
+[privacy.md](privacy.md#crypto-shredding-in-the-audit-trail)).
+
+`recordMutation` takes, beside `before` and `after`, `beforeSubjects` and
+`afterSubjects`: a field name mapped to the id of the data subject its value
+belongs to. The repository fills them for an entity's `@TomPersonal` fields
+from the subject column of the row (`TomPersonalDataModel.sealingSubjects`).
+When `TomAuditTrail.personalValueSealer` is installed —
+`TomPrivacy.installSubjectKeys` sets it to `TomSubjectKeys.seal` — each such
+value is replaced, after redaction and before the record is written, by its
+sealed form: `tomsubj:v1:<subject>:<ciphertext>`, AES-256-GCM under a key of
+that subject alone. A `null` and a redacted value (`***`, or `[encrypted]` for
+an encrypted column) are left as they are. The chain hashes the sealed text.
+
+Erasing the subject deletes their key. Every entry stays exactly as written, so
+`verify()` still holds and an anchor published before the erasure still
+matches; the sealed values simply cannot be opened any more.
+`TomPrivacy.reveal(record)` opens them for an auditor while the key exists and
+shows `[erased]` once it does not.
+
+With no sealer installed — the default — personal values are recorded as they
+are, and an erasure cannot reach them in the trail. A value the sealer cannot
+seal fails `recordMutation`, and with it, the trail being fail-closed, the write
+it audits. What sealing does not cover — the actor, the target key, the field
+names, `recordAction` records and their `detail` — is listed in
+[privacy.md](privacy.md#what-stays-as-it-is).
 
 ## Sinks, Persistence and Retention
 
@@ -1102,6 +1136,12 @@ trail table declares.
 shipped DDL, the trail schema encodes the invariants the chain relies on, and the
 guard triggers reject rather than silently ignore.
 
+The sealing of personal values is the privacy module's to test:
+`test/privacy_test.dart` records a mutation through a memory sink with subject
+keys installed and without, reveals it, shreds the subject and verifies the
+chain afterwards, and `test/privacy_db_test.dart` does the same through real
+repositories.
+
 Two suites are tagged `db` and skip when no server is reachable, so the default
 run stays green without one. `test/audit_sql_db_test.dart` covers the relational
 sink against a live database — MariaDB or PostgreSQL — appending, reopening, concurrency, writer scoping,
@@ -1249,7 +1289,8 @@ a result is the value that crosses between them.
   declaration and its resolved form.
 - **`TomAuditTrail`** — `install` / `uninstall` / `record` / `recordMutation` /
   `recordAction` / `policyFor` / `runUnaudited`; the only thing the chokepoints
-  touch.
+  touch. `personalValueSealer` is where the privacy module's subject keys plug
+  in.
 - **`TomAuditBypass`** — the zone marker `runUnaudited` installs.
 - **`auditDiff`** — computes the changed-fields-only before/after pair.
 - **`TomAuditSink` / `TomMemoryAuditSink` / `TomFileAuditSink` /

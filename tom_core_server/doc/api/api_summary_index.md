@@ -27,6 +27,7 @@ surface documented here.
 | Metrics | [api_summary_metrics.md](api_summary_metrics.md) | The request series, the Prometheus scrape endpoint answered ahead of authentication, and the OTLP/HTTP transport and metrics exporter. |
 | Object Persistence | [api_summary_object_persistence.md](api_summary_object_persistence.md) | Persistence annotations, repositories, query builder, operators/expressions, grouped queries and their aggregates, paging and sorting, file-reference columns, data scoping, column authorization, and field-level encryption with its keys, rotation and re-encryption. |
 | Preferences | [api_summary_preferences.md](api_summary_preferences.md) | Server-stored per-principal preferences: the scoped `tom_user_preference` entity, the typed service over it, and the `/preferences/*` endpoints. |
+| Privacy | [api_summary_privacy.md](api_summary_privacy.md) | Data-protection operations: personal-data declarations on entities, erasure, subject-access export, retention, and crypto-shredding of personal values in the audit trail with per-subject keys. |
 | Rate Limiting | [api_summary_ratelimit.md](api_summary_ratelimit.md) | Request rate limits per principal, API key or client address: the rules, the sliding-window arithmetic, the per-process and shared limiters, and the middleware answering `429` with `Retry-After`. |
 | Resources | [api_summary_resources.md](api_summary_resources.md) | Locale-aware text resolution: one bundle per locale, chosen by the recipient's language. |
 | Scheduling | [api_summary_scheduling.md](api_summary_scheduling.md) | The relational half of the job scheduler: the shared job queue, fencing leases, and the node roll call; and unique window instants for runs enqueued outside a schedule. |
@@ -740,6 +741,7 @@ surface documented here.
 | `TomFieldKeyring` | class | The data keys, unwrapped and cached; rotates data keys, index keys and key-encryption keys. |
 | `TomKeyEncryptionKey` | abstract class | What wraps the data keys. |
 | `TomAesKeyEncryptionKey` | class | An application-held AES-256 key-encryption key. |
+| `TomAesGcm` | abstract final class | AES-256-GCM with a random nonce: the cipher of field encryption, data-key wrapping and the sealing of audit values (static). |
 | `TomDataKeyStore` | abstract class | Where the wrapped data keys are kept. |
 | `TomSqlDataKeyStore` / `TomMemoryDataKeyStore` | class | The data keys in `tom_encryption_key` of a data source resolved by name per call / in memory. |
 | `TomDataKeyRecord` | class | One data key as stored, wrapped. |
@@ -762,6 +764,29 @@ surface documented here.
 | `TomUserPreferenceException` | class | An operation that cannot identify the caller (extends `TomServerException`). |
 | `TomUserPreferencesServer` | class | The `@TomApiImplementation` behind the kernel's `tomUserPreferencesApi`. |
 | `TomUserPreferencesErrorHandler` | class | Maps `preferences.not_found` — and only that key — to a `404`, so a client can tell a miss from an outage. |
+
+### Privacy (`lib/src/tomserver/privacy/`)
+
+| Type | Kind | Description |
+| ---- | ---- | ----------- |
+| `TomDataSubject` | class | Marks the field holding the id of the person a row belongs to or names, and what erasing them does to the row. |
+| `TomErasure` | enum | `delete`, `anonymize` or `unlink`. |
+| `TomPersonal` | class | Marks a field holding personal data about a subject field's subject: exported, cleared on erasure, sealed in the audit trail. |
+| `TomRetention` | class | How long an entity's rows are kept, and whether they are then deleted or anonymized. |
+| `TomPersonalDataModel` | class | An entity's declarations, resolved and checked. |
+| `TomSubjectField` / `TomPersonalField` | class | One resolved subject field / personal field. |
+| `TomPrivacy` | abstract final class | Registration, erasure, subject-access export, retention, the subject keys and revealing an audit record (static). |
+| `TomErasureReport` / `TomErasureCount` | class | What an erasure did, in all / to one entity. |
+| `TomSubjectAccess` | class | A subject-access export: one tabular section per entity. |
+| `TomRetentionPolicy` / `TomRetentionCount` | class | One retention rule / what it did in a run. |
+| `TomSubjectKeys` | class | Seals personal values under a key per subject, opens them, shreds the key. |
+| `TomSubjectKeyStore` | abstract class | Where the wrapped subject keys are kept. |
+| `TomSqlSubjectKeyStore` / `TomMemorySubjectKeyStore` | class | The subject keys in `tom_subject_key` of a data source resolved by name per call / in memory. |
+| `TomSubjectKeyRecord` / `TomSubjectKeyRow` | class | One subject key as stored / one row of its table. |
+| `TomPrivacyException` | class | A declaration or operation that cannot proceed, keyed `privacy.*` (extends `TomServerException`). |
+| `subjectKeyTable` / `subjectKeyTableDdl` | top-level | The subject-key table's descriptor, and its `CREATE TABLE` statement. |
+| `defaultSubjectKeyTable` | top-level | `tom_subject_key`, the subject-key table's default name. |
+| `tomRetentionJobName` | top-level | `privacy.retention`, the retention job's default name. |
 
 ### Rate Limiting (`lib/src/tomserver/ratelimit/`)
 
@@ -921,6 +946,7 @@ surface documented here.
 | `defaultSchedulerNodeTable` | Scheduling |
 | `defaultScimResourceTable` | Authentication |
 | `defaultServiceAccountTable` | Authentication |
+| `defaultSubjectKeyTable` | Privacy |
 | `deliveryReportTable` | Messaging |
 | `deliveryReportTableDdl` | Messaging |
 | `DoubleCol` | Object Persistence |
@@ -1016,6 +1042,8 @@ surface documented here.
 | `sqlTimeOfDay` | Datasources |
 | `StringCol` | Object Persistence |
 | `StringLiteral` | Object Persistence |
+| `subjectKeyTable` | Privacy |
+| `subjectKeyTableDdl` | Privacy |
 | `Sum` | Object Persistence |
 | `TimeCol` | Object Persistence |
 | `TimeLiteral` | Object Persistence |
@@ -1045,6 +1073,7 @@ surface documented here.
 | `Tom2FASubmission` | Authentication |
 | `tom2FATokenFingerprint` | Authentication |
 | `TomAccessibleItemsPage` | Item Authorization |
+| `TomAesGcm` | Object Persistence |
 | `TomAesKeyEncryptionKey` | Object Persistence |
 | `TomAggregate` | Object Persistence |
 | `TomAggregateFunction` | Datasources |
@@ -1186,6 +1215,7 @@ surface documented here.
 | `TomDatasourceDriver` | Datasources |
 | `TomDataSourceInfo` | Datasources |
 | `TomDatasourceInitException` | Datasources |
+| `TomDataSubject` | Privacy |
 | `TomDbBool` | Datasources |
 | `TomDbColumn` | Object Persistence |
 | `TomDbDate` | Datasources |
@@ -1245,6 +1275,9 @@ surface documented here.
 | `TomEntityId` | Object Persistence |
 | `TomEntitySchemaReader` | Database Migration |
 | `TomEnvFile` | Command Line |
+| `TomErasure` | Privacy |
+| `TomErasureCount` | Privacy |
+| `TomErasureReport` | Privacy |
 | `tomErrorEnvelope` | Little Things |
 | `TomErrorHandler` | Endpoints |
 | `TomEventInstants` | Scheduling |
@@ -1374,6 +1407,7 @@ surface documented here.
 | `TomMemoryRateLimiter` | Rate Limiting |
 | `TomMemorySagaStore` | Transactions |
 | `TomMemoryScimStore` | Authentication |
+| `TomMemorySubjectKeyStore` | Privacy |
 | `TomMessage` | Messaging |
 | `TomMessageBody` | Messaging |
 | `TomMessageChannel` | Messaging |
@@ -1427,11 +1461,16 @@ surface documented here.
 | `TomPersistent2FAEnrolmentStore` | Authentication |
 | `TomPersistentExternalIdentityStore` | Authentication |
 | `TomPersistentOAuthTokenStore` | Authentication |
+| `TomPersonal` | Privacy |
+| `TomPersonalDataModel` | Privacy |
+| `TomPersonalField` | Privacy |
 | `TomPreparedStatement` | Datasources |
 | `TomPrincipalDelegation` | Authorization |
 | `TomPrincipalFlag2FAPolicy` | Authentication |
 | `TomPrincipalResourceGrant` | Authorization |
 | `TomPrincipalResourceRoleResolver` | Authorization |
+| `TomPrivacy` | Privacy |
+| `TomPrivacyException` | Privacy |
 | `tomProbePaths` | Server |
 | `TomPushCredential` | Messaging |
 | `TomPushExchange` | Messaging |
@@ -1474,6 +1513,10 @@ surface documented here.
 | `TomResourceGrant` | Authorization |
 | `TomResourceLocaleException` | Resources |
 | `TomResourceScopeSource` | Object Persistence |
+| `TomRetention` | Privacy |
+| `TomRetentionCount` | Privacy |
+| `tomRetentionJobName` | Privacy |
+| `TomRetentionPolicy` | Privacy |
 | `TomRole2FAPolicy` | Authentication |
 | `TomRowColumnAuthorization` | Object Persistence |
 | `TomRowColumnAuthResolver` | Object Persistence |
@@ -1611,6 +1654,7 @@ surface documented here.
 | `TomSqlSagaStore` | Transactions |
 | `TomSqlSchedulerNodes` | Scheduling |
 | `TomSqlScimStore` | Authentication |
+| `TomSqlSubjectKeyStore` | Privacy |
 | `TomSqlTypeFamily` | Datasources |
 | `TomSqlTypeFamilyCompatibility` | Database Migration |
 | `TomStandardSqlDialect` | Datasources |
@@ -1621,6 +1665,12 @@ surface documented here.
 | `TomStoredBlob` | File Storage |
 | `TomStoredExport` | Export |
 | `TomStringConfig` | Configuration |
+| `TomSubjectAccess` | Privacy |
+| `TomSubjectField` | Privacy |
+| `TomSubjectKeyRecord` | Privacy |
+| `TomSubjectKeyRow` | Privacy |
+| `TomSubjectKeys` | Privacy |
+| `TomSubjectKeyStore` | Privacy |
 | `TomTabularColumn` | Export |
 | `TomTabularRenderer` | Export |
 | `TomTabularResult` | Export |

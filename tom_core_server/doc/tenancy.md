@@ -592,6 +592,18 @@ the keys of the tenant in context, so rotating every tenant's runs inside each
 installed tenancy on its own. See
 [object_persistence.md](object_persistence.md#tenancy).
 
+**The subject keys live with the data they cover.** The privacy module's subject
+keys — under which personal values in the audit trail are sealed, one key per
+data subject — are kept in `tom_subject_key` of the data source the `privacy`
+configuration names, and `TomSqlSubjectKeyStore` looks that name up on every
+call. When it is one of `TomTenancy.datasources`, a `schema` or `database`
+tenant's subject keys are kept in that tenant's schema or database — created
+there on first use or, with `createSchema: false`, by the migration in the
+per-tenant tree. A shared tenant's keys go to the one table, where the `tenant`
+column keeps them apart. Erasing a subject shreds the key of the tenant in
+context, as it erases that tenant's rows. See
+[privacy.md](privacy.md#tenancy).
+
 ## Working in a Tenant Outside a Request
 
 Work that does not arrive as a request states its tenant explicitly:

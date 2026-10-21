@@ -123,6 +123,7 @@ const _stepCounts = <String, int>{
   'example/object_persistence/object_persistence_example.dart': 17,
   'example/object_persistence/optimistic_locking_example.dart': 5,
   'example/preferences/preferences_example.dart': 13,
+  'example/privacy/privacy_example.dart': 8,
   'example/resources/resources_example.dart': 10,
   'example/scheduling/scheduling_example.dart': 10,
   'example/server/graceful_shutdown_example.dart': 6,

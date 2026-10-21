@@ -147,6 +147,9 @@ final Map<String, String> _guardedElsewhere = {
   _migration('object_persistence', '[1]-create_tom_encryption_key.sql'):
       'descriptor table — framework_schema_test.dart converges the chain '
       'against encryptionKeyTable',
+  _migration('privacy', '[1]-create_tom_subject_key.sql'):
+      'descriptor table — framework_schema_test.dart converges the chain '
+      'against subjectKeyTable',
   _migration('cache', '[1]-create_tom_cache_invalidation.sql'):
       'descriptor table — framework_schema_test.dart converges the chain '
       'against invalidationTable',

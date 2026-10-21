@@ -22,6 +22,7 @@ import 'column_authorization.dart';
 import 'composite_key.dart';
 import 'data_scope.dart';
 import 'field_encryption.dart';
+import '../privacy/personal_data.dart';
 
 /// Raised when a repository operation cannot complete: the entity's data source
 /// was never registered, a primary-key lookup matched more than one row, a
@@ -1125,6 +1126,8 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
     Object? key,
     Map<String, Object?> before = const {},
     Map<String, Object?> after = const {},
+    T? beforeRow,
+    T? afterRow,
   }) => TomAuditTrail.recordMutation(
     entityType: T,
     action: action,
@@ -1134,6 +1137,10 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
     // plaintext copy of what the table encrypts.
     before: TomFieldEncryption.redact(T, before),
     after: TomFieldEncryption.redact(T, after),
+    // A `@TomPersonal` field's values are sealed under the key of the subject
+    // the row names, so erasing the subject makes them unreadable in the trail.
+    beforeSubjects: TomPersonalDataModel.of(T).sealingSubjects(beforeRow),
+    afterSubjects: TomPersonalDataModel.of(T).sealingSubjects(afterRow),
   );
 
   TomPreparedStatement<T>? get _deleteQuery =>
@@ -1202,7 +1209,12 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
       await _versionConflict('delete', id, version, held!);
     }
     await _deleteReferencedFiles(doomed);
-    await _audit(TomAuditAction.delete, key: id, before: before);
+    await _audit(
+      TomAuditAction.delete,
+      key: id,
+      before: before,
+      beforeRow: entity,
+    );
     return;
   }
 
@@ -1894,6 +1906,7 @@ SELECT * FROM ${dbTable.table}
           after: _audits(TomAuditAction.create)
               ? _auditValues(newRow)
               : const {},
+          afterRow: newRow,
         );
         return newRow;
       }
@@ -1956,6 +1969,8 @@ SELECT * FROM ${dbTable.table}
             key: primaryKey,
             before: diff.before,
             after: diff.after,
+            beforeRow: baseline,
+            afterRow: newRow,
           );
         }
         return newRow;

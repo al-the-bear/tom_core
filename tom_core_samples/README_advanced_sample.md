@@ -47,7 +47,7 @@ bottom; each links to the next.
 | 11 | [The two Flutter clients](README_advanced_11_clients_app_admin.md) | App client vs admin console; sessions; the in-memory vs live backend seam; bootstrap; the share flow and grant-matrix editor. |
 | 12 | [Testing & cross-tier integration](README_advanced_12_testing_integration.md) | Test strategy; why Flutter suites need no concurrency flag; the sentinel render proof; the four-role matrix; the cross-tier runner; the green gate. |
 | 13 | [File transfer under the authorization matrix](README_advanced_13_file_transfer.md) | One feature across every layer: the three column declarations; slots from annotations; the per-row C-4 grade; the three refusal layers; the client field; cascade delete; how it is proved. |
-| 14 | [Operations: scheduled work over live data](README_advanced_14_operations.md) | Scheduling, audit, messaging and export in one artifact: the retention purge through the repository chokepoint; the digest named as a template key and handed to the outbox; the weekly export; why the anchor publisher is *not* a job; `min(user, server)` as a test; two schedulers over one store; one migration chain, two packages. |
+| 14 | [Operations: scheduled work over live data](README_advanced_14_operations.md) | Scheduling, audit, messaging and export in one artifact: the retention purge through the repository chokepoint; the digest named as a template key and handed to the outbox; the weekly export; why the anchor publisher is *not* a job; `min(user, server)` as a test; two schedulers over one store; one migration chain, two packages; a user's erasure and subject-access export across both databases. |
 
 ### Appendices (deep dives)
 
@@ -72,7 +72,7 @@ bottom; each links to the next.
 | 5 | [`advanced_app_server`](advanced_app_server/README.md) | The secured task-manager API. Trusts the JWT signing key shared with the auth server, validates the bearer token on every request, resolves ownership + shares + four-state field grades, and persists `app_db`. | HTTP `:8080`, `app_db` `:3308` |
 | 6 | [`advanced_app_client`](advanced_app_client/README.md) | The end-user Flutter app: login, a status-column task board, a bound item-detail editor with per-field four-state authorization driven live over the wire, and cross-user sharing. | Flutter |
 | 7 | [`advanced_authadmin_client`](advanced_authadmin_client/README.md) | The administrator Flutter console: manages users, roles, groups, role assignments, and the `projectRole` × field grant matrix via the auth server's `/admin/*` API. | Flutter |
-| 8 | [`advanced_ops_server`](advanced_ops_server/README.md) | Back-office scheduled work over the app database — a nightly retention purge, a morning digest rendered from a localised text bundle into the messaging outbox, a weekly export into the blob store, and an audit-anchor publisher on its own timer. No HTTP surface and no database of its own. | timers, `app_db` `:3308` |
+| 8 | [`advanced_ops_server`](advanced_ops_server/README.md) | Back-office scheduled work over the app database — a nightly retention purge, a morning digest rendered from a localised text bundle into the messaging outbox, a weekly export into the blob store, and an audit-anchor publisher on its own timer; also where the sample's personal data is registered for erasure and subject access across both databases. No HTTP surface and no database of its own. | timers, `app_db` `:3308`, `auth_db` `:3307` |
 | 9 | [`advanced_openapi_client`](advanced_openapi_client/README.md) | Typed Dart clients for the two HTTP servers, **generated** by `tom_core_openapi` from the OpenAPI documents the servers publish at `GET /openapi.json`. They depend on `package:http` alone — no Tom package, no reflection — and show the system called from code that shares nothing with it. | library (generated) |
 
 **Four of the five runtime packages carry no `example/` directory, and that
@@ -282,9 +282,10 @@ A green run is a genuine live-stack pass — the runner converts a
 server-unreachable skip into a failure.
 
 The back-office server has its own runner, because its assertions need a database
-but no server: it boots `app_db` (and `auth_db`, which the boot's datasource
-initialization insists on), applies the migration this package contributes to the
-app chain, and runs both the live and the connection-free suites.
+but no server: it boots `app_db` and `auth_db` (which the boot's datasource
+initialization insists on, and against which the privacy suite erases a user),
+applies the migration this package contributes to the app chain, and runs the two
+live suites and then the connection-free ones.
 
 ```sh
 tom_core_samples/advanced_ops_server/tool/run_ops_integration.sh
@@ -394,7 +395,7 @@ tom_core_samples/
   advanced_app_server/           secured task-manager API              (HTTP 8080, app_db 3308)
   advanced_app_client/           end-user Flutter app (board + sharing + field grades)
   advanced_authadmin_client/     administrator Flutter console (users/roles/groups/grants)
-  advanced_ops_server/           scheduled back-office work           (no port, app_db 3308)
+  advanced_ops_server/           scheduled back-office work           (no port, app_db 3308, auth_db 3307)
   advanced_openapi_client/       Dart clients generated from the servers' OpenAPI documents
   tool/                          suite-wide runners (dart doc over every package)
 ```

@@ -53,6 +53,7 @@ import '../messaging/inbox_sql.dart';
 import '../object_persistence/annotation_analyzer.dart';
 import '../object_persistence/field_encryption_sql.dart';
 import '../object_persistence/persistence_annotations.dart';
+import '../privacy/subject_keys_sql.dart';
 import '../scheduling/sql_scheduling_sql.dart';
 import '../transactions/saga_sql.dart';
 import 'schema_convergence.dart';
@@ -70,8 +71,8 @@ import 'schema_model.dart';
 ///
 /// The direction of the dependency is deliberate: this module reaches into
 /// `scheduling/`, `file_storage/`, `audit/`, `authentication/`, `messaging/`,
-/// `cache/`, `endpoints/`, `transactions/` and `object_persistence/` for
-/// their descriptors, and none of them reaches back. A deployment can run the
+/// `cache/`, `endpoints/`, `transactions/`, `object_persistence/` and
+/// `privacy/` for their descriptors, and none of them reaches back. A deployment can run the
 /// scheduler without ever loading a migration.
 List<TomFrameworkTable> frameworkOwnedTables({
   String jobRun = defaultJobRunTable,
@@ -88,6 +89,7 @@ List<TomFrameworkTable> frameworkOwnedTables({
   String idempotency = defaultIdempotencyTable,
   String saga = defaultSagaTable,
   String encryptionKey = defaultEncryptionKeyTable,
+  String subjectKey = defaultSubjectKeyTable,
 }) => [
   jobRunTable(jobRun),
   leaseTable(lease),
@@ -103,6 +105,7 @@ List<TomFrameworkTable> frameworkOwnedTables({
   idempotencyTable(idempotency),
   sagaTable(saga),
   encryptionKeyTable(encryptionKey),
+  subjectKeyTable(subjectKey),
 ];
 
 /// Compares framework-owned table descriptors against everything else that

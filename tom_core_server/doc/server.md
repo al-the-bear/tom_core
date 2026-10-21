@@ -96,7 +96,14 @@ base64 with `field_encryption.invalid_kek`; without the key no keyring is
 installed, and an encrypted column fails its first write with
 `field_encryption.not_configured` (see
 [configuration.md](configuration.md#field-level-encryption) and
-[object_persistence.md](object_persistence.md#field-level-encryption)).
+[object_persistence.md](object_persistence.md#field-level-encryption)). Right
+after, it applies the `privacy` key (`TomServer.configurePrivacy`): the table of
+the subject keys the audit trail seals personal values under, wrapped under the
+keyring's key-encryption keys — which is why it comes after them. A value of the
+wrong shape stops the start with `privacy.config.invalid`; without the key no
+subject keys are installed, and personal values are recorded in the trail as
+they are (see [configuration.md](configuration.md#privacy) and
+[privacy.md](privacy.md#crypto-shredding-in-the-audit-trail)).
 `start()` completes **when the socket is listening**, with the bound
 `HttpServer`. So a bind failure — a port already in use, an unreadable
 certificate, a malformed private key — rejects the returned future instead of
@@ -857,6 +864,7 @@ and an application that needs one builds it today rather than waiting:
 | [messaging](messaging.md) | module | `graceful_shutdown.dart` | `TomMessageOutbox.started`, the outboxes the graceful shutdown closes |
 | [metrics](metrics.md) | module | `server.dart` | `tomMetricsEndpointMiddleware` and `tomRequestMetricsMiddleware` (the outer edge of the pipeline), `TomOtlpHttpTransport` and `TomOtlpMetricsExporter` (`metricsExporter`) |
 | [object_persistence](object_persistence.md) | module | `server.dart` | `TomFieldEncryption` (`configureFieldEncryption` applies the `fieldEncryption` key) |
+| [privacy](privacy.md) | module | `server.dart` | `TomPrivacy` (`configurePrivacy` applies the `privacy` key) |
 | [ratelimit](ratelimit.md) | module | `server.dart` | `TomRateLimits` (installed from configuration at start) and `tomRateLimitMiddleware` |
 | [tenancy](tenancy.md) | module | `server.dart` | `TomTenancy` and `TomTenantResolution` — the request's tenant, or the refusal to answer it with |
 | [transactions](transactions.md) | module | `server.dart` | `TomTransactionManager` |

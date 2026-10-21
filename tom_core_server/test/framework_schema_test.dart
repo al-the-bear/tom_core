@@ -183,6 +183,12 @@ void main() {
       ]);
     });
 
+    test('the privacy chain builds the subject-key descriptor', () {
+      converges('example/privacy/migrations/main/tomcore', [
+        subjectKeyTable(defaultSubjectKeyTable),
+      ]);
+    });
+
     test('the cache chain builds the invalidation-log descriptor', () {
       converges('example/cache/migrations/main/tomcore', [
         invalidationTable(defaultInvalidationTable),
@@ -259,6 +265,10 @@ void main() {
 
     test('the data keys', () {
       maps(encryptionKeyTable(defaultEncryptionKeyTable), [TomDataKeyRow]);
+    });
+
+    test('the subject keys', () {
+      maps(subjectKeyTable(defaultSubjectKeyTable), [TomSubjectKeyRow]);
     });
 
     test('the roll call', () {
@@ -610,6 +620,41 @@ void main() {
           await _issuing(() => store.insert(record));
           await _issuing(() => store.all());
           await _issuing(() => store.update(record));
+          await _issuing(() => store.deleteAll());
+        },
+      );
+    });
+
+    test('the subject-key store', () async {
+      final datasource = _RecordingDataSource();
+      final store = TomSqlSubjectKeyStore.over(datasource);
+      await audit(
+        datasource,
+        [subjectKeyTable(defaultSubjectKeyTable)],
+        () async {
+          await _issuing(
+            () => store.insert(
+              TomSubjectKeyRecord(
+                subject: '42',
+                kekId: 'kek-1',
+                wrapped: 'AAAA',
+                createdAt: DateTime.utc(2026, 10, 21, 12),
+              ),
+            ),
+          );
+          await _issuing(() => store.find('42'));
+          await _issuing(() => store.all());
+          await _issuing(
+            () => store.update(
+              TomSubjectKeyRecord(
+                subject: '42',
+                kekId: 'kek-2',
+                wrapped: 'BBBB',
+                createdAt: DateTime.utc(2026, 10, 21, 12),
+              ),
+            ),
+          );
+          await _issuing(() => store.delete('42'));
           await _issuing(() => store.deleteAll());
         },
       );

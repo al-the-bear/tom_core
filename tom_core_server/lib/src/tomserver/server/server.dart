@@ -18,6 +18,7 @@ import '../endpoints/idempotency.dart';
 import '../endpoints/openapi_document_endpoint.dart';
 import '../healthcheck/framework_readiness.dart';
 import '../object_persistence/field_encryption.dart';
+import '../privacy/privacy.dart';
 import '../healthcheck/health_check.dart';
 import 'graceful_shutdown.dart';
 import '../metrics/metrics_middleware.dart';
@@ -707,6 +708,7 @@ class TomServer {
     configureHttpClients();
     configureIdempotency();
     await configureFieldEncryption();
+    configurePrivacy();
     await _installServerPrincipal();
     warnOnUnenforcedResourceKeys();
 
@@ -958,6 +960,19 @@ class TomServer {
     await TomFieldEncryption.configure(
       provider.get(TomFieldEncryption.configurationKey),
     );
+  }
+
+  /// Applies the [TomPrivacy.configurationKey] map of [config] (the server
+  /// configuration unless given) with [TomPrivacy.configure]: the subject-key
+  /// table personal values in the audit trail are sealed with, so an erasure
+  /// reaches them there. Called by [start] after [configureFieldEncryption],
+  /// whose key-encryption keys wrap the subject keys. Without the key the
+  /// trail records personal values as they are.
+  static void configurePrivacy([TomServerConfigResourceProvider? config]) {
+    final provider =
+        config ?? TomServerConfigResourceProvider.getServerConfig();
+    if (!provider.exists(TomPrivacy.configurationKey)) return;
+    TomPrivacy.configure(provider.get(TomPrivacy.configurationKey));
   }
 
   /// Applies [TomBaseServerConfiguration.logFormat]; see [applyLogFormat].

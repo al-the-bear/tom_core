@@ -2,6 +2,59 @@
 
 ### Added
 
+- **Privacy: GDPR erasure, subject-access export, retention and
+  crypto-shredding** (new `privacy` module, `lib/src/tomserver/privacy/`).
+  Entities declare their personal data: `@TomDataSubject(onErasure:)` on the
+  `int`/`String` column naming a person, with `TomErasure.delete`, `anonymize`
+  or `unlink`; `@TomPersonal(subject:, replacement:)` on a column holding their
+  data; `@TomRetention(field:, days:, action:)` on the class.
+  `TomPersonalDataModel.of` resolves and checks them (`TomSubjectField`,
+  `TomPersonalField`), refusing an unusable declaration with
+  `privacy.model.subject_type`, `…subject_unknown`, `…subject_ambiguous`,
+  `…structural_personal`, `…retention_field` or `…retention_anonymize`.
+  `TomPrivacy.register(repository)` enrols an entity (registration order is
+  visiting order); `TomPrivacy.erase(subject, keepAuditKeys:, entities:)`
+  deletes, anonymizes or unlinks every row naming the subject through the
+  repositories — audited, files cascaded, unscoped by row scopes — and answers a
+  `TomErasureReport` of `TomErasureCount`s; `subjectAccess` / `exportSubject`
+  collect those rows, once each, into a `TomSubjectAccess` rendered as XLSX,
+  CSV or PDF; `applyRetention` / `retentionJob` (`privacy.retention`,
+  `tomRetentionJobName`) apply `TomRetentionPolicy`s — by default the declared
+  ones, `TomRetentionPolicy.declared()` — a `retentionBatchSize` at a time and
+  answer `TomRetentionCount`s. Each operation is audited (`erasureTarget`,
+  `subjectAccessTarget`, `retentionTarget`). Crypto-shredding: `TomSubjectKeys`
+  seals a value under a 32-byte key per subject (`tomsubj:v1:…`, AES-256-GCM,
+  subject and field authenticated), wrapped under the field-encryption
+  keyring's key-encryption keys and kept by a `TomSubjectKeyStore`
+  (`TomSqlSubjectKeyStore` over `tom_subject_key` — `subjectKeyTable`,
+  `subjectKeyTableDdl`, `defaultSubjectKeyTable`, read back as
+  `TomSubjectKeyRow` — or `TomMemorySubjectKeyStore`) as
+  `TomSubjectKeyRecord`s; `shred` deletes the key, `reveal` opens a record's
+  sealed values or shows `[erased]`. `TomPrivacy.installSubjectKeys` /
+  `configure` install them; `TomServer.start` applies the `privacy`
+  configuration through the new `TomServer.configurePrivacy`, after
+  `configureFieldEncryption`. Failures are `TomPrivacyException`s
+  (`privacy.not_registered`, `privacy.no_subject_keys`, `privacy.seal.invalid`,
+  `privacy.no_datasource`, `privacy.config.invalid`). Reference migration
+  `example/privacy/migrations/main/tomcore/[1]-create_tom_subject_key.sql` with
+  its PostgreSQL form; `frameworkOwnedTables` lists the table under the new
+  `subjectKey` parameter. `TomUserPreference`, `TomUserTwoFactorEnrolment`,
+  `TomPrincipalResourceGrant` and `TomPrincipalDelegation` declare their
+  principal columns data subjects (and the preference value and enrolment hint
+  personal). `doc/privacy.md`, `doc/api/api_summary_privacy.md`, the module
+  readme and `example/privacy/privacy_example.dart`; covered by
+  `test/privacy_test.dart` and the `db`-tagged `test/privacy_db_test.dart`.
+- **The audit trail seals personal values** (`audit` module).
+  `TomAuditTrail.recordMutation` takes `beforeSubjects` / `afterSubjects` — a
+  field mapped to the data subject its value belongs to — and seals those values
+  through the new static `TomAuditTrail.personalValueSealer` before the record
+  is written; `null`, the default, records them as they are.
+  `TomSqlDatasourceRepository` passes the subjects of an entity's `@TomPersonal`
+  fields from the stored rows, so with subject keys installed a repository's
+  records hold personal values sealed per person.
+- **`TomAesGcm` is public** (`object_persistence` module): the AES-256-GCM
+  cipher of field encryption and data-key wrapping, now shared with the
+  privacy module's sealing (`seal`, `open`).
 - **Field-level encryption with key rotation** (`object_persistence` module).
   A `String` field annotated `@TomEncrypted` is stored as AES-256-GCM
   ciphertext — `tomenc:v1:<data key id>:<base64url>`, randomised per write,

@@ -31,7 +31,7 @@ through.
 
 | Type | Kind | Purpose |
 | ---- | ---- | ------- |
-| `TomUserPreference` | class | The `tom_user_preference` row; carries the row scope |
+| `TomUserPreference` | class | The `tom_user_preference` row; carries the row scope, and declares its principal the data subject and its value personal for the privacy module |
 | `TomUserPreferenceRepository` | class | Persists that entity |
 | `TomUserPreferences` | class | Typed reads and writes of the caller's preferences |
 | `TomUserPreferenceException` | class | Raised when an operation cannot identify the caller |
@@ -474,7 +474,13 @@ block every login.
 ## Core Components
 
 - **`TomUserPreference`** — the reflected entity: the row, its scope, its
-  `toDto()`, and the `createTableSql` the migration reproduces.
+  `toDto()`, and the `createTableSql` the migration reproduces. Its
+  `principalId` is declared the row's data subject (`@TomDataSubject`) and its
+  `valueJson` personal data (`@TomPersonal`), so a deployment that registers
+  `TomUserPreferenceRepository` with `TomPrivacy` has a principal's preferences
+  deleted when they are erased, included in their subject-access export and
+  sealed for them in the audit trail — see
+  [privacy.md](privacy.md#framework-entities-that-declare-subjects).
 - **`TomUserPreferenceRepository`** — the CRUD repository, shipped rather than
   left to the deployment because the service would otherwise be unusable without
   one empty line.
@@ -642,6 +648,7 @@ subject of `preferences_db_test.dart` above.
 | [endpoints](endpoints.md) | module | `user_preferences_endpoints.dart` | `@TomApiImplementation`, `@TomApiEndpointImplementation`, the routing pipeline (see `doc/endpoints.md`) |
 | [little_things](little_things.md) | module | `user_preferences_service.dart` | `TomServerException` |
 | [object_persistence](object_persistence.md) | module | `user_preference.dart`, `user_preferences_service.dart` | `@TomDbTable`, `@TomDbColumn`, `@TomDbScope`, `TomSqlDatasourceRepository` (see `doc/object_persistence.md`) |
+| [privacy](privacy.md) | module | `user_preference.dart` | `TomDataSubject` and `TomPersonal`, which declare `TomUserPreference`'s principal and its value to erasure, export and audit sealing |
 
 - The database-migration module — the untagged framework migration (see
   `doc/db_migration.md`).

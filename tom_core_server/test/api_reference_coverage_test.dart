@@ -1517,11 +1517,26 @@ List<String> _undocumentedFields(String path, String className) {
       continue;
     }
     final name = _fieldNameOf(line);
+    // A declaration the formatter wrapped — a function type too long for one
+    // line, `static Future<Object?> Function(...)?` above the field's name —
+    // opens on a line that ends in neither `;` nor a bracket. It belongs to
+    // the field on the next line, and so does the dartdoc above it.
+    if (name == null && _opensWrappedDeclaration(line)) continue;
     if (name != null && !documented && !overrides) undocumented.add(name);
     documented = false;
     overrides = false;
   }
   return undocumented;
+}
+
+/// Whether [line] is the first line of a member declaration the formatter
+/// wrapped: two spaces of indent, and an ending — a type, `?`, `>` — that no
+/// complete statement, block or parameter list has.
+bool _opensWrappedDeclaration(String line) {
+  if (!line.startsWith('  ') || line.startsWith('   ')) return false;
+  final statement = line.trimRight();
+  return RegExp(r'[A-Za-z0-9_?>]$').hasMatch(statement) &&
+      !RegExp(r'^\s*(return|throw|case|default)\b').hasMatch(statement);
 }
 
 /// Every public class, mixin, enum and extension type declared in the
@@ -6140,6 +6155,20 @@ One: `TomKind`, documented beside the type that carries it.
         _undocumentedFields(grantPath, 'TomResourceGrant'),
         isNot(contains('accessLevel')),
       );
+
+      // A dartdoc above a declaration the formatter wrapped — its function
+      // type on one line, its name on the next — documents that field too.
+      const trailPath = 'lib/src/tomserver/audit/audit_trail.dart';
+      expect(
+        _undocumentedFields(trailPath, 'TomAuditTrail'),
+        isNot(contains('personalValueSealer')),
+      );
+      expect(
+        _opensWrappedDeclaration('  static Future<Object?> Function()?'),
+        isTrue,
+      );
+      expect(_opensWrappedDeclaration('  final int count;'), isFalse);
+      expect(_opensWrappedDeclaration('  Future<void> run() async {'), isFalse);
     });
 
     test('no public field is left to the reader to guess at', () {

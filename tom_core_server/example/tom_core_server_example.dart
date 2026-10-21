@@ -2,7 +2,7 @@
 /// The package's example runner: every module example, in reading order.
 ///
 /// `tom_core_server` has no single introductory program, because it is
-/// twenty-four modules and no one program is the way in. What it has instead is
+/// twenty-five modules and no one program is the way in. What it has instead is
 /// a runnable sample per module, and this is the index of them — as a list a
 /// reader can read and a runner that executes it:
 ///
@@ -148,6 +148,12 @@ const List<TourStop> tour = [
     'Audit records, the declared/automatic split, the hash chain, the trail '
         "schema and its write-once check, and anchors published outside the "
         'server',
+  ),
+  TourStop(
+    'example/privacy/privacy_example.dart',
+    'Personal data: the subjects the framework entities declare, a value '
+        'sealed under a subject key, the trail sealing it, and the shred that '
+        'makes it unreadable while the chain still verifies',
   ),
   TourStop(
     'example/messaging/messaging_example.dart',

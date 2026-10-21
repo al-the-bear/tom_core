@@ -297,19 +297,65 @@ exit. `tool/run_ops_integration.sh` uses it for exactly that reason.
 own table descriptors, so a column added upstream to `tom_job_run` fails in CI
 rather than at 03:00.
 
+## A user's erasure, across both databases
+
+A person's data in this sample is spread over both databases: their account,
+roles and group memberships in `auth_db`; the workspaces they own, the items
+they report or are assigned and the comments they write in `app_db`. An erasure
+request, or a request for everything held about them, has to reach all of it.
+The back-office server is the one process holding both servers' repositories, so
+`bin/ops_server_start.dart` registers the sample's personal data with
+`TomPrivacy` there — `registerOpsPersonalData()` in
+`advanced_ops_server/lib/src/ops_privacy.dart`, called right after the app
+server's scope and grade registrations.
+
+The registration only says *which* repositories, and in which order: workspaces
+first, so the rows their `ON DELETE CASCADE` removes are not visited twice, the
+account last. What happens to each row is declared on the record, in the two
+servers' persistence models ([Part 05](README_advanced_05_persistence_database.md#personal-data-tomdatasubject-and-tompersonal)):
+
+| Record | Erasure | Why that one |
+| --- | --- | --- |
+| `WorkspaceRecord.ownerId` | delete | the workspace is theirs; its projects, lists, items and comments go with it |
+| `ItemRecord.assigneeId`, `.reporterId` | unlink | an item in someone else's workspace is that person's work; only the reference to the erased user goes |
+| `CommentRecord.authorId` | anonymize, `body` → `[removed]` | the thread is someone else's conversation; the comment stays in it, without its author or its words |
+| `GroupMemberRecord.userId`, `UserRoleRecord.userId` | delete | a membership of a person who no longer exists means nothing |
+| `UserRecord.id` | delete; `username`, `displayName`, `email` personal | the account itself |
+
+`TomPrivacy.erase` goes through the repositories, so every change is audited
+like any other — and unscoped, so the caller is the one who decides who may ask.
+`TomPrivacy.subjectAccess` / `exportSubject` answer the other request: every row
+naming the user, one section per record, as CSV, XLSX or PDF through the export
+module.
+
+Two limits are stated rather than hidden. **Nothing in the running sample calls
+either operation** — the server has no endpoints and no job asks for one — so
+the boot makes them available and the live suite drives them. And **the boot
+installs no subject keys**: `@TomPersonal` values are sealed in the audit trail
+per subject only when `TomPrivacy.installSubjectKeys` was called or a `privacy`
+configuration section is applied, which `TomServer.start()` does through
+`TomServer.configurePrivacy`. None of the three servers carries that section and
+this one never calls `TomServer.start()`, so the sample's trail holds personal
+values as they are. `ops_privacy_live_test.dart` installs `TomSubjectKeys` over a
+`TomSqlSubjectKeyStore('app_db')` itself, which is what lets it show the half a
+plain erasure cannot reach: the comment's words sealed in the trail, readable
+through `TomPrivacy.reveal` before the erasure and `[erased]` after it, while
+the hash chain still verifies.
+
 ## What only a live suite could prove
 
-Seven of the package's eight suites need no socket, and between them they cover
-every *decision* the package makes. What they cannot reach is the **consequence**
-of a call.
+Thirteen of the package's fifteen suites need no socket, and between them they
+cover every *decision* the package makes. What they cannot reach is the
+**consequence** of a call.
 
 `ops_retention_test.dart` counts one `destroy` per candidate, each carrying an
 entity — but its store is a stand-in. A repository that quietly stopped writing
 audit rows would leave that suite entirely green. `ops_live_test.dart` closes
-the loop by reading the trail back out of a real database, and it is the only
-artifact in the package that can.
+the loop by reading the trail back out of a real database, and
+`ops_privacy_live_test.dart` erases a user across both databases and reads what
+is left; they are the only artifacts in the package that can.
 
-It earned its place immediately. Running it against live MariaDB surfaced three
+`ops_live_test.dart` earned its place immediately. Running it against live MariaDB surfaced three
 `tom_core_server` defects that the whole prior sample suite — and every
 connection-free suite here — had never reached:
 
@@ -338,22 +384,24 @@ Composing four modules over live data is what walked into it.
 | authorization | `ops_authorization_meet_test.dart` | `min(user, server)`: the same actor refused under the cap, the refusal recorded, and no retry requested |
 | schema | `ops_framework_schema_test.dart`, `ops_migration_chain_test.dart` | `[100]` against the framework's descriptors; that it extends the app chain rather than forking it, and that neither package numbers outside its band |
 | live stack | `ops_live_test.dart` | **the consequences** — the counted deletes produced audit rows carrying before-images; the export bytes came back out of the database; the scheduler's tables are the ones `[100]` built |
+| privacy, live | `ops_privacy_live_test.dart` | a user exported and erased across both databases: the export holds every row naming them; the erasure deletes what is theirs, unlinks and anonymizes what is not, leaves their words `[erased]` in a trail that still verifies, and finds nothing on a second run |
 
 ```sh
 cd advanced_ops_server
-dart test                        # all eight; the live suite skips without docker
+dart test                        # every suite; the live ones skip without docker
 ./tool/run_ops_integration.sh    # boots both databases, applies [100], runs everything
 ```
 
-The live suite skips when `app_db` is unreachable so a laptop with no docker
-stays green — and a skip is only safe because the runner turns it back into a
+The live suites skip when `app_db` is unreachable so a laptop with no docker
+stays green — both through `test/support/live_database.dart`, which brings the
+database up the way the boot does — and a skip is only safe because the runner turns it back into a
 failure when the database was supposed to be there, the same discipline
 [Part 12](README_advanced_12_testing_integration.md) applies to the cross-tier
 runner.
 
-Both databases start, though only one is asserted against: the boot initializes
-*every* declared datasource, and the digest resolves its recipients through the
-auth server's user repository.
+Both databases start. The privacy suite asserts against both, and even without
+it the boot initializes *every* declared datasource, and the digest resolves its
+recipients through the auth server's user repository.
 
 ## Building this into your own app
 
@@ -389,6 +437,7 @@ authorization lines with their enforcement anchors.
 
 - `advanced_ops_server/lib/src/ops_runtime.dart` (the assembly and its ordering),
   `ops_identity.dart` (the two entitlement sets), `ops_anchoring.dart` (why not a job),
+  `ops_privacy.dart` (what an erasure visits),
   `ops_texts.dart` + `assets/text_{en,de}.yaml` (the digest's text)
 - `advanced_ops_server/lib/src/jobs/` — `ops_jobs.dart` (the declarations),
   `retention_service.dart`, `digest_service.dart`, `report_service.dart`
@@ -396,7 +445,11 @@ authorization lines with their enforcement anchors.
   `database_migrations/app_db/app_schema/[100]-ops_framework_tables.sql`
 - `tom_core_server/doc/` — `scheduling.md`, `audit.md`, `messaging.md` (both the
   delivery contract and application email), `resources.md`, `export.md`
-- `advanced_ops_server/test/ops_live_test.dart`, `tool/run_ops_integration.sh`
+- `advanced_ops_server/test/ops_live_test.dart`, `test/ops_privacy_live_test.dart`,
+  `test/support/live_database.dart`, `tool/run_ops_integration.sh`
+- `advanced_app_server/lib/src/persistence/app_persistence_model.dart`,
+  `advanced_auth_server/lib/src/persistence/auth_persistence_model.dart` (the
+  `@TomDataSubject` / `@TomPersonal` declarations)
 
 ---
 

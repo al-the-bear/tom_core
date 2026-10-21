@@ -2953,3 +2953,169 @@ class FixtureBothAnnotationsRecord {
   @TomDbColumn(columnName: 'email')
   String? email;
 }
+
+/// A member row that is the subject's own: erasing them deletes it.
+@tomReflector
+@TomDbTable(
+  datasource: 'tom_core_server_test',
+  table: 'fixture_member',
+  primaryKeyFields: ['id'],
+)
+class FixtureMember {
+  /// Surrogate primary key.
+  @TomEntityId()
+  @TomDbColumn(columnName: 'id', isReadOnly: true)
+  int? id;
+
+  /// The member's user id.
+  @TomDataSubject()
+  @TomDbColumn(columnName: 'user_id')
+  int? userId;
+
+  /// The member's e-mail address.
+  @TomPersonal()
+  @TomDbColumn(columnName: 'email')
+  String? email;
+}
+
+/// The repository for [FixtureMember].
+class FixtureMemberRepository
+    extends TomSqlDatasourceRepository<FixtureMember, int> {}
+
+/// A post kept for its thread: erasing its author anonymizes it, erasing its
+/// editor only unlinks them; posts are anonymized after 30 days.
+@tomReflector
+@TomRetention(field: 'createdAt', days: 30, action: TomErasure.anonymize)
+@TomDbTable(
+  datasource: 'tom_core_server_test',
+  table: 'fixture_post',
+  primaryKeyFields: ['id'],
+)
+class FixturePost {
+  /// Surrogate primary key.
+  @TomEntityId()
+  @TomDbColumn(columnName: 'id', isReadOnly: true)
+  int? id;
+
+  /// The author's user id.
+  @TomDataSubject(onErasure: TomErasure.anonymize)
+  @TomDbColumn(columnName: 'author_id')
+  int? authorId;
+
+  /// The last editor's user id.
+  @TomDataSubject(onErasure: TomErasure.unlink)
+  @TomDbColumn(columnName: 'editor_id')
+  int? editorId;
+
+  /// What the author wrote.
+  @TomPersonal(subject: 'authorId', replacement: '[removed]')
+  @TomDbColumn(columnName: 'body')
+  String? body;
+
+  /// A title that is not personal.
+  @TomDbColumn(columnName: 'title')
+  String? title;
+
+  /// When the post was written.
+  @TomDbColumn(columnName: 'created_at')
+  DateTime? createdAt;
+}
+
+/// The repository for [FixturePost].
+class FixturePostRepository
+    extends TomSqlDatasourceRepository<FixturePost, int> {}
+
+/// A visit log row, deleted after seven days.
+@tomReflector
+@TomRetention(field: 'at', days: 7)
+@TomDbTable(
+  datasource: 'tom_core_server_test',
+  table: 'fixture_visit',
+  primaryKeyFields: ['id'],
+)
+class FixtureVisit {
+  /// Surrogate primary key.
+  @TomEntityId()
+  @TomDbColumn(columnName: 'id', isReadOnly: true)
+  int? id;
+
+  /// The visitor's user id.
+  @TomDataSubject()
+  @TomDbColumn(columnName: 'visitor_id')
+  int? visitorId;
+
+  /// When the visit happened.
+  @TomDbColumn(columnName: 'at')
+  DateTime? at;
+}
+
+/// The repository for [FixtureVisit].
+class FixtureVisitRepository
+    extends TomSqlDatasourceRepository<FixtureVisit, int> {}
+
+/// Two subject fields and a personal field naming neither — refused.
+@tomReflector
+@TomDbTable(
+  datasource: 'tom_core_server_test',
+  table: 'fixture_ambiguous_personal',
+  primaryKeyFields: ['id'],
+)
+class FixtureAmbiguousPersonal {
+  /// Surrogate primary key.
+  @TomEntityId()
+  @TomDbColumn(columnName: 'id', isReadOnly: true)
+  int? id;
+
+  /// One subject.
+  @TomDataSubject()
+  @TomDbColumn(columnName: 'a_id')
+  int? aId;
+
+  /// Another subject.
+  @TomDataSubject()
+  @TomDbColumn(columnName: 'b_id')
+  int? bId;
+
+  /// Whose?
+  @TomPersonal()
+  @TomDbColumn(columnName: 'note')
+  String? note;
+}
+
+/// A subject field that is a date — refused.
+@tomReflector
+@TomDbTable(
+  datasource: 'tom_core_server_test',
+  table: 'fixture_date_subject',
+  primaryKeyFields: ['id'],
+)
+class FixtureDateSubject {
+  /// Surrogate primary key.
+  @TomEntityId()
+  @TomDbColumn(columnName: 'id', isReadOnly: true)
+  int? id;
+
+  /// Not an id.
+  @TomDataSubject()
+  @TomDbColumn(columnName: 'born')
+  DateTime? born;
+}
+
+/// A retention measured from a text field — refused.
+@tomReflector
+@TomRetention(field: 'label', days: 3)
+@TomDbTable(
+  datasource: 'tom_core_server_test',
+  table: 'fixture_text_retention',
+  primaryKeyFields: ['id'],
+)
+class FixtureTextRetention {
+  /// Surrogate primary key.
+  @TomEntityId()
+  @TomDbColumn(columnName: 'id', isReadOnly: true)
+  int? id;
+
+  /// Not a date.
+  @TomDbColumn(columnName: 'label')
+  String? label;
+}

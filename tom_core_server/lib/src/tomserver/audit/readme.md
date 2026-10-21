@@ -33,7 +33,7 @@ matter.
 
 | Type | What it is |
 | ---- | ---------- |
-| `TomAuditTrail` | The entry point the chokepoints call. `TomAuditRecordIdGenerator` decides what a record is identified by. |
+| `TomAuditTrail` | The entry point the chokepoints call. `TomAuditRecordIdGenerator` decides what a record is identified by. `personalValueSealer` is where the privacy module plugs in: with subject keys installed, a `@TomPersonal` value in a repository's record is sealed under a key of its data subject, so erasing them makes it unreadable without touching the chain (see [`doc/privacy.md`](../../../../doc/privacy.md)). |
 | `TomAudited` | The annotation that makes an entity audited, and names the columns to `redact:` — a redacted value never reaches a sink, so `tomAuditRedactedPlaceholder` is what a reader sees. |
 | `TomAuditPolicy` | Which entities are audited and how much of them, when the annotation is not the whole answer. |
 | `TomAuditBypass` | The deliberate, scoped opt-out — a bulk import that would otherwise write a million records. |

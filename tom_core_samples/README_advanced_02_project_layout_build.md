@@ -22,7 +22,7 @@ tom_core_samples/
   advanced_app_server/           secured task-manager API         (HTTP 8080, app_db 3308)
   advanced_app_client/           end-user Flutter app (board + sharing + field grades)
   advanced_authadmin_client/     administrator Flutter console (users/roles/groups/grants)
-  advanced_ops_server/           scheduled back-office work       (no port, app_db 3308)
+  advanced_ops_server/           scheduled back-office work       (no port, app_db 3308, auth_db 3307)
   advanced_openapi_client/       clients generated from the two servers' OpenAPI documents
 ```
 
@@ -56,8 +56,9 @@ The dependency arrows (verified against the real `dependencies:` blocks) are:
 
 `advanced_ops_server` is the only package that depends on **another server**, and
 deliberately so: it operates on the app server's data through the app server's
-own repositories, and resolves digest recipients through the auth server's
-`UserRepository`. A second entity model over the same tables would make its
+own repositories, resolves digest recipients through the auth server's
+`UserRepository`, and registers both servers' records with `TomPrivacy`, so a
+user's erasure and subject-access export reach both databases. A second entity model over the same tables would make its
 audit-chokepoint claim a claim about a copy nobody runs.
 
 > **`path:` is the monorepo convention, not a workaround.** These are sibling

@@ -129,6 +129,7 @@ be expressed three ways — a parsed *query sentence*, a programmatically built
 | `TomFieldKeyring` | class | The data keys, unwrapped and cached; creates them, and rotates data keys, index keys and key-encryption keys |
 | `TomKeyEncryptionKey` | abstract class | What wraps the data keys; never touches the database |
 | `TomAesKeyEncryptionKey` | class | A key-encryption key held by the application: a 256-bit AES key, wrapping with AES-GCM |
+| `TomAesGcm` | abstract final class | AES-256-GCM with a random nonce: the one cipher of field encryption, data-key wrapping and the privacy module's sealing of audit values. Statics only |
 | `TomDataKeyStore` | abstract class | Where the wrapped data keys are kept |
 | `TomSqlDataKeyStore` / `TomMemoryDataKeyStore` | class | The data keys in `tom_encryption_key` of a data source resolved by name per call / in memory |
 | `TomDataKeyRecord` | class | One data key as stored: wrapped, with its purpose, state and key-encryption key |
@@ -1956,6 +1957,17 @@ changed and never becomes a plaintext copy of what the table encrypts.
 `TomFieldEncryption.redact(entity, image)` is the replacement; a `null` stays
 `null`. See [audit.md](audit.md#the-audit-record).
 
+The values of a `@TomPersonal` field — personal data, declared for the privacy
+module — are sealed instead, under a key of the data subject the row names, when
+subject keys are installed: the repository hands the audit trail each such
+field's subject (`TomPersonalDataModel.sealingSubjects` of the row before and
+after) and the trail seals the value, so erasing the subject makes it unreadable
+in the trail without changing an entry. An encrypted field is left out of that —
+its value is `[encrypted]` already. The cipher is the same one: `TomAesGcm`,
+AES-256-GCM with a fresh 96-bit nonce per value, public so field encryption,
+key wrapping and the sealing share one implementation. See
+[privacy.md](privacy.md#crypto-shredding-in-the-audit-trail).
+
 ### How field encryption fails
 
 `TomFieldEncryptionException` (extends `TomServerException`) carries every
@@ -2465,7 +2477,8 @@ table, in each tenant's schema or in each tenant's database.
   `TomDataKeyStore` keeps wrapped under a `TomKeyEncryptionKey`, and rotates
   them; **`TomFieldReencryption`** rewrites what a rotation or a plaintext
   column left behind, reporting a `TomReencryptionReport`; every failure is a
-  `TomFieldEncryptionException`. See [Field-Level Encryption](#field-level-encryption).
+  `TomFieldEncryptionException`; **`TomAesGcm`** is the cipher, shared with the
+  privacy module's sealing of audit values. See [Field-Level Encryption](#field-level-encryption).
 
 ## Not Yet Implemented
 
@@ -2532,4 +2545,5 @@ is a string and `>` and `%` are directly writable in one. See
 | [datasources](datasources.md) | module | 11 of 16 files | `TomDbType`/`TomOperator`/`SqlString`, `TomStandardSqlDialect` / `MariadbSqlDialect` (including the `aggregate`, `aliased`, `groupByClause` and `havingClause` fragments), `TomQuery` family (`TomSelect` / `TomCount` / `TomDelete` / `TomLiteralSelect`), `TomAggregateFunction`, `TomTypedPersistenceBase`, `TomTypePersistenceInfo`, `TomDataSourceInfo`, `TomPreparedStatement`; `TomFrameworkTable`, `TomSchemaProvisioning` and `sqlInstant` / `parseSqlInstant` for the data-key table |
 | [file_storage](file_storage.md) | module | `blob_migration.dart`, `crud_repository.dart`, `file_reference.dart` | `TomBlobStore`, `TomBlobStoreInfo`, `TomStorageException`, `TomStoredBlob` |
 | [little_things](little_things.md) | module | 7 of 16 files | `TomServerException` (base of the module's exceptions) |
+| [privacy](privacy.md) | module | `crud_repository.dart` | `TomPersonalDataModel.sealingSubjects`, which names the data subject each `@TomPersonal` value of an audit record is sealed for |
 | [tenancy](tenancy.md) | module | `field_encryption.dart` | `TomTenancy.current` and its tenants, which the re-encryption pass runs in |

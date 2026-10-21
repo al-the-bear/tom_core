@@ -36,6 +36,7 @@ store before the configuration is built.
 - [Outgoing HTTP Calls](#outgoing-http-calls)
 - [Idempotency Keys](#idempotency-keys)
 - [Field-Level Encryption](#field-level-encryption)
+- [Privacy](#privacy)
 - [Source Precedence](#source-precedence)
   - [A `SCREAMING_SNAKE_CASE` variable names a `lowerCamelCase` field](#a-screaming_snake_case-variable-names-a-lowercamelcase-field)
 - [Secret References](#secret-references)
@@ -1046,6 +1047,56 @@ must be registered by then. A deployment that installs a keyring of its own
 calls `TomFieldEncryption.install` and leaves the key out. The keyring is per
 isolate. `fieldEncryption` is not a field of the configuration base, so the
 startup warning about
+[unknown keys](#unknown-keys-in-the-configuration-resources) names it.
+
+## Privacy
+
+The privacy module seals the values of `@TomPersonal` fields in the audit trail
+under a key per data subject, so erasing the subject makes them unreadable there
+(see [privacy.md](privacy.md#crypto-shredding-in-the-audit-trail)). The
+`privacy` key of the configuration resources (`TomPrivacy.configurationKey`)
+names the table those subject keys are kept in. It is a nested map read through
+`TomServerConfigResourceProvider`, not a field of the configuration base:
+`TomServer.start` hands it to `TomPrivacy.configure` through
+`TomServer.configurePrivacy`, which installs the subject keys over a
+`TomSqlSubjectKeyStore`. Without the key no subject keys are installed and the
+trail records personal values as they are.
+
+| Key | Type | Default | What it decides |
+| --- | ---- | ------- | --------------- |
+| `datasource` | `String` | required | The registered data source the subject-key table is in. Resolved by name on every call, so under tenancy a routed data source keeps each tenant's subject keys in the tenant's schema or database. |
+| `table` | `String` | `tom_subject_key` | The table's name. |
+| `createSchema` | `bool` | `true` | Whether the store creates the table on first use in each data source. `false` for a database user that may not run DDL; the deployment then applies the reference migration `example/privacy/migrations/main/tomcore/[1]-create_tom_subject_key.sql` (or its `migrations_postgresql` form). |
+
+```yaml
+# assets/config-resources_default.yaml
+privacy:
+  datasource: main
+  createSchema: false
+```
+
+**The keys are wrapped under the field-encryption keys.** A subject key is
+stored wrapped under the key-encryption keys of the keyring
+[`fieldEncryption`](#field-level-encryption) installs, so the two keys go
+together: a `privacy` section with no keyring installed stops the start with
+`privacy.config.invalid`. Subject keys installed in code without key-encryption
+keys fail the first seal with `privacy.no_subject_keys`, and the audit trail
+being fail-closed, so does the write it audits.
+
+**A value of the wrong shape stops the start.** `privacy` that is not a map, a
+missing or empty `datasource`, a `table` that is not a string or a
+`createSchema` that is not a boolean throws a `TomPrivacyException` keyed
+`privacy.config.invalid` before anything is installed — as does a `privacy`
+section when no `fieldEncryption` keyring is installed to wrap the subject
+keys. A data source the name
+does not resolve to throws `privacy.no_datasource` at the first seal.
+
+**When it applies.** `start()` applies the key right after `fieldEncryption`,
+whose keyring wraps the subject keys, and before the deployment's own login. The
+subject keys are per isolate. Which entities an erasure reaches, and the
+retention job, are registered in code (`TomPrivacy.register`,
+`TomPrivacy.retentionJob`), not configured. `privacy` is not a field of the
+configuration base, so the startup warning about
 [unknown keys](#unknown-keys-in-the-configuration-resources) names it.
 
 ## Source Precedence

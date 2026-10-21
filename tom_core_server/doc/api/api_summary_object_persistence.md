@@ -74,6 +74,7 @@ column-level access rights (C-4) and field-level encryption at rest.
     - [TomDataKeyRecord](#tomdatakeyrecord)
     - [TomKeyEncryptionKey](#tomkeyencryptionkey)
     - [TomAesKeyEncryptionKey](#tomaeskeyencryptionkey)
+    - [TomAesGcm](#tomaesgcm)
     - [TomDataKeyStore](#tomdatakeystore)
     - [TomMemoryDataKeyStore](#tommemorydatakeystore)
     - [TomSqlDataKeyStore](#tomsqldatakeystore)
@@ -189,6 +190,8 @@ TomGroupedRow  (plain value holder)
 
 TomKeyEncryptionKey  (contract — wraps the data keys)
     └── TomAesKeyEncryptionKey
+
+TomAesGcm  (abstract final, static-only — the cipher)
 
 TomDataKeyStore  (contract — where the wrapped data keys are kept)
     ├── TomMemoryDataKeyStore
@@ -1754,7 +1757,8 @@ wrapped under a **key-encryption key** that never touches the database. A
 `TomFieldKeyring` reads, unwraps and caches the data keys and rotates them;
 `TomFieldEncryption` is what the repository and the data source call;
 `TomFieldReencryption` rewrites what a rotation or a plaintext column left
-behind. A stored value reads
+behind. `TomAesGcm` is the cipher underneath all of it, public because the
+privacy module seals audit values with it too. A stored value reads
 `tomenc:v1:<data key id>:<base64url of nonce, ciphertext and tag>`, with the
 table and column as the cipher's additional authenticated data.
 
@@ -1858,6 +1862,24 @@ id that is empty or longer than 128 characters, a key that is not 32 bytes, or
 | ------ | --------- | ----------- |
 | `wrap` | `Future<List<int>> wrap(List<int> dataKey, {required String keyId})` | *(override)* The data key sealed with AES-256-GCM under a fresh nonce: nonce, sealed key and tag. |
 | `unwrap` | `Future<List<int>> unwrap(List<int> wrapped, {required String keyId})` | *(override)* The data key; throws when `wrapped` does not authenticate under this key for `keyId`. |
+
+#### TomAesGcm
+
+AES-256-GCM with a random 96-bit nonce prepended to the sealed bytes — the
+cipher of field encryption, of data-key wrapping (`TomAesKeyEncryptionKey`) and
+of the per-subject sealing of audit values (the privacy module's
+`TomSubjectKeys`). Public so those three share one implementation; a caller
+supplies the key and the additional authenticated data that binds a value to
+where it belongs.
+
+- **Extends:** none (abstract final, static members only)
+
+##### Static Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `seal` | `static Uint8List seal(List<int> key, List<int> plaintext, String aad)` | `plaintext` sealed under the 32-byte `key`, `aad` authenticated with it: nonce, ciphertext and tag. Each call draws a fresh nonce, so equal plaintexts seal differently. |
+| `open` | `static Uint8List open(List<int> key, List<int> sealed, String aad)` | The plaintext `sealed` holds. Throws `ArgumentError` (pointycastle's `InvalidCipherTextException` included) when `sealed` is too short or does not authenticate under `key` and `aad`; callers turn it into their own key (`field_encryption.decrypt_failed`, `privacy.seal.invalid`). |
 
 #### TomDataKeyStore
 

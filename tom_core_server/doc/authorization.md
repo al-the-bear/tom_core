@@ -591,6 +591,12 @@ whole of what the scope contributes.
   seam (`RepositoryPrincipalDelegationStore` at boot,
   `InMemoryPrincipalDelegationStore` under test) and the resolver that produces
   a principal's effective roles.
+- Both rows declare their principal columns data subjects (`@TomDataSubject`:
+  the grant's `principalId`, the delegation's `delegatorId` and `delegateId`),
+  so registering the repositories their stores are built over with `TomPrivacy`
+  has a principal's grants and delegations deleted when they are erased and
+  included in their subject-access export — see
+  [privacy.md](privacy.md#framework-entities-that-declare-subjects).
 - **`TomResourceGrant` + `TomAuthStateCodec` +
   `TomGradedAccessControlInformation`** — the graded `(role, resourceKey)`
   record, its stored representation, and the resolved graded view.
@@ -608,3 +614,4 @@ whole of what the scope contributes.
 | [datasources](datasources.md) | module | `graded_authorization.dart` | `TomDbType` and `TomDbString`, which the access-level codec converts between and its column declares as `columnType:` |
 | [little_things](little_things.md) | module | `authorization_cache.dart` | `TomServerException` |
 | [object_persistence](object_persistence.md) | module | `graded_authorization.dart`, `principal_delegation.dart`, `principal_resource_grant.dart`, `resource_data_scope.dart` | the mapping annotations (including `@TomDbScope`), `TomSqlDatasourceRepository` for the record stores, and the `TomResourceScopeSource` hook / `TomDataScope.runUnscoped` bypass the row scope plugs into |
+| [privacy](privacy.md) | module | `principal_delegation.dart`, `principal_resource_grant.dart` | `TomDataSubject`, which declares the principal columns of `TomPrincipalResourceGrant` and `TomPrincipalDelegation` to erasure and export |

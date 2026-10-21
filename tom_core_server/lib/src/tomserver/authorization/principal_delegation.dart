@@ -34,6 +34,7 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 import '../object_persistence/persistence_annotations.dart';
 import '../object_persistence/crud_repository.dart';
 import 'principal_resource_grant.dart';
+import '../privacy/personal_data.dart';
 
 /// How a [TomPrincipalDelegation] lends the delegator's roles to the delegate.
 enum TomDelegationMode {
@@ -72,11 +73,13 @@ class TomPrincipalDelegation {
 
   /// The principal whose roles are lent (A, the delegator), by its
   /// tenant-qualified id, like [TomPrincipalResourceGrant.principalId].
+  @TomDataSubject()
   @TomDbColumn(columnName: 'delegator_id')
   String delegatorId;
 
   /// The principal receiving the lent roles (B, the delegate), by its
   /// tenant-qualified id.
+  @TomDataSubject()
   @TomDbColumn(columnName: 'delegate_id')
   String delegateId;
 

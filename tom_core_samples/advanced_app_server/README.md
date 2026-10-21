@@ -92,7 +92,7 @@ one.
 | `src/access/visible_resource_resolver.dart` | A principal's visible id-set per entity type, the input the async data-scope resolver pushes down to the database | — |
 | `src/access/share_delegation_store.dart` | Cross-user shares as framework C-6 `share`-mode delegations — one principal lending another a named role on a named resource | `ShareDelegationStore` |
 | `src/access/ownership_grant_writer.dart` | Records C-5 ownership when a principal creates a resource, into the grant table shared with `auth_db` | `OwnershipGrantWriter` |
-| `src/persistence/app_persistence_model.dart` | The `app_db` records — the relational view of workspaces, projects, lists, items, comments and subtasks | — |
+| `src/persistence/app_persistence_model.dart` | The `app_db` records — the relational view of workspaces, projects, lists, items, comments and subtasks. The user-id columns (`ownerId`, `assigneeId`, `reporterId`, `authorId`) carry `@TomDataSubject` and a comment's `body` `@TomPersonal`, declaring what a user's erasure does to each row; `advanced_ops_server` registers them with `TomPrivacy` | — |
 | `src/persistence/app_mapping.dart` | The one place the domain entities and the persistence records meet, in pure conversions both ways | — |
 | `src/resources/app_resource_bundles.dart` | The server-delivered text bundle the client's post-login screens render their labels from | — |
 

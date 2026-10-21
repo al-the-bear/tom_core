@@ -29,6 +29,7 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../object_persistence/crud_repository.dart';
 import '../object_persistence/persistence_annotations.dart';
+import '../privacy/personal_data.dart';
 
 /// One preference of one principal.
 @tomReflector
@@ -46,6 +47,7 @@ class TomUserPreference {
 
   /// The principal the preference belongs to ([TomPrincipal.qualifiedId]) —
   /// the scope column.
+  @TomDataSubject()
   @TomDbColumn(columnName: 'principal_id')
   String principalId;
 
@@ -59,6 +61,7 @@ class TomUserPreference {
   String valueType;
 
   /// The value's JSON text.
+  @TomPersonal()
   @TomDbColumn(columnName: 'value_json')
   String valueJson;
 

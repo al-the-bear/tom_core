@@ -30,6 +30,11 @@
 /// holds `app.item.reassign`, the deployment does not, and the refusal is a
 /// test rather than a comment (`ops_identity.dart`).
 ///
+/// And one that is neither: because this is the one process holding both
+/// servers' repositories, it is where the sample's personal data is registered
+/// with `TomPrivacy`, so a user's erasure and subject-access export reach both
+/// databases (`ops_privacy.dart`).
+///
 /// See `README_advanced_14_operations.md` for the narrative.
 library;
 
@@ -40,5 +45,6 @@ export 'src/jobs/report_service.dart';
 export 'src/jobs/retention_service.dart';
 export 'src/ops_anchoring.dart';
 export 'src/ops_identity.dart';
+export 'src/ops_privacy.dart';
 export 'src/ops_runtime.dart';
 export 'src/ops_texts.dart';

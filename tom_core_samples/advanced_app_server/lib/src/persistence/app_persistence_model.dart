@@ -112,6 +112,7 @@ class WorkspaceRecord {
   String? name;
 
   /// Auth `auth_users.id` of the owning principal (cross-db logical reference).
+  @TomDataSubject()
   @TomDbColumn(columnName: 'owner_id')
   int? ownerId;
 
@@ -261,10 +262,12 @@ class ItemRecord {
   String? label;
 
   /// Auth `auth_users.id` of the assignee; `null` when unassigned.
+  @TomDataSubject(onErasure: TomErasure.unlink)
   @TomDbColumn(columnName: 'assignee_id')
   int? assigneeId;
 
   /// Auth `auth_users.id` of the principal who created the item.
+  @TomDataSubject(onErasure: TomErasure.unlink)
   @TomDbColumn(columnName: 'reporter_id')
   int? reporterId;
 
@@ -353,10 +356,12 @@ class CommentRecord {
   int? itemId;
 
   /// Auth `auth_users.id` of the comment author.
+  @TomDataSubject(onErasure: TomErasure.anonymize)
   @TomDbColumn(columnName: 'author_id')
   int? authorId;
 
-  /// Comment text.
+  /// Comment text — the author's words, removed when they are erased.
+  @TomPersonal(replacement: '[removed]')
   @TomDbColumn(columnName: 'body')
   String? body;
 

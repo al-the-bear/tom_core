@@ -32,6 +32,7 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../object_persistence/persistence_annotations.dart';
 import '../object_persistence/crud_repository.dart';
+import '../privacy/personal_data.dart';
 
 /// A persistable grant of a single role to a `(principalId, resourceKey)` pair —
 /// the storage row behind per-principal-per-resource roles.
@@ -62,6 +63,7 @@ class TomPrincipalResourceGrant {
   /// `TomTenantContext.qualifyCurrent(id)`) — what the `resource` scope looks
   /// grants up by. A principal id is unique within its tenant only, and under
   /// `shared` isolation every tenant's grants sit in this one table.
+  @TomDataSubject()
   @TomDbColumn(columnName: 'principal_id')
   String principalId;
 

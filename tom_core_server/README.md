@@ -40,6 +40,12 @@ observable state, security, resources) and adds everything a service needs:
   **tabular export** to CSV/XLSX/PDF,
   **streaming blob storage** behind one contract, and relational **job
   scheduling** for a cluster that shares no filesystem;
+- **data protection** for the GDPR — entities declare the column naming a
+  person and the columns holding their data, and one call erases that person
+  across every registered entity (deleting, anonymizing or unlinking each row as
+  declared), exports what is held about them, or applies declared retention;
+  their values in the audit trail are **crypto-shredded**, unreadable once the
+  person is erased while the hash chain still verifies;
 - server **configuration** (typed config + YAML resources, with **secret
   references** resolved from HashiCorp Vault, AWS Secrets Manager or Azure Key
   Vault and refreshed when the store rotates them), an isolate-backed
@@ -134,7 +140,7 @@ added.
 | `TomTransactionManager` / `TomTransaction` / `TomTransactionParticipant` | Local and two-phase transaction coordination (XA on MariaDB, prepared transactions on PostgreSQL) |
 | `TomSagaOrchestrator` / `TomSaga` / `TomSagaStep` / `TomSqlSagaStore` | Sagas: work across services run step by step, each step a local transaction with the saga's move guarded by its version, the steps already done compensated last first when a step fails for good — on the kernel's job scheduler, kept in `tom_saga`, resumed after a restart in every tenant |
 
-### Platform services (`configuration`, `cache`, `authentication`, `authorization`, `item_authorization`, `tenancy`, `ratelimit`, `metrics`, `audit`, `messaging`, `resources`, `export`, `file_storage`, `scheduling`, `preferences`, `healthcheck`, `cmdline`, `little_things`)
+### Platform services (`configuration`, `cache`, `authentication`, `authorization`, `item_authorization`, `tenancy`, `ratelimit`, `metrics`, `audit`, `privacy`, `messaging`, `resources`, `export`, `file_storage`, `scheduling`, `preferences`, `healthcheck`, `cmdline`, `little_things`)
 
 | Module | Key types | What it does |
 | ------ | --------- | ------------ |
@@ -147,6 +153,7 @@ added.
 | `ratelimit` | `TomRateLimits`, `TomRateLimitRule`, `TomRateLimitScope`, `TomMemoryRateLimiter`, `TomSqlRateLimiter`, `tomRateLimitMiddleware` | Request rate limits per signed-in user, per API key or per client address, as sliding-window counters kept per node or in a table every node shares; a request over a limit is answered `429` with `Retry-After`, an admitted one carries `RateLimit-*` headers. Nothing is limited until a deployment configures `rateLimits`; behind a proxy the client address is read from `X-Forwarded-For` only from a trusted proxy |
 | `metrics` | `tomRequestMetricsMiddleware`, `tomMetricsEndpointMiddleware`, `TomOtlpHttpTransport`, `TomOtlpMetricsExporter` | The series every module records into the kernel's `TomMetrics.registry` — requests by method, route pattern and status, SQL statements and pool usage per data source (and per tenant pool), cache hits and misses, rate-limit refusals, and the scheduler's job lag, duration, outcomes and backlog — exposed as a Prometheus scrape at `/metrics`, answered before authentication with a bearer token of its own, and pushed cumulatively to an OTLP/HTTP collector, once more on shutdown. Both are off until `metricsEndpoint` / `otlpEndpoint` are configured |
 | `audit` | `TomAuditTrail`, `TomAudited`, `TomAuditRecord`, `TomAuditSink`, `TomSqlAuditSink`, `TomAuditAnchor`, `TomAuditAnchorStore`, `TomAuditAnchorPublisher` | Attributable, tamper-evident trail written at the endpoint and repository chokepoints, stored in memory, in append-only files, or in a table whose write-once guarantee is the grant it is served with — and anchors, published outside the server, that turn a wholesale rewrite or a truncation from invisible into provable |
+| `privacy` | `TomPrivacy`, `TomDataSubject`, `TomPersonal`, `TomRetention`, `TomSubjectKeys`, `TomSqlSubjectKeyStore` | GDPR tooling over the application's own repositories: `@TomDataSubject` marks the column naming a person and what erasing them does to the row (delete, anonymize, unlink), `@TomPersonal` the columns holding their data, `@TomRetention` how long rows are kept; `erase` reaches every registered entity and is audited, `exportSubject` renders everything held about a person as CSV, XLSX or PDF, and a retention job deletes or anonymizes what is past its time. With subject keys installed, personal values in the audit trail are sealed per person, and erasing them shreds the key — the values become unreadable while the hash chain still verifies |
 | `messaging` | `TomMessage`, `TomMessageTransport`, `TomSmtpTransport`, `TomMessageOutbox`, `TomInbox` | Outbound messages: a channel-neutral shape, SMTP, and a durable outbox on the kernel's job scheduler; an idempotent receiver for consuming a broker's messages once |
 | `resources` | `TomTextLocale`, `TomLocalizedTextResources`, `TomResourceLocaleException` | Per-recipient text for a server that renders many languages at once: the locale is an argument rather than ambient state, bundles resolve along a fallback chain *per key* so a half-translated language serves what it has, and a missing key answers `null` instead of the key — right on a screen, unacceptable in a subject line |
 | `export` | `TomTabularResult`, `TomTabularRenderer`, `TomCsvRenderer`, `TomXlsxRenderer`, `TomPdfRenderer`, `TomExportService`, `TomExportStore` | CSV/XLSX/PDF rendering from one streaming tabular shape, streamed back to a caller or into storage |
@@ -223,6 +230,7 @@ there, or excluded with a stated reason.
 | [`example/cache/`](example/cache/) | Isolate-backed cache |
 | [`example/authentication/`](example/authentication/) · [`example/authorization/`](example/authorization/) | Login and second factors, external identity and SCIM provisioning; the authorization cache, graded grants, resource roles and delegation, and the grant-driven row scope those grants filter the database with |
 | [`example/audit/`](example/audit/) | Audit records, the declared/automatic split, the hash chain, the relational trail's schema and its write-once check, and signed anchors published outside the server |
+| [`example/privacy/`](example/privacy/) | The personal-data declarations the framework's own entities carry, a value sealed and opened under a subject key and refused under another field, the audit trail sealing a personal value, revealing it, shredding the subject and the chain still verifying, and a malformed `privacy` configuration refused |
 | [`example/messaging/`](example/messaging/) | Message composition, the MIME document, stand-in transports, the durable outbox, the idempotent receiver |
 | [`example/export/`](example/export/) | The streaming tabular shape, the same shape with its columns derived from a reflected entity — rendered against the hand-written one byte for byte — CSV/XLSX/PDF renderers, the format registry, one export through all three storage backends, and the two delivery channels |
 | [`example/resources/`](example/resources/) | Localized text as an argument rather than ambient state: bundle sets from maps, the three-rung per-key fallback chain, the locale a principal carries, and the `isTranslated` completeness check |

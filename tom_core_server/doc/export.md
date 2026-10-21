@@ -259,6 +259,15 @@ this module knows neither. A guessed URL renders a dead link, which is worse tha
 a key. An export that needs one builds that column explicitly, which is the
 route below.
 
+**The privacy module's subject-access export is built on this route.**
+`TomPrivacy.subjectAccess` collects every row that names a data subject, one
+`TomTabularSection.ofEntities` section per registered entity, and
+`TomPrivacy.exportSubject` renders it through `TomExportFormats` — XLSX by
+default, one sheet per entity. Both exclusions above apply there as everywhere,
+so a redacted field and a file column are not in a person's export either; an
+encrypted column is, decrypted, because the rows are read through the
+repository. See [privacy.md](privacy.md#subject-access-export).
+
 ### What Keeps the Explicit Route
 
 `fromEntities` is bounded to the "these entities, these columns" case — the

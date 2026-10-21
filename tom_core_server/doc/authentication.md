@@ -189,7 +189,7 @@ access rules as a user.
 | `tom2FATokenFingerprint` | function | The SHA-256 an attempt store keys on, so the log holds a digest rather than a usable token |
 | `TomMemory2FAEnrolmentStore` | class | In-memory store, for tests and single-process development |
 | `TomPersistent2FAEnrolmentStore` | class | Store over `TomUserTwoFactorEnrolment`, secrets encrypted at rest |
-| `TomUserTwoFactorEnrolment` | class | One persisted enrolment row; the entity behind `@TomDbTable('tom_user_two_factor_enrolment')` |
+| `TomUserTwoFactorEnrolment` | class | One persisted enrolment row; the entity behind `@TomDbTable('tom_user_two_factor_enrolment')`, its `principalId` declared the data subject and its `hint` personal for the privacy module |
 | `TomUserTwoFactorEnrolmentRepository` | class | The repository over that table |
 | `Tom2FAEnrolment` | class | One set-up factor: type, id, hint, primary flag, and the mechanism's secret data |
 | `Tom2FAEnrolmentSupport` | abstract class | What an adaptor adds to become *enrollable*: begin an offer, confirm it |
@@ -3767,7 +3767,12 @@ tests and single-process development; the second persists them as
 `TomUserTwoFactorEnrolment` rows through
 `TomUserTwoFactorEnrolmentRepository`, encrypting `secretData` at rest with the
 JWT configuration's RSA key and degrading an undecryptable row to an empty
-secret rather than failing the login.
+secret rather than failing the login. The entity declares its `principalId` the
+row's data subject (`@TomDataSubject`, so erasing the principal deletes their
+enrolments) and its `hint` personal data (`@TomPersonal`, sealed for the
+principal in the audit trail); registering the repository with `TomPrivacy`
+takes enrolments into erasure and subject-access export — see
+[privacy.md](privacy.md#framework-entities-that-declare-subjects).
 
 ### `TomTotp2FAService`
 
@@ -4241,6 +4246,7 @@ store keeps them in `tom_service_account` and `tom_api_key`, declared by
 | [messaging](messaging.md) | module | `two_factor_delivered_code.dart` | `TomEmailService` and `TomSmsService` deliver the one-time codes, through `TomTemplatedMessageService.deliverNow` rather than the outbox. A deployment that registers neither can still run TOTP |
 | [object_persistence](object_persistence.md) | module | `oauth_identity.dart`, `oauth_tokens.dart`, `sql_api_key_store.dart`, `sql_oauth_state_store.dart`, `sql_scim_store.dart`, `two_factor_enrolment.dart` | `TomExternalIdentityLink` and `TomUserTwoFactorEnrolment` are ordinary entities over `TomSqlDatasourceRepository`. Neither table is created by the framework; each entity carries its own `createTableSql` for a deployment's migration to run |
 | [preferences](preferences.md) | module | `authentication_server.dart` | `TomUserPreferences` |
+| [privacy](privacy.md) | module | `two_factor_enrolment.dart` | `TomDataSubject` and `TomPersonal`, which declare `TomUserTwoFactorEnrolment`'s principal and its hint to erasure, export and audit sealing |
 | [resources](resources.md) | module | `two_factor_delivered_code.dart` | no user-facing text originates in this module |
 | [server](server.md) | module | `scim_endpoints.dart` | `TomEndpointCredentials`, which `TomScimProvisioning.install` claims `/scim/v2/` in |
 

@@ -303,6 +303,9 @@ Future<void> main(List<String> args) async {
   // process that reads its tables must share them.
   registerAppDataScopes();
   registerAppColumnGrades();
+  // What a user's erasure and subject-access export reach, across both
+  // databases.
+  registerOpsPersonalData();
 
   initializeBeanContext();
 

@@ -73,7 +73,12 @@ through `recordMutation`, which consults the type's `TomAuditPolicy` first, and
 the endpoint pipeline through `recordAction`, which records declared invocations
 and unconditional denials. `TomAudited` is the declaration that produces a
 policy; `TomAuditPolicy.applyRedaction` replaces declared field values with
-`tomAuditRedactedPlaceholder`. `TomAuditTrail.runUnaudited` installs a
+`tomAuditRedactedPlaceholder`. When the privacy module's subject keys are
+installed, `recordMutation` also seals the values of the fields its
+`beforeSubjects` / `afterSubjects` name, through
+`TomAuditTrail.personalValueSealer`, so erasing a subject makes their values
+unreadable without touching the chain (see [privacy](api_summary_privacy.md)).
+`TomAuditTrail.runUnaudited` installs a
 `TomAuditBypass` in the zone so the trail's own persistence cannot audit itself
 into a regress.
 
@@ -736,6 +741,7 @@ None — the constructor is private; the whole surface is static.
 | `sink` | `static TomAuditSink?` | *(getter)* The sink records are written to, or `null` when auditing is off. |
 | `isEnabled` | `static bool` | *(getter)* Whether records are being written — a sink is installed and the current zone is not bypassed. |
 | `isBypassed` | `static bool` | *(getter)* Whether the current zone suppresses auditing, i.e. execution is inside a `runUnaudited` body. |
+| `personalValueSealer` | `static Future<Object?> Function(String subject, String field, Object? value)?` | Seals a personal value of a data subject for the trail: `(subject, field, value)` to the sealed value. `TomPrivacy.installSubjectKeys` sets it to `TomSubjectKeys.seal`; `null` — the default — records personal values as they are. The chain hashes the sealed text, so deleting the subject's key makes the value unreadable without changing an entry (mutable). |
 
 #### Static Methods
 
@@ -747,7 +753,7 @@ None — the constructor is private; the whole surface is static.
 | `policyFor` | `static TomAuditPolicy policyFor(Type type)` | The policy for `type`, resolved from its `@TomAudited` annotation through the reflector and cached. A type the reflector does not know gets `TomAuditPolicy.defaultPolicy`. |
 | `resetPolicyCache` | `static void resetPolicyCache()` | Clears the resolved-policy cache. Test-support only. |
 | `record` | `static Future<void> record(TomAuditRecord record)` | Writes `record` to the sink. A no-op when auditing is off or suppressed; throws `TomAuditException` when the sink cannot store it. |
-| `recordMutation` | `static Future<void> recordMutation({required Type entityType, required TomAuditAction action, required String target, String? targetKey, TomAuditOutcome outcome = TomAuditOutcome.succeeded, Map<String, Object?> before = const {}, Map<String, Object?> after = const {}, String? detail})` | Records a mutation of `entityType`, consulting the type's policy, applying its redaction and attributing the action to the current zone's principal and request. Returns without writing when the policy excludes `action`. |
+| `recordMutation` | `static Future<void> recordMutation({required Type entityType, required TomAuditAction action, required String target, String? targetKey, TomAuditOutcome outcome = TomAuditOutcome.succeeded, Map<String, Object?> before = const {}, Map<String, Object?> after = const {}, String? detail, Map<String, String> beforeSubjects = const {}, Map<String, String> afterSubjects = const {}})` | Records a mutation of `entityType`, consulting the type's policy, applying its redaction and attributing the action to the current zone's principal and request. Returns without writing when the policy excludes `action`. `beforeSubjects` / `afterSubjects` map a field of `before` / `after` to the data subject its value belongs to; with `personalValueSealer` installed, each such value — unless `null` or redacted — is sealed for its subject before the record is written. The repository passes them for `@TomPersonal` fields. A value that cannot be sealed fails the call, like a sink failure. |
 | `recordAction` | `static Future<void> recordAction({required TomAuditAction action, required String target, required TomAuditOutcome outcome, String? targetKey, String? detail, TomAuditActor? actor})` | Records an action that is not an entity mutation — an endpoint invocation or an access denial. No entity policy is consulted: the caller has already decided. |
 | `currentRequestId` | `static String? currentRequestId()` | The current request's id from the zone's `TomRequestId`, or `null` outside a request. |
 | `newAuditRecordId` | `static String newAuditRecordId()` | A new record id from the process-wide `TomAuditRecordIdGenerator`: microseconds since epoch plus a per-microsecond counter, so ids sort in write order. |

@@ -396,8 +396,8 @@ TomPrincipalDelegation({
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `id` | `int` | Surrogate primary key (`-1` until persisted). |
-| `delegatorId` | `String` | The principal whose roles are lent (A, the delegator). |
-| `delegateId` | `String` | The principal receiving the lent roles (B, the delegate). |
+| `delegatorId` | `String` | The principal whose roles are lent (A, the delegator). `@TomDataSubject()`: erasing the principal deletes the row. |
+| `delegateId` | `String` | The principal receiving the lent roles (B, the delegate). `@TomDataSubject()`: erasing the principal deletes the row. |
 | `mode` | `String` | The delegation mode, stored as the `TomDelegationMode` name. |
 | `resourceKey` | `String?` | For `share` the resource shared; for `absence`/`intentional` an optional single resource to narrow the inherited roles. |
 | `role` | `String?` | For `share` the role granted; for `absence`/`intentional` an optional override applied to every inherited resource. |
@@ -531,7 +531,7 @@ TomPrincipalResourceGrant({
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `id` | `int` | Surrogate primary key (`-1` until persisted). |
-| `principalId` | `String` | The principal the grant applies to, by its tenant-qualified id (`TomPrincipal.qualifiedId`). |
+| `principalId` | `String` | The principal the grant applies to, by its tenant-qualified id (`TomPrincipal.qualifiedId`). `@TomDataSubject()`: erasing the principal deletes the row. |
 | `resourceKey` | `String` | The resource the role is scoped to (a resource key / `tomId`). |
 | `role` | `String` | The role the principal holds on the resource. |
 

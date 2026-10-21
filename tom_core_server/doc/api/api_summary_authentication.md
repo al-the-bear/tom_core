@@ -1446,10 +1446,10 @@ the Dart name is the one a caller writes.
 | Property | Type | Column | Description |
 | -------- | ---- | ------ | ----------- |
 | `id` | `int` | `id` | Surrogate primary key, `-1` until persisted. Read-only: the database assigns it. |
-| `principalId` | `String` | `principal_id` | The principal the factor belongs to — `TomPrincipal.id` stringified, matching `TomPrincipalResourceGrant.principalId`. |
+| `principalId` | `String` | `principal_id` | The principal the factor belongs to — `TomPrincipal.id` stringified, matching `TomPrincipalResourceGrant.principalId`. `@TomDataSubject()`: the row's data subject for the privacy module, so erasing the principal deletes the row. |
 | `enrolmentId` | `String` | `enrolment_id` | The enrolment's stable client-facing handle (`Tom2FAEnrolment.enrolmentId`). |
 | `mechanism` | `String` | `mechanism` | The mechanism key (`Tom2FAEnrolment.type`). |
-| `hint` | `String` | `hint` | The displayable hint (`Tom2FAEnrolment.hint`). |
+| `hint` | `String` | `hint` | The displayable hint (`Tom2FAEnrolment.hint`). `@TomPersonal()`: personal data of the principal, sealed for them in the audit trail. |
 | `enrolledAt` | `DateTime?` | `enrolled_at` | When the factor was set up, **UTC** — `DATETIME(6)`, the width the instant convention writes, so the microseconds it always renders are not rounded off. |
 | `isPrimary` | `bool` | `is_primary` | Whether this is the user's default factor. |
 | `secretDataCipher` | `String` | `secret_data` | The encrypted `Tom2FAEnrolment.secretData`: base64 of RSA-OAEP over the map's JSON. Never readable from the row alone, which is why `secretData` itself is not a column. |

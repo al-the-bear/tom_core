@@ -51,6 +51,7 @@ import '../little_things/server_exception.dart';
 import '../object_persistence/crud_repository.dart';
 import '../object_persistence/persistence_annotations.dart';
 import 'two_factor.dart';
+import '../privacy/personal_data.dart';
 
 // =============================================================================
 // VALUE
@@ -707,6 +708,7 @@ class TomUserTwoFactorEnrolment {
 
   /// The principal the factor belongs to (`TomPrincipal.id`, stringified —
   /// matching [TomPrincipalResourceGrant.principalId]).
+  @TomDataSubject()
   @TomDbColumn(columnName: 'principal_id')
   String principalId;
 
@@ -720,6 +722,7 @@ class TomUserTwoFactorEnrolment {
   String mechanism;
 
   /// The displayable hint ([Tom2FAEnrolment.hint]).
+  @TomPersonal()
   @TomDbColumn(columnName: 'hint')
   String hint;
 

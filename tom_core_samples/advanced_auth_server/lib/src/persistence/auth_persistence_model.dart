@@ -47,18 +47,22 @@ const String authDatasource = 'auth_db';
 class UserRecord {
   /// Surrogate primary key (`null` until first persisted).
   @TomEntityId()
+  @TomDataSubject()
   @TomDbColumn(columnName: 'id', isReadOnly: true)
   int? id;
 
   /// Login handle, unique per deployment.
+  @TomPersonal()
   @TomDbColumn(columnName: 'username')
   String? username;
 
   /// Name shown in the UI.
+  @TomPersonal()
   @TomDbColumn(columnName: 'display_name')
   String? displayName;
 
   /// Contact email.
+  @TomPersonal()
   @TomDbColumn(columnName: 'email')
   String? email;
 
@@ -210,6 +214,7 @@ class GroupMemberRecord {
   int? groupId;
 
   /// [UserRecord.id] of the member.
+  @TomDataSubject()
   @TomDbColumn(columnName: 'user_id')
   int? userId;
 }
@@ -237,6 +242,7 @@ class UserRoleRecord {
   int? id;
 
   /// [UserRecord.id] of the assignee.
+  @TomDataSubject()
   @TomDbColumn(columnName: 'user_id')
   int? userId;
 

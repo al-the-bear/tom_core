@@ -38,7 +38,8 @@ deployment would draw.
 
 A fifth runtime, [`advanced_ops_server`](advanced_ops_server/README.md), runs
 scheduled back-office work — a retention purge, a digest, a weekly export, an
-audit-anchor publisher — over `app_db`. It appears in none of the figures below
+audit-anchor publisher — over `app_db`, and is where a user's personal data in
+both databases is registered for erasure and subject access. It appears in none of the figures below
 because it participates in **none** of the flows they draw: it has no port, no
 database of its own, no client, and no share in the request or grant-propagation
 loops. Its only edges are to `app_db` and to the two servers' repositories, which

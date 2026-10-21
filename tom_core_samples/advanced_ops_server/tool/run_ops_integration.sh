@@ -1,33 +1,37 @@
 #!/usr/bin/env bash
 #
-# Boots `app_db` and applies the whole `app_db/app_schema` migration chain — the
-# app server's [000]–[099] band and this package's [100] — then runs the ops server's
-# live suite against it and tears the database down again.
+# Boots `app_db` and `auth_db`, applies the whole `app_db/app_schema` migration
+# chain — the app server's [000]–[099] band and this package's [100] — then runs
+# the ops server's two live suites against them, then its connection-free ones,
+# and tears the databases down again.
 #
 #   tom_core_samples/advanced_ops_server/tool/run_ops_integration.sh
 #
 # ## What this proves that the connection-free suites cannot
 #
-# Eight of the nine suites in this package run without a socket, and between
-# them they cover every decision the package makes. What they cannot reach is the
-# consequence of a call: `ops_retention_test.dart` counts one `destroy` per
-# candidate, each carrying an entity, but its store is a stand-in — a repository
-# that quietly stopped writing audit rows would leave that suite entirely green.
-# `test/ops_live_test.dart` closes the loop by reading the trail back out of a
-# real database, and it is the only artifact in the package that can.
+# Thirteen of the fifteen suites in this package run without a socket, and
+# between them they cover every decision the package makes. What they cannot
+# reach is the consequence of a call: `ops_retention_test.dart` counts one
+# `destroy` per candidate, each carrying an entity, but its store is a stand-in —
+# a repository that quietly stopped writing audit rows would leave that suite
+# entirely green. `test/ops_live_test.dart` closes the loop by reading the trail
+# back out of a real database, and `test/ops_privacy_live_test.dart` erases a
+# user across both databases and reads what is left; they are the only artifacts
+# in the package that can.
 #
 # ## Why it is a runner and not just a test
 #
-# The live suite *skips* when `app_db` is unreachable, so `testkit :test` on a
+# The live suites *skip* when `app_db` is unreachable, so `testkit :test` on a
 # laptop with no docker stays green. A skip is only safe if something turns it
 # back into a failure when the database was supposed to be there — that is this
-# script's job (see `run_live_suite` below). Without it the suite would be a way
+# script's job (see `run_live_suite` below). Without it the suites would be a way
 # to lose coverage silently.
 #
-# ## Why both databases, when the assertions only touch one
+# ## Why both databases
 #
-# Every suite in this package reads and writes `app_db`, and none of them
-# addresses `auth_db` directly. `auth_db` is started anyway because the boot
+# `ops_privacy_live_test.dart` asserts against both: the user it erases has an
+# account and a role assignment in `auth_db` and workspaces, items and comments
+# in `app_db`. Even without it `auth_db` would have to be up, because the boot
 # sequence — which the migration step below runs in full — initializes *all*
 # declared datasources, and the digest resolves its recipients through the auth
 # server's user repository. Starting only `app_db` fails at
@@ -86,10 +90,10 @@ wait_db_healthy() {
 #    tree — mounted into the stock initdb hook by its compose file — re-applies
 #    its chain on first boot (the [000]–[099] band for `app_db`).
 #
-#    No server is started. The live suite drives the ops services directly rather
-#    than over HTTP (this server has no port), so the app server would only be a
-#    second writer against the rows under assertion. `auth_db` is here for the
-#    boot's sake, not the assertions' — see the header.
+#    No server is started. The live suites drive the ops services and the auth
+#    and app servers' repositories directly rather than over HTTP (this server has
+#    no port), so a running server would only be a second writer against the rows
+#    under assertion. Why both databases — see the header.
 log "Starting app_db and auth_db (fresh volumes)"
 (cd "$AUTH_DIR" && docker compose down -v >/dev/null 2>&1; docker compose up -d auth-db)
 (cd "$APP_DIR" && docker compose down -v >/dev/null 2>&1; docker compose up -d app-db)
@@ -107,17 +111,17 @@ log "Resolving Dart dependencies"
 #
 #    `--migrate-only` rather than starting the server: a boot that started its
 #    timers would put a second scheduler node on the same `tom_lease` rows the
-#    live suite claims, and a purge firing beside the test would delete the rows
-#    it seeded.
+#    live suites claim, and a purge firing beside the tests would delete the rows
+#    they seeded.
 log "Applying this package's [100] migration"
 (cd "$OPS_DIR" && dart run bin/ops_server_start.dart --migrate-only) \
   >"$LOG_DIR/migrate.log" 2>&1
 tail -n 5 "$LOG_DIR/migrate.log"
 
-# 4. Run the live suite. It skips rather than fails when `app_db` is unreachable
-#    so the unit run stays green; here the database is guaranteed up, so a skip
-#    means the suite could not reach what this script just built — which is a
-#    failure, not an absence of work.
+# 4. Run the live suites. They skip rather than fail when `app_db` is
+#    unreachable so the unit run stays green; here the database is guaranteed up,
+#    so a skip means a suite could not reach what this script just built — which
+#    is a failure, not an absence of work.
 run_live_suite() {
   local label="$1" path="$2" output status
   log "Running $label"
@@ -137,22 +141,24 @@ run_live_suite() {
 result=0
 run_live_suite "the ops live suite (audited deletes, blob export, framework tables)" \
   test/ops_live_test.dart || result=1
+run_live_suite "the privacy live suite (a user exported and erased across both databases)" \
+  test/ops_privacy_live_test.dart || result=1
 
 # 5. The connection-free suites too, in the same run — deliberately after the
-#    live one and regardless of its outcome. They need no infrastructure, but a
+#    live ones and regardless of their outcome. They need no infrastructure, but a
 #    change that breaks both halves is better seen in one run than found one boot
 #    at a time, and `ops_framework_schema_test.dart` in particular is the
 #    *prediction* the live scheduler tick above either confirms or contradicts:
 #    seeing the two disagree in one output is what names the drift.
 #
 #    Enumerated rather than excluded by a tag: `dart test` can only exclude by
-#    tag, and tagging the live suite would need a `dart_test.yaml` declaring the
-#    tag in a sample suite that has none. A glob minus one name needs no new
+#    tag, and tagging the live suites would need a `dart_test.yaml` declaring the
+#    tag in a sample suite that has none. A glob minus two names needs no new
 #    configuration file to explain.
 log "Running the connection-free suites"
 unit_suites=()
 for suite in "$OPS_DIR"/test/*_test.dart; do
-  case "$suite" in */ops_live_test.dart) continue ;; esac
+  case "$suite" in */ops_live_test.dart | */ops_privacy_live_test.dart) continue ;; esac
   unit_suites+=("$suite")
 done
 if ! (cd "$OPS_DIR" && dart test "${unit_suites[@]}"); then

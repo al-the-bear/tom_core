@@ -93,6 +93,13 @@ installed, and an encrypted column fails its first write with
 `field_encryption.not_configured` — see
 [`doc/configuration.md`](../../../../doc/configuration.md#field-level-encryption).
 
+**Privacy.** Right after, `start` applies the `privacy` key
+(`TomServer.configurePrivacy`, `TomPrivacy.configurationKey`): the table of the
+subject keys the audit trail seals personal values under, wrapped under the
+keyring's key-encryption keys. Without the key no subject keys are installed and
+personal values are recorded as they are — see
+[`doc/configuration.md`](../../../../doc/configuration.md#privacy).
+
 **Graceful shutdown.** `start` puts the shutdown gate outermost in the
 pipeline and registers `TomServer.gracefulShutdown` for SIGTERM and SIGINT: on
 either signal `/ready` turns to `503`, the listener closes, a new request is

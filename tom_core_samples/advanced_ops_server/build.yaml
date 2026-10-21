@@ -1,6 +1,6 @@
 # Reflection generator config. The live-boot entrypoint (bin/ops_server_start.dart)
 # is the reflection root: the generator follows its import graph to capture the
-# config class, the three @TomScheduledJob classes (a job that is not in the
+# config class, the four @TomScheduledJob classes (a job that is not in the
 # reflection build is not discoverable at all), and — through the
 # advanced_app_server and advanced_auth_server barrels — the app_db and auth_db
 # records the jobs read, delete and address mail to. The anchor publisher is

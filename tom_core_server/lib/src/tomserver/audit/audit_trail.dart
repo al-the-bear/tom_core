@@ -302,6 +302,8 @@ class TomAuditTrail {
     Map<String, Object?> before = const {},
     Map<String, Object?> after = const {},
     String? detail,
+    Map<String, String> beforeSubjects = const {},
+    Map<String, String> afterSubjects = const {},
   }) async {
     if (!isEnabled) return;
     final policy = policyFor(entityType);
@@ -316,11 +318,48 @@ class TomAuditTrail {
         targetKey: targetKey,
         outcome: outcome,
         requestId: currentRequestId(),
-        before: policy.applyRedaction(before),
-        after: policy.applyRedaction(after),
+        before: await _sealPersonal(
+          policy.applyRedaction(before),
+          beforeSubjects,
+        ),
+        after: await _sealPersonal(policy.applyRedaction(after), afterSubjects),
         detail: detail,
       ),
     );
+  }
+
+  /// Seals a personal value of a data subject for the trail: `(subject, field,
+  /// value)` to the sealed value. Installed by the privacy module's subject
+  /// keys; `null` — the default — writes personal values as they are.
+  ///
+  /// Sealing is what lets a subject be erased from an append-only, hash-chained
+  /// trail: the chain hashes the sealed text, and deleting the subject's key
+  /// makes it unreadable without touching an entry.
+  static Future<Object?> Function(String subject, String field, Object? value)?
+  personalValueSealer;
+
+  /// [values] with every field [subjects] names sealed for its subject. A
+  /// redacted placeholder, or a `null`, is left as it is: there is nothing to
+  /// seal.
+  ///
+  /// A value that cannot be sealed fails the record, as a sink that cannot
+  /// store one does: the trail is fail-closed, and a value recorded in the
+  /// clear would defeat the erasure the sealing exists for.
+  static Future<Map<String, Object?>> _sealPersonal(
+    Map<String, Object?> values,
+    Map<String, String> subjects,
+  ) async {
+    final seal = personalValueSealer;
+    if (seal == null || subjects.isEmpty || values.isEmpty) return values;
+    return {
+      for (final e in values.entries)
+        e.key: switch (subjects[e.key]) {
+          final subject?
+              when e.value != null && e.value != tomAuditRedactedPlaceholder =>
+            await seal(subject, e.key, e.value),
+          _ => e.value,
+        },
+    };
   }
 
   /// Records an action that is not an entity mutation — an endpoint
