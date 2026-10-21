@@ -28,7 +28,8 @@ observable state, security, resources) and adds everything a service needs:
 - an **ORM-style persistence layer** — repositories with type-safe queries
   built from expression operators, persistence annotations, and a query
   builder, over pluggable **datasources** (MariaDB/MySQL and PostgreSQL
-  drivers included);
+  drivers included) whose **read replicas** serve the repository reads of
+  read-only work, with read-your-writes for the principal who just wrote;
 - **versioned schema migrations** — with a convergence check that the entities,
   the migration chain and the live database still agree — **local/XA
   transaction** coordination, and **sagas** for work across services, each
@@ -127,6 +128,7 @@ added.
 | `TomDataSource` / `TomSqlDatasource` | The data-source contract, and the driver-neutral SQL base both drivers extend: pool, a connection per transaction, statement paths, row mapping |
 | `MariaDbDatasource` / `MariaDbXADatasource` | MariaDB/MySQL drivers (`mariadb`, `mariadb_xa`) |
 | `PostgresDatasource` / `PostgresXADatasource` | PostgreSQL 15+ drivers (`postgresql`, `postgresql_xa`) |
+| `TomReplicaRouting` / `TomPrimaryReads` | Read replicas — a data source's `replicas` serve the repository reads of read-only work (a read-only transaction, a `GET`/`HEAD` request, a `readOnly` block), round-robin, with read-your-writes per principal and a failed replica left out while the primary serves; `@TomPrimaryReads` pins an entity's reads to the primary |
 | `TomDbType` family / `TomStandardSqlDialect` / `MariadbSqlDialect` / `PostgresSqlDialect` | Typed columns and SQL rendering, including the framework's canonical DDL in each database's words |
 | `TomSelect` / `TomCount` / `TomDelete` / `TomGroupedSelect` / `TomLiteralSelect` | Generated query objects, plus the raw-SQL escape hatch |
 
@@ -223,7 +225,7 @@ there, or excluded with a stated reason.
 | [`example/server/`](example/server/) | The pieces `TomServer` composes its pipeline from; `graceful_shutdown_example.dart` runs a graceful shutdown step by step — readiness off, a new request refused, the request and the scheduled run in flight finished, the lease released |
 | [`example/endpoints/`](example/endpoints/) | Declaring routed endpoints; `idempotency_example.dart` sends a request, its retry, a reused key and another caller's key through the idempotency-key handling |
 | [`example/object_persistence/`](example/object_persistence/) | Repositories, annotations, query builder |
-| [`example/datasources/`](example/datasources/) | SQL-typed values and dialect rendering |
+| [`example/datasources/`](example/datasources/) | SQL-typed values and dialect rendering; `read_replicas_example.dart` shows which statements a read replica may serve, read-only work, the entities pinned to the primary and the replica settings |
 | [`example/db_migration/`](example/db_migration/) | Versioned schema migrations |
 | [`example/transactions/`](example/transactions/) | Local/XA transaction coordination; `saga_example.dart` runs sagas — steps in order, compensation last first, a failed compensation and a saga resumed after a restart |
 | [`example/configuration/`](example/configuration/) | Typed config + YAML resources; `secrets_example.dart` walks secret references — precedence, an unloaded reference refused, rotation and a third-party provider |
@@ -291,7 +293,25 @@ await pg.connect();
 
 In configuration a data source names its driver by `type` — `mariadb`,
 `mariadb_xa`, `postgresql` or `postgresql_xa` — see
-[`doc/datasources.md`](doc/datasources.md#the-sql-drivers).
+[`doc/datasources.md`](doc/datasources.md#the-sql-drivers). A `replicas` list
+adds read replicas, each overriding only what differs from the primary:
+
+```yaml
+datasources:
+  main:
+    type: postgresql
+    host: db-primary
+    databaseName: app
+    username: app
+    password: ${DB_PASSWORD}
+    replicas:
+      - host: db-replica-1
+```
+
+The repository reads of read-only work — a read-only transaction, a `GET` or
+`HEAD` request, a `TomReplicaRouting.readOnly` block — then go to a replica,
+everything else to the primary; see
+[Read Replicas](doc/datasources.md#read-replicas).
 
 > **MySQL-in-Docker.** The runnable end-to-end story — a Docker Compose MySQL
 > plus bootstrap and migrations — ships with the

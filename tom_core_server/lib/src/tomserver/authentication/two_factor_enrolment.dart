@@ -52,6 +52,7 @@ import '../object_persistence/crud_repository.dart';
 import '../object_persistence/persistence_annotations.dart';
 import 'two_factor.dart';
 import '../privacy/personal_data.dart';
+import '../datasources/read_replicas.dart';
 
 // =============================================================================
 // VALUE
@@ -695,6 +696,9 @@ class TomMemory2FAEnrolmentStore implements Tom2FAEnrolmentStore {
 /// JSON of the map, encrypted; see [TomPersistent2FAEnrolmentStore] for the
 /// scheme and why.
 @tomReflector
+// Read from the primary: a change here — a revocation above all — must
+// take effect at once, not after a replica's lag.
+@TomPrimaryReads()
 @TomDbTable(
   datasource: 'main',
   table: 'tom_user_two_factor_enrolment',

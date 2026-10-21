@@ -9,6 +9,7 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 import '../audit/audit_record.dart';
+import '../datasources/read_replicas.dart';
 import '../audit/audit_trail.dart';
 import '../little_things/request_id.dart';
 import '../little_things/server_exception.dart';
@@ -1008,6 +1009,19 @@ class TomEndpointHandler {
     return positional.sublist(0, lastBound + 1);
   }
 
+  /// Runs [call] for [req] as read-only work when the request is a `GET` or
+  /// `HEAD` and `TomReplicaRouting.routeSafeRequests` holds, so its repository
+  /// reads may be served by a read replica.
+  static Future<Response> _readOnlyIfSafe(
+    Request req,
+    Future<Response> Function(Request) call,
+  ) =>
+      TomReplicaRouting.routeSafeRequests &&
+          (req.method == TomHttpMethod.get.name ||
+              req.method == TomHttpMethod.head.name)
+      ? TomReplicaRouting.readOnly(() => call(req))
+      : call(req);
+
   /// Runs the full request pipeline for this endpoint and returns the response.
   ///
   /// Handles preflight, access control ([enforceAccess]), reflection-based
@@ -1036,7 +1050,7 @@ class TomEndpointHandler {
     final idempotent = metadata.idempotent;
     final Future<Response> response =
         idempotent == null || req.method == TomHttpMethod.options.name
-        ? call(req)
+        ? _readOnlyIfSafe(req, call)
         : TomIdempotency.handle(
             req,
             '${req.method} ${metadata.endpoint.uri}',

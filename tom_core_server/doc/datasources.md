@@ -8,8 +8,9 @@ and the **data-source / driver** abstraction (`TomDataSource`,
 `TomDatasourceDriver`, `TomDataSourceInfo`) with two **SQL drivers** —
 MariaDB and PostgreSQL 15+ — built on one driver-neutral base
 (`TomSqlDatasource`) that runs over a bounded **connection pool**
-(`TomConnectionPool`). The object-persistence module builds its query DSL and
-repositories on top of this layer.
+(`TomConnectionPool`) and can let **read replicas** serve the repository reads
+of read-only work (`TomReplicaRouting`). The object-persistence module builds
+its query DSL and repositories on top of this layer.
 
 Three smaller things live here for the same reason — they are decisions every
 table has to make the same way, so they cannot belong to any one caller: how an
@@ -51,6 +52,14 @@ declared.
   - [Transactions](#transactions)
   - [The MariaDB driver](#the-mariadb-driver)
   - [The PostgreSQL driver](#the-postgresql-driver)
+- [Read Replicas](#read-replicas)
+  - [Configuring replicas](#configuring-replicas)
+  - [Which statements a replica serves](#which-statements-a-replica-serves)
+  - [Read-your-writes, and its limit](#read-your-writes-and-its-limit)
+  - [Choosing a replica, and when one fails](#choosing-a-replica-and-when-one-fails)
+  - [Reads pinned to the primary: `@TomPrimaryReads`](#reads-pinned-to-the-primary-tomprimaryreads)
+  - [`TomReplicaRouting`](#tomreplicarouting)
+  - [Two-phase primaries](#two-phase-primaries)
 - [Framework-Owned Tables](#framework-owned-tables)
   - [One declaration, every database](#one-declaration-every-database)
   - [Creating a store's tables once](#creating-a-stores-tables-once)
@@ -102,6 +111,8 @@ declared.
 | `TomConnectionPoolSettings` | class | How a pool sizes itself and when it retires a connection, with the common JDBC-pool defaults |
 | `TomConnectionFactory<C>` | abstract interface class | What a driver tells the pool about its connection type: open, close, check, validate |
 | `TomConnectionPoolException` | class | The pool cannot hand out a connection: closed, timed out waiting, or misconfigured |
+| `TomReplicaRouting` | abstract final class | The read-replica routing rules: which work is read-only, which statements only read, which reads a replica may serve, and the blocks that mark or override them. Statics only |
+| `TomPrimaryReads` | class | Marks an entity whose reads are always served by the primary, never by a read replica |
 | `TomSqlDatasourceException` / `MariadbDatasourceException` / `PostgresDatasourceException` | class | A SQL connect, execute or result-mapping failure, and its per-driver subtypes |
 | `TomSqlConnectionLostException` / `MariadbPreparedStatementException` / `PostgresConnectionLostException` | class | A statement failed with no live link to have run on — raising it *is* the decision to retry once — and its per-driver subtypes |
 | `TomFrameworkTable` / `TomFrameworkColumn` / `TomFrameworkKey` | class | The single declaration of a table the framework itself owns, from which its DDL, column lists and row writes are derived — in each database's own words |
@@ -1053,6 +1064,9 @@ configured driver ([Every settings key has to bind](#every-settings-key-has-to-b
 | `databaseName` | both | `""` | The database. Empty selects no default database on MariaDB and the `postgres` database on PostgreSQL. |
 | `timeOut` | both | `10000` | The connect timeout, in milliseconds. |
 | `poolMaxSize` … `poolValidateAfterIdleMs` | both | see [Connections](#connections) | The six pool settings. |
+| `replicas` | both | `[]` | The read replicas: one settings map per replica, each overriding the primary's settings — usually only `host`. Anything but a list of maps is refused with `error.initialize.invalid_replicas`. See [Read Replicas](#read-replicas). |
+| `replicaStickinessMs` | both | `5000` | How long after a principal's write its reads stay on the primary — read-your-writes, per node. |
+| `replicaRetryMs` | both | `30000` | How long a replica that failed to serve a connection is left out; the primary serves its reads meanwhile. |
 | `schema` | PostgreSQL | `""` | The schema unqualified names resolve in — set as the session's `search_path` when a connection opens. Empty keeps the server's default (`public`). |
 | `sslMode` | PostgreSQL | `require` | `disable`, `require` (encrypt, accept any certificate) or `verifyFull` (encrypt and verify the certificate). Anything else fails the first connection with `error.initialize.invalid_ssl_mode`, its `sslMode` parameter naming the value. `require` unless set, so a deployment that has not thought about it still encrypts. |
 
@@ -1521,6 +1535,168 @@ named in `pg_prepared_xacts`.
 every two-phase transaction a `postgresql_xa` data source joins. Raise it to at
 least the number of two-phase transactions that may be prepared at once.
 
+## Read Replicas
+
+A SQL data source configured with `replicas` keeps a pool per read replica
+beside its own and lets a replica serve the repository reads of read-only
+work. Everything else — every write, every read inside a write transaction,
+every statement the framework's own stores issue — runs on the data source
+itself, the **primary**, exactly as it would without replicas. The rules live
+in `read_replicas.dart` (`TomReplicaRouting`, `TomPrimaryReads`); the data
+source applies them in `withLink`, the one place a statement's connection is
+chosen.
+
+### Configuring replicas
+
+`replicas` lists one settings map per replica. Each map **overrides** the
+primary's own settings, so it usually names only what differs — the host, and
+the port when it is not the primary's:
+
+```yaml
+datasources:
+  main:
+    type: postgresql
+    host: db-primary
+    databaseName: app
+    username: app
+    password: ${DB_PASSWORD}
+    poolMaxSize: 20
+    replicas:
+      - host: db-replica-1
+      - host: db-replica-2
+        port: 5433
+    replicaStickinessMs: 5000
+    replicaRetryMs: 30000
+```
+
+Every other setting — the credentials, the database, the pool settings, the
+driver's own (`schema`, `sslMode`) — is the primary's. A replica is a data
+source of the primary's driver, made by `newReplica()`, registered as
+`<name>.replica<n>` — `n` counting from one in the order of the list — which is
+the `datasource` label its [metrics](metrics.md#data-sources) carry. It opens with
+the primary — `connect()` opens the replicas after the primary's own pool — and
+closes with it. `replicaSources` lists them.
+
+`replicas` that is not a list of settings maps is refused with
+`error.initialize.invalid_replicas`, its `replicas` parameter naming the value,
+before the data source dials out. `replicaStickinessMs` and `replicaRetryMs`
+are integer settings (`TomSqlDatasource.integerSettings`), so a `${…}`
+substitution binds.
+
+### Which statements a replica serves
+
+A statement runs on a replica only when all four hold; when any does not, it
+runs on the primary:
+
+| # | Rule | Where it is decided |
+| - | ---- | ------------------- |
+| 1 | **Read-only work.** The statement runs in a read-only transaction, in a `GET` or `HEAD` request, or in a `TomReplicaRouting.readOnly` block. A running transaction decides for itself: everything inside a write transaction runs on the primary, even in a `GET` request. | `TomReplicaRouting.isReadOnlyContext` |
+| 2 | **A repository read.** It is issued by a read method of `TomSqlDatasourceRepository` — `findById`, `findAll`, `findAllById`, `existsById`, `count`, `findByQuerySentence`, `countByQuerySentence`, `findByQuery`, `countByQuery`, `findGroupedByQuery`, `executeQueryString` — for an entity not marked `@TomPrimaryReads`. The framework's own stores — the audit sink, the scheduler, the lease lock, the idempotency, saga and inbox stores — query the data source directly and so read the primary: they act on what they read, and a replica's lag would make them act on the past. | `TomReplicaRouting.isRepositoryRead` |
+| 3 | **A read.** The statement is a `SELECT` (or `WITH … SELECT`, or a bracketed one) that locks nothing, writes nothing and calls no session function. | `TomReplicaRouting.isReadStatement` |
+| 4 | **No recent write.** The principal in context has not written through this data source within `replicaStickinessMs`. | the data source |
+
+Rule 3 is conservative on purpose. `FOR UPDATE`, `FOR SHARE`, `FOR NO KEY
+UPDATE`, `SELECT … INTO`, `LOCK`, `CALL`, `nextval` / `setval`,
+`LAST_INSERT_ID`, `GET_LOCK` and the advisory-lock functions, `SLEEP` /
+`pg_sleep` and every writing keyword send a statement to the primary wherever
+they appear — a word inside a string literal included, which sends an innocent
+read to the primary rather than a writing one to a replica. Comments are
+ignored.
+
+### Read-your-writes, and its limit
+
+A principal who has just saved something reads it back from where it was
+written. Every write a data source with replicas runs — an `executeCommand`, or
+any statement that is not a read — records the principal in context (per
+tenant: `<tenant>/<principal>`), and that principal's reads stay on the primary
+for `replicaStickinessMs` (default `5000`). Choose it longer than the replicas'
+usual lag.
+
+**The record is per process.** Each node remembers the writes it ran, so a
+request routed to another node within the lag window can read a replica that
+has not yet caught up — a load balancer without session affinity lets a user's
+next request read stale data there. A read that must see the latest write
+wherever it runs uses `TomReplicaRouting.primary`, or its entity is marked
+`@TomPrimaryReads`.
+
+### Choosing a replica, and when one fails
+
+Replicas are used **round-robin**, one statement at a time. A **read-only
+transaction stays on one replica** — the first its reads were routed to — so
+its reads see one snapshot rather than several replicas' different lags.
+
+A replica that cannot be reached when its data source opens is **marked down,
+not fatal**: the primary opens and serves. A replica that fails to lend a
+connection before a statement starts on it is left out for `replicaRetryMs`
+(default `30000`) with a warning logged that names the replica and the
+window — and the statement runs on the primary. After that window the next
+read that would use it tries to open it again. A statement that fails *on* a
+replica, once it has started, fails as it would on the primary: it may have
+run, so it is not silently repeated.
+
+### Reads pinned to the primary: `@TomPrimaryReads`
+
+`@TomPrimaryReads()` on an entity keeps its reads on the primary in every
+context — for data a decision is taken on the moment it changes. The framework
+marks six of its own entities so: `TomResourceGrant`,
+`TomPrincipalResourceGrant`, `TomPrincipalDelegation` (grants and delegations),
+`TomUserTwoFactorEnrolment` (second-factor enrolments), `TomExternalIdentityLink`
+and `TomExternalIdentityToken` (external identities and their tokens) — a
+revoked grant or an unlinked identity takes effect at once, not after a
+replica's lag.
+
+```dart
+@tomReflector
+@TomPrimaryReads()
+@TomDbTable(
+  datasource: 'main',
+  table: 'account_balance',
+  primaryKeyFields: ['id'],
+)
+class AccountBalance {
+  @TomEntityId()
+  @TomDbColumn(columnName: 'id', isReadOnly: true)
+  int? id;
+
+  @TomDbColumn(columnName: 'balance_cents')
+  int? balanceCents;
+}
+```
+
+`TomReplicaRouting.readsFromPrimary(type)` answers whether a type is marked,
+and caches the answer per type.
+
+### `TomReplicaRouting`
+
+The routing rules, as statics:
+
+| Member | What it does |
+| ------ | ------------ |
+| `routeSafeRequests` | Whether a `GET` or `HEAD` request is read-only work. `true` by default; a deployment whose safe requests write sets it `false`, and its requests then read the primary unless they mark read-only work themselves. |
+| `readOnly(body)` | Runs `body` as read-only work. A scheduled report or a batch export that only reads uses it to let a replica serve. |
+| `primary(body)` | Runs `body` with every read on the primary, whatever the context. |
+| `repositoryRead(entity, body)` | Runs `body` marked as a repository read of `entity` — unless `entity` is `@TomPrimaryReads`. The repository wraps every read method in it. |
+| `isReadOnlyContext` · `isPrimaryForced` · `isRepositoryRead` | Whether the current zone is read-only work, forces the primary, or is a repository read a replica may serve. |
+| `readsFromPrimary(type)` | Whether `type` is `@TomPrimaryReads`. |
+| `isReadStatement(sql)` | Whether `sql` only reads — rule 3. |
+
+```dart
+// A nightly report: read-only work, so its repository reads may go to a
+// replica; the one balance it must not read stale goes to the primary.
+final orders = await TomReplicaRouting.readOnly(() => orderRepository.findAll());
+final balance = await TomReplicaRouting.primary(
+  () => balanceRepository.findById(accountId),
+);
+```
+
+### Two-phase primaries
+
+A replica of a two-phase data source (`mariadb_xa`, `postgresql_xa`) is a
+plain one-phase data source of the same database (`MariaDbDatasource`,
+`PostgresDatasource`): a replica only ever serves reads, and a read-only
+transaction routed to it has nothing to prepare. The two-phase branch stays on
+the primary, with every write of the transaction.
+
 ## Framework-Owned Tables
 
 An application's tables are guarded end to end: the entity model declares a
@@ -1715,8 +1891,8 @@ All eight framework stores provision their tables this way: `TomSqlJobStore`,
 
 Four suites cover the drivers, split by what needs a server rather than by
 what is interesting, and one covers the connection pool. Two more cover the
-framework-table declarations, split the same way, and three pin the module's
-error vocabulary. Every suite that needs a server runs against both databases.
+framework-table declarations, split the same way, two cover read replicas, and
+three pin the module's error vocabulary. Every suite that needs a server runs against both databases.
 
 `test/connection_pool_test.dart` drives `TomConnectionPool` over a fake factory
 and an injectable clock, so every timeout is asserted without waiting for it:
@@ -1726,6 +1902,22 @@ open freeing its slot), waiting (a waiter served by the next release, waiters in
 arrival order, the typed timeout), retiring (a connection gone down replaced,
 validation only after `validateAfterIdle`, the idle timeout and its `minIdle`
 exemption, the lifetime) and closing.
+
+`test/read_replicas_test.dart` covers the routing rules that need no server:
+`isReadStatement` over reads and over writes, locking reads and session
+functions, `@TomPrimaryReads` on a fixture entity and on the framework's grant
+and delegation entities, `readOnly` and `primary` marking their zones,
+`repositoryRead` marking a read unless its entity is pinned, and a `replicas`
+setting of the wrong shape refused with `error.initialize.invalid_replicas`.
+`test/read_replicas_db_test.dart` (tagged `db`) runs the routing against a
+server whose primary and replica are two databases holding different rows, so
+every read shows which one answered: the replica opened, a read outside
+read-only work on the primary, a read-only transaction and a `readOnly` read on
+the replica, everything in a write transaction on the primary, a principal's
+write kept on the primary for its stickiness window while another principal
+still reads the replica, the stickiness ending with its window,
+`primary()`, a `@TomPrimaryReads` entity, a statement that is not a repository
+read, and a replica that cannot be reached left out while the primary serves.
 
 `test/datasources_error_keys_test.dart`, `test/datasources_driver_scan_error_keys_test.dart`, `test/datasources_row_mapping_error_keys_test.dart` pin the module's error vocabulary: each case reaches a raise with a real input and asserts the exact key, so a key the module stops raising, or raises for a different condition, fails by name. None needs a database.
 
@@ -1929,6 +2121,7 @@ directly.
 
 ```bash
 dart run example/datasources/datasources_example.dart
+dart run example/datasources/read_replicas_example.dart
 ```
 
 `test/datasources_test.dart` runs the example under precisely that command and
@@ -1940,6 +2133,15 @@ when the file was written. Its expectations are written through the shared
 [A green run is a verification](../README.md#a-green-example-run-is-a-verification)
 for why, and for the suite that holds that line across every example. A second
 test here requires this file in particular to keep using it.
+
+`example/datasources/read_replicas_example.dart` shows, without a server, what
+the routing decides on: which SQL counts as a read, a `readOnly` block and a
+read-only transaction as read-only work and a write transaction as not,
+`primary()`, the six framework entities pinned with `@TomPrimaryReads`,
+`repositoryRead`, the replica settings and their defaults, and a malformed
+`replicas` setting refused. It needs the example suite's reflection root for
+the annotations and the settings binding; every step checks its own result,
+and `test/examples_test.dart` runs it.
 
 ## Core Components
 
@@ -2003,6 +2205,10 @@ test here requires this file in particular to keep using it.
   and the framework's conflicting writes in PostgreSQL's words. See
   [The PostgreSQL driver](#the-postgresql-driver) and
   [One declaration, every database](#one-declaration-every-database).
+- **`TomReplicaRouting`** (+ `TomPrimaryReads`) — the read-replica routing
+  rules a `TomSqlDatasource` with `replicas` applies to every statement, and
+  the annotation pinning an entity's reads to the primary. See
+  [Read Replicas](#read-replicas).
 - **`TomConnectionPool`** (+ `TomConnectionPoolSettings`,
   `TomConnectionFactory`, `TomConnectionPoolException`) — the driver-neutral
   bounded pool both SQL drivers draw their connections from. See
@@ -2060,12 +2266,21 @@ test here requires this file in particular to keep using it.
   PostgreSQL) until the drivers reconcile them on start-up; the sequences they
   do issue are under [Transactions](#transactions).
   <!-- unpinned: absence — nothing issues XA RECOVER or reads pg_prepared_xacts -->
+- **Read-your-writes holds on one node.** The writes that keep a principal's
+  reads on the primary for `replicaStickinessMs` are remembered by the process
+  that ran them, not shared across a cluster, so a request served by another
+  node within a replica's lag can read data that is not yet there. A
+  deployment that needs read-your-writes across nodes routes a user's requests
+  to one node, marks the entity `@TomPrimaryReads`, or reads through
+  `TomReplicaRouting.primary` — see
+  [Read-your-writes, and its limit](#read-your-writes-and-its-limit).
+  <!-- unpinned: decision — per-process stickiness; a shared record would put a store on every write -->
 
 ## Dependencies
 
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
-| `dart:async` | dart | `connection_pool.dart`, `sql_datasource.dart`, `mariadb_datasource.dart`, `postgres_datasource.dart` | `Completer` and `Timer`: a caller waiting for a connection and its acquire timeout, and a statement waiting for its transaction's start; `Zone`: the zone marking a transaction's own lifecycle statements |
+| `dart:async` | dart | `connection_pool.dart`, `sql_datasource.dart`, `mariadb_datasource.dart`, `postgres_datasource.dart`, `read_replicas.dart` | `Completer` and `Timer`: a caller waiting for a connection and its acquire timeout, and a statement waiting for its transaction's start; `Zone`: the zone marking a transaction's own lifecycle statements, and the zones marking read-only work, a forced primary and a repository read |
 | `dart:collection` | dart | `connection_pool.dart`, `sql_datasource.dart` | `Queue` for the pool's waiters, and identity-keyed `HashMap`s for lent connections and each transaction's branch |
 | `dart:convert` | dart | `postgres_datasource.dart` | `utf8` and `jsonEncode`, rendering a `bytea` or a JSON value into the text convention |
 | `dart:math` | dart | `mariadb_datasource.dart`, `postgres_datasource.dart` | `Random`, the per-process tag in a two-phase branch id |
@@ -2074,7 +2289,7 @@ test here requires this file in particular to keep using it.
 | `mysql_client` | package | `mariadb_datasource.dart`, `sql_failure_mode.dart` | the MariaDB / MySQL client used by `MariaDbDatasource`, and its `MySQLServerException` |
 | `postgres` | package | `postgres_datasource.dart`, `sql_failure_mode.dart` | the PostgreSQL client used by `PostgresDatasource`, and its `ServerException` |
 | `tom_basics` | package | `sql_failure_mode.dart` | `TomBaseException`, walked to find the driver exception at the root of a failure chain |
-| `tom_core_kernel` | package | 7 of 15 files | `TomObject`, `tomReflector` / `ClassMirror` / `InstanceMirror`, `TomException`, `TomZonedDate` / `TomZonedTime`, `TomExecutionContext`, `runChecked` / `runCheckedSync`, `tomLog` |
+| `tom_core_kernel` | package | 7 of 16 files | `TomObject`, `tomReflector` / `ClassMirror` / `InstanceMirror`, `TomException`, `TomZonedDate` / `TomZonedTime`, `TomExecutionContext`, `runChecked` / `runCheckedSync`, `tomLog` |
 | [little_things](little_things.md) | module | `connection_pool.dart`, `datasource_initialization.dart`, `sql_datasource.dart` | `TomServerException` |
-| [object_persistence](object_persistence.md) | module | `sql_datasource.dart`, `sql_dialects.dart` | `TomAnnotationAnalyzer`, `TomColumnInformation`, `TomDbTable`, `DbCol`, `TomQuerySentenceCompiler`, `TomGroupedSelect` / `TomGroupedRow`, `TomFieldEncryption` (decrypting an entity's encrypted columns, and the raw read) |
-| [transactions](transactions.md) | module | `datasource_initialization.dart`, `sql_datasource.dart`, `mariadb_datasource.dart`, `postgres_datasource.dart`, `framework_table.dart` | `TomTransactionParticipant` for the contract `TomDataSource` implements, `TomTransaction` for the one a driver is handed on enlistment — which is where `isReadOnly` becomes a `READ ONLY` begin statement — and `TomTransactionManager.runInTransaction` for `TomFrameworkTable.replaceRow`'s two statements |
+| [object_persistence](object_persistence.md) | module | `sql_datasource.dart`, `sql_dialects.dart`, `read_replicas.dart` | `TomAnnotationAnalyzer` (also reading `@TomPrimaryReads` off an entity), `TomColumnInformation`, `TomDbTable`, `DbCol`, `TomQuerySentenceCompiler`, `TomGroupedSelect` / `TomGroupedRow`, `TomFieldEncryption` (decrypting an entity's encrypted columns, and the raw read) |
+| [transactions](transactions.md) | module | `datasource_initialization.dart`, `sql_datasource.dart`, `mariadb_datasource.dart`, `postgres_datasource.dart`, `framework_table.dart`, `read_replicas.dart` | `TomTransactionParticipant` for the contract `TomDataSource` implements, `TomTransaction` for the one a driver is handed on enlistment (which is where `isReadOnly` becomes a `READ ONLY` begin statement), `TomTransactionManager.runInTransaction` for `TomFrameworkTable.replaceRow`'s two statements, and `TomTransactionManager.getCurrentTransaction` for whether the running transaction is read-only work |

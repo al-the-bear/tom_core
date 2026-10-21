@@ -93,6 +93,7 @@ export 'src/tomserver/datasources/mariadb_sql_dialect.dart';
 export 'src/tomserver/datasources/postgres_datasource.dart';
 export 'src/tomserver/datasources/postgres_sql_dialect.dart';
 export 'src/tomserver/datasources/queries.dart';
+export 'src/tomserver/datasources/read_replicas.dart';
 export 'src/tomserver/datasources/sql_dialects.dart';
 export 'src/tomserver/datasources/sql_failure_mode.dart';
 export 'src/tomserver/datasources/sql_instant.dart';

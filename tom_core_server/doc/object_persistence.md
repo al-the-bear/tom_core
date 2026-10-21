@@ -16,6 +16,7 @@ be expressed three ways — a parsed *query sentence*, a programmatically built
   - [How a repository fails](#how-a-repository-fails)
   - [Paging and Sorting](#paging-and-sorting)
   - [Lifecycle work](#lifecycle-work)
+  - [Reads a replica may serve](#reads-a-replica-may-serve)
 - [Optimistic Locking](#optimistic-locking)
   - [Declaring a version](#declaring-a-version)
   - [What a save and a delete check](#what-a-save-and-a-delete-check)
@@ -576,6 +577,49 @@ The write side has one seam, because the other writers route through it:
 `saveAll` calls `save` per entity, and `saveFile` and `clearFile` end in `save`.
 `openFile` and `describeFile` read the row through `findById`, so they reach a
 `findById` override as well.
+
+### Reads a replica may serve
+
+When the entity's data source is configured with read replicas, a repository
+read may be answered by a replica rather than the primary (see
+[Read Replicas](datasources.md#read-replicas)). Every read method of
+`TomSqlDatasourceRepository` — `findById`, `findAll`, `findAllById`,
+`existsById`, `count`, `findByQuerySentence`, `countByQuerySentence`,
+`findByQuery`, `countByQuery`, `findGroupedByQuery` and `executeQueryString` —
+runs inside `TomReplicaRouting.repositoryRead`, which marks it as a read a
+replica may serve. The data source then sends it to a replica only in read-only
+work — a read-only transaction, a `GET` or `HEAD` request, a
+`TomReplicaRouting.readOnly` block — only when the statement is a plain read,
+and not while the principal's own recent write is still within the data
+source's `replicaStickinessMs`. The reads a write makes for itself — the
+baseline a `save` loads, the check that the rows a delete names are writable —
+run in the write's context and read the primary.
+
+An entity whose reads must never lag marks itself `@TomPrimaryReads()`:
+
+```dart
+@tomReflector
+@TomPrimaryReads()
+@TomDbTable(
+  datasource: 'main',
+  table: 'account_limit',
+  primaryKeyFields: ['id'],
+)
+class AccountLimit {
+  @TomEntityId()
+  @TomDbColumn(columnName: 'id', isReadOnly: true)
+  int? id;
+
+  @TomDbColumn(columnName: 'limit_cents')
+  int? limitCents;
+}
+```
+
+Its repository's reads run unmarked and so always on the primary. The
+framework marks the entities authorization and authentication decide on —
+grants, delegations, second-factor enrolments, external identity links and
+their tokens. Reading one entity from the primary in one place, without pinning
+it everywhere, is `TomReplicaRouting.primary(() => repository.findById(id))`.
 
 ## Optimistic Locking
 

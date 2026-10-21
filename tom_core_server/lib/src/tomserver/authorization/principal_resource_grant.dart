@@ -33,6 +33,7 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 import '../object_persistence/persistence_annotations.dart';
 import '../object_persistence/crud_repository.dart';
 import '../privacy/personal_data.dart';
+import '../datasources/read_replicas.dart';
 
 /// A persistable grant of a single role to a `(principalId, resourceKey)` pair —
 /// the storage row behind per-principal-per-resource roles.
@@ -42,6 +43,9 @@ import '../privacy/personal_data.dart';
 /// [TomPrincipalResourceRoleResolver], fold them into a `resourceKey → roleName`
 /// map, and carry that map on [TomAccessControlInformation.resourceRoles].
 @tomReflector
+// Read from the primary: a change here — a revocation above all — must
+// take effect at once, not after a replica's lag.
+@TomPrimaryReads()
 @TomDbTable(
   datasource: 'main',
   table: 'tom_principal_resource_grant',

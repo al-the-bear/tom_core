@@ -10,7 +10,10 @@ CORS, error handler). `TomEndpointRouting`
 scans those annotations and builds the router; `TomEndpointHandler` runs each
 request through the pipeline (decode → authorize → invoke → encode), routing
 errors through a `TomErrorHandler`. `@TomTransactional` wraps a call in a
-transaction.
+transaction. A `GET` or `HEAD` request runs as read-only work
+(`TomReplicaRouting.readOnly`, while `TomReplicaRouting.routeSafeRequests`
+holds), so its repository reads may be served by a data source's read
+replicas.
 
 ## Key types
 

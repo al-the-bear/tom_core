@@ -38,6 +38,7 @@ import '../transactions/transaction_manager.dart';
 import 'connection_pool.dart';
 import 'datasource_initialization.dart';
 import 'queries.dart';
+import 'read_replicas.dart';
 import 'sql_instant.dart';
 import 'sql_lexer.dart';
 import 'types_operator.dart';
@@ -469,6 +470,21 @@ abstract class TomSqlDatasource implements TomDataSource {
   /// milliseconds.
   int poolValidateAfterIdleMs = 30000;
 
+  /// The read replicas of this data source: one settings map per replica,
+  /// each overriding this data source's own settings — usually only `host`
+  /// and `port`. See `read_replicas.dart` for which statements a replica
+  /// serves. Empty — the default — routes everything to this data source.
+  List<Object?> replicas = [];
+
+  /// How long after a principal's write its reads stay on this data source,
+  /// the primary, rather than a replica — read-your-writes. In milliseconds;
+  /// should exceed the replicas' usual lag.
+  int replicaStickinessMs = 5000;
+
+  /// How long a replica that failed to serve a connection is left out, in
+  /// milliseconds; its reads go to the primary meanwhile.
+  int replicaRetryMs = 30000;
+
   /// The pool settings the fields above describe.
   TomConnectionPoolSettings get poolSettings => TomConnectionPoolSettings(
     maxSize: poolMaxSize,
@@ -653,6 +669,156 @@ abstract class TomSqlDatasource implements TomDataSource {
         ];
       },
     );
+    await _openReplicas();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Read replicas
+  // ---------------------------------------------------------------------------
+
+  final List<TomSqlDatasource> _replicaSources = [];
+  final List<DateTime?> _replicaDownUntil = [];
+  final Expando<TomSqlDatasource> _transactionReplica = Expando();
+  final Map<String, DateTime> _lastWrites = {};
+  int _nextReplica = 0;
+
+  /// The replicas of this data source, one per [replicas] entry.
+  List<TomSqlDatasource> get replicaSources =>
+      List.unmodifiable(_replicaSources);
+
+  /// A new, unconfigured data source of this driver, to serve as a replica.
+  @protected
+  TomSqlDatasource newReplica();
+
+  /// The settings a replica starts from: this data source's own, without its
+  /// replica settings.
+  Map<String, dynamic> _replicaBase() {
+    final base = <String, dynamic>{
+      ...?_ownSettings,
+      'username': username,
+      'password': password,
+      'host': host,
+      'port': port,
+      'databaseName': databaseName,
+      'timeOut': timeOut,
+      'poolMaxSize': poolMaxSize,
+      'poolMinIdle': poolMinIdle,
+      'poolAcquireTimeoutMs': poolAcquireTimeoutMs,
+      'poolIdleTimeoutMs': poolIdleTimeoutMs,
+      'poolMaxLifetimeMs': poolMaxLifetimeMs,
+      'poolValidateAfterIdleMs': poolValidateAfterIdleMs,
+    };
+    for (final key in const [
+      'replicas',
+      'replicaStickinessMs',
+      'replicaRetryMs',
+    ]) {
+      base.remove(key);
+    }
+    return base;
+  }
+
+  /// Creates a data source per [replicas] entry and opens each that answers.
+  /// A replica that does not is left out for [replicaRetryMs] and tried again
+  /// when a read next wants it: the primary serves its reads meanwhile.
+  Future<void> _openReplicas() async {
+    if (replicas.isEmpty || _replicaSources.isNotEmpty) return;
+    for (final (i, raw) in replicas.indexed) {
+      final replica = newReplica()
+        ..registerAs('$registeredName.replica${i + 1}');
+      final overrides = Map<String, dynamic>.from(raw! as Map);
+      replica.bindSettings(
+        replica.normalizeSettings({..._replicaBase(), ...overrides}),
+      );
+      _replicaSources.add(replica);
+      _replicaDownUntil.add(null);
+      await _connectReplica(i);
+    }
+  }
+
+  Future<bool> _connectReplica(int i) async {
+    final replica = _replicaSources[i];
+    if (replica._pool != null) return true;
+    try {
+      await replica.connect();
+      _replicaDownUntil[i] = null;
+      return true;
+    } catch (error) {
+      _replicaFailed(i, error);
+      return false;
+    }
+  }
+
+  void _replicaFailed(int i, Object error) {
+    _replicaDownUntil[i] = DateTime.now().add(
+      Duration(milliseconds: replicaRetryMs),
+    );
+    tomLog.warn(
+      "$driverLabel: replica ${_replicaSources[i].registeredName} could not "
+      "serve a connection and is left out for ${replicaRetryMs}ms; the "
+      "primary serves its reads meanwhile: $error",
+    );
+  }
+
+  /// The principal a write and a later read are matched on: the tenant and
+  /// the principal in context.
+  static String _writerKey() =>
+      '${TomTenantContext.currentId ?? ''}/'
+      '${getFromCurrentZone<TomPrincipal>()?.id ?? ''}';
+
+  /// Records that the principal in context writes now, so its reads stay on
+  /// the primary for [replicaStickinessMs].
+  void _noteWrite() {
+    if (_replicaSources.isEmpty) return;
+    final now = DateTime.now();
+    if (_lastWrites.length > 10000) {
+      final horizon = now.subtract(Duration(milliseconds: replicaStickinessMs));
+      _lastWrites.removeWhere((_, at) => at.isBefore(horizon));
+    }
+    _lastWrites[_writerKey()] = now;
+  }
+
+  /// Whether the principal in context wrote within [replicaStickinessMs].
+  bool _wroteRecently() {
+    final at = _lastWrites[_writerKey()];
+    return at != null &&
+        DateTime.now().difference(at).inMilliseconds < replicaStickinessMs;
+  }
+
+  /// The replica [statement] runs on, or `null` for the primary — see
+  /// `read_replicas.dart` for the rules.
+  Future<TomSqlDatasource?> _replicaFor(
+    String operation,
+    String? statement,
+  ) async {
+    if (_replicaSources.isEmpty || statement == null) return null;
+    final key = Zone.current[_LifecycleKey];
+    if (key is _LifecycleKey && identical(key.datasource, this)) return null;
+    if (!TomReplicaRouting.isRepositoryRead ||
+        !TomReplicaRouting.isReadOnlyContext ||
+        TomReplicaRouting.isPrimaryForced ||
+        !TomReplicaRouting.isReadStatement(statement) ||
+        _wroteRecently()) {
+      return null;
+    }
+    final transaction = TomTransactionManager.getCurrentTransaction();
+    final inTransaction = transaction != null && transaction.isRunning;
+    // One replica per read-only transaction: its reads see one snapshot.
+    if (inTransaction) {
+      final chosen = _transactionReplica[transaction];
+      if (chosen != null) return chosen;
+    }
+    final now = DateTime.now();
+    for (var tried = 0; tried < _replicaSources.length; tried++) {
+      final i = _nextReplica++ % _replicaSources.length;
+      final down = _replicaDownUntil[i];
+      if (down != null && now.isBefore(down)) continue;
+      if (!await _connectReplica(i)) continue;
+      final replica = _replicaSources[i];
+      if (inTransaction) _transactionReplica[transaction] = replica;
+      return replica;
+    }
+    return null;
   }
 
   /// Opens a link through [openLink], recording whether it failed for
@@ -745,12 +911,35 @@ abstract class TomSqlDatasource implements TomDataSource {
   ///   endpoint will touch — and then runs on the transaction's connection;
   /// * any other statement borrows a connection for itself and hands it back,
   ///   discarding it if it went down while in use.
+  ///
+  /// [statement] is the SQL a statement path runs: a repository read of it in
+  /// read-only work may be served by a read replica (`read_replicas.dart`). A
+  /// replica that cannot lend a connection is left out for [replicaRetryMs],
+  /// and the statement runs here.
   @protected
   Future<R> withLink<R>(
     String operation,
-    Future<R> Function(TomSqlLink link) body,
-  ) async {
+    Future<R> Function(TomSqlLink link) body, {
+    String? statement,
+  }) async {
     final pool = _requirePool(operation);
+    final replica = await _replicaFor(operation, statement);
+    if (replica != null) {
+      var started = false;
+      try {
+        return await replica.withLink(operation, (link) {
+          started = true;
+          return body(link);
+        });
+      } catch (error) {
+        if (started) rethrow;
+        _replicaFailed(_replicaSources.indexOf(replica), error);
+      }
+    }
+    if (operation == "executeCommand" ||
+        (statement != null && !TomReplicaRouting.isReadStatement(statement))) {
+      _noteWrite();
+    }
     final branch = await _branchForThisZone();
     if (branch != null) {
       final link = await _pinnedLink(pool, branch);
@@ -913,7 +1102,7 @@ abstract class TomSqlDatasource implements TomDataSource {
     List<Object?> parameters,
     Map<String, Object?>? params,
     Type? resultType,
-  ) => withLink("prepared statement", (link) async {
+  ) => withLink("prepared statement", statement: command, (link) async {
     return runChecked<TomSqlResult>(
       () => runPreparedOn(link, command, parameters),
       (e, StackTrace s) {
@@ -954,6 +1143,10 @@ abstract class TomSqlDatasource implements TomDataSource {
     if (pool == null) return;
     for (final link in pool.connections) {
       forgetStatementOn(link, command);
+    }
+    // A replica's connections may have prepared it too.
+    for (final replica in _replicaSources) {
+      await replica._forgetStatement(command);
     }
   }
 
@@ -1201,6 +1394,7 @@ abstract class TomSqlDatasource implements TomDataSource {
     // second connection while this one is still held.
     final result = await withLink(
       "executeQuery",
+      statement: command,
       (link) => runChecked<TomSqlResult>(
         () => runCommandOn(link, command, tomSqlBindParams(params)),
         (e, StackTrace s) {
@@ -1727,8 +1921,28 @@ abstract class TomSqlDatasource implements TomDataSource {
   /// it never reaches this method.
   @override
   Future<void> initialize(Map<String, dynamic> settings) async {
-    bindSettings(normalizeSettings(settings));
+    final own = <String, dynamic>{...settings}..remove('replicas');
+    final normalized = normalizeSettings(own);
+    bindSettings(normalized);
+    replicas = _replicaSettings(settings['replicas']);
+    _ownSettings = normalized;
     await connect();
+  }
+
+  /// The settings this data source was initialized with, which a replica
+  /// starts from; `null` when its fields were set directly.
+  Map<String, dynamic>? _ownSettings;
+
+  /// [raw], the `replicas` setting, as a list of settings maps.
+  List<Object?> _replicaSettings(Object? raw) {
+    if (raw == null) return const [];
+    if (raw is List && raw.every((r) => r is Map)) return List.of(raw);
+    throw datasourceException(
+      "error.initialize.invalid_replicas",
+      "$driverLabel: `replicas` is a list of settings maps, one per replica; "
+          "got ${raw.runtimeType}.",
+      parameters: {"replicas": '$raw'},
+    );
   }
 
   /// Binds [settings] onto this driver's fields by reflection.
@@ -1740,6 +1954,8 @@ abstract class TomSqlDatasource implements TomDataSource {
   static const Set<String> integerSettings = {
     'port',
     'timeOut',
+    'replicaStickinessMs',
+    'replicaRetryMs',
     'poolMaxSize',
     'poolMinIdle',
     'poolAcquireTimeoutMs',
@@ -1857,6 +2073,11 @@ abstract class TomSqlDatasource implements TomDataSource {
     _poolObservation?.cancel();
     _poolObservation = null;
     await pool.close();
+    for (final replica in _replicaSources) {
+      if (replica._pool != null) await replica.close();
+    }
+    _replicaSources.clear();
+    _replicaDownUntil.clear();
   }
 
   @override

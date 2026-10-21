@@ -1,6 +1,6 @@
 /// The example suite's single reflection root.
 ///
-/// Eight of the examples need a live reflector and none can borrow the test
+/// Nine of the examples need a live reflector and none can borrow the test
 /// fixture's, because an example is not a test and cannot import from `test/`:
 ///
 ///  * the two-node cluster demonstration, whose SQL scheduler stores read every
@@ -21,7 +21,10 @@
 ///  * the preferences example, whose object preference is encoded and rebuilt
 ///    through the registry rather than through the type's own name;
 ///  * the file-storage example, whose configured stores are built by backends
-///    whose settings are bound — and checked — through the reflector.
+///    whose settings are bound — and checked — through the reflector;
+///  * the read-replicas example, which reads `@TomPrimaryReads` off the
+///    framework's own entities and binds a data source's settings through the
+///    reflector.
 ///
 /// **One root, not one per example.** The generator follows this file's import
 /// graph and emits `example_reflection.reflection.dart` beside it, and because

@@ -67,6 +67,9 @@ module builds its query DSL and repositories on top of this layer.
   - [The PostgreSQL Driver](#the-postgresql-driver)
     - [PostgresDatasource](#postgresdatasource)
     - [PostgresXADatasource](#postgresxadatasource)
+  - [Read Replicas](#read-replicas)
+    - [TomPrimaryReads](#tomprimaryreads)
+    - [TomReplicaRouting](#tomreplicarouting)
   - [Placeholder Scanning](#placeholder-scanning)
     - [SqlPlaceholderScan](#sqlplaceholderscan)
   - [SQL Lexing](#sql-lexing)
@@ -101,6 +104,7 @@ Source: `lib/src/tomserver/datasources/connection_pool.dart`,
 `lib/src/tomserver/datasources/postgres_datasource.dart`,
 `lib/src/tomserver/datasources/postgres_sql_dialect.dart`,
 `lib/src/tomserver/datasources/queries.dart`,
+`lib/src/tomserver/datasources/read_replicas.dart`,
 `lib/src/tomserver/datasources/sql_datasource.dart`,
 `lib/src/tomserver/datasources/sql_dialects.dart`,
 `lib/src/tomserver/datasources/sql_failure_mode.dart`,
@@ -129,7 +133,10 @@ extend it: MariaDB (`MariaDbDatasource`, plus the XA variant
 the two-phase variant `PostgresXADatasource`), each with its own dialect
 (`MariadbSqlDialect`, `PostgresSqlDialect`). `SqlPlaceholderScan` rewrites the
 generated `:name` placeholders into the positional form each protocol binds —
-`?` for MariaDB, `$1`, `$2`, … for PostgreSQL.
+`?` for MariaDB, `$1`, `$2`, … for PostgreSQL. A SQL data source configured
+with `replicas` lets read replicas serve the repository reads of read-only work;
+`TomReplicaRouting` holds the rules and `TomPrimaryReads` pins an entity's reads
+to the primary.
 
 The framework declares its own tables in one canonical DDL vocabulary,
 MariaDB's spelling (`DATETIME(6)`, `TINYINT(1)`, `AUTO_INCREMENT`, inline
@@ -211,6 +218,8 @@ TomConnectionPoolSettings
 TomConnectionFactory<C>  (interface)
 
 TomDataSourceInfo
+TomPrimaryReads  (annotation)
+TomReplicaRouting  (statics)
 SqlPlaceholderScan
 TomSqlLexer
 TomFrameworkTable
@@ -1212,8 +1221,10 @@ A pooled SQL `TomDataSource` — the driver-neutral base both SQL drivers extend
 Connection settings (`username`, `password`, `host`, `port`, `databaseName`,
 `timeOut`) and pool settings (`poolMaxSize`, `poolMinIdle`,
 `poolAcquireTimeoutMs`, `poolIdleTimeoutMs`, `poolMaxLifetimeMs`,
-`poolValidateAfterIdleMs`) are filled from the configuration map by reflection
-in `initialize`, which then opens the data source.
+`poolValidateAfterIdleMs`) and read-replica settings (`replicas`,
+`replicaStickinessMs`, `replicaRetryMs`) are filled from the configuration map
+by reflection in `initialize`, which then opens the data source — and its
+replicas, if any ([Read Replicas](#read-replicas)).
 
 **Connections come from a `TomConnectionPool`.** A transaction gets a
 connection of its own: its first statement on this data source enlists the data
@@ -1261,7 +1272,7 @@ or calls, not part of the surface an application reaches for.
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `integerSettings` | `Set<String>` | `const`: the settings a driver binds to `int` fields — `port`, `timeOut` and the six `pool…` settings. |
+| `integerSettings` | `Set<String>` | `const`: the settings a driver binds to `int` fields — `port`, `timeOut`, `replicaStickinessMs`, `replicaRetryMs` and the six `pool…` settings. |
 
 ##### Properties
 
@@ -1279,6 +1290,9 @@ or calls, not part of the surface an application reaches for.
 | `poolIdleTimeoutMs` | `int` | How long a connection may sit idle before it is closed, in milliseconds. Default `600000`. |
 | `poolMaxLifetimeMs` | `int` | How long a connection is used at all before it is replaced, in milliseconds. Default `1800000`. |
 | `poolValidateAfterIdleMs` | `int` | How long a connection may sit idle and still be lent without a check, in milliseconds. Default `30000`. |
+| `replicas` | `List<Object?>` | The read replicas: one settings map per replica, each overriding this data source's own settings — usually only `host` and `port`. Empty — the default — routes everything to this data source. `initialize` refuses anything but a list of maps with `error.initialize.invalid_replicas` (parameter `replicas`). |
+| `replicaStickinessMs` | `int` | How long after a principal's write (per tenant) its reads stay on the primary rather than a replica — read-your-writes, remembered per process. Default `5000`. |
+| `replicaRetryMs` | `int` | How long a replica that failed to serve a connection is left out; its reads go to the primary meanwhile. Default `30000`. |
 | `poolSettings` | `TomConnectionPoolSettings` | *(getter)* The pool settings the six `pool…` fields describe; read when the data source is opened. |
 | `registeredName` | `String` | *(getter)* The name this data source is registered under — `app`, or `app@tenant` for a tenant's own pool — which is the `datasource` label of its metrics; `driverLabel` until `registerAs` names it. |
 | `driverLabel` | `String` | *(getter, protected, abstract)* How the driver names itself in messages — `MariadbDatasource`, `PostgresDatasource`. |
@@ -1286,6 +1300,7 @@ or calls, not part of the surface an application reaches for.
 | `participantPrefix` | `String` | *(getter, protected, abstract)* The prefix of `getParticipantId` — `MariaDb`, `Postgres`. |
 | `commitStatement` | `String` | *(getter, protected, abstract)* The statement committing a one-phase transaction. |
 | `rollbackStatement` | `String` | *(getter, protected, abstract)* The statement rolling a one-phase transaction back. |
+| `replicaSources` | `List<TomSqlDatasource>` | *(getter)* The replicas, one per `replicas` entry, each registered as `<registeredName>.replica<n>`; empty until the data source is opened. |
 | `connected` | `bool` | *(getter)* Whether the data source is open and at least one of its connections is established. |
 | `openConnectionCount` | `int` | *(getter)* How many connections the pool holds, lent or idle; `0` when not open. |
 | `lentConnectionCount` | `int` | *(getter)* How many connections are lent out — to transactions or statements. |
@@ -1310,6 +1325,7 @@ or calls, not part of the surface an application reaches for.
 | `prepareOn` | `Future<void> prepareOn(TomSqlLink link, String command)` | *(protected, abstract)* Prepares `command` on `link` without running it. |
 | `newPreparedStatement` | `TomSqlPreparedStatement<T> newPreparedStatement<T extends Object>(List<String> parameterList, Type? resultType, String command, Map<String, Type>? groupedProjection)` | *(protected)* The prepared-statement handle this driver hands out — a `TomSqlPreparedStatement` unless the driver returns its own subtype. |
 | `bindSettings` | `void bindSettings(Map<String, dynamic> settings)` | *(protected, abstract)* Binds `settings` onto the driver's fields by reflection. |
+| `newReplica` | `TomSqlDatasource newReplica()` | *(protected, abstract)* A new, unconfigured data source of this driver, to serve as a replica. It is bound with this data source's settings overlaid by the replica's map. |
 | `normalizeSettings` | `Map<String, dynamic> normalizeSettings(Map<String, dynamic> settings)` | *(protected)* Returns `settings` with every `integerSettings` value given as a string folded to an `int`, so an environment substitution (`port: ${DB_PORT:3306}`) binds. The port is parsed by `parseConfiguredPort`; any other value that is not an integer throws `error.initialize.invalid_integer` (parameters `setting` and `value`). A map with no string-valued integer setting is returned unchanged. |
 | `parseConfiguredPort` | `int parseConfiguredPort(Object? raw)` | *(protected)* Parses a configured port value — an `int`, or a `String` holding one — into the `int` the driver binds; anything else throws `error.initialize.invalid_port`. |
 
@@ -1318,16 +1334,16 @@ or calls, not part of the surface an application reaches for.
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `registerAs` | `void registerAs(String name)` | Records the registry name `registeredName` reports. Called by `TomDataSourceInfo.initialize` when it creates the driver, before the data source is opened; a data source created by hand calls it to be labelled. |
-| `connect` | `Future<void> connect()` | Opens the data source: creates the pool from `poolSettings` and opens its first connection. A server that cannot be reached or refuses the session fails the call with the driver's own error and leaves the data source unopened. Does nothing on an open data source. |
-| `withLink` | `Future<R> withLink<R>(String operation, Future<R> Function(TomSqlLink link) body)` | *(protected)* Runs `body` on the connection `operation` belongs on — the one place connections are chosen: a transaction's own lifecycle statement runs on the connection pinned to that transaction; a statement inside a running transaction first enlists this data source in it, then runs on the transaction's connection; any other statement borrows a connection for itself and hands it back, discarding it if it went down while in use. |
+| `connect` | `Future<void> connect()` | Opens the data source: creates the pool from `poolSettings` and opens its first connection, then its replicas — a replica that cannot be reached is left out for `replicaRetryMs`, not fatal. A server that cannot be reached or refuses the session fails the call with the driver's own error and leaves the data source unopened. Does nothing on an open data source. |
+| `withLink` | `Future<R> withLink<R>(String operation, Future<R> Function(TomSqlLink link) body, {String? statement})` | *(protected)* Runs `body` on the connection `operation` belongs on — the one place connections are chosen. `statement`, the SQL a statement path runs, is what read-replica routing reads: a repository read of it in read-only work may run on a replica, a replica that cannot lend a connection is left out for `replicaRetryMs` and the statement runs here, and a statement that is not a read records the principal's write for `replicaStickinessMs`. Otherwise: a transaction's own lifecycle statement runs on the connection pinned to that transaction; a statement inside a running transaction first enlists this data source in it, then runs on the transaction's connection; any other statement borrows a connection for itself and hands it back, discarding it if it went down while in use. |
 | `prepareStatement` | `Future<TomPreparedStatement<T>> prepareStatement<T extends Object>(TomQuery query, [Type? resultType])` | *(override)* Renders `query` through `sqlDialect`, translates it with `toPositional`, and prepares it on the connection the current zone selects, so a statement the server cannot compile fails here. A grouped query's `projectionTypes` travel with the returned handle. |
 | `mapGroupedRow` | `TomGroupedRow mapGroupedRow(TomSqlRow row, Map<String, Type> projection)` | Maps one row of a grouped result, reading each alias as the Dart type the query declared for it. Throws `error.result_processing_grouped.unknown_type` for a declared type outside `int` / `double` / `String` / `bool` / `DateTime`. |
 | `executeQuery` | `Future<List<T>> executeQuery<T extends Object>(String command, [Map<String, dynamic>? params, Type? resultType])` | *(override)* Runs a read command with reflection-based row→object mapping. A `TomClass` result type maps by observable member — by member name without `@TomDbTable`, by `@TomDbColumn` with it — supporting `int` / `double` / `String` / `bool` / `DateTime` members whether declared as the plain or the nullable (`TomN…`) observable, with a SQL `NULL` read as `null`. The rows are mapped after the connection is handed back, so a `@TomReference` column's own query never needs a second connection while the first is held. |
 | `mapSqlResult` | `Future<List<T>> mapSqlResult<T extends Object>(TomSqlResult result, [Type? resultType, Map<String, Type>? groupedProjection])` | Maps `result` onto a list of `T`, choosing between the five row shapes: a grouped row (when `groupedProjection` is given), a table-less `TomClass` bound by member name, an annotated `TomClass` bound by `@TomDbColumn`, a plain reflected holder bound by declared field name, and an annotated entity bound by its persistent columns. A column the result does not carry is skipped on every shape. Throws `error.result_processing.unsuitable_class` for a result type the reflector does not hold. Needs no open connection — only a `@TomReference` column reaches back to the database. |
-| `initialize` | `Future<void> initialize(Map<String, dynamic> settings)` | *(override)* `bindSettings(normalizeSettings(settings))`, then `connect()`. |
+| `initialize` | `Future<void> initialize(Map<String, dynamic> settings)` | *(override)* `bindSettings(normalizeSettings(settings))` for every setting but `replicas`, which it reads into `replicas` — refusing anything but a list of maps with `error.initialize.invalid_replicas` — then `connect()`. |
 | `isOperational` | `bool isOperational()` | *(override)* Whether the data source is open and can reach its database: open, and either holding a live connection or — holding none — having opened the last one it tried. |
 | `executeCommand` | `Future<BigInt> executeCommand(String command, [Map<String, dynamic>? params])` | *(override)* Runs a write command and returns the affected-row count. |
-| `close` | `Future<void> close()` | *(override)* Closes the pool and lets go of it. Idle connections are closed at once; a connection still lent — to a transaction or a running statement — is closed when it is handed back. A connection that fails to close is logged and dropped, never thrown. A data source that was never opened has nothing to release and stays "never opened". |
+| `close` | `Future<void> close()` | *(override)* Closes the pool and lets go of it, and closes the replicas. Idle connections are closed at once; a connection still lent — to a transaction or a running statement — is closed when it is handed back. A connection that fails to close is logged and dropped, never thrown. A data source that was never opened has nothing to release and stays "never opened". |
 | `toString` | `String toString()` | *(override)* `<driverLabel> host:port/database` and its state: `open (N lent, M idle)` while it is open, and otherwise which of the two ways it came to hold no pool — `closed` or `never opened`. |
 | `getParticipantId` | `String getParticipantId()` | *(override)* `<participantPrefix>-<database>@<host>:@<port>` — the database this source speaks to, so two instances configured for one database enlist once. |
 
@@ -1576,6 +1592,7 @@ MariaDbDatasource()
 | `mapResultSet` | `Future<List<T>> mapResultSet<T extends Object>(IResultSet qResult, [Type? resultType, Map<String, Type>? groupedProjection])` | Maps a `mysql_client` result set onto a list of `T` through `mapSqlResult` — the driver's own result type adapted to the shared mapper. Needs no open connection. |
 | `newPreparedStatement` | `TomSqlPreparedStatement<T> newPreparedStatement<T extends Object>(List<String> parameterList, Type? resultType, String command, Map<String, Type>? groupedProjection)` | *(override)* Hands out a `MariadbPreparedStatement`. |
 | `bindSettings` | `void bindSettings(Map<String, dynamic> settings)` | *(override)* Binds `settings` onto this driver's fields by reflection. |
+| `newReplica` | `TomSqlDatasource newReplica()` | *(override)* A plain `MariaDbDatasource` — one-phase even behind an XA primary, since a replica only ever serves reads. |
 | `normalizeSettings` | `Map<String, dynamic> normalizeSettings(Map<String, dynamic> settings)` | *(override)* `normalizeIntegerSettings(settings)`. |
 | `parseConfiguredPort` | `int parseConfiguredPort(Object? raw)` | *(override)* `parsePort(raw)`. |
 
@@ -1721,6 +1738,7 @@ Sets `port` to PostgreSQL's default, `5432`.
 | `beginStatement` | `String beginStatement({required bool readOnly})` | *(override)* `BEGIN READ ONLY` or `BEGIN`. |
 | `toPositional` | `(String, List<String>) toPositional(String namedSql)` | *(override)* `:name` placeholders to `$1`, `$2`, …, one slot per occurrence, with a backslash in a string literal read as PostgreSQL reads it — as itself. |
 | `bindSettings` | `void bindSettings(Map<String, dynamic> settings)` | *(override)* Binds `settings` onto this driver's fields by reflection. |
+| `newReplica` | `TomSqlDatasource newReplica()` | *(override)* A plain `PostgresDatasource` — one-phase even behind a `postgresql_xa` primary, since a replica only ever serves reads. |
 
 #### PostgresXADatasource
 
@@ -1762,6 +1780,57 @@ PostgresXADatasource()
 | `prepare` | `Future<bool> prepare(TomTransaction transaction)` | *(override)* `PREPARE TRANSACTION '<id>'`. A failure keeps the branch for `rollback`, which the coordinator calls on every participant after a veto; PostgreSQL has already aborted the transaction, so that rollback finds an ordinary transaction-less session and only clears the branch. |
 | `commit` | `Future<bool> commit(TomTransaction transaction)` | *(override)* `COMMIT PREPARED '<id>'`, clearing the id. A failure leaves the branch in doubt, named in `pg_prepared_xacts`, for an operator to resolve. |
 | `rollback` | `Future<bool> rollback(TomTransaction transaction)` | *(override)* `ROLLBACK` while the transaction is open, `ROLLBACK PREPARED '<id>'` once it was prepared; nothing when no branch was opened or a commit cleared it. Clears the branch either way and reports whether it was undone. |
+
+### Read Replicas
+
+A `TomSqlDatasource` configured with `replicas` keeps a pool per replica
+beside its own and routes a statement to a replica only when it is read-only
+work (a read-only transaction, a `GET` or `HEAD` request, or a `readOnly`
+block), a repository read of an entity not marked `@TomPrimaryReads`, a read
+(`isReadStatement`), and the principal in context has not written through the
+data source within `replicaStickinessMs`. Everything else runs on the primary.
+Source: `lib/src/tomserver/datasources/read_replicas.dart`. See
+[Read Replicas](../datasources.md#read-replicas).
+
+#### TomPrimaryReads
+
+Marks an entity whose reads are always served by the primary, never by a read
+replica — data a decision is taken on the moment it changes. The framework
+marks `TomResourceGrant`, `TomPrincipalResourceGrant`,
+`TomPrincipalDelegation`, `TomUserTwoFactorEnrolment`,
+`TomExternalIdentityLink` and `TomExternalIdentityToken`.
+
+##### Constructors
+
+```dart
+const TomPrimaryReads()
+```
+
+#### TomReplicaRouting
+
+The routing rules of read replicas, as statics. The zone markers are what the
+data source reads when it chooses a statement's connection.
+
+- **Modifiers:** `abstract final` — statics only.
+
+##### Static Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `routeSafeRequests` | `bool` | Whether a `GET` or `HEAD` request is read-only work, so its repository reads may be served by a replica. Default `true`; a deployment whose safe requests write sets it `false`. |
+| `isReadOnlyContext` | `bool` | *(getter)* Whether the current zone is read-only work: a running transaction answers with its `isReadOnly`, otherwise whether a `readOnly` block is in effect. |
+| `isPrimaryForced` | `bool` | *(getter)* Whether the current zone sends every read to the primary (`primary`). |
+| `isRepositoryRead` | `bool` | *(getter)* Whether the current zone is a repository read of an entity a replica may serve (`repositoryRead`). |
+
+##### Static Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `readOnly` | `static Future<R> readOnly<R>(Future<R> Function() body)` | Runs `body` as read-only work: its repository reads may be served by a replica. |
+| `primary` | `static Future<R> primary<R>(Future<R> Function() body)` | Runs `body` with every read on the primary, whatever the context. |
+| `repositoryRead` | `static Future<R> repositoryRead<R>(Type entity, Future<R> Function() body)` | Runs `body`, a read of `entity` by its repository, marked as one a replica may serve — unless `entity` is `@TomPrimaryReads`, in which case `body` runs unmarked. `TomSqlDatasourceRepository` wraps every read method in it. |
+| `readsFromPrimary` | `static bool readsFromPrimary(Type entity)` | Whether `entity` carries `@TomPrimaryReads`; the answer is cached per type. |
+| `isReadStatement` | `static bool isReadStatement(String sql)` | Whether `sql` only reads: it starts with `SELECT` or `WITH` (after any opening brackets and comments) and names no locking clause (`FOR UPDATE`, `FOR SHARE`, `FOR NO KEY UPDATE`), no writing keyword and no session function (`INTO`, `LOCK`, `nextval`, `GET_LOCK`, the advisory locks, `LAST_INSERT_ID`, `SLEEP`, …) anywhere. Conservative: a word inside a string literal counts too. |
 
 ### Placeholder Scanning
 

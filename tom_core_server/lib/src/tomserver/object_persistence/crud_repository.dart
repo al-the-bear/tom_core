@@ -5,6 +5,7 @@ import '../audit/audit_trail.dart';
 import '../datasources/queries.dart';
 import '../datasources/datasource_initialization.dart';
 import '../datasources/sql_dialects.dart';
+import '../datasources/read_replicas.dart';
 import '../datasources/sql_placeholder_scan.dart';
 import '../datasources/types_operator.dart';
 import '../file_storage/blob_store.dart';
@@ -1309,8 +1310,15 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
     return affected;
   }
 
+  /// Runs a read of this repository's entity, marking it as one a read
+  /// replica may serve — see `TomReplicaRouting`. The data source decides:
+  /// only a read-only context, a read statement and no recent write of the
+  /// same principal send it to a replica.
+  Future<R> _reading<R>(Future<R> Function() body) =>
+      TomReplicaRouting.repositoryRead(T, body);
+
   @override
-  Future<bool> existsById(Iterable<K> ids) => _existsById(ids);
+  Future<bool> existsById(Iterable<K> ids) => _reading(() => _existsById(ids));
 
   /// The body of [existsById], additionally able to ask the question of the
   /// *writable* row set — which is what `_assertIdsWritable` needs and a caller
@@ -1340,7 +1348,10 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
   set _findAllQuery(TomPreparedStatement<T>? statement) =>
       _keep('findAllQuery', statement);
   @override
-  Future<List<T>> findAll([TomPageRequest? page]) async {
+  Future<List<T>> findAll([TomPageRequest? page]) =>
+      _reading(() => _findAllRead(page));
+
+  Future<List<T>> _findAllRead([TomPageRequest? page]) async {
     final scope = await _resolveScope();
     final window = _effectivePage(page);
     if (scope == null) {
@@ -1387,7 +1398,13 @@ SELECT * FROM ${dbTable.table}
   }
 
   @override
-  Future<List<T>> findAllById(Iterable<K> ids, [TomPageRequest? page]) async {
+  Future<List<T>> findAllById(Iterable<K> ids, [TomPageRequest? page]) =>
+      _reading(() => _findAllByIdRead(ids, page));
+
+  Future<List<T>> _findAllByIdRead(
+    Iterable<K> ids, [
+    TomPageRequest? page,
+  ]) async {
     // One bound `?` per id: the MySQL driver does not expand a bound
     // Iterable into `IN (?,?,…)`, so `_idListPredicate` renders the placeholders
     // per element and ANDs the principal's row scope on top. No value is
@@ -1407,7 +1424,9 @@ SELECT * FROM ${dbTable.table}
   set _findByIdQuery(TomPreparedStatement<T>? statement) =>
       _keep('findByIdQuery', statement);
   @override
-  Future<T?> findById(K id) async {
+  Future<T?> findById(K id) => _reading(() => _findByIdRead(id));
+
+  Future<T?> _findByIdRead(K id) async {
     final row = await _selectById(id);
     // C-4: mask the columns the current principal may not see before the row
     // leaves the server. `save` reads its update baseline through the unmasked
@@ -1486,7 +1505,9 @@ SELECT * FROM ${dbTable.table}
   set _countQuery(TomPreparedStatement<TomCountResult>? statement) =>
       _keep('countQuery', statement);
   @override
-  Future<TomDbInt> count() async {
+  Future<TomDbInt> count() => _reading(() => _countRead());
+
+  Future<TomDbInt> _countRead() async {
     final scope = await _resolveScope();
     List<TomCountResult> result;
     if (scope == null) {
@@ -2099,6 +2120,15 @@ SELECT * FROM ${dbTable.table}
     Map<String, Object?> params, [
     Type? resultType,
     TomPageRequest? page,
+  ]) => _reading(
+    () => _findByQuerySentenceRead(querySentence, params, resultType, page),
+  );
+
+  Future<Iterable<T>> _findByQuerySentenceRead(
+    String querySentence,
+    Map<String, Object?> params, [
+    Type? resultType,
+    TomPageRequest? page,
   ]) async {
     TomSelect select = _compileSentenceAs<TomSelect>(
       querySentence,
@@ -2142,6 +2172,11 @@ SELECT * FROM ${dbTable.table}
   Future<TomDbInt> countByQuerySentence(
     String querySentence,
     Map<String, Object?> params,
+  ) => _reading(() => _countByQuerySentenceRead(querySentence, params));
+
+  Future<TomDbInt> _countByQuerySentenceRead(
+    String querySentence,
+    Map<String, Object?> params,
   ) async {
     TomCount select = _compileSentenceAs<TomCount>(
       querySentence,
@@ -2163,6 +2198,12 @@ SELECT * FROM ${dbTable.table}
 
   @override
   Future<Iterable<T>> findByQuery(
+    TomSelect query,
+    Map<String, Object?> params, [
+    TomPageRequest? page,
+  ]) => _reading(() => _findByQueryRead(query, params, page));
+
+  Future<Iterable<T>> _findByQueryRead(
     TomSelect query,
     Map<String, Object?> params, [
     TomPageRequest? page,
@@ -2194,7 +2235,10 @@ SELECT * FROM ${dbTable.table}
   }
 
   @override
-  Future<TomDbInt> countByQuery(
+  Future<TomDbInt> countByQuery(TomCount query, Map<String, Object?> params) =>
+      _reading(() => _countByQueryRead(query, params));
+
+  Future<TomDbInt> _countByQueryRead(
     TomCount query,
     Map<String, Object?> params,
   ) async {
@@ -2213,6 +2257,11 @@ SELECT * FROM ${dbTable.table}
 
   @override
   Future<List<TomGroupedRow>> findGroupedByQuery(
+    TomGroupedSelect query,
+    Map<String, Object?> params,
+  ) => _reading(() => _findGroupedByQueryRead(query, params));
+
+  Future<List<TomGroupedRow>> _findGroupedByQueryRead(
     TomGroupedSelect query,
     Map<String, Object?> params,
   ) async {
@@ -2258,6 +2307,11 @@ SELECT * FROM ${dbTable.table}
 
   @override
   Future<Iterable<T>> executeQueryString(
+    String dbQuery,
+    Map<String, Object?> params,
+  ) => _reading(() => _executeQueryStringRead(dbQuery, params));
+
+  Future<Iterable<T>> _executeQueryStringRead(
     String dbQuery,
     Map<String, Object?> params,
   ) async {

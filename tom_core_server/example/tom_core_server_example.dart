@@ -83,6 +83,11 @@ const List<TourStop> tour = [
     'SQL-typed values and how each dialect renders them',
   ),
   TourStop(
+    'example/datasources/read_replicas_example.dart',
+    'Read replicas: which statements a replica may serve, read-only work, '
+        'reads pinned to the primary, and the replica settings',
+  ),
+  TourStop(
     'example/db_migration/db_migration_example.dart',
     'Versioned schema migrations and the plan a chain produces',
   ),

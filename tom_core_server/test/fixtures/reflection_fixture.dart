@@ -50,6 +50,18 @@ abstract class FixtureApiService {
   )
   Future<Map<String, Object>> health();
 
+  /// Answers whether the request runs as read-only work, the context in which
+  /// a repository read may be served by a read replica — `GET` and `HEAD` do,
+  /// `POST` does not.
+  @TomPublicAccess()
+  @TomEndpoint(
+    methods: [TomHttpMethod.get, TomHttpMethod.post],
+    uri: '/fixture/replica_context',
+    produces: TomMimeType.json,
+    logRequests: false,
+  )
+  Future<Map<String, Object>> replicaContext();
+
   /// An endpoint with **no** access annotation, so `metadata.access` is null and
   /// `checkAccess` falls back to the global protection default — the second
   /// `checkAccess` branch under test.
@@ -824,6 +836,11 @@ class FixtureApiServer implements FixtureApiService {
   Future<Map<String, Object>> health() async => <String, Object>{
     'status': 'ok',
     'app': 'fixture',
+  };
+
+  @override
+  Future<Map<String, Object>> replicaContext() async => <String, Object>{
+    'readOnly': TomReplicaRouting.isReadOnlyContext,
   };
 
   @override
@@ -3119,3 +3136,48 @@ class FixtureTextRetention {
   @TomDbColumn(columnName: 'label')
   String? label;
 }
+
+/// A note a read replica may serve, for the replica-routing tests.
+@tomReflector
+@TomDbTable(
+  datasource: 'tom_core_server_test',
+  table: 'fixture_replica_note',
+  primaryKeyFields: ['id'],
+)
+class FixtureReplicaNote {
+  /// Surrogate primary key.
+  @TomEntityId()
+  @TomDbColumn(columnName: 'id', isReadOnly: true)
+  int? id;
+
+  /// What the note says — which database answered, in the tests.
+  @TomDbColumn(columnName: 'text')
+  String? text;
+}
+
+/// The repository for [FixtureReplicaNote].
+class FixtureReplicaNoteRepository
+    extends TomSqlDatasourceRepository<FixtureReplicaNote, int> {}
+
+/// The same table, read only from the primary.
+@tomReflector
+@TomPrimaryReads()
+@TomDbTable(
+  datasource: 'tom_core_server_test',
+  table: 'fixture_replica_note',
+  primaryKeyFields: ['id'],
+)
+class FixturePinnedNote {
+  /// Surrogate primary key.
+  @TomEntityId()
+  @TomDbColumn(columnName: 'id', isReadOnly: true)
+  int? id;
+
+  /// What the note says.
+  @TomDbColumn(columnName: 'text')
+  String? text;
+}
+
+/// The repository for [FixturePinnedNote].
+class FixturePinnedNoteRepository
+    extends TomSqlDatasourceRepository<FixturePinnedNote, int> {}

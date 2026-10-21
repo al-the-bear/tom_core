@@ -2,6 +2,33 @@
 
 ### Added
 
+- **Read replicas** (`datasources` module, `read_replicas.dart`). A SQL data
+  source takes `replicas` — one settings map per replica, each overriding the
+  primary's settings (`[{host: db-replica-1}]`) — with `replicaStickinessMs`
+  (default `5000`) and `replicaRetryMs` (default `30000`). A statement runs on a
+  replica only when it is read-only work (a read-only transaction, a `GET` or
+  `HEAD` request, or a `TomReplicaRouting.readOnly` block), a repository read of
+  an entity not marked `@TomPrimaryReads`, a read
+  (`TomReplicaRouting.isReadStatement`: a `SELECT` or `WITH` that locks, writes
+  and calls no session function), and the principal (per tenant) has not
+  written within `replicaStickinessMs` on this node. Replicas are used
+  round-robin, a read-only transaction stays on one, and a replica that fails
+  before serving is left out for `replicaRetryMs` with a warning while the
+  primary serves; one unreachable at connect is marked down, not fatal.
+  `TomReplicaRouting.primary` forces the primary; `routeSafeRequests` (default
+  `true`) decides whether safe requests are read-only work. Every read method
+  of `TomSqlDatasourceRepository` runs inside `TomReplicaRouting.repositoryRead`;
+  the framework's own stores read the primary. `TomSqlDatasource` gains
+  `replicas`, `replicaStickinessMs`, `replicaRetryMs`, `replicaSources` and the
+  driver hook `newReplica()` (a plain one-phase data source even behind an XA
+  primary); replicas register as `<name>.replica<n>`. A malformed `replicas`
+  setting is refused with `error.initialize.invalid_replicas`.
+  `TomResourceGrant`, `TomPrincipalResourceGrant`, `TomPrincipalDelegation`,
+  `TomUserTwoFactorEnrolment`, `TomExternalIdentityLink` and
+  `TomExternalIdentityToken` are `@TomPrimaryReads`.
+  `example/datasources/read_replicas_example.dart` shows the rules without a
+  server; `test/read_replicas_test.dart` and `test/read_replicas_db_test.dart`
+  cover them.
 - **Privacy: GDPR erasure, subject-access export, retention and
   crypto-shredding** (new `privacy` module, `lib/src/tomserver/privacy/`).
   Entities declare their personal data: `@TomDataSubject(onErasure:)` on the

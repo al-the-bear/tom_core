@@ -35,6 +35,7 @@ import '../object_persistence/persistence_annotations.dart';
 import '../object_persistence/crud_repository.dart';
 import 'principal_resource_grant.dart';
 import '../privacy/personal_data.dart';
+import '../datasources/read_replicas.dart';
 
 /// How a [TomPrincipalDelegation] lends the delegator's roles to the delegate.
 enum TomDelegationMode {
@@ -55,6 +56,9 @@ enum TomDelegationMode {
 /// with [TomDelegationResolver], which folds the delegated roles into the same
 /// `resourceKey → roleName` map C-5 carries on the principal.
 @tomReflector
+// Read from the primary: a change here — a revocation above all — must
+// take effect at once, not after a replica's lag.
+@TomPrimaryReads()
 @TomDbTable(
   datasource: 'main',
   table: 'tom_principal_delegation',

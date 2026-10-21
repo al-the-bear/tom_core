@@ -189,7 +189,7 @@ access rules as a user.
 | `tom2FATokenFingerprint` | function | The SHA-256 an attempt store keys on, so the log holds a digest rather than a usable token |
 | `TomMemory2FAEnrolmentStore` | class | In-memory store, for tests and single-process development |
 | `TomPersistent2FAEnrolmentStore` | class | Store over `TomUserTwoFactorEnrolment`, secrets encrypted at rest |
-| `TomUserTwoFactorEnrolment` | class | One persisted enrolment row; the entity behind `@TomDbTable('tom_user_two_factor_enrolment')`, its `principalId` declared the data subject and its `hint` personal for the privacy module |
+| `TomUserTwoFactorEnrolment` | class | One persisted enrolment row; the entity behind `@TomDbTable('tom_user_two_factor_enrolment')`, its `principalId` declared the data subject and its `hint` personal for the privacy module; read from the primary, never a read replica (`@TomPrimaryReads`) |
 | `TomUserTwoFactorEnrolmentRepository` | class | The repository over that table |
 | `Tom2FAEnrolment` | class | One set-up factor: type, id, hint, primary flag, and the mechanism's secret data |
 | `Tom2FAEnrolmentSupport` | abstract class | What an adaptor adds to become *enrollable*: begin an offer, confirm it |
@@ -226,13 +226,13 @@ access rules as a user.
 | `TomExternalIdentityStore` | abstract class | The linking table: (issuer, subject) → local account |
 | `TomMemoryExternalIdentityStore` | class | Links in a map, for tests and bring-up **only** — links that vanish on restart cost a user their account |
 | `TomPersistentExternalIdentityStore` | class | The store over `tom_external_identity` |
-| `TomExternalIdentityLink` | class | One persisted link row; reflected (`@tomReflector`) |
+| `TomExternalIdentityLink` | class | One persisted link row; reflected (`@tomReflector`); read from the primary, never a read replica (`@TomPrimaryReads`) |
 | `TomExternalIdentityLinkRepository` | class | The repository over that table |
 | `TomOAuthTokenGrant` | class | One token grant as a provider issued it, with `expires_in` already resolved against a clock so nothing downstream needs to know when the response arrived |
 | `TomOAuthTokenStore` | abstract class | Where grants live — separate from the link store, so holding credentials and holding links are two choices rather than one |
 | `TomMemoryOAuthTokenStore` | class | Grants in a map, for tests and bring-up; a grant lost on restart costs one re-consent |
 | `TomPersistentOAuthTokenStore` | class | The store over `tom_external_identity_token`, grant JSON encrypted at rest under its own optional cipher |
-| `TomExternalIdentityToken` | class | One persisted grant row; the encrypted `tokenData` is the source of truth and the plain columns beside it are the operator projection |
+| `TomExternalIdentityToken` | class | One persisted grant row; the encrypted `tokenData` is the source of truth and the plain columns beside it are the operator projection; read from the primary, never a read replica (`@TomPrimaryReads`) |
 | `TomExternalIdentityTokenRepository` | class | The repository over that table |
 | `TomOAuthServer` | class | The three `/oauth/*` endpoints, exposed via `@TomApiImplementation` |
 | `TomOAuthException` | class | A mis-configured provider set or a refused handshake |
@@ -4240,7 +4240,7 @@ store keeps them in `tom_service_account` and `tom_api_key`, declared by
 | [audit](audit.md) | module | `authentication_server.dart` | `TomAuditTrail.recordAction`, `TomAuditAction` and `TomAuditOutcome` — the record of a switch of the sign-in organization (`session.organizationSwitched`) |
 | [cache](cache.md) | module | `api_keys.dart`, `scim_service.dart` | `TomCacheInvalidator.revokePrincipal`, the default revocation a SCIM deprovisioning change calls; `TomCache` and `TomCacheManager` for the node's API-key lookup cache, and `TomCacheInvalidator.invalidateCacheEntry`, which drops a revoked or rotated key from it |
 | [configuration](configuration.md) | module | `jwt_signing.dart`, `oauth_provider.dart`, `saml_provider.dart`, `scim_endpoints.dart`, `server_self_login.dart`, `sql_oauth_state_store.dart` | `TomBaseServerConfiguration` supplies the JWT fields `installJwtSigning` reads and the service-account fields `TomServiceCredential.fromConfiguration` reads; `isDevelopmentOrTestRuntime` decides whether the sample-key fallback is permitted |
-| [datasources](datasources.md) | module | `oauth_state_sql.dart`, `scim_sql.dart`, `sql_api_key_store.dart`, `sql_oauth_state_store.dart`, `sql_scim_store.dart` | `TomDataSource`, `TomDataSourceInfo`, `TomFrameworkTable` (the single declaration of `tom_oauth_state`, `tom_scim_resource`, `tom_service_account` and `tom_api_key`), `TomSchemaProvisioning` and `sqlInstant` / `parseSqlInstant` |
+| [datasources](datasources.md) | module | 8 of 37 files | `TomPrimaryReads` (on the external-identity link and token and the second-factor enrolment, whose reads stay on the primary; `oauth_identity.dart`, `oauth_tokens.dart`, `two_factor_enrolment.dart`), `TomDataSource`, `TomDataSourceInfo`, `TomFrameworkTable` (the single declaration of `tom_oauth_state`, `tom_scim_resource`, `tom_service_account` and `tom_api_key`), `TomSchemaProvisioning` and `sqlInstant` / `parseSqlInstant` |
 | [endpoints](endpoints.md) | module | `jwks_endpoint.dart`, `oauth_endpoints.dart`, `saml_endpoints.dart`, `scim_endpoints.dart` | `TomScimApi` declares its seventeen routes with `@TomEndpoint` and `@TomPublicAccess`; `TomSamlService` binds the identity provider's form post as a `TomMultipartForm` and answers it with a `TomRedirect`; `TomOAuthServer` implements the kernel's `tomOAuthApi` through `@TomApiImplementation`, and `registerFrameworkApis()` registers the contract; `TomJwksService` declares its route with `@TomEndpoint` and `@TomPublicAccess` |
 | [little_things](little_things.md) | module | 18 of 37 files | `TomServerException`, the base of `TomLoginException`, `Tom2FAException`, `TomServerSelfLoginException`, `TomOAuthException`, `TomSamlException`, `TomScimException`, `TomSigningKeyException`, `TomJwtKeyException` and `TomApiKeyException` |
 | [messaging](messaging.md) | module | `two_factor_delivered_code.dart` | `TomEmailService` and `TomSmsService` deliver the one-time codes, through `TomTemplatedMessageService.deliverNow` rather than the outbox. A deployment that registers neither can still run TOTP |

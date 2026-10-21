@@ -306,6 +306,20 @@ returns carries the same origin its preflight announced — an error response
 included, since a refusal the page cannot read reaches the user as a network
 error rather than as the reason.
 
+**A `GET` or `HEAD` request is read-only work.** Such a request runs through
+the pipeline inside `TomReplicaRouting.readOnly`, so the repository reads it
+makes may be served by a data source's read replicas (see
+[Read Replicas](datasources.md#read-replicas)). A safe method is the client's
+promise that the request changes nothing, and that is the promise a replica's
+lag is safe under. The rest still holds: a transaction the endpoint starts
+decides for itself — everything inside a write transaction reads the primary —
+a principal who has just written reads the primary for the data source's
+`replicaStickinessMs`, and an entity marked `@TomPrimaryReads` is always read
+from the primary. A deployment whose `GET` endpoints write sets
+`TomReplicaRouting.routeSafeRequests = false`; its requests then read the
+primary unless a handler marks read-only work itself. An `@TomIdempotent`
+endpoint is answered through `TomIdempotency.handle` and is not marked.
+
 ## Parameter Binding
 
 For each declared parameter the handler tries, in order: a `TomPrincipal` or
@@ -628,6 +642,11 @@ rolls back if the method throws. The handler does not enlist anything: every
 data source the method uses enlists itself on its first statement (see
 [transactions](transactions.md)), which is the only way the pipeline could know
 what the method touched.
+
+`@TomTransactional(isReadOnly: true)` opens a read-only transaction, which is
+read-only work for read-replica routing: its repository reads may be served by
+a replica, all of them by the same one so they read one snapshot. A write
+transaction keeps every statement on the primary, in a `GET` request too.
 
 A commit that does not commit fails the request, whatever the method returned.
 When a participant vetoes, or commits only in part, the handler raises
@@ -1507,7 +1526,9 @@ types, `shelfRoutePath`, and the four parameter injectors with
 scanning annotated classes, resolving access through `getClassMethodMetadata`
 (C-12 / G-API-3), a contract-declared policy gating a live request, CORS
 preflight, the HTTP methods an endpoint may declare, declared response headers,
-the readme's own Quick start, the resource-key socket endpoint, and the
+the readme's own Quick start, the resource-key socket endpoint, a `GET`
+request run as read-only work for read-replica routing while a `POST` — and a
+`GET` with `TomReplicaRouting.routeSafeRequests` off — is not, and the
 healthcheck module's `GET /health` route — which is mounted here rather than by
 that module, and so is asserted here.
 
@@ -1624,7 +1645,7 @@ record — checking each answer; `test/examples_test.dart` runs it too.
 | `tom_core_kernel` | package | 8 of 9 files | `tomReflector` and the mirror types (annotation discovery, parameter binding, result conversion), `TomHttpMethod`, `TomMimeType`, `TomHeader`, `TomPrincipal`, `TomClientJwtToken`, `TomAccessControl`, `TomResourceKeyProtection`, `TomComponent`, `TomBean`, `tomRemoteApis` / `TomApi` / `TomApiEndpoint`, `TomExecutionContext`, `TomTenantContext` (the tenant an idempotency key is scoped to), `tomLog` |
 | `web_socket_channel` | package | `endpoint_pipeline.dart`, `web_socket_endpoint.dart` | the handshake upgrade and the channel a socket handler talks through |
 | [audit](audit.md) | module | `endpoint_pipeline.dart` | `TomAuditAction`, `TomAuditOutcome`, `TomAuditTrail`, `TomAudited` |
-| [datasources](datasources.md) | module | `idempotency.dart`, `idempotency_sql.dart` | `TomFrameworkTable` / `TomFrameworkColumn` / `TomFrameworkKey` (the table's declaration), `TomDataSourceInfo` (the store's data source, resolved by name per call), `TomSchemaProvisioning`, `sqlInstant` / `parseSqlInstant` |
+| [datasources](datasources.md) | module | `endpoint_pipeline.dart`, `idempotency.dart`, `idempotency_sql.dart` | `TomReplicaRouting` (a `GET` or `HEAD` request runs as read-only work), `TomFrameworkTable` / `TomFrameworkColumn` / `TomFrameworkKey` (the table's declaration), `TomDataSourceInfo` (the store's data source, resolved by name per call), `TomSchemaProvisioning`, `sqlInstant` / `parseSqlInstant` |
 | [file_storage](file_storage.md) | module | `file_endpoint.dart` | `TomBlobRange`, `TomStorageException`, `TomStoredBlob` |
 | [little_things](little_things.md) | module | 7 of 9 files | `TomServerException`, `TomRequestId`, `tomErrorEnvelope` |
 | [object_persistence](object_persistence.md) | module | `file_endpoint.dart`, `idempotency.dart` | `TomAnnotationAnalyzer`, `TomColumnAuthorizationException`, `TomColumnInformation`, `TomDataScopeAuthorizationException`, `TomDbTable`, `TomDbColumn` (on `TomIdempotencyRow`), `TomFileReference` |

@@ -367,6 +367,37 @@ void main() {
       expect(body['app'], 'fixture');
     });
 
+    group('a safe request is read-only work', () {
+      Future<bool> readOnly(String method) async {
+        final response = await router.call(
+          Request(
+            method,
+            Uri.parse('http://localhost/fixture/replica_context'),
+            context: {TomRequestLogInfo.contextName: TomRequestLogInfo()},
+          ),
+        );
+        expect(response.statusCode, 200);
+        return jsonDecode(await response.readAsString())['readOnly'] as bool;
+      }
+
+      test(
+        'GET runs as read-only work, so a replica may serve its reads',
+        () async {
+          expect(await readOnly('GET'), isTrue);
+        },
+      );
+
+      test('POST does not', () async {
+        expect(await readOnly('POST'), isFalse);
+      });
+
+      test('routeSafeRequests off: GET runs on the primary too', () async {
+        TomReplicaRouting.routeSafeRequests = false;
+        addTearDown(() => TomReplicaRouting.routeSafeRequests = true);
+        expect(await readOnly('GET'), isFalse);
+      });
+    });
+
     test(
       'GET /fixture/unguarded is reachable under the default (open) policy',
       () async {

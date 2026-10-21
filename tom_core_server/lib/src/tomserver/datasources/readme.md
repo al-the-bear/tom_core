@@ -20,12 +20,13 @@ one convention. `MariaDbDatasource` and `PostgresDatasource` supply the wire;
 | Type | Responsibility |
 | ---- | -------------- |
 | `TomDataSource` | Abstract datasource contract (a `TomTransactionParticipant`); `TomDatasourceDriver` / `TomDataSourceInfo` describe a driver. |
-| `TomSqlDatasource` · `TomSqlPreparedStatement<T>` | The driver-neutral SQL data source: settable `host`/`port`/`username`/`password`/`databaseName`/`timeOut` and the `pool…` settings, then `connect()`. Concurrent transactions run side by side, each on a pooled connection of its own (`TomSqlBranch`); a statement lost with its connection is retried once outside a transaction (`TomSqlConnectionLostException`). Failures are `TomSqlDatasourceException`s. |
+| `TomSqlDatasource` · `TomSqlPreparedStatement<T>` | The driver-neutral SQL data source: settable `host`/`port`/`username`/`password`/`databaseName`/`timeOut`, the `pool…` settings and the read-replica settings (`replicas`, `replicaStickinessMs`, `replicaRetryMs`), then `connect()`. Concurrent transactions run side by side, each on a pooled connection of its own (`TomSqlBranch`); a statement lost with its connection is retried once outside a transaction (`TomSqlConnectionLostException`). Failures are `TomSqlDatasourceException`s. |
 | `TomSqlRow` · `TomSqlResult` · `TomSqlResultValues` · `TomSqlLink` | What a driver hands the shared mapper: a result whose every column reads as text in one convention, and the pooled connection it ran on. `tomSqlBindValue` / `tomSqlBindParams` marshal bind values the same way for every driver; `tomSqlBranchId` names a two-phase branch. |
 | `MariaDbDatasource` | MariaDB/MySQL driver (`"mariadb"`); `withDriverConnection` hands a body the `mysql_client` connection a statement would use. |
 | `PostgresDatasource` · `PostgresSqlDialect` | PostgreSQL 15+ driver (`"postgresql"`) and its dialect: `schema` (the `search_path`) and `sslMode` settings, sessions in UTC, `$n` placeholders, generated keys read back through `RETURNING`. `PostgresXADatasource` (`"postgresql_xa"`) is the two-phase variant over `PREPARE TRANSACTION`. Failures are `PostgresDatasourceException` / `PostgresConnectionLostException`. |
 | `TomConnectionPool<C>` · `TomConnectionPoolSettings` · `TomConnectionFactory<C>` | The driver-neutral bounded pool: lends a connection per caller up to `maxSize`, makes callers wait in line up to `acquireTimeout`, and retires idle and old connections lazily, on use. `TomConnectionPoolException` reports a closed pool, a wait that timed out, or unusable settings. |
 | `MariaDbXADatasource` | XA (two-phase-commit) variant of the MariaDB driver. |
+| `TomReplicaRouting` · `TomPrimaryReads` | Read replicas (`read_replicas.dart`). A `TomSqlDatasource` with `replicas` — one settings map per replica, each overriding the primary's settings — lets a replica serve a statement only when it is read-only work (a read-only transaction, a `GET`/`HEAD` request, a `TomReplicaRouting.readOnly` block), a repository read of an entity not marked `@TomPrimaryReads`, a read (`isReadStatement`), and the principal has not written within `replicaStickinessMs`; `TomReplicaRouting.primary` forces the primary. Replicas are used round-robin, a read-only transaction stays on one, and a replica that fails before serving is left out for `replicaRetryMs` while the primary serves. |
 | `TomPreparedStatement<T>` · `TomStatementOutcome<T>` | A compiled statement shared by every request that runs it; `run` returns what that one execution reported — rows, affected-row count, generated key — rather than leaving it on the shared handle, where an overlapping execution would overwrite it. |
 | `TomStandardSqlDialect` · `MariadbSqlDialect` | Render queries and types into SQL, and the framework's canonical DDL — MariaDB's spelling — and conflicting writes (`insertInto`, `replaceInto`, `incrementCounter`, `returningKey`) into each database's own words. |
 | `TomSelect` · `TomCount` · `TomDelete` · `TomLiteralSelect` | Typed generated queries. |
@@ -113,9 +114,14 @@ parameters, the instant encoding, the clause builders, the classification of a
 failed write and the walk over an expression tree. Those are pure functions over their arguments, so unlike the
 snippet above the example runs green as it stands; the drivers and the registry
 are the part that needs a server, and the example says so rather than
-pretending otherwise. `test/datasources_test.dart` covers the module and also
+pretending otherwise. `example/datasources/read_replicas_example.dart` shows
+the replica routing rules, the pinned entities and the replica settings, also
+without a server. `test/datasources_test.dart` covers the module and also
 runs the example, requiring it to print every numbered step and no others;
 `test/connection_pool_test.dart` covers the pool over a fake factory and clock;
+`test/read_replicas_test.dart` covers the replica routing rules that need no
+server, and `test/read_replicas_db_test.dart` the routing against a primary and
+a replica that hold different rows;
 `test/mariadb_row_mapping_test.dart` covers the row mapper's five shapes, its
 refusal of an unreflected result type and the text spellings its numeric readers
 decide on, over a result set that carries what the protocol carries and hands

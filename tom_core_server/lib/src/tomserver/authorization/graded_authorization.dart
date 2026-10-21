@@ -20,6 +20,7 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../datasources/types_operator.dart';
 import '../object_persistence/persistence_annotations.dart';
+import '../datasources/read_replicas.dart';
 
 /// Round-trips a [TomAuthState] to and from the string value stored in a
 /// database column (and bridges the legacy binary granted/denied model).
@@ -93,6 +94,9 @@ class TomAuthStateCodec {
 /// [1]-create_tom_resource_grants.sql`, applied through the `db_migration`
 /// module.
 @tomReflector
+// Read from the primary: a change here — a revocation above all — must
+// take effect at once, not after a replica's lag.
+@TomPrimaryReads()
 @TomDbTable(
   datasource: 'main',
   table: 'tom_resource_grant',

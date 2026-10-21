@@ -40,18 +40,18 @@ row scope.
 | `TomAuthorizationCacheStoreMessage` | class | Cross-isolate command: store a principal in the main isolate |
 | `TomAuthorizationCacheRetrieveMessage` | class | Cross-isolate command: read a principal from the main isolate |
 | `TomAuthorizationCacheExecutor` | class | Services the two messages in the main isolate |
-| `TomPrincipalResourceGrant` | class | One `(principalId, resourceKey, role)` row — the role a principal holds on a resource (C-5) |
+| `TomPrincipalResourceGrant` | class | One `(principalId, resourceKey, role)` row — the role a principal holds on a resource (C-5); read from the primary, never a read replica (`@TomPrimaryReads`) |
 | `PrincipalResourceGrantStore` | abstract class | The read seam over those rows (repository-backed at boot, in-memory under test) |
 | `RepositoryPrincipalResourceGrantStore` | class | The seam wired at boot: reads a principal's grant rows through a repository over the `main` datasource |
 | `InMemoryPrincipalResourceGrantStore` | class | The seam under test: seeded rows filtered by principal, with no connection and no reflection |
 | `TomPrincipalResourceRoleResolver` | class | Folds a principal's grants into a `resourceKey → role` map, strongest role winning |
 | `TomDelegationMode` | enum | The three ways roles are lent — `share`, `absence`, `intentional` |
-| `TomPrincipalDelegation` | class | One delegation row: A lends roles to B in `share` / `absence` / `intentional` mode (C-6) |
+| `TomPrincipalDelegation` | class | One delegation row: A lends roles to B in `share` / `absence` / `intentional` mode (C-6); read from the primary, never a read replica (`@TomPrimaryReads`) |
 | `PrincipalDelegationStore` | abstract class | The read seam over the delegations targeting one delegate and in force at one instant |
 | `RepositoryPrincipalDelegationStore` | class | The seam wired at boot: pushes the delegate, the `revoked` flag and both window bounds into one query |
 | `InMemoryPrincipalDelegationStore` | class | The seam under test: seeded rows under the same delegate and window filters, so a test sees what the database would return |
 | `TomDelegationResolver` | class | Resolves *effective* roles — direct grants folded with the delegations active now |
-| `TomResourceGrant` | class | Grades a `(role, resourceKey)` pair with a `TomAuthState` |
+| `TomResourceGrant` | class | Grades a `(role, resourceKey)` pair with a `TomAuthState`; read from the primary, never a read replica (`@TomPrimaryReads`) |
 | `TomAuthStateCodec` | class | Round-trips a `TomAuthState` to and from its stored column value |
 | `TomGradedAccessControlInformation` | class | The graded view of a principal's keys, with the legacy binary list as fallback |
 | `TomResourceDataScope` | class | Installs the grant-driven `resource` row scope over a `TomDelegationResolver` |
@@ -611,7 +611,7 @@ whole of what the scope contributes.
 | ---------- | ---- | ----------- | --- |
 | `dart:async` | dart | `authorization_cache.dart`, `resource_data_scope.dart` | `Future`, `Timer`, `Zone` |
 | `tom_core_kernel` | package | every file | `TomPrincipal`, `TomClientJwtToken`, `TomWorker`, `TomExecutor`, `TomException`, `TomAuthState`, `TomResourceRoleRegistry`, `TomAccessControlInformation`, `tomReflector`, and the logging helpers |
-| [datasources](datasources.md) | module | `graded_authorization.dart` | `TomDbType` and `TomDbString`, which the access-level codec converts between and its column declares as `columnType:` |
+| [datasources](datasources.md) | module | `graded_authorization.dart`, `principal_delegation.dart`, `principal_resource_grant.dart` | `TomDbType` and `TomDbString`, which the access-level codec converts between and its column declares as `columnType:`; `TomPrimaryReads`, which keeps the reads of grants and delegations on the primary |
 | [little_things](little_things.md) | module | `authorization_cache.dart` | `TomServerException` |
 | [object_persistence](object_persistence.md) | module | `graded_authorization.dart`, `principal_delegation.dart`, `principal_resource_grant.dart`, `resource_data_scope.dart` | the mapping annotations (including `@TomDbScope`), `TomSqlDatasourceRepository` for the record stores, and the `TomResourceScopeSource` hook / `TomDataScope.runUnscoped` bypass the row scope plugs into |
 | [privacy](privacy.md) | module | `principal_delegation.dart`, `principal_resource_grant.dart` | `TomDataSubject`, which declares the principal columns of `TomPrincipalResourceGrant` and `TomPrincipalDelegation` to erasure and export |

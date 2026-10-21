@@ -190,6 +190,11 @@ class PostgresDatasource extends TomSqlDatasource {
   /// so a deployment that has not thought about it still encrypts.
   String sslMode = "require";
 
+  /// A replica of this data source is a plain PostgresDatasource — one-phase even
+  /// behind an XA primary, since a replica only ever serves reads.
+  @override
+  TomSqlDatasource newReplica() => PostgresDatasource();
+
   @override
   String get driverLabel => "PostgresDatasource";
 

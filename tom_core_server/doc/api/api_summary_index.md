@@ -15,7 +15,7 @@ surface documented here.
 | Cache | [api_summary_cache.md](api_summary_cache.md) | Isolate-backed server cache, its command messages, cross-node invalidation and item-authorization answers. |
 | Command Line | [api_summary_cmdline.md](api_summary_cmdline.md) | CLI argument parsing (`TomArgs`) and `.env` file loading (`TomEnvFile`). |
 | Configuration | [api_summary_configuration.md](api_summary_configuration.md) | Server config provider, typed config values, YAML resources, and secret references resolved from a secret store. |
-| Datasources | [api_summary_datasources.md](api_summary_datasources.md) | DB type system, SQL dialects, queries, MariaDB datasource/prepared statements. |
+| Datasources | [api_summary_datasources.md](api_summary_datasources.md) | DB type system, SQL dialects, queries, MariaDB datasource/prepared statements, read replicas. |
 | Database Migration | [api_summary_db_migration.md](api_summary_db_migration.md) | Migration runner, versioning, the record of the last run readiness reads, and the MariaDB migration adaptor. |
 | Endpoints | [api_summary_endpoints.md](api_summary_endpoints.md) | Service/endpoint annotations, routing, handler pipeline, error handling, and the three transports over it: HTML form bodies, redirects and WebSockets — plus the HTTP surface of file columns, and idempotency keys that answer a retried request with the first one's response. |
 | Export | [api_summary_export.md](api_summary_export.md) | Tabular results rendered to CSV, XLSX or PDF, and stored for later retrieval. |
@@ -372,6 +372,8 @@ surface documented here.
 | `TomConnectionPool<C>` | class | A bounded pool of connections of any driver's type; a connection per transaction. |
 | `TomConnectionPoolSettings` | class | How a pool sizes itself and when it retires a connection. |
 | `TomConnectionFactory<C>` | abstract interface class | What a driver tells the pool about its connection type: open, close, check, validate. |
+| `TomReplicaRouting` | abstract final class | The read-replica routing rules: read-only work, read statements, repository reads, and the blocks that mark or override them. |
+| `TomPrimaryReads` | class | Annotation pinning an entity's reads to the primary, never a read replica. |
 | `SqlPlaceholderScan` | class | SQL placeholder scanner. |
 | `TomSqlLexer` | class | The package's one quote/comment scanner and statement splitter. |
 | `TomFrameworkTable` | class | The single declaration of a table the framework itself owns. |
@@ -1465,6 +1467,7 @@ surface documented here.
 | `TomPersonalDataModel` | Privacy |
 | `TomPersonalField` | Privacy |
 | `TomPreparedStatement` | Datasources |
+| `TomPrimaryReads` | Datasources |
 | `TomPrincipalDelegation` | Authorization |
 | `TomPrincipalFlag2FAPolicy` | Authentication |
 | `TomPrincipalResourceGrant` | Authorization |
@@ -1501,6 +1504,7 @@ surface documented here.
 | `tomReencryptionJobName` | Object Persistence |
 | `TomReencryptionReport` | Object Persistence |
 | `TomReference` | Object Persistence |
+| `TomReplicaRouting` | Datasources |
 | `TomRepository` | Object Persistence |
 | `TomRepositoryException` | Object Persistence |
 | `tomRequestContextMiddleware` | Server |

@@ -50,9 +50,13 @@ import '../object_persistence/persistence_annotations.dart';
 import 'oauth_flow.dart';
 import 'oauth_provider.dart';
 import 'oauth_tokens.dart';
+import '../datasources/read_replicas.dart';
 
 /// One external identity bound to one local account.
 @tomReflector
+// Read from the primary: a change here — a revocation above all — must
+// take effect at once, not after a replica's lag.
+@TomPrimaryReads()
 @TomDbTable(
   datasource: 'main',
   table: 'tom_external_identity',

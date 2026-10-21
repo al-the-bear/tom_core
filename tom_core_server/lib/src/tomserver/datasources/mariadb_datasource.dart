@@ -181,6 +181,11 @@ class MariaDbDatasource extends TomSqlDatasource {
   @override
   TomStandardSqlDialect get sqlDialect => _sqlDialect;
 
+  /// A replica of this data source is a plain MariaDbDatasource — one-phase even
+  /// behind an XA primary, since a replica only ever serves reads.
+  @override
+  TomSqlDatasource newReplica() => MariaDbDatasource();
+
   @override
   String get driverLabel => "MariadbDatasource";
 
