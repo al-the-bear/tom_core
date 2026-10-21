@@ -16,7 +16,7 @@ surface documented here.
 | Command Line | [api_summary_cmdline.md](api_summary_cmdline.md) | CLI argument parsing (`TomArgs`) and `.env` file loading (`TomEnvFile`). |
 | Configuration | [api_summary_configuration.md](api_summary_configuration.md) | Server config provider, typed config values, YAML resources, and secret references resolved from a secret store. |
 | Datasources | [api_summary_datasources.md](api_summary_datasources.md) | DB type system, SQL dialects, queries, MariaDB datasource/prepared statements, read replicas. |
-| Database Migration | [api_summary_db_migration.md](api_summary_db_migration.md) | Migration runner, versioning, the record of the last run readiness reads, and the MariaDB migration adaptor. |
+| Database Migration | [api_summary_db_migration.md](api_summary_db_migration.md) | Migration runner, versioning, rollback with down scripts, the record of the last run readiness reads, and the MariaDB and PostgreSQL migration adaptors. |
 | Endpoints | [api_summary_endpoints.md](api_summary_endpoints.md) | Service/endpoint annotations, routing, handler pipeline, error handling, and the three transports over it: HTML form bodies, redirects and WebSockets — plus the HTTP surface of file columns, and idempotency keys that answer a retried request with the first one's response. |
 | Export | [api_summary_export.md](api_summary_export.md) | Tabular results rendered to CSV, XLSX or PDF, and stored for later retrieval. |
 | File Storage | [api_summary_file_storage.md](api_summary_file_storage.md) | Streaming blob storage: one put/get contract over memory, directory, database and S3 backends. |
@@ -412,12 +412,13 @@ surface documented here.
 
 | Type | Kind | Description |
 | ---- | ---- | ----------- |
-| `TomDbMigrations` | class | Migration runner/registry; the migration lock by data-source name, and the repair of a failed migration from code or the command line. |
-| `TomDbMigrator` | abstract class | Migrator contract, including the migration lock and the repair of a failed record. |
-| `TomDbMigrationAdaptor` | class | Annotation tagging a migration adaptor. |
-| `TomSqlMigrationAdaptor` | abstract class | The database-neutral SQL migrator: versioning history, checksums, rebinding, the migration lock and repair. |
-| `MariadbMigrationAdaptor` | class | MariaDB migration adaptor. |
-| `PostgresMigrationAdaptor` | class | PostgreSQL migration adaptor; a script and its version row in one transaction. |
+| `TomDbMigrations` | class | Migration runner/registry; the migration lock by data-source name, the repair of a failed migration and the rollback of applied ones, from code or the command line. |
+| `TomDbMigrator` | abstract class | Migrator contract, including the migration lock, the repair of a failed record and the rollback. |
+| `TomDbMigrationAdaptor` | class | Annotation tagging a migration adaptor with the data-source types it serves. |
+| `TomMigrationScript` | class | One migration's up and down scripts, as a rollback reads them. |
+| `TomSqlMigrationAdaptor` | abstract class | The database-neutral SQL migrator: versioning history, checksums, rebinding, the migration lock, repair and rollback. |
+| `MariadbMigrationAdaptor` | class | MariaDB migration adaptor (`mariadb`, `mariadb_xa`). |
+| `PostgresMigrationAdaptor` | class | PostgreSQL migration adaptor (`postgresql`, `postgresql_xa`); a script and its version row in one transaction. |
 | `TomMigrationFileName` | class | Parses/validates migration file names. |
 | `TomDbVersion` | class | A schema version. |
 | `TomMigrationRun` | class | The process's most recent `migrateDatabases` call (`TomDbMigrations.lastRun`). |
@@ -1448,6 +1449,7 @@ surface documented here.
 | `TomMigrationRepair` | Database Migration |
 | `TomMigrationRun` | Database Migration |
 | `TomMigrationRunState` | Database Migration |
+| `TomMigrationScript` | Database Migration |
 | `TomMimeEncoder` | Messaging |
 | `tomMimeLineEnding` | Messaging |
 | `tomMimeMaxLineLength` | Messaging |

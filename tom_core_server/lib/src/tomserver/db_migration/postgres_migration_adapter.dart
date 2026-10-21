@@ -37,7 +37,7 @@ class PostgresMigrationException extends TomSqlMigrationException {
 /// Such a script fails with the server's own message naming the statement; it
 /// belongs in a separate, single-statement operation outside the migration
 /// chain.
-@TomDbMigrationAdaptor("postgresql")
+@TomDbMigrationAdaptor("postgresql", alsoServes: ["postgresql_xa"])
 @tomReflector
 class PostgresMigrationAdaptor extends TomSqlMigrationAdaptor {
   @override
@@ -115,6 +115,37 @@ CREATE TABLE IF NOT EXISTS ${schemaName}_versioning (
         "$applyKeyPrefix.apply_migration.failed",
         "Failed to apply migration $version, $description — rolled back, "
             "nothing was applied: $error",
+        autoLog: true,
+        rootException: error,
+      );
+    }
+  }
+
+  /// The down script and the deletion of the record run in one transaction,
+  /// so a failed down script leaves the migration applied and recorded.
+  @override
+  Future<void> revertScript(
+    TomDataSourceInfo dsi,
+    String schemaName,
+    int version,
+    String description,
+    String downSql,
+  ) async {
+    try {
+      await TomTransactionManager.runInTransaction((_) async {
+        for (final statement in TomSqlLexer.splitStatements(
+          downSql,
+          backslashEscapes: false,
+        )) {
+          await dsi.datasource.executeCommand(statement);
+        }
+        await forgetMigration(dsi, schemaName, version);
+      });
+    } catch (error) {
+      throw migrationException(
+        "$applyKeyPrefix.rollback_migration.failed",
+        "Failed to roll back migration $version, $description — rolled "
+            "back, nothing was undone: $error",
         autoLog: true,
         rootException: error,
       );

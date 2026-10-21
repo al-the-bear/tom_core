@@ -316,6 +316,15 @@ Future<void> main(List<String> args) async {
     tomLog.info('Migration repaired, exiting.');
     exit(0);
   }
+  // Likewise a rollback (`--rollback-migrations=<datasource>/<schema>/
+  // <version>`), with the down scripts beside the migrations.
+  if (await TomDbMigrations.rollbackFromArgs(
+    args,
+    configuration.databaseMigrationsDirectory,
+  )) {
+    tomLog.info('Migrations rolled back, exiting.');
+    exit(0);
+  }
 
   // The ops server owns `[100]` and up of the `app_db/app_schema` chain (the
   // framework tables the scheduler, the leases and the trail need). Running the migration

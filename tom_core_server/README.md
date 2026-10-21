@@ -32,7 +32,7 @@ observable state, security, resources) and adds everything a service needs:
   read-only work, with read-your-writes for the principal who just wrote;
 - **versioned schema migrations** — one run per database at a time under a
   migration lock the database releases when the process dies, a repair command
-  for a failed migration, and a convergence check that the entities, the
+  for a failed migration, a rollback with down scripts, and a convergence check that the entities, the
   migration chain and the live database still agree — **local/XA
   transaction** coordination, and **sagas** for work across services, each
   step a local transaction undone by its compensation when a later step fails;
@@ -142,7 +142,8 @@ added.
 | ---- | -------------- |
 | `TomDbMigrator` / `TomDbMigrations` / `TomDbVersion` | Versioned schema migrations, run under a per-database migration lock so replicas starting together apply each script once |
 | `TomMigrationRepair` / `TomDbMigrations.repair` / `TomDbMigrations.repairFromArgs` | Resolving a migration recorded as failed — removed to be applied again, or marked resolved — from code or with `--repair-migration` / `--repair-action` |
-| `MariadbMigrationAdaptor` / `PostgresMigrationAdaptor` | The MariaDB and PostgreSQL migrators — on PostgreSQL a script and its version row run as one transaction |
+| `TomDbMigrations.rollback` / `TomDbMigrations.rollbackFromArgs` / `TomMigrationScript` | Undoing the migrations applied above a version with the down scripts beside them (`[3]-add_column.down.sql`), newest first — from code or with `--rollback-migrations` |
+| `MariadbMigrationAdaptor` / `PostgresMigrationAdaptor` | The MariaDB and PostgreSQL migrators, each serving the plain and the two-phase (`_xa`) data-source type — on PostgreSQL a script and its version row run as one transaction |
 | `TomSchemaConvergenceCheck` / `TomSchemaModel` / `TomEntitySchemaReader` / `TomSchemaDivergence` | Checks that the entities, the migrations and the live database still describe the same schema, and names each divergence |
 | `TomTransactionManager` / `TomTransaction` / `TomTransactionParticipant` | Local and two-phase transaction coordination (XA on MariaDB, prepared transactions on PostgreSQL) |
 | `TomSagaOrchestrator` / `TomSaga` / `TomSagaStep` / `TomSqlSagaStore` | Sagas: work across services run step by step, each step a local transaction with the saga's move guarded by its version, the steps already done compensated last first when a step fails for good — on the kernel's job scheduler, kept in `tom_saga`, resumed after a restart in every tenant |
@@ -231,7 +232,7 @@ there, or excluded with a stated reason.
 | [`example/endpoints/`](example/endpoints/) | Declaring routed endpoints; `idempotency_example.dart` sends a request, its retry, a reused key and another caller's key through the idempotency-key handling |
 | [`example/object_persistence/`](example/object_persistence/) | Repositories, annotations, query builder; `entity_lifecycle_example.dart` shows soft delete, history tables, the listener registry and a change event as JSON; `subquery_example.dart` builds `EXISTS`, `NOT EXISTS` and `IN (SELECT …)` |
 | [`example/datasources/`](example/datasources/) | SQL-typed values and dialect rendering; `read_replicas_example.dart` shows which statements a read replica may serve, read-only work, the entities pinned to the primary and the replica settings |
-| [`example/db_migration/`](example/db_migration/) | Versioned schema migrations; `db_migration_repair_example.dart` shows the migration lock's name and wait and refuses malformed repair requests |
+| [`example/db_migration/`](example/db_migration/) | Versioned schema migrations; `db_migration_repair_example.dart` shows the migration lock's name and wait, down-script naming, and refuses malformed repair and rollback requests |
 | [`example/transactions/`](example/transactions/) | Local/XA transaction coordination; `saga_example.dart` runs sagas — steps in order, compensation last first, a failed compensation and a saga resumed after a restart |
 | [`example/configuration/`](example/configuration/) | Typed config + YAML resources; `secrets_example.dart` walks secret references — precedence, an unloaded reference refused, rotation and a third-party provider |
 | [`example/cache/`](example/cache/) | Isolate-backed cache |

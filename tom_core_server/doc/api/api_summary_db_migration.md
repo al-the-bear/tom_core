@@ -6,7 +6,9 @@ walks it and applies each script through a database-specific migrator
 (`TomDbMigrator`), which records what it applied so re-runs are idempotent and
 edits to past migrations are detected. Two SQL implementations are provided,
 both on one database-neutral base (`TomSqlMigrationAdaptor`): MariaDB
-(`MariadbMigrationAdaptor`) and PostgreSQL (`PostgresMigrationAdaptor`).
+(`MariadbMigrationAdaptor`, for `mariadb` and `mariadb_xa`) and PostgreSQL
+(`PostgresMigrationAdaptor`, for `postgresql` and `postgresql_xa`). A migration
+with a down script beside it can be rolled back.
 
 ## Table of Contents
 
@@ -17,6 +19,7 @@ both on one database-neutral base (`TomSqlMigrationAdaptor`): MariaDB
   - [TomDbMigrations](#tomdbmigrations)
   - [TomDbMigrator](#tomdbmigrator)
   - [TomDbMigrationAdaptor](#tomdbmigrationadaptor)
+  - [TomMigrationScript](#tommigrationscript)
   - [TomMigrationFileName](#tommigrationfilename)
   - [TomSqlMigrationAdaptor](#tomsqlmigrationadaptor)
   - [MariadbMigrationAdaptor](#mariadbmigrationadaptor)
@@ -76,22 +79,31 @@ adaptors take it as a session lock (`TomSqlDatasource.withSessionLock`).
 per-tenant walk. A migration recorded as failed is resolved with
 `TomDbMigrations.repair` and a `TomMigrationRepair` — removed, so the next run
 applies it again, or marked resolved, so the next run skips it — or from a start
-script's command line with `repairFromArgs`.
+script's command line with `repairFromArgs`. A migration with a **down script**
+beside it — `[3]-add_column.down.sql` for `[3]-add_column.sql` — can be undone:
+`TomDbMigrations.rollback` undoes the migrations applied above a version, newest
+first, under the same lock, and `rollbackFromArgs` does it from a start
+script's command line (`--rollback-migrations=<datasource>/<schema>/<version>`).
+`collectMigrationFiles` never yields a down script, so the forward run and the
+convergence check do not see them; `collectDownMigrationFiles` collects them.
 `TomDbMigrator` is the per-database migrator contract (`initializeMigration` /
-`applyMigration` / `reset`), and a migrator serves **one `(data source, schema)`
+`applyMigration` / `reset`, `withMigrationLock` / `repair` / `rollback`), and a migrator serves **one `(data source, schema)`
 pair at a time** — the orchestrator resets and re-initialises it once per schema,
 because each schema keeps its own applied-version history. A migration file
 name is parsed into a `TomMigrationFileName` (version, description, optional
-environment tag). `TomSqlMigrationAdaptor` is everything a SQL migrator does
+environment tag). One migration's scripts, as a rollback reads them from the
+tree, are a `TomMigrationScript`. `TomSqlMigrationAdaptor` is everything a SQL migrator does
 that does not depend on the database: it maintains a `<schema>_versioning`
 table whose rows are `TomDbVersion` records, verifies description/checksum
 stability of already-applied versions, and refuses a schema whose history
-records a failed script. The two adaptors differ in how a script runs.
+records a failed script. The two adaptors differ in how a script — up or
+down — runs.
 `MariadbMigrationAdaptor` runs it statement by statement and records a failure
 (`success = 0`), because MariaDB does not roll DDL back;
 `PostgresMigrationAdaptor` runs the script and its version row in one
-transaction, so a failure is rolled back completely and nothing is recorded. The
-checksum is a content digest (`TomSqlMigrationAdaptor.checksumOf`), because it
+transaction, so a failure is rolled back completely and nothing is recorded; a
+down script and the deletion of its record are one transaction the same way.
+The checksum is a content digest (`TomSqlMigrationAdaptor.checksumOf`), because it
 is written by one process and read back by every later one; a stored value that
 is not such a digest (`isWellFormedChecksum`) is reported as unreadable rather
 than as an edit.
@@ -121,7 +133,8 @@ files is synchronous throughout: `checkAll`, `checkSchema`, `readChain`,
 `verify`, `replay`, `verifyChain` and `verifyRowTypes` all return their result
 directly, and refuse directly. Only `migrateDatabases`, `migrateDataSource`,
 `applyMigration`, `initializeMigration`, `verifyLive`, `withMigrationLock`,
-`repair` and `repairFromArgs` are asynchronous.
+`repair`, `repairFromArgs`, `rollback`, `rollbackDataSource` and
+`rollbackFromArgs` are asynchronous.
 
 ## Class Hierarchy
 
@@ -135,6 +148,7 @@ TomDbMigrations
     └── lastRun: TomMigrationRun  (state: TomMigrationRunState enum)
 TomMigrationRepair  (enum — the action of TomDbMigrator.repair)
 TomDbMigrationAdaptor  (annotation)
+TomMigrationScript     (one migration's up and down scripts, for a rollback)
 TomMigrationFileName
 TomDbVersion
 
@@ -197,6 +211,8 @@ schemas.
 | -------- | ---- | ----------- |
 | `repairMigrationOption` | `static const String` | `repair-migration`: the command-line option naming the record to repair, `--repair-migration=<datasource>/<schema>/<version>`. |
 | `repairActionOption` | `static const String` | `repair-action`: the command-line option choosing the repair, `--repair-action=remove` or `--repair-action=resolve`. |
+| `rollbackMigrationsOption` | `static const String` | `rollback-migrations`: the command-line option asking for a rollback, `--rollback-migrations=<datasource>/<schema>/<version>`, keeping the migrations up to `<version>` (`-1` for none). |
+| `downSuffix` | `static const String` | `.down`: the suffix that marks a down script — `[3]-add_column.down.sql` undoes `[3]-add_column.sql`, `[3]-x@dev.down.sql` undoes `[3]-x@dev.sql`. |
 | `lastRun` | `static TomMigrationRun get` | The state of this process's most recent `migrateDatabases` call — `notRun` until one is made. The fact the framework readiness check reads: a server whose migrations are still running, or failed, is not ready for traffic. Process-wide: in a per-tenant loop it describes the most recent tenant's call. |
 
 #### Static Methods
@@ -204,7 +220,9 @@ schemas.
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `requireMigrationsDirectory` | `static void requireMigrationsDirectory(Directory directory, String role)` | Asserts that `directory` — playing the role named by `role` — exists, throwing `db_migration.migration.migrations_directory_not_found` if it does not. A tree a tool is told to walk is an input, not content: absent, it means the configured path is wrong, and tolerating it makes both tools succeed vacuously (the engine reports migrations complete against an untouched database; `TomSchemaConvergenceCheck.checkAll` returns an empty report list no call site can tell apart from "every pair converged"). A relative path is reported with what it resolved to as well, since its usual cause is the right path read from the wrong working directory; an absolute one is not repeated. Shared with the convergence check so the two entry points cannot disagree about whether an absent tree is a failure. |
-| `collectMigrationFiles` | `static Map<String, File> collectMigrationFiles(Iterable<FileSystemEntity> entries)` | Collects the files among `entries` keyed by basename without extension — the key everything downstream identifies a migration by — skipping non-file entries and the ones `isNotAMigrationFile` recognises. Two files whose basenames collide (`[3]-add_index.sql` and `[3]-add_index.ddl`, or a stray `[3]-add_index.orig`) throw `db_migration.migration.duplicate_migration_basename` naming both paths in a stable order. Keeping whichever the directory listing yielded last was not a tie-break but a silent coin toss, and an editor backup ending in `.orig` strips to the same key as the `.sql` it backed up — so the losing file could be the one meant to run. Shared with `TomSchemaConvergenceCheck.readChain`, so the check cannot accept a tree the engine refuses. |
+| `collectMigrationFiles` | `static Map<String, File> collectMigrationFiles(Iterable<FileSystemEntity> entries)` | Collects the files among `entries` keyed by basename without extension — the key everything downstream identifies a migration by — skipping non-file entries, the ones `isNotAMigrationFile` recognises and down scripts (`isDownMigration`). Two files whose basenames collide (`[3]-add_index.sql` and `[3]-add_index.ddl`, or a stray `[3]-add_index.orig`) throw `db_migration.migration.duplicate_migration_basename` naming both paths in a stable order. Keeping whichever the directory listing yielded last was not a tie-break but a silent coin toss, and an editor backup ending in `.orig` strips to the same key as the `.sql` it backed up — so the losing file could be the one meant to run. Shared with `TomSchemaConvergenceCheck.readChain`, so the check cannot accept a tree the engine refuses. |
+| `isDownMigration` | `static bool isDownMigration(String basename)` | Whether `basename` (without its extension) names a down script — ends in `downSuffix`. `collectMigrationFiles` skips such names, so neither the forward run nor the convergence check sees a down script. |
+| `collectDownMigrationFiles` | `static Map<String, File> collectDownMigrationFiles(Iterable<FileSystemEntity> entries)` | The down scripts among `entries`, keyed by the basename of the migration each undoes (`[3]-add_column` for `[3]-add_column.down.sql`), skipping non-file entries and what `isNotAMigrationFile` recognises. Two down scripts for one migration (`[3]-x.down.sql` and `[3]-x.down.ddl`) throw `db_migration.migration.duplicate_migration_basename`, naming both paths in a stable order, as two up files do. |
 | `isNotAMigrationFile` | `static bool isNotAMigrationFile(String name)` | Whether a file's basename (with extension) is one a schema directory may hold without being a migration: a **dot-file** (`.DS_Store`, `.gitkeep`, an editor's swap file), or one of the fixed, case-insensitive list `readme.md` / `thumbs.db` / `desktop.ini`. Everything else is collected and so must parse — a mis-typed `[3]-add_index.sqll` and an editor's `[3]-add_index.orig` are both still reported, which an extension filter would have made invisible. The rule exists because the argument for refusing an unparseable name is about files a developer put there, and does not reach the ones an operating system or a file explorer writes without being asked, where the refusal is a startup failure whose fix is to delete a file the operator did not create. |
 | `parseMigrationFileName` | `static TomMigrationFileName parseMigrationFileName(String basename)` | Parses a migration file's basename (without extension) into version, description and optional environment tag; throws `TomDbMigrationException` on a malformed name. |
 | `orderMigrationNames` | `static List<({String basename, TomMigrationFileName parsed})> orderMigrationNames(Iterable<String> basenames)` | Parses `basenames` and returns them ordered by ascending numeric version, each paired with its parsed name. Two names claiming the **same version** throw `db_migration.migration.duplicate_migration_version`, naming both in a stable order. The version is the whole of a migration's recorded identity, so a pair sharing one applies twice on the first run — a migrator's applied-version list is an initialisation snapshot, so the second call cannot see the first — in an order the sort does not define, and leaves the versioning table holding two rows for one version; the next run matches the first of them against the other's script and reports a description/checksum mismatch, blaming an edit that never happened. Compared on the parsed integer, so `[1]` and `[001]` collide, and checked **before** environment selection, so a tagged and an untagged file cannot share a version either — a tag decides which of the pair runs *here*, not which row the shared history keeps, and a tree may not be valid on one box and broken on the next. Shared with `TomSchemaConvergenceCheck.readChain`, which has no environment to filter by at all. |
@@ -216,6 +234,9 @@ schemas.
 | `withMigrationLock` | `static Future<R> withMigrationLock<R>(String datasourceName, Future<R> Function() body)` | Runs `body` holding the migration lock of the registered data source `datasourceName` — see `TomDbMigrator.withMigrationLock`. For a run wider than one `migrateDatabases` call: a deployment migrating every tenant in turn holds it around the whole `forEachTenant` walk, so no other process migrates between two tenants. An unknown name or type throws `db_migration.migration.no_datasource_info_found` / `db_migration.migration.no_migrator_found_for_datasource_type`. |
 | `repair` | `static Future<void> repair(String datasourceName, String schemaName, int version, TomMigrationRepair action)` | Resolves the failed record of migration `version` in schema `schemaName` of the registered data source `datasourceName` by `action` — see `TomDbMigrator.repair`. Resolves the data source and its migrator as `migrateDatabases` does, with the same keys. |
 | `repairFromArgs` | `static Future<bool> repairFromArgs(List<String> args)` | Runs the repair `args` ask for — `--repair-migration=<datasource>/<schema>/<version>` with `--repair-action=remove` (`TomMigrationRepair.remove`) or `--repair-action=resolve` (`TomMigrationRepair.markResolved`) — and answers whether they asked for one. A start script calls it once its data sources are registered and exits on `true`. Without `repairMigrationOption` it does nothing and answers `false`. A target that is not three `/`-separated parts with a whole-number version, or a missing or unknown action, throws `db_migration.repair.invalid_arguments` before anything is looked up. |
+| `rollback` | `static Future<List<int>> rollback(String directory, {required String datasource, required String schema, required int toVersion})` | Undoes the migrations of `schema` of the registered data source `datasource` applied above `toVersion` — every one for `-1` — newest first by installation order, with the down scripts beside them in `<directory>/<datasource>/<schema>/`, under the migration lock, and answers the versions undone in the order they were. Resolves the data source and its migrator as `migrateDatabases` does, with the same keys; see `rollbackDataSource` for the rest. |
+| `rollbackDataSource` | `static Future<List<int>> rollbackDataSource(TomDbMigrator migrator, TomDataSourceInfo dsInfo, Directory dataSourceDirectory, String schema, {required int toVersion})` | `rollback` with a caller-supplied `migrator`, for the schema directory `schema` under `dataSourceDirectory`. A `toVersion` below `-1` throws `db_migration.rollback.invalid_target`; a missing schema directory `db_migration.migration.migrations_directory_not_found`. Reads every migration of the tree with its down script — whatever its environment tag, since a rollback undoes what the history records — into `TomMigrationScript`s keyed by version, then calls `migrator.rollback` under `migrator.withMigrationLock`, after a `reset()`. |
+| `rollbackFromArgs` | `static Future<bool> rollbackFromArgs(List<String> args, String directory)` | Runs the rollback `args` ask for — `--rollback-migrations=<datasource>/<schema>/<version>` — against the migration tree `directory`, logs the versions undone and answers whether they asked for one; the counterpart of `repairFromArgs`, called by a start script that exits on `true`. Without `rollbackMigrationsOption` it does nothing and answers `false`. A target that is not three `/`-separated parts with a non-empty data source and schema and a whole-number version throws `db_migration.rollback.invalid_arguments` before anything is looked up. |
 | `instantiateMigrator` | `static TomDbMigrator instantiateMigrator(Object? candidate, Object? Function() construct)` | Builds one scanned adaptor candidate, turning a throwing constructor or a class that does not implement `TomDbMigrator` into a `TomDbMigrationException` naming `candidate`. A constructor error and its trace are forwarded as the raised exception's **root cause**. Parameterised by `construct` rather than the reflected class, because the scan's registry is a global no test can populate. |
 
 ### TomDbMigrator
@@ -236,16 +257,21 @@ history.
 | `reset` | `void reset()` | Releases the current `(data source, schema)` binding and its applied-version state, so this instance can serve the next pair. |
 | `withMigrationLock` | `Future<R> withMigrationLock<R>(TomDataSourceInfo dsi, Future<R> Function() body)` | Runs `body` holding `dsi`'s migration lock: one migration run per database at a time, across every process that migrates it. Released when `body` returns or throws, and by the database when the process holding it dies. Re-entrant, so a caller may hold it around several runs and the runs inside take it without waiting for themselves. |
 | `repair` | `Future<void> repair(TomDataSourceInfo dsi, String schemaName, int version, TomMigrationRepair action)` | Resolves the failed record of migration `version` in `schemaName` — the record that makes `initializeMigration` refuse the schema — by `action`, under the migration lock. Changes the history only; never runs a script. The next run applies a `remove`d migration again and skips a `markResolved` one. |
+| `rollback` | `Future<List<int>> rollback(TomDataSourceInfo dsi, String schemaName, int toVersion, Map<int, TomMigrationScript> scripts)` | Undoes every migration of `schemaName` applied above `toVersion` — all of them for `-1` — newest first by installation order, with the down scripts of `scripts` (keyed by version), and answers the versions it undid in that order. Checked before anything runs: every migration to undo has a down script and is recorded with the description and the up script `scripts` holds. The caller holds the migration lock. |
 
 ### TomDbMigrationAdaptor
 
 Annotation marking a `TomDbMigrator` implementation as the migrator for a named
-data-source `type`. Migrators are discovered by scanning `tomReflector`.
+data-source `type`, and for every type in `alsoServes` — the two-phase variant
+of a database speaks the same SQL as the plain one. Migrators are discovered by
+scanning `tomReflector`; one instance serves all of an adaptor's types, and a
+type claimed by two adaptors is refused with
+`db_migration.initialization.found_more_than_one_migration_adapter`.
 
 #### Constructors
 
 ```dart
-const TomDbMigrationAdaptor(String type)
+const TomDbMigrationAdaptor(String type, {List<String> alsoServes = const []})
 ```
 
 #### Properties
@@ -253,6 +279,28 @@ const TomDbMigrationAdaptor(String type)
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `type` | `String` | The data-source type this migrator serves (matches `TomDataSourceInfo.type`). |
+| `alsoServes` | `List<String>` | Further data-source types this migrator serves — `["mariadb_xa"]` on `MariadbMigrationAdaptor`, `["postgresql_xa"]` on `PostgresMigrationAdaptor`. |
+
+### TomMigrationScript
+
+One migration's scripts, as a rollback reads them from the tree: the
+description and the up script it was applied with, and its down script — `null`
+when the tree has none. `TomDbMigrations.rollbackDataSource` builds them;
+`TomDbMigrator.rollback` reads them.
+
+#### Constructors
+
+```dart
+const TomMigrationScript(String description, String up, [String? down])
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `description` | `String` | The description from the file name (final). |
+| `up` | `String` | The script the migration was applied with (final). |
+| `down` | `String?` | The script that undoes it, or `null` (final). |
 
 ### TomMigrationFileName
 
@@ -303,11 +351,12 @@ adding to them, and `applyMigration` refuses to run against a pair the instance
 is not currently bound to.
 
 It also holds the migration lock — the data source's session lock named
-`migrationLockName(databaseName)`, waited for up to `lockWait` — and repairs a
-failed record.
+`migrationLockName(databaseName)`, waited for up to `lockWait` — repairs a
+failed record, and rolls applied migrations back through the database's
+`revertScript`.
 
 Every key it raises carries the adaptor's prefix — `applyKeyPrefix` for
-`applyMigration` and `recordMigration`, `initializeKeyPrefix` for
+`applyMigration`, `recordMigration` and `rollback`, `initializeKeyPrefix` for
 `initializeMigration`, `withMigrationLock` and `repair` — so a key names the
 database it came from:
 `mariadb_migration.apply_migration.checksum_mismatch`,
@@ -345,16 +394,20 @@ database it came from:
 | `migrationException` | `TomServerException migrationException(String key, String message, {Map<String, dynamic>? parameters, Object? rootException, bool autoLog = false})` | *(protected, abstract)* The exception this adaptor throws, carrying `key` — its own `TomSqlMigrationException` subtype. |
 | `versioningTableDdl` | `String versioningTableDdl(String schemaName)` | *(abstract)* The `CREATE TABLE IF NOT EXISTS` of `schemaName`'s versioning table, in this database's words. |
 | `applyScript` | `Future<void> applyScript(TomDataSourceInfo dsi, String schemaName, int version, String description, String sql)` | *(protected, abstract)* Runs `sql` — migration `version` of `schemaName` — and records it in the versioning table, or throws `<applyKeyPrefix>.apply_migration.failed`, carrying the script's error as its root cause. |
+| `revertScript` | `Future<void> revertScript(TomDataSourceInfo dsi, String schemaName, int version, String description, String downSql)` | *(protected, abstract)* Runs `downSql` — the down script of migration `version` of `schemaName` — and deletes the migration's record (`forgetMigration`), or throws `<applyKeyPrefix>.rollback_migration.failed`, carrying the script's error as its root cause. |
+| `forgetMigration` | `Future<void> forgetMigration(TomDataSourceInfo dsi, String schemaName, int version)` | *(protected)* Deletes the record of migration `version` from `schemaName`'s versioning table, so a later forward run applies it again. |
 | `recordMigration` | `Future<void> recordMigration(TomDataSourceInfo dsi, String schemaName, int version, String description, String sql, {required bool success, required int elapsedMs})` | *(protected)* Inserts migration `version`'s row — every value a bound parameter, since a script routinely contains quote characters. A failure is `<applyKeyPrefix>.apply_migration.update_version_table_failed`. |
 | `reset` | `void reset()` | *(override)* Drops the `(data source, schema)` binding and the applied-versions list. |
 | `applyMigration` | `Future<void> applyMigration(TomDataSourceInfo dsi, String schemaName, int version, String description, String sql)` | *(override)* Throws `<applyKeyPrefix>.apply_migration.not_initialized_for_schema` unless bound to this exact pair; then skips (after verifying) an applied version, otherwise runs `applyScript`. Verification of an applied version fails with `description_mismatch`, `checksum_unreadable` (the stored value is not a digest this adaptor could have written) or `checksum_mismatch` (it is a digest, but a different one) — each message naming the data source, schema and version, since one instance walks them all. |
 | `withMigrationLock` | `Future<R> withMigrationLock<R>(TomDataSourceInfo dsi, Future<R> Function() body)` | *(override)* `TomSqlDatasource.withSessionLock(migrationLockName(databaseName), body, wait: lockWait)` on `dsi`'s data source. A data source that is not a `TomSqlDatasource` is refused with `<initializeKeyPrefix>.lock.not_a_sql_datasource`. |
 | `repair` | `Future<void> repair(TomDataSourceInfo dsi, String schemaName, int version, TomMigrationRepair action)` | *(override)* Under the migration lock: `reset()`s the binding, so the next run reads the history again; reads `version`'s rows whose `success` is not `1` and refuses when there are none with `<initializeKeyPrefix>.repair.no_failed_record` (parameters `schema`, `datasource`, `version`); then deletes them (`remove`) or sets `success = 1` on them (`markResolved`) and logs the repair. A failed read or write is `<initializeKeyPrefix>.repair.failed`, carrying the database's error as its root cause. |
+| `rollback` | `Future<List<int>> rollback(TomDataSourceInfo dsi, String schemaName, int toVersion, Map<int, TomMigrationScript> scripts)` | *(override)* `initializeMigration`s the pair — so a recorded failure still refuses the schema — and takes the `versions` above `toVersion`, newest installed first. Before any script runs, each must have a down script in `scripts` (`<applyKeyPrefix>.rollback_migration.no_down_script`) and be recorded with the description and up-script checksum `scripts` holds (`<applyKeyPrefix>.rollback_migration.script_changed`); both carry the parameters `version` and `schema`. Then `revertScript` runs each in turn. Environment tags do not filter a rollback. `reset()`s the binding and answers the versions undone. |
 | `initializeMigration` | `Future<void> initializeMigration(TomDataSourceInfo dsi, String schemaName)` | *(override)* Rebinds to `(dsi, schemaName)`, creating the versioning table if absent (`<initializeKeyPrefix>.initialize.schema_creation_failed`) and **replacing** `versions` with that schema's history, read `ORDER BY installedRank` (`<initializeKeyPrefix>.initialize.version_query_failed`). A history holding a row with `success` other than `1` is refused with `<initializeKeyPrefix>.initialize.failed_migration_recorded`, naming the versions and the repair, before any script is offered. `versions` is its whole output. |
 
 ### MariadbMigrationAdaptor
 
-The MariaDB `TomDbMigrator` (registered for the `"mariadb"` type). **MariaDB
+The MariaDB `TomDbMigrator` (registered for the `"mariadb"` and `"mariadb_xa"`
+types). **MariaDB
 does not roll DDL back**, so a script runs statement by statement and a failed
 one is still recorded (with `success = 0`) before the error is rethrown — that
 row is what makes `initializeMigration` refuse a schema the failure left
@@ -383,10 +436,12 @@ MariadbMigrationAdaptor()
 | `migrationException` | `TomServerException migrationException(String key, String message, {Map<String, dynamic>? parameters, Object? rootException, bool autoLog = false})` | *(override)* A `MariadbMigrationException`. |
 | `versioningTableDdl` | `String versioningTableDdl(String schemaName)` | *(override)* The versioning table in MariaDB's words: `installedRank INTEGER(11) AUTO_INCREMENT PRIMARY KEY`, `script MEDIUMTEXT`, `success INTEGER(1)`. |
 | `applyScript` | `Future<void> applyScript(TomDataSourceInfo dsi, String schemaName, int version, String description, String sql)` | *(override)* Runs each statement of `sql` (`TomSqlLexer.splitStatements`), times it, and records the outcome — `success = 0` for a script that raised, with the time spent before the failure — before throwing `mariadb_migration.apply_migration.failed`. |
+| `revertScript` | `Future<void> revertScript(TomDataSourceInfo dsi, String schemaName, int version, String description, String downSql)` | *(override)* Runs each statement of `downSql`, then deletes the record. MariaDB does not roll DDL back, so a down script that fails part-way leaves the statements it ran done and the migration recorded — the schema is between the two versions, as after a failed migration — and throws `mariadb_migration.rollback_migration.failed`. |
 
 ### PostgresMigrationAdaptor
 
-The PostgreSQL `TomDbMigrator` (registered for the `"postgresql"` type).
+The PostgreSQL `TomDbMigrator` (registered for the `"postgresql"` and
+`"postgresql_xa"` types).
 **PostgreSQL rolls DDL back, and this adaptor relies on it:** a migration's
 statements and the row recording it run in one transaction, so a script that
 fails part-way is undone entirely, nothing is recorded, and the next run applies
@@ -418,6 +473,7 @@ PostgresMigrationAdaptor()
 | `migrationException` | `TomServerException migrationException(String key, String message, {Map<String, dynamic>? parameters, Object? rootException, bool autoLog = false})` | *(override)* A `PostgresMigrationException`. |
 | `versioningTableDdl` | `String versioningTableDdl(String schemaName)` | *(override)* The versioning table, column for column the MariaDB one, in PostgreSQL's words: `installedRank INTEGER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY`, `script TEXT`, `installedBy VARCHAR(63)`, `success SMALLINT`. The camel-case column names fold to lower case and read back under the same names, because PostgreSQL results are matched without regard to case. |
 | `applyScript` | `Future<void> applyScript(TomDataSourceInfo dsi, String schemaName, int version, String description, String sql)` | *(override)* Runs each statement of `sql` and `recordMigration` inside one `TomTransactionManager.runInTransaction`; any failure rolls all of it back and is thrown as `postgres_migration.apply_migration.failed`. |
+| `revertScript` | `Future<void> revertScript(TomDataSourceInfo dsi, String schemaName, int version, String description, String downSql)` | *(override)* Runs each statement of `downSql` and the deletion of the record inside one `TomTransactionManager.runInTransaction`; a failure undoes nothing — the migration stays applied and recorded — and is thrown as `postgres_migration.rollback_migration.failed`. |
 
 ### TomDbVersion
 
@@ -947,7 +1003,7 @@ TomDbMigrationException(
 
 Thrown for SQL migration failures — versioning-table creation, version query, a
 changed description/checksum for an already-applied version, a recorded failed
-script, or a failed migration script. Each adaptor throws its own subtype.
+script, a failed migration script, or a rollback refused or failed. Each adaptor throws its own subtype.
 
 - **Extends:** `TomServerException`
 

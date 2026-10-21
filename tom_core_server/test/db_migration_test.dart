@@ -1355,7 +1355,15 @@ void main() {
           reason: '$site exhibits no migration file name',
         );
         for (final match in names) {
-          final basename = _exhibitedBasename(match.group(0)!);
+          var basename = _exhibitedBasename(match.group(0)!);
+          // A down script names the migration it undoes: `[3]-x.down.sql`
+          // must undo a parseable `[3]-x`.
+          if (TomDbMigrations.isDownMigration(basename)) {
+            basename = basename.substring(
+              0,
+              basename.length - TomDbMigrations.downSuffix.length,
+            );
+          }
           expect(
             () => TomDbMigrations.parseMigrationFileName(basename),
             returnsNormally,
@@ -1594,6 +1602,14 @@ Future<Object> _errorOf(Future<void> Function() action) async {
 /// [MariadbMigrationAdaptor] and the walk runs over the committed fixture tree
 /// exactly as it would in production.
 class _RecordingMigrator implements TomDbMigrator {
+  @override
+  Future<List<int>> rollback(
+    TomDataSourceInfo dsi,
+    String schemaName,
+    int toVersion,
+    Map<int, TomMigrationScript> scripts,
+  ) async => const [];
+
   @override
   Future<R> withMigrationLock<R>(
     TomDataSourceInfo dsi,

@@ -128,6 +128,9 @@ A migration that failed is repaired with the same script, which then exits
 instead of starting —
 `dart run bin/app_server_start.dart --repair-migration=app_db/app_schema/<version> --repair-action=remove|resolve`;
 see [Repairing a failed migration](../README_advanced_sample.md#repairing-a-failed-migration).
+Migrations with down scripts are rolled back the same way —
+`dart run bin/app_server_start.dart --rollback-migrations=app_db/app_schema/<version>`;
+see [Rolling migrations back](../README_advanced_sample.md#rolling-migrations-back).
 
 The seeded users come from the auth server (sample only — never ship them):
 

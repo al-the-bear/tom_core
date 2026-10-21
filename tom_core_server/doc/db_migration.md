@@ -6,8 +6,10 @@ migrations for each data source and schema; the orchestrator
 database-specific migrator (`TomDbMigrator`), which records what it applied so
 re-runs are idempotent and edits to past migrations are detected. Two SQL
 implementations are provided on one database-neutral base
-(`TomSqlMigrationAdaptor`): MariaDB (`MariadbMigrationAdaptor`) and PostgreSQL
-(`PostgresMigrationAdaptor`).
+(`TomSqlMigrationAdaptor`): MariaDB (`MariadbMigrationAdaptor`, for the
+`mariadb` and `mariadb_xa` data-source types) and PostgreSQL
+(`PostgresMigrationAdaptor`, for `postgresql` and `postgresql_xa`). A migration
+with a down script beside it can be [rolled back](#rolling-migrations-back).
 
 ## Table of Contents
 
@@ -20,6 +22,7 @@ implementations are provided on one database-neutral base
   - [What a Schema Directory May Hold Besides Migrations](#what-a-schema-directory-may-hold-besides-migrations)
   - [One Migration per Version](#one-migration-per-version)
   - [Environment Tags](#environment-tags)
+  - [Down Scripts](#down-scripts)
   - [The Tree Root Has to Be There](#the-tree-root-has-to-be-there)
 - [Running Migrations](#running-migrations)
   - [One run per database at a time: the migration lock](#one-run-per-database-at-a-time-the-migration-lock)
@@ -38,6 +41,11 @@ implementations are provided on one database-neutral base
   - [Remove, or mark resolved](#remove-or-mark-resolved)
   - [From the command line](#from-the-command-line)
   - [What repair refuses](#what-repair-refuses)
+- [Rolling Migrations Back](#rolling-migrations-back)
+  - [What is checked before anything is undone](#what-is-checked-before-anything-is-undone)
+  - [A failed down script: left half-way on MariaDB, rolled back on PostgreSQL](#a-failed-down-script-left-half-way-on-mariadb-rolled-back-on-postgresql)
+  - [Rolling back from the command line](#rolling-back-from-the-command-line)
+  - [What a rollback refuses](#what-a-rollback-refuses)
 - [Schema Convergence](#schema-convergence)
   - [The Application's Entities](#the-applications-entities)
   - [When the Entity Model Contradicts Itself](#when-the-entity-model-contradicts-itself)
@@ -76,13 +84,14 @@ them run against a live server.
 | Type | Kind | Purpose |
 | ---- | ---- | ------- |
 | `TomDbMigrations` | class | The orchestrator; `migrateDatabases(directory)` drives a whole tree |
-| `TomDbMigrator` | abstract class | The per-database migrator contract (`initializeMigration` / `applyMigration` / `reset`, and `withMigrationLock` / `repair`) |
+| `TomDbMigrator` | abstract class | The per-database migrator contract (`initializeMigration` / `applyMigration` / `reset`, and `withMigrationLock` / `repair` / `rollback`) |
 | `TomMigrationRepair` | enum | What `repair` does with a migration recorded as failed: `remove` it or `markResolved` |
-| `TomDbMigrationAdaptor` | class | Binds a migrator to a data-source type for reflection discovery |
+| `TomDbMigrationAdaptor` | class | Binds a migrator to its data-source types (`type` and `alsoServes`) for reflection discovery |
+| `TomMigrationScript` | class | One migration's description, up script and down script, as a rollback reads them from the tree |
 | `TomMigrationFileName` | class | A migration file name parsed into version, description and environment tags |
-| `TomSqlMigrationAdaptor` | abstract class | Everything a SQL migrator does that does not depend on the database: the versioning history, checksum stability, rebinding per schema, the migration lock and the repair of a failed record |
-| `MariadbMigrationAdaptor` | class | The MariaDB migrator |
-| `PostgresMigrationAdaptor` | class | The PostgreSQL migrator — a script and its version row in one transaction |
+| `TomSqlMigrationAdaptor` | abstract class | Everything a SQL migrator does that does not depend on the database: the versioning history, checksum stability, rebinding per schema, the migration lock, the repair of a failed record and the checks of a rollback |
+| `MariadbMigrationAdaptor` | class | The MariaDB migrator, for `mariadb` and `mariadb_xa` |
+| `PostgresMigrationAdaptor` | class | The PostgreSQL migrator, for `postgresql` and `postgresql_xa` — a script and its version row in one transaction |
 | `TomDbVersion` | class | One row of a `<schema>_versioning` table |
 | `TomMigrationRun` | class | The process's most recent `migrateDatabases` call: its state, start, end and error (`TomDbMigrations.lastRun`) |
 | `TomMigrationRunState` | enum | `notRun`, `running`, `succeeded` or `failed` — what the framework readiness check reads |
@@ -371,6 +380,34 @@ is why
 than a single "current version" — see [Running
 Migrations](#running-migrations).
 
+### Down Scripts
+
+A migration may have a **down script** beside it: a file named after the
+migration's basename plus `.down`, which undoes it.
+
+```text
+app/
+  [1]-create_users.sql
+  [2]-add_orders.sql
+  [2]-add_orders.down.sql       # undoes [2]-add_orders
+  [3]-demo_seed@dev.sql
+  [3]-demo_seed@dev.down.sql    # the environment tag stays in the name
+```
+
+The suffix is `TomDbMigrations.downSuffix` (`.down`), and
+`TomDbMigrations.isDownMigration(basename)` recognises a down script by its
+basename without extension. Like a migration, a down script is identified by
+its basename, so its extension is free and two down scripts for one migration —
+`[2]-add_orders.down.sql` and `[2]-add_orders.down.ddl` — are refused with
+`db_migration.migration.duplicate_migration_basename`, naming both paths.
+
+A down script is not a migration. `collectMigrationFiles` skips it, so the
+forward run never applies one and the [convergence check](#schema-convergence)
+never replays one into the chain it compares; `collectDownMigrationFiles`
+collects them, keyed by the basename of the migration each undoes, for a
+[rollback](#rolling-migrations-back). A down script is optional: a migration
+without one runs forward and cannot be rolled back.
+
 ### The Tree Root Has to Be There
 
 A migrations directory a tool is *told* to walk is an **input**, not content.
@@ -593,10 +630,15 @@ fresh process starts — for tests.
 ## Adaptor Discovery
 
 A migrator registers by annotating its class with
-`@TomDbMigrationAdaptor("<type>")` and `@tomReflector`.
-`TomDbMigrations` scans `tomReflector.annotatedClasses` on first use, builds one
-migrator per type, and rejects duplicate or non-conforming registrations with a
-`TomDbMigrationException`: a second adaptor for a type already claimed is
+`@TomDbMigrationAdaptor("<type>")` and `@tomReflector`; further types it serves
+are listed in `alsoServes` —
+`@TomDbMigrationAdaptor("mariadb", alsoServes: ["mariadb_xa"])`. A two-phase
+data source speaks the same SQL as the plain one, so one migrator serves both.
+`TomDbMigrations` scans `tomReflector.annotatedClasses` on first use, builds
+**one instance per adaptor class** and registers it under each of its types,
+and rejects duplicate or non-conforming registrations with a
+`TomDbMigrationException`: a second adaptor for a type already claimed —
+through `type` or `alsoServes` — is
 `db_migration.initialization.found_more_than_one_migration_adapter`, and an
 annotated class that does not implement `TomDbMigrator` is
 `db_migration.initialization.migrator_does_not_implement_tom_db_migrator`. The `<type>` must match the data source's
@@ -618,13 +660,18 @@ a cause by hand.
 Two adaptors ship, one per database, and everything they have in common lives
 once in `TomSqlMigrationAdaptor`: the versioning table and its history, the
 checksum, the rebinding, and the refusal of a history that records a failure.
-What differs is the versioning table's DDL (`versioningTableDdl`) and how a
-script runs (`applyScript`):
+What differs is the versioning table's DDL (`versioningTableDdl`), how a
+script runs (`applyScript`) and how a down script runs (`revertScript`):
 
-| `type` | Adaptor | A script runs | A failed script |
-| ------ | ------- | ------------- | --------------- |
-| `mariadb` | `MariadbMigrationAdaptor` | statement by statement | its statements so far stay applied, and it is recorded with `success = 0` |
-| `postgresql` | `PostgresMigrationAdaptor` | statement by statement, with the version row, inside one transaction | rolled back entirely, and nothing is recorded |
+| `type` | Adaptor | A script runs | A failed script | A failed down script |
+| ------ | ------- | ------------- | --------------- | -------------------- |
+| `mariadb`, `mariadb_xa` | `MariadbMigrationAdaptor` | statement by statement | its statements so far stay applied, and it is recorded with `success = 0` | its statements so far stay done, and the migration stays recorded |
+| `postgresql`, `postgresql_xa` | `PostgresMigrationAdaptor` | statement by statement, with the version row, inside one transaction | rolled back entirely, and nothing is recorded | rolled back entirely; the migration stays applied and recorded |
+
+The two-phase types (`mariadb_xa`, `postgresql_xa`; see
+[datasources.md](datasources.md)) migrate through the adaptor of their database:
+a migration run uses the data source's ordinary statements, not a two-phase
+transaction.
 
 Each raises its keys under its own prefixes, so a key names the database it came
 from — `mariadb_migration.` / `mariadb_migration_adapter.` for MariaDB,
@@ -980,6 +1027,132 @@ way.
 | `<initialize>.lock.not_a_sql_datasource` | the data source has no session lock to repair under |
 | `error.datasource.session_lock_timeout` | another process held the migration lock for longer than `lockWait` |
 
+## Rolling Migrations Back
+
+A rollback undoes applied migrations with their [down scripts](#down-scripts):
+every migration of one schema applied above a version, newest first.
+
+```dart
+final undone = await TomDbMigrations.rollback(
+  configuration.databaseMigrationsDirectory, // the migration tree
+  datasource: 'app_db',
+  schema: 'app_schema',
+  toVersion: 4,                              // keep 4 and below; -1 keeps none
+);
+// undone: the versions undone, in the order they were — e.g. [7, 6, 5]
+```
+
+`TomDbMigrations.rollback(directory, datasource:, schema:, toVersion:)`
+resolves the registered data source and its migrator as `migrateDatabases`
+does, reads the schema directory `<directory>/<datasource>/<schema>/` and
+calls `rollbackDataSource(migrator, dsInfo, dataSourceDirectory, schema,
+toVersion:)`, which takes the migrator as a parameter as `migrateDataSource`
+does. That reads every migration of the tree with its down script into a
+`TomMigrationScript(description, up, down)` per version and hands them to
+`TomDbMigrator.rollback(dsi, schemaName, toVersion, scripts)`, under the
+[migration lock](#one-run-per-database-at-a-time-the-migration-lock).
+
+The order is the history's, not the file names': the migrations recorded above
+`toVersion` are undone **newest installed first**, by `installedRank`. Where
+migrations were applied out of numeric order — a box switched to `dev` that
+applied `[1]@dev` after the untagged `[3]` — that is the reverse of the order
+they went in, which is the only order in which each down script meets the
+schema its migration left. Environment tags do not filter a rollback: it undoes
+what the history records, and the history may hold a migration this process's
+environment would not apply.
+
+Each migration is undone by running its down script and then **deleting its
+record** from `<schema>_versioning` (`forgetMigration`), so the next forward run
+applies it again. Nothing is undone when nothing was applied above `toVersion`;
+the answer is then an empty list.
+
+### What is checked before anything is undone
+
+A rollback that stops half-way for a reason it could have seen leaves a schema
+between two versions nobody chose, so everything is checked before the first
+down script runs:
+
+1. **The history holds no failed record.** The rollback starts with
+   `initializeMigration`, which refuses a schema whose history records a failed
+   script ([A recorded failure stops the next run](#a-recorded-failure-stops-the-next-run));
+   [repair](#repairing-a-failed-migration) it first.
+2. **Every migration to undo has a down script.** One without is refused with
+   `<apply>.rollback_migration.no_down_script`.
+3. **Every migration to undo is recorded with the script the tree holds** — the
+   same description and the same checksum of the up script. A down script is
+   written against the migration it undoes; when the up script in the tree is
+   not the one that ran, nothing says the down script undoes what ran, and the
+   rollback is refused with `<apply>.rollback_migration.script_changed`.
+
+Both refusals carry the parameters `version` and `schema`, and leave the schema
+and its history exactly as they were.
+
+### A failed down script: left half-way on MariaDB, rolled back on PostgreSQL
+
+A down script fails the way a migration does, and the two databases leave
+different things behind:
+
+- **PostgreSQL** runs the down script's statements and the deletion of the
+  record inside one `TomTransactionManager.runInTransaction`. A down script
+  that fails undoes nothing: the migration stays applied and recorded, and the
+  rollback stops with `postgres_migration.rollback_migration.failed`. The
+  migrations undone before it stay undone.
+- **MariaDB does not roll DDL back.** A down script that fails part-way leaves
+  the statements it ran done, and the migration **stays recorded** — the schema
+  is between the two versions, as after a failed migration. The rollback stops
+  with `mariadb_migration.rollback_migration.failed`; the operator puts the
+  schema right by hand and either corrects the down script and rolls back
+  again, or reapplies what the down script took away.
+
+### Rolling back from the command line
+
+A rollback is an operator's one-off command, like a repair, so the start
+scripts offer it beside the repair and exit once it ran:
+
+```dart
+// After the data sources are registered, before migrateDatabases:
+if (await TomDbMigrations.rollbackFromArgs(
+  args,
+  configuration.databaseMigrationsDirectory,
+)) {
+  tomLog.info('Migrations rolled back, exiting.');
+  exit(0);
+}
+```
+
+```sh
+dart run bin/server_start.dart --rollback-migrations=app_db/app_schema/4
+dart run bin/server_start.dart --rollback-migrations=app_db/app_schema/-1
+```
+
+`TomDbMigrations.rollbackFromArgs(args, directory)` reads
+`--rollback-migrations=<datasource>/<schema>/<version>`
+(`TomDbMigrations.rollbackMigrationsOption`), runs the rollback against the
+migration tree `directory`, logs the versions it undid and answers `true`.
+Without the option it does nothing and answers `false`, so the start goes on. A
+target that is not three `/`-separated parts with a non-empty data source and
+schema and a whole-number version throws
+`db_migration.rollback.invalid_arguments`, naming the option and what was
+given; nothing is rolled back. The four servers in `tom_core_samples` wire it
+this way.
+
+### What a rollback refuses
+
+| Key | When |
+| --- | ---- |
+| `db_migration.rollback.invalid_arguments` | `rollbackFromArgs` was given a malformed `--rollback-migrations` |
+| `db_migration.rollback.invalid_target` | `toVersion` is below `-1` |
+| `db_migration.migration.no_datasource_info_found` | no data source is registered under the name |
+| `db_migration.migration.no_migrator_found_for_datasource_type` | no migrator is registered for the data source's `type` |
+| `db_migration.migration.migrations_directory_not_found` | the schema directory is not in the tree |
+| `db_migration.migration.duplicate_migration_basename` | two up files, or two down scripts, claim one migration |
+| `<initialize>.initialize.failed_migration_recorded` (`mariadb_migration_adapter.initialize.failed_migration_recorded`, `postgres_migration_adapter.initialize.failed_migration_recorded`) | the schema's history records a failed script |
+| `<apply>.rollback_migration.no_down_script` (`mariadb_migration.rollback_migration.no_down_script`, `postgres_migration.rollback_migration.no_down_script`) | a migration to undo has no down script in the tree; nothing is undone |
+| `<apply>.rollback_migration.script_changed` (`mariadb_migration.rollback_migration.script_changed`, `postgres_migration.rollback_migration.script_changed`) | a migration to undo is recorded with a different description or up script than the tree holds; nothing is undone |
+| `<apply>.rollback_migration.failed` (`mariadb_migration.rollback_migration.failed`, `postgres_migration.rollback_migration.failed`) | a down script, or the deletion of its record, failed; the database's error is the root cause |
+| `<initialize>.lock.not_a_sql_datasource` | the data source has no session lock to roll back under |
+| `error.datasource.session_lock_timeout` | another process held the migration lock for longer than `lockWait` |
+
 ## Schema Convergence
 
 A migration chain is a *history*: it says how the schema was reached, never what
@@ -1250,8 +1423,8 @@ else does:
 | ----------- | ------------ |
 | `TomSchemaConvergenceCheck.checkAll` / `checkSchema` / `readChain` / `verify` | `TomDbMigrations.migrateDatabases` / `migrateDataSource` |
 | `TomFrameworkSchemaCheck.verifyChain` / `verifyRowTypes` | `TomDbMigrator.applyMigration` / `initializeMigration` |
-| `TomSchemaDdlReader.replay`, `TomDbMigrations.collectMigrationFiles` | `TomFrameworkSchemaCheck.verifyLive` |
-| `TomSqlMigrationAdaptor.migrationLockName` | `TomDbMigrations.withMigrationLock` / `repair` / `repairFromArgs`, `TomDbMigrator.withMigrationLock` / `repair` |
+| `TomSchemaDdlReader.replay`, `TomDbMigrations.collectMigrationFiles` / `collectDownMigrationFiles` / `isDownMigration` | `TomFrameworkSchemaCheck.verifyLive` |
+| `TomSqlMigrationAdaptor.migrationLockName` | `TomDbMigrations.withMigrationLock` / `repair` / `repairFromArgs` / `rollback` / `rollbackDataSource` / `rollbackFromArgs`, `TomDbMigrator.withMigrationLock` / `repair` / `rollback` |
 
 An `async` method whose I/O is all synchronous never yields: the future is
 complete before the first `await`, so the signature promises the caller that the
@@ -1406,6 +1579,17 @@ a run that skips the migration, a version with no failed record refused with
 line names. Its last group needs no database: no repair option answers `false`,
 and a malformed request is refused with `db_migration.repair.invalid_arguments`.
 
+`test/db_migration_rollback_db_test.dart` covers [down scripts and the
+rollback](#rolling-migrations-back) against a live server: a set of three
+migrations applied, rolled back to a version — newest first, the down scripts'
+effects visible — and applied again; `-1` undoing everything and a second
+rollback finding nothing to undo; a missing down script and an up script
+changed since it was applied refused before anything is undone; a failing down
+script leaving the migration recorded; `rollbackFromArgs` running the rollback
+the command line names and refusing malformed requests and a target below
+`-1`; and a two-phase data source (`mariadb_xa` / `postgresql_xa`) migrating and
+rolling back through the adaptor of its database.
+
 `test/postgres_migrations_test.dart` holds the generated PostgreSQL reference
 migrations to the generator's output for their canonical sources — see
 [Reference migrations for PostgreSQL](#reference-migrations-for-postgresql).
@@ -1435,9 +1619,11 @@ surface a caller touches — the `TomDbMigrationAdaptor` type binding, a
 rule. The names it exhibits are **parsed rather than printed**, so an example
 that claimed a legal name the parser rejects would throw instead of misinforming
 its reader. `example/db_migration/db_migration_repair_example.dart` shows the
-half of the lock and the repair that needs no database: the lock's name, a
-command line without a repair answered `false`, and malformed repair requests
-refused before anything is touched.
+half of the lock, the repair and the rollback that needs no database: the
+lock's name, a command line without a repair answered `false`, malformed repair
+requests refused before anything is touched, down scripts collected beside
+their migrations and skipped by the forward collection, a command line without
+a rollback answered `false`, and malformed rollback requests refused.
 
 One guard is worth naming separately, because it is the reason this page can be
 trusted on the subject it is most likely to be wrong about. The file-name
@@ -1445,7 +1631,8 @@ grammar is stated in three places — the source, this guide and the example —
 `db_migration_test.dart` holds all three to what
 `parseMigrationFileName` actually accepts, reading the canonical form out of the
 parser's own refusal message. It further requires every migration file name any
-of the three *exhibits* to parse, and fails on any text still claiming
+of the three *exhibits* to parse — a down script's name by the migration it
+undoes — and fails on any text still claiming
 migrations run in name order. Prose about a grammar drifts from the grammar;
 here it cannot drift silently.
 
@@ -1456,15 +1643,20 @@ here it cannot drift silently.
   `TomMigrationRunState`), the record of the most recent call that readiness
   reads.
 - **`TomDbMigrator`** (+ the `TomDbMigrationAdaptor` annotation) — the migrator
-  contract, including `withMigrationLock` (one run per database at a time) and
-  `repair` with its **`TomMigrationRepair`** action.
+  contract, including `withMigrationLock` (one run per database at a time),
+  `repair` with its **`TomMigrationRepair`** action, and `rollback` with the
+  **`TomMigrationScript`**s it undoes with.
 - **`TomDbMigrations.withMigrationLock` / `repair` / `repairFromArgs`** — the
   migration lock by data-source name, the repair of a failed record, and its
   command-line form (`--repair-migration`, `--repair-action`).
+- **`TomDbMigrations.rollback` / `rollbackDataSource` / `rollbackFromArgs`**,
+  with `collectDownMigrationFiles` / `isDownMigration` / `downSuffix` — the
+  rollback of applied migrations with their down scripts, and its command-line
+  form (`--rollback-migrations`).
 - **`TomSqlMigrationAdaptor`**, **`MariadbMigrationAdaptor`**,
   **`PostgresMigrationAdaptor`** and **`TomDbVersion`** — the database-neutral
-  SQL migrator, its MariaDB and PostgreSQL implementations, and the
-  versioning-row type.
+  SQL migrator, its MariaDB (`mariadb`, `mariadb_xa`) and PostgreSQL
+  (`postgresql`, `postgresql_xa`) implementations, and the versioning-row type.
 - **`TomDbMigrationException` / `TomSqlMigrationException` /
   `MariadbMigrationException` / `PostgresMigrationException`** — the error
   types.
@@ -1500,10 +1692,17 @@ here it cannot drift silently.
   would never have run the script. The damage is in the database the node is
   about to use, not in the tree it would have applied.
   <!-- pinned: test/db_migration_db_test.dart › stops the whole run, not just its own version -->
-- **Migrations are forward-only.** `TomDbMigrator` is `initializeMigration` /
-  `applyMigration` / `reset`; there is no down-migration and no `TomDbVersion`
-  state for one. Undoing a release means writing the next migration.
-  <!-- unpinned: absence — no down-migration exists -->
+- **A down script is not recorded.** The versioning row holds the up script
+  and its checksum; a down script is read from the tree when a rollback runs,
+  and only its presence is checked. The up script's checksum is what ties a
+  down script to the migration it undoes — an edit to the down script itself
+  is not detected.
+  <!-- unpinned: absence — the versioning table has no column for a down script -->
+- **Nothing checks that a down script undoes its migration.** The
+  [convergence check](#schema-convergence) replays the forward chain only; a
+  down script that leaves a table behind, or drops one its migration did not
+  create, is found when a rollback runs, not before.
+  <!-- unpinned: absence — no check replays a down script -->
 - **The migration lock excludes only runs made through this module.** It is a
   session lock the migrators take; SQL applied by anything else — a database
   container's init hook running the same tree, a DBA's session, another
@@ -1532,7 +1731,7 @@ here it cannot drift silently.
 | [audit](audit.md) | module | `framework_convergence.dart` | `auditTrailTable`, `defaultAuditTrailTable` |
 | [authentication](authentication.md) | module | `framework_convergence.dart` | `defaultOAuthStateTable`, `defaultScimResourceTable`, `oauthStateTable`, `scimResourceTable` |
 | [cache](cache.md) | module | `framework_convergence.dart` | `defaultInvalidationTable`, `invalidationTable` |
-| [cmdline](cmdline.md) | module | `db_migration.dart` | `TomArgs.parseArgsToMap`, reading `--repair-migration` and `--repair-action` |
+| [cmdline](cmdline.md) | module | `db_migration.dart` | `TomArgs.parseArgsToMap`, reading `--repair-migration`, `--repair-action` and `--rollback-migrations` |
 | [datasources](datasources.md) | module | 8 of 8 files | `TomDataSourceInfo` (named data sources) and its `executeCommand` / `executeQuery`; `TomSqlLexer`, the statement splitter and quote scanner; the connected data source's dialect, which `verifyLive` classifies and queries the catalogue with; `TomSqlDatasource.withSessionLock`, which holds the migration lock |
 | [endpoints](endpoints.md) | module | `framework_convergence.dart` | `defaultIdempotencyTable`, `idempotencyTable` |
 | [file_storage](file_storage.md) | module | `framework_convergence.dart` | `blobChunkTable`, `blobManifestTable`, `defaultBlobChunkTable`, `defaultBlobManifestTable` |
@@ -1541,4 +1740,4 @@ here it cannot drift silently.
 | [object_persistence](object_persistence.md) | module | `framework_convergence.dart`, `sql_migration_adaptor.dart`, `schema_convergence.dart` | `TomDbTable` / `TomDbColumn` on `TomDbVersion`; `defaultEncryptionKeyTable` and `encryptionKeyTable`, the data-key table of field-level encryption |
 | [privacy](privacy.md) | module | `framework_convergence.dart` | `defaultSubjectKeyTable`, `subjectKeyTable` |
 | [scheduling](scheduling.md) | module | `framework_convergence.dart` | `defaultJobRunTable`, `defaultLeaseTable`, `defaultSchedulerNodeTable`, `jobRunTable`, `leaseTable`, `schedulerNodeTable` |
-| [transactions](transactions.md) | module | `framework_convergence.dart`, `postgres_migration_adapter.dart` | `defaultSagaTable` and `sagaTable`; `TomTransactionManager.runInTransaction`, which runs a PostgreSQL script and its version row as one transaction |
+| [transactions](transactions.md) | module | `framework_convergence.dart`, `postgres_migration_adapter.dart` | `defaultSagaTable` and `sagaTable`; `TomTransactionManager.runInTransaction`, which runs a PostgreSQL script and its version row — or a down script and the deletion of its record — as one transaction |

@@ -444,6 +444,15 @@ Future<void> main(List<String> args) async {
     tomLog.info('Migration repaired, exiting.');
     exit(0);
   }
+  // Likewise a rollback (`--rollback-migrations=<datasource>/<schema>/
+  // <version>`), with the down scripts beside the migrations.
+  if (await TomDbMigrations.rollbackFromArgs(
+    args,
+    configuration.databaseMigrationsDirectory,
+  )) {
+    tomLog.info('Migrations rolled back, exiting.');
+    exit(0);
+  }
 
   await TomDbMigrations.migrateDatabases(
     configuration.databaseMigrationsDirectory,

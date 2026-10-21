@@ -270,6 +270,19 @@ migration again; after finishing it by hand, `--repair-action=resolve` marks it
 applied so the next start skips it. Neither runs a script. See
 [Repairing a failed migration](../README_advanced_sample.md#repairing-a-failed-migration).
 
+### `--rollback-migrations`
+
+```sh
+dart run bin/ops_server_start.dart --rollback-migrations=app_db/app_schema/-1
+```
+
+Undoes the migrations of the schema applied above the version (`-1`: all of
+them) with the down scripts beside them, newest first, and exits without
+migrating or starting a scheduler. A migration without a down script, or whose
+up script is not the one recorded, refuses the rollback before anything is
+undone. See
+[Rolling migrations back](../README_advanced_sample.md#rolling-migrations-back).
+
 ## The migration this package owns
 
 `database_migrations/app_db/app_schema/[100]-ops_framework_tables.sql` creates

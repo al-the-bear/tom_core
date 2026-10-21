@@ -402,6 +402,27 @@ ops server (`bin/ops_server_start.dart`) and `core_server_sample`
 `tom_core_server`'s
 [db_migration.md](../tom_core_server/doc/db_migration.md#repairing-a-failed-migration).
 
+### Rolling migrations back
+
+A migration with a down script beside it — `[7]-add_column.down.sql` next to
+`[7]-add_column.sql` in the same schema folder — can be undone with the same
+start scripts, which run the rollback instead of starting and exit:
+
+```sh
+# from advanced_app_server/: undo everything above [005], newest first
+dart run bin/app_server_start.dart --rollback-migrations=app_db/app_schema/5
+```
+
+`--rollback-migrations` names `<datasource>/<schema>/<version>` and keeps the
+migrations up to `<version>` (`-1` keeps none). Each migration above it is undone
+by its down script and its record deleted, so the next start applies it again.
+Before anything runs, every migration to undo must have a down script and its
+up script must be the one recorded; otherwise, or for a malformed request,
+nothing is undone. A down script that fails on MariaDB leaves what it ran done
+and the migration recorded. All four servers take the option. The full rules
+are in `tom_core_server`'s
+[db_migration.md](../tom_core_server/doc/db_migration.md#rolling-migrations-back).
+
 ---
 
 ## Documentation index

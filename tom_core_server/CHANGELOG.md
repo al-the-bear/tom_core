@@ -2,6 +2,47 @@
 
 ### Added
 
+- **Down migrations and rollback** (`db_migration` module). A migration may
+  have a down script beside it, named after its basename plus `.down`
+  (`TomDbMigrations.downSuffix`): `[3]-add_column.down.sql` undoes
+  `[3]-add_column.sql`, `[3]-x@dev.down.sql` undoes `[3]-x@dev.sql`.
+  `TomDbMigrations.isDownMigration` recognises one, `collectDownMigrationFiles`
+  collects them keyed by the migration each undoes (two for one migration are
+  `db_migration.migration.duplicate_migration_basename`), and
+  `collectMigrationFiles` skips them, so neither the forward run nor the
+  convergence check sees them. `TomDbMigrations.rollback(directory,
+  {datasource, schema, toVersion})` and `rollbackDataSource(migrator, dsInfo,
+  dataSourceDirectory, schema, {toVersion})` undo the migrations applied above
+  `toVersion` (`-1`: all) newest first by installation order, under the
+  migration lock, and answer the versions undone; a target below `-1` is
+  `db_migration.rollback.invalid_target`. `TomDbMigrator.rollback(dsi, schema,
+  toVersion, scripts)` takes the tree's scripts as `TomMigrationScript(
+  description, up, [down])`. Before anything runs, every migration to undo must
+  have a down script (`<apply>.rollback_migration.no_down_script`) and be
+  recorded with the description and up-script checksum the tree holds
+  (`<apply>.rollback_migration.script_changed`); a recorded failure still
+  refuses the schema. Each down script runs, then its record is deleted, so a
+  later forward run applies the migration again; environment tags do not
+  filter a rollback. `TomSqlMigrationAdaptor.revertScript` (protected, per
+  database) and `forgetMigration` do the work: PostgreSQL runs the down script
+  and the deletion in one transaction, MariaDB statement by statement, leaving
+  the migration recorded when a down script fails part-way; either failure is
+  `<apply>.rollback_migration.failed`. `TomDbMigrations.rollbackFromArgs(args,
+  directory)` reads `--rollback-migrations=<datasource>/<schema>/<version>`
+  (`rollbackMigrationsOption`) and refuses a malformed request with
+  `db_migration.rollback.invalid_arguments`; the four `tom_core_samples`
+  servers run it beside the repair and exit.
+  `example/db_migration/db_migration_repair_example.dart` shows the
+  connection-free half; `test/db_migration_rollback_db_test.dart` covers the
+  rollback against MariaDB and PostgreSQL.
+- **A migration adaptor serves several data-source types**
+  (`db_migration` module). `@TomDbMigrationAdaptor(type, {alsoServes})` lists
+  further types; one instance per adaptor class is registered under each, and
+  a type claimed twice is still
+  `db_migration.initialization.found_more_than_one_migration_adapter`.
+  `MariadbMigrationAdaptor` serves `mariadb` and `mariadb_xa`,
+  `PostgresMigrationAdaptor` `postgresql` and `postgresql_xa`.
+
 - **Query sentences filter on associations; subqueries in the builder**
   (`object_persistence` and `datasources` modules, `subquery.dart`). A
   predicate term may name a field of a `@TomReference` association —
@@ -1140,6 +1181,10 @@
 
 ### Fixed
 
+- **A two-phase data source can be migrated.** A data source of type
+  `mariadb_xa` or `postgresql_xa` had no migrator, and `migrateDatabases`
+  refused it with `db_migration.migration.no_migrator_found_for_datasource_type`;
+  the MariaDB and PostgreSQL adaptors serve those types too.
 - **A write binding no parameter no longer hangs on MariaDB.** For a
   statement with neither parameters nor result columns — `delete by label is
   null` — the server answers `PREPARE` with the `PREPARE_OK` packet alone, and

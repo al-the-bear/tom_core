@@ -23,14 +23,36 @@ class TomDbMigrationException extends TomServerException {
 }
 
 /// Annotation marking a [TomDbMigrator] implementation as the migrator for a
-/// named data-source [type] (e.g. `"mariadb"`). Migrators are discovered by
-/// scanning [tomReflector] for this annotation.
+/// named data-source [type] (e.g. `"mariadb"`), and for every type in
+/// [alsoServes] — the two-phase variant of a database speaks the same SQL as
+/// the plain one. Migrators are discovered by scanning [tomReflector] for this
+/// annotation; one instance serves all of its types.
 class TomDbMigrationAdaptor {
   /// The data-source type this migrator serves (matches `TomDataSourceInfo.type`).
   final String type;
 
-  /// Binds the annotated class to [type].
-  const TomDbMigrationAdaptor(this.type);
+  /// Further data-source types this migrator serves.
+  final List<String> alsoServes;
+
+  /// Binds the annotated class to [type] and [alsoServes].
+  const TomDbMigrationAdaptor(this.type, {this.alsoServes = const []});
+}
+
+/// One migration's scripts, as a rollback reads them from the tree: the
+/// [description] and the [up] script it was applied with, and its [down]
+/// script — `null` when the tree has none.
+class TomMigrationScript {
+  /// The scripts of one migration.
+  const TomMigrationScript(this.description, this.up, [this.down]);
+
+  /// The description from the file name.
+  final String description;
+
+  /// The script the migration was applied with.
+  final String up;
+
+  /// The script that undoes it, or `null`.
+  final String? down;
 }
 
 /// The contract a database-specific migrator implements.
@@ -106,6 +128,21 @@ abstract class TomDbMigrator {
     String schemaName,
     int version,
     TomMigrationRepair action,
+  );
+
+  /// Undoes every migration of [schemaName] applied above [toVersion] — all
+  /// of them for `-1` — newest first by installation order, with the down
+  /// scripts of [scripts] (keyed by version), and answers the versions it
+  /// undid in that order.
+  ///
+  /// Checked before anything runs: every migration to undo has a down script
+  /// and is recorded with the description and the up script [scripts] holds.
+  /// The caller holds the migration lock.
+  Future<List<int>> rollback(
+    TomDataSourceInfo dsi,
+    String schemaName,
+    int toVersion,
+    Map<int, TomMigrationScript> scripts,
   );
 }
 
@@ -243,17 +280,22 @@ class TomDbMigrations {
         TomDbMigrationAdaptor adaptor =
             candidate.metadata.firstWhere((o) => o is TomDbMigrationAdaptor)
                 as TomDbMigrationAdaptor;
-        if (_migrationAdaptorTypes[adaptor.type] != null) {
-          throw TomDbMigrationException(
-            "db_migration.initialization.found_more_than_one_migration_adapter",
-            "Found more than one datasource migration adaptor for ${adaptor.type} first is ${_migrationAdaptorTypes[adaptor.type]}, additional found $candidate",
-            autoLog: true,
-          );
-        } else {
-          _migrationAdaptorTypes[adaptor.type] = instantiateMigrator(
-            candidate,
-            () => candidate.newInstance("", []),
-          );
+        final types = [adaptor.type, ...adaptor.alsoServes];
+        for (final type in types) {
+          if (_migrationAdaptorTypes[type] != null) {
+            throw TomDbMigrationException(
+              "db_migration.initialization.found_more_than_one_migration_adapter",
+              "Found more than one datasource migration adaptor for $type first is ${_migrationAdaptorTypes[type]}, additional found $candidate",
+              autoLog: true,
+            );
+          }
+        }
+        final migrator = instantiateMigrator(
+          candidate,
+          () => candidate.newInstance("", []),
+        );
+        for (final type in types) {
+          _migrationAdaptorTypes[type] = migrator;
         }
       }
     }
@@ -454,6 +496,7 @@ class TomDbMigrations {
       if (entry is! File) continue;
       if (isNotAMigrationFile(p.basename(entry.path))) continue;
       final basename = p.basenameWithoutExtension(entry.path);
+      if (isDownMigration(basename)) continue;
       final existing = files[basename];
       if (existing != null) {
         // Sorted, not listing order: the same broken tree has to produce the
@@ -469,6 +512,42 @@ class TomDbMigrations {
         );
       }
       files[basename] = entry;
+    }
+    return files;
+  }
+
+  /// The suffix that marks a down script: `[3]-add_column.down.sql` undoes
+  /// `[3]-add_column.sql`.
+  static const String downSuffix = '.down';
+
+  /// Whether [basename] (without its extension) names a down script.
+  static bool isDownMigration(String basename) => basename.endsWith(downSuffix);
+
+  /// The down scripts among [entries], keyed by the basename of the
+  /// migration each undoes. Two files undoing one migration are refused with
+  /// `db_migration.migration.duplicate_migration_basename`, as two up files
+  /// are.
+  static Map<String, File> collectDownMigrationFiles(
+    Iterable<FileSystemEntity> entries,
+  ) {
+    final files = <String, File>{};
+    for (final entry in entries) {
+      if (entry is! File) continue;
+      if (isNotAMigrationFile(p.basename(entry.path))) continue;
+      final basename = p.basenameWithoutExtension(entry.path);
+      if (!isDownMigration(basename)) continue;
+      final up = basename.substring(0, basename.length - downSuffix.length);
+      final existing = files[up];
+      if (existing != null) {
+        final pair = [existing.path, entry.path]..sort();
+        throw TomDbMigrationException(
+          "db_migration.migration.duplicate_migration_basename",
+          "Duplicate down script in migrations directory for $up: "
+              "${pair.first} and ${pair.last}. Remove or rename one.",
+          autoLog: true,
+        );
+      }
+      files[up] = entry;
     }
     return files;
   }
@@ -701,6 +780,111 @@ class TomDbMigrations {
       );
     }
     await repair(parts[0], parts[1], version, action);
+    return true;
+  }
+
+  /// Undoes the migrations of schema [schema] of data source [datasource]
+  /// applied above [toVersion] — every one for `-1` — newest first, with the
+  /// down scripts beside them in the migration tree [directory]
+  /// (`<directory>/<datasource>/<schema>/[<v>]-<name>.down.<ext>`), under the
+  /// migration lock. Answers the versions undone, in the order they were.
+  ///
+  /// Refused before anything runs when a migration to undo has no down
+  /// script, or when the tree's up script is not the one recorded — see
+  /// [TomDbMigrator.rollback].
+  static Future<List<int>> rollback(
+    String directory, {
+    required String datasource,
+    required String schema,
+    required int toVersion,
+  }) {
+    final (dsInfo, migrator) = _migratorFor(datasource);
+    return rollbackDataSource(
+      migrator,
+      dsInfo,
+      Directory(p.join(directory, datasource)),
+      schema,
+      toVersion: toVersion,
+    );
+  }
+
+  /// [rollback] with a caller-supplied [migrator], for the schema directory
+  /// [schema] under [dataSourceDirectory].
+  static Future<List<int>> rollbackDataSource(
+    TomDbMigrator migrator,
+    TomDataSourceInfo dsInfo,
+    Directory dataSourceDirectory,
+    String schema, {
+    required int toVersion,
+  }) async {
+    if (toVersion < -1) {
+      throw TomDbMigrationException(
+        "db_migration.rollback.invalid_target",
+        "A rollback keeps the migrations up to a version, or none with -1; "
+            "got $toVersion.",
+      );
+    }
+    final schemaDirectory = Directory(p.join(dataSourceDirectory.path, schema));
+    requireMigrationsDirectory(
+      schemaDirectory,
+      'Migrations directory for schema $schema of data source ${dsInfo.name}',
+    );
+    final entries = await schemaDirectory.list().toList();
+    final ups = collectMigrationFiles(entries);
+    final downs = collectDownMigrationFiles(entries);
+    // Every version in the tree, whatever its environment tag: a rollback
+    // undoes what the history records, and the history may hold a migration
+    // this process's environment would not apply.
+    final scripts = <int, TomMigrationScript>{
+      for (final entry in orderMigrationNames(ups.keys))
+        entry.parsed.version: TomMigrationScript(
+          entry.parsed.description,
+          ups[entry.basename]!.readAsStringSync(),
+          downs[entry.basename]?.readAsStringSync(),
+        ),
+    };
+    return migrator.withMigrationLock(dsInfo, () {
+      migrator.reset();
+      return migrator.rollback(dsInfo, schema, toVersion, scripts);
+    });
+  }
+
+  /// The command-line option asking for a rollback:
+  /// `--rollback-migrations=<datasource>/<schema>/<version>`, keeping the
+  /// migrations up to `<version>` (`-1` for none).
+  static const String rollbackMigrationsOption = 'rollback-migrations';
+
+  /// Runs the rollback [args] ask for against the migration tree
+  /// [directory], and answers whether they asked for one — the counterpart of
+  /// [repairFromArgs], called by a start script that exits on `true`. A
+  /// malformed request throws `db_migration.rollback.invalid_arguments`.
+  static Future<bool> rollbackFromArgs(
+    List<String> args,
+    String directory,
+  ) async {
+    final target = TomArgs.parseArgsToMap(args)[rollbackMigrationsOption];
+    if (target == null) return false;
+    final parts = '$target'.split('/');
+    final version = parts.length == 3 ? int.tryParse(parts[2]) : null;
+    if (version == null || parts[0].isEmpty || parts[1].isEmpty) {
+      throw TomDbMigrationException(
+        "db_migration.rollback.invalid_arguments",
+        "A rollback is --$rollbackMigrationsOption=<datasource>/<schema>/"
+            "<version>, keeping the migrations up to <version> (-1 for none); "
+            "got --$rollbackMigrationsOption=$target.",
+        autoLog: true,
+      );
+    }
+    final undone = await rollback(
+      directory,
+      datasource: parts[0],
+      schema: parts[1],
+      toVersion: version,
+    );
+    tomLog.info(
+      "Rolled back ${parts[0]}/${parts[1]} to version $version: "
+      "${undone.isEmpty ? 'nothing to undo' : 'undid ${undone.join(', ')}'}.",
+    );
     return true;
   }
 

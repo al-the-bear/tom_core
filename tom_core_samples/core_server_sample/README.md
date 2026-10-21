@@ -549,6 +549,19 @@ Neither action runs a script. A version with no failed record, or a malformed
 request, is refused and nothing changes. See `tom_core_server`'s
 [db_migration.md](../../tom_core_server/doc/db_migration.md#repairing-a-failed-migration).
 
+**Rolling migrations back.** A migration with a down script beside it
+(`[2]-add_tags.down.sql` next to `[2]-add_tags.sql`) is undone with
+`--rollback-migrations`, which keeps the migrations up to the version given
+(`-1` keeps none), undoes the rest newest first and exits without starting:
+
+```sh
+dart run bin/server_start.dart --rollback-migrations=todo_db/todo_schema/1
+```
+
+A migration without a down script, or whose up script is not the one recorded,
+refuses the rollback before anything is undone. See `tom_core_server`'s
+[db_migration.md](../../tom_core_server/doc/db_migration.md#rolling-migrations-back).
+
 ---
 
 ## 10. Configuration and environment

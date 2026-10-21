@@ -118,6 +118,9 @@ that failed is repaired with the same script, which then exits instead of
 starting —
 `dart run bin/auth_server_start.dart --repair-migration=auth_db/auth_schema/<version> --repair-action=remove|resolve`;
 see [Repairing a failed migration](../README_advanced_sample.md#repairing-a-failed-migration).
+Migrations with down scripts are rolled back the same way —
+`dart run bin/auth_server_start.dart --rollback-migrations=auth_db/auth_schema/<version>`;
+see [Rolling migrations back](../README_advanced_sample.md#rolling-migrations-back).
 The seeded credentials are (sample only — never ship them):
 
 <!-- account-roster: auth-db -->

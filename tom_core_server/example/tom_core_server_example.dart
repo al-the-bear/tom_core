@@ -104,8 +104,8 @@ const List<TourStop> tour = [
   ),
   TourStop(
     'example/db_migration/db_migration_repair_example.dart',
-    'The migration lock\'s name and wait, and repairing a failed migration '
-        'from the command line',
+    'The migration lock\'s name and wait, repairing a failed migration and '
+        'rolling migrations back from the command line, and down scripts',
   ),
   TourStop(
     'example/ratelimit/rate_limit_example.dart',

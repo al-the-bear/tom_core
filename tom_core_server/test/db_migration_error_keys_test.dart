@@ -36,6 +36,14 @@ Matcher _throwsKey(String key) =>
 /// A migrator that does nothing, for the scan to register.
 class _IdleMigrator implements TomDbMigrator {
   @override
+  Future<List<int>> rollback(
+    TomDataSourceInfo dsi,
+    String schemaName,
+    int toVersion,
+    Map<int, TomMigrationScript> scripts,
+  ) async => const [];
+
+  @override
   Future<R> withMigrationLock<R>(
     TomDataSourceInfo dsi,
     Future<R> Function() body,

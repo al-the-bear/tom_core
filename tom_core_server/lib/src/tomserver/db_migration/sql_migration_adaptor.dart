@@ -85,6 +85,29 @@ abstract class TomSqlMigrationAdaptor implements TomDbMigrator {
     String sql,
   );
 
+  /// Runs [downSql] — the down script of migration [version] of
+  /// [schemaName] — and deletes the migration's record, or throws
+  /// `<applyKeyPrefix>.rollback_migration.failed`.
+  @protected
+  Future<void> revertScript(
+    TomDataSourceInfo dsi,
+    String schemaName,
+    int version,
+    String description,
+    String downSql,
+  );
+
+  /// Deletes the record of migration [version] of [schemaName].
+  @protected
+  Future<void> forgetMigration(
+    TomDataSourceInfo dsi,
+    String schemaName,
+    int version,
+  ) => dsi.datasource.executeCommand(
+    'DELETE FROM ${schemaName}_versioning WHERE version = :version',
+    {'version': version},
+  );
+
   /// Records migration [version] of [schemaName] in its versioning table:
   /// [success] or not, after [elapsedMs].
   ///
@@ -400,6 +423,66 @@ abstract class TomSqlMigrationAdaptor implements TomDbMigrator {
       "Applying migration to datasource ${dsi.name}, schema $schemaName, version $version, description $description",
     );
     await applyScript(dsi, schemaName, version, description, sql);
+  }
+
+  @override
+  Future<List<int>> rollback(
+    TomDataSourceInfo dsi,
+    String schemaName,
+    int toVersion,
+    Map<int, TomMigrationScript> scripts,
+  ) async {
+    await initializeMigration(dsi, schemaName);
+    final undo = [
+      for (final v in versions.reversed)
+        if (v.version > toVersion) v,
+    ];
+    // Everything is checked before the first down script runs: a rollback
+    // that stops half-way for a reason it could have seen leaves a schema
+    // between two versions nobody chose.
+    for (final v in undo) {
+      final script = scripts[v.version];
+      final where =
+          "version ${v.version} (${v.description}) of schema "
+          "$schemaName in datasource ${dsi.name}";
+      if (script == null || script.down == null) {
+        throw migrationException(
+          "$applyKeyPrefix.rollback_migration.no_down_script",
+          "$adaptorLabel: $where has no down script in the migration tree "
+              "(${script == null ? 'nor an up script' : '[${v.version}]-'
+                        '${v.description}${TomDbMigrations.downSuffix}.<ext>'}), so "
+              "the rollback has been refused before undoing anything.",
+          parameters: {"version": v.version, "schema": schemaName},
+        );
+      }
+      if (script.description != v.description ||
+          checksumOf(script.up) != v.checksum) {
+        throw migrationException(
+          "$applyKeyPrefix.rollback_migration.script_changed",
+          "$adaptorLabel: $where was applied with a different script than "
+              "the tree holds, so its down script cannot be trusted to undo "
+              "it. The rollback has been refused before undoing anything.",
+          parameters: {"version": v.version, "schema": schemaName},
+        );
+      }
+    }
+    final undone = <int>[];
+    for (final v in undo) {
+      tomLog.info(
+        "Rolling back datasource ${dsi.name}, schema $schemaName, version "
+        "${v.version}, description ${v.description}",
+      );
+      await revertScript(
+        dsi,
+        schemaName,
+        v.version,
+        v.description,
+        scripts[v.version]!.down!,
+      );
+      undone.add(v.version);
+    }
+    reset();
+    return undone;
   }
 
   @override

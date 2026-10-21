@@ -28,7 +28,7 @@ class MariadbMigrationException extends TomSqlMigrationException {
 /// and a failed one is still recorded (with `success = 0`) before the error is
 /// rethrown — that row is what makes [initializeMigration] refuse a schema the
 /// failure left part-applied.
-@TomDbMigrationAdaptor("mariadb")
+@TomDbMigrationAdaptor("mariadb", alsoServes: ["mariadb_xa"])
 @tomReflector
 class MariadbMigrationAdaptor extends TomSqlMigrationAdaptor {
   @override
@@ -108,5 +108,31 @@ CREATE TABLE IF NOT EXISTS ${schemaName}_versioning (
       elapsedMs: elapsedMs,
     );
     if (exception != null) throw exception;
+  }
+
+  /// MariaDB does not roll DDL back, so a down script that fails part-way
+  /// leaves what it already undid undone, and the migration stays recorded:
+  /// the schema is between the two versions, as after a failed migration.
+  @override
+  Future<void> revertScript(
+    TomDataSourceInfo dsi,
+    String schemaName,
+    int version,
+    String description,
+    String downSql,
+  ) async {
+    try {
+      for (final statement in TomSqlLexer.splitStatements(downSql)) {
+        await dsi.datasource.executeCommand(statement);
+      }
+      await forgetMigration(dsi, schemaName, version);
+    } catch (error) {
+      throw migrationException(
+        "$applyKeyPrefix.rollback_migration.failed",
+        "Failed to roll back migration $version, $description: $error",
+        autoLog: true,
+        rootException: error,
+      );
+    }
   }
 }

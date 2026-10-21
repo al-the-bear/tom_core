@@ -19,7 +19,13 @@ failure recorded on MariaDB, which does not roll DDL back, and in one
 transaction with the version row on PostgreSQL, which does. Every run takes the
 database's **migration lock**, so replicas starting together apply each script
 once; a failed record is **repaired** — removed or marked resolved — by an
-operator, from code or with `--repair-migration` / `--repair-action`.
+operator, from code or with `--repair-migration` / `--repair-action`. A
+migration with a **down script** beside it (`[3]-add_column.down.sql` for
+`[3]-add_column.sql`) can be **rolled back**: the migrations applied above a
+version are undone newest first, from code or with
+`--rollback-migrations=<datasource>/<schema>/<version>`. The two-phase
+data-source types (`mariadb_xa`, `postgresql_xa`) migrate through the adaptor of
+their database.
 
 The **checks** answer *does this chain build what we say it builds* — and answer
 it **with no database at all**, by replaying the chain's DDL text into an
@@ -33,14 +39,15 @@ optimisation: a check that needs a live server cannot gate code generation.
 
 | Type | What it is |
 | ---- | ---------- |
-| `TomDbMigrations` | The orchestrator. A static entry point that holds no scripts: it discovers migrators by reflection and drives a directory tree of them, each data source under its migration lock. `withMigrationLock` holds the lock around a wider run (a per-tenant walk); `repair` and `repairFromArgs` resolve a failed migration. |
-| `TomDbMigrator` | The contract a database-specific migrator implements. One instance serves one `(data source, schema)` pair at a time. `withMigrationLock` runs one migration run per database at a time; `repair` resolves a failed record without running a script. |
+| `TomDbMigrations` | The orchestrator. A static entry point that holds no scripts: it discovers migrators by reflection and drives a directory tree of them, each data source under its migration lock. `withMigrationLock` holds the lock around a wider run (a per-tenant walk); `repair` and `repairFromArgs` resolve a failed migration; `rollback`, `rollbackDataSource` and `rollbackFromArgs` undo applied ones with their down scripts, which `collectDownMigrationFiles` collects and `collectMigrationFiles` skips. |
+| `TomDbMigrator` | The contract a database-specific migrator implements. One instance serves one `(data source, schema)` pair at a time. `withMigrationLock` runs one migration run per database at a time; `repair` resolves a failed record without running a script; `rollback` undoes the migrations applied above a version with their down scripts. |
 | `TomMigrationRepair` | What `repair` does with a failed record: `remove` it, so the next run applies the migration again, or `markResolved`, so the next run skips it. |
-| `TomDbMigrationAdaptor` | A `const` annotation binding a migrator class to a data-source **type** string (e.g. `"mariadb"`) so reflection can find it. It adapts nothing itself. |
+| `TomDbMigrationAdaptor` | A `const` annotation binding a migrator class to a data-source **type** string (e.g. `"mariadb"`), and to the further types in `alsoServes` (e.g. `"mariadb_xa"`), so reflection can find it. It adapts nothing itself. |
+| `TomMigrationScript` | One migration's description, up script and down script, as a rollback reads them from the tree. |
 | `TomMigrationFileName` | A parsed migration file name: `version`, `description`, and an optional environment tag. |
-| `TomSqlMigrationAdaptor` | The database-neutral SQL `TomDbMigrator`: the `<schema>_versioning` history, checksum stability (`checksumOf`), rebinding per schema, the refusal of a history that records a failed script and its repair, and the migration lock — the data source's session lock named `migrationLockName(databaseName)`, waited for up to `lockWait`. |
-| `MariadbMigrationAdaptor` | The MariaDB/MySQL migrator, registered for the `"mariadb"` type. Records a failed script with `success = 0`. |
-| `PostgresMigrationAdaptor` | The PostgreSQL migrator, registered for the `"postgresql"` type. Runs a script and its version row in one transaction, so a failure leaves nothing behind. |
+| `TomSqlMigrationAdaptor` | The database-neutral SQL `TomDbMigrator`: the `<schema>_versioning` history, checksum stability (`checksumOf`), rebinding per schema, the refusal of a history that records a failed script and its repair, the checks of a rollback, and the migration lock — the data source's session lock named `migrationLockName(databaseName)`, waited for up to `lockWait`. |
+| `MariadbMigrationAdaptor` | The MariaDB/MySQL migrator, registered for the `"mariadb"` and `"mariadb_xa"` types. Records a failed script with `success = 0`; a failed down script leaves what it ran done and the migration recorded. |
+| `PostgresMigrationAdaptor` | The PostgreSQL migrator, registered for the `"postgresql"` and `"postgresql_xa"` types. Runs a script and its version row — or a down script and the deletion of its record — in one transaction, so a failure leaves nothing behind. |
 | `TomDbVersion` | One row of a `<schema>_versioning` table — the record of a single applied (or attempted) migration. |
 | `TomMigrationRun` · `TomMigrationRunState` | `TomDbMigrations.lastRun`: where the process's most recent `migrateDatabases` call stands — `notRun`, `running`, `succeeded` or `failed` with its error. The framework readiness check on `GET /ready` answers not ready while it is `running` or `failed`. |
 | `TomDbMigrationException` | Thrown when a migration cannot be discovered, parsed or applied. |
@@ -98,14 +105,14 @@ treatment: the directory layout and file-name grammar — including the two
 classes of file a schema directory may hold without being migrations, which is
 everything a machine put there and nothing a developer did — environment tags,
 adaptor discovery, idempotency and checksum stability, the whole
-schema-convergence chapter, the migration lock and the repair of a failed
-migration, and what returns a `Future` and why. The connection-free surface runs
+schema-convergence chapter, the migration lock, the repair of a failed
+migration, down scripts and the rollback, and what returns a `Future` and why. The connection-free surface runs
 in `example/db_migration/db_migration_example.dart` and
 `example/db_migration/db_migration_repair_example.dart`;
 `test/db_migration_test.dart` and `test/schema_convergence_test.dart` cover the
 two halves, `test/db_migration_db_test.dart` covers the adaptor and
-`test/db_migration_lock_db_test.dart` the lock and the repair of whichever
-database the DB suites run against — MariaDB through `tool/run_db_tests.sh`, PostgreSQL
+`test/db_migration_lock_db_test.dart` the lock and the repair and
+`test/db_migration_rollback_db_test.dart` the rollback of whichever database the DB suites run against — MariaDB through `tool/run_db_tests.sh`, PostgreSQL
 through `tool/run_db_tests_postgres.sh`.
 
 ---
