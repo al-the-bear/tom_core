@@ -100,6 +100,15 @@ keyring's key-encryption keys. Without the key no subject keys are installed and
 personal values are recorded as they are — see
 [`doc/configuration.md`](../../../../doc/configuration.md#privacy).
 
+**Transaction recovery.** Then `start` awaits the `transactions` key
+(`TomServer.recoverTransactions`, `TomTransactionRecovery.configurationKey`):
+the one-phase data source two-phase commit decisions are recorded in, and with
+`recoverOnStart` a recovery of the branches a dead process left prepared —
+committing those a recorded decision names, rolling back the rest — before the
+server takes a request that could meet their locks. Without the key no decision
+is recorded and nothing is recovered — see
+[`doc/configuration.md`](../../../../doc/configuration.md#transaction-recovery).
+
 **Graceful shutdown.** `start` puts the shutdown gate outermost in the
 pipeline and registers `TomServer.gracefulShutdown` for SIGTERM and SIGINT: on
 either signal `/ready` turns to `503`, the listener closes, a new request is

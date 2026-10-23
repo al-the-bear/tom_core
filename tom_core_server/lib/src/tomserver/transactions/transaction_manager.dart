@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
@@ -254,6 +255,16 @@ class TomTransaction {
   /// Whether the transaction is still open (not yet committed or rolled back).
   bool get isRunning => _isRunning;
 
+  /// The transaction's id: unique in the process and, through a random
+  /// process tag, across the processes sharing a decision log.
+  final String id = 'tx_${_processTag}_${(_counter++).toRadixString(36)}';
+
+  static final String _processTag = Random.secure()
+      .nextInt(1 << 32)
+      .toRadixString(16)
+      .padLeft(8, '0');
+  static int _counter = 0;
+
   TomTransaction._(this._scope, [this.isReadOnly = false]);
 
   /// Enlists [ttp] in this transaction, calling its `startTransaction()` once.
@@ -431,6 +442,14 @@ class TomTransaction {
         }
       }
 
+      // The decision is recorded before the first commit: a process that dies
+      // from here on leaves prepared branches a recovery commits, because the
+      // record says they were decided. Recorded outside this transaction's
+      // scope, so the write cannot ride on a participant's connection and
+      // commit only with it. A decision that cannot be recorded is not taken.
+      final decided = await _recordDecision();
+      if (decided == false) return rollbackTransaction();
+
       // Past this point the transaction is committing. Every participant has
       // promised it can, and a broken promise is reported rather than acted on.
       final broken = <String>[];
@@ -461,6 +480,10 @@ class TomTransaction {
         );
       }
 
+      // Every branch committed, so nothing is left for a recovery; a broken
+      // one keeps the record, and the recovery commits what is still prepared.
+      if (decided == true && broken.isEmpty) await _forgetDecision();
+
       return TomTransactionResult(
         broken.isEmpty
             ? TomTransactionOutcome.committed
@@ -470,6 +493,47 @@ class TomTransaction {
       );
     } finally {
       _scope._clear(this);
+    }
+  }
+
+  /// The prepared two-phase branches of this transaction's participants.
+  List<String> get _preparedBranches => [
+    for (final holder
+        in _participants.values.whereType<TomPreparedBranchHolder>())
+      ?holder.preparedBranchOf(this),
+  ];
+
+  /// Records the commit decision in [TomTransactionManager.decisionLog]:
+  /// `true` when recorded, `false` when the write failed, `null` when there is
+  /// no log or no two-phase branch to record.
+  Future<bool?> _recordDecision() async {
+    final log = TomTransactionManager.decisionLog;
+    if (log == null) return null;
+    final branches = _preparedBranches;
+    if (branches.isEmpty) return null;
+    try {
+      await TomTransactionManager.runInTransactionScope(
+        () => log.recordCommit(id, branches),
+      );
+      return true;
+    } catch (error) {
+      tomLog.error(
+        "Transaction $id could not record its commit decision, so it rolls "
+        "back rather than commit what a recovery could not resolve: $error",
+      );
+      return false;
+    }
+  }
+
+  Future<void> _forgetDecision() async {
+    try {
+      await TomTransactionManager.runInTransactionScope(
+        () => TomTransactionManager.decisionLog!.forget(id),
+      );
+    } catch (error) {
+      // Committed all the same; a recovery finds nothing prepared and forgets
+      // the record then.
+      tomLog.warn("Transaction $id could not forget its decision: $error");
     }
   }
 
@@ -580,6 +644,29 @@ class _TomTransactionScope {
   void _clear(TomTransaction transaction) {
     if (identical(current, transaction)) current = null;
   }
+}
+
+/// A participant holding a two-phase branch: the id of the branch it
+/// prepared for a transaction, which the coordinator records before the
+/// commit phase.
+abstract interface class TomPreparedBranchHolder {
+  /// The id of the branch prepared for [transaction], or `null` for none.
+  String? preparedBranchOf(TomTransaction transaction);
+}
+
+/// The coordinator's durable record of commit decisions: written before a
+/// two-phase transaction's commit phase, forgotten once every branch
+/// committed, and read by a recovery to tell the prepared branches it must
+/// commit from those it must roll back.
+abstract interface class TomTransactionDecisionLog {
+  /// Records that [transactionId] decided to commit its [branches].
+  Future<void> recordCommit(String transactionId, List<String> branches);
+
+  /// Forgets the decision of [transactionId].
+  Future<void> forget(String transactionId);
+
+  /// Every recorded decision: transaction id to its branches.
+  Future<Map<String, Set<String>>> decisions();
 }
 
 /// Ambient access to the current [TomTransaction].
@@ -756,6 +843,11 @@ abstract class TomTransactionManager {
     }
     return result;
   }
+
+  /// Where two-phase commit decisions are recorded; `null` records none,
+  /// and a process that dies between the phases then leaves its prepared
+  /// branches to a recovery that can only roll them back.
+  static TomTransactionDecisionLog? decisionLog;
 
   /// Whether the current zone carries a transaction scope of its own.
   ///

@@ -61,6 +61,7 @@ module builds its query DSL and repositories on top of this layer.
     - [TomSqlResultValues](#tomsqlresultvalues)
     - [TomSqlLink](#tomsqllink)
     - [TomSqlBranch](#tomsqlbranch)
+    - [TomSqlTwoPhaseRecovery](#tomsqltwophaserecovery)
   - [The MariaDB Driver](#the-mariadb-driver)
     - [MariaDbDatasource](#mariadbdatasource)
     - [MariaDbXADatasource](#mariadbxadatasource)
@@ -205,9 +206,12 @@ TomTransactionParticipant  (transactions)
     └── TomDataSource
             └── TomSqlDatasource  (implements)
                     ├── MariaDbDatasource
-                    │       └── MariaDbXADatasource
+                    │       └── MariaDbXADatasource  (with TomSqlTwoPhaseRecovery)
                     └── PostgresDatasource
-                            └── PostgresXADatasource
+                            └── PostgresXADatasource  (with TomSqlTwoPhaseRecovery)
+
+TomSqlTwoPhaseRecovery  (mixin on TomSqlDatasource; implements
+                         TomPreparedBranchHolder, TomTwoPhaseRecoverable — transactions)
 
 TomSqlRow     (interface)
 TomSqlResult  (interface)
@@ -1577,6 +1581,42 @@ TomSqlBranch()
 | `xaId` | `String?` | The two-phase branch id, quoted; `null` on a one-phase driver. |
 | `ended` | `bool` | Whether a two-phase branch has left its active state — `XA END`ed on MariaDB, `PREPARE TRANSACTION`ed on PostgreSQL. |
 
+#### TomSqlTwoPhaseRecovery
+
+A mixin on `TomSqlDatasource` giving a two-phase driver its part in recovering
+prepared branches (see
+[transactions.md](../transactions.md#recovering-prepared-branches)): as a
+`TomPreparedBranchHolder` it answers the branch it prepared for a transaction,
+which the coordinator records; as a `TomTwoPhaseRecoverable` it lists its
+database's prepared branches and commits or rolls back one by id. A driver
+supplies the four statements; the listing, the ownership and age checks, the
+character check and the quoting are the mixin's. `MariaDbXADatasource` and
+`PostgresXADatasource` mix it in.
+
+- **Mixin on:** `TomSqlDatasource`
+- **Implements:** `TomPreparedBranchHolder`, `TomTwoPhaseRecoverable`
+
+##### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `listPreparedSql` | `String` | *(getter, protected, abstract)* The statement listing the prepared branches. |
+| `preparedIdColumn` | `String` | *(getter, protected, abstract)* The column of `listPreparedSql` holding a branch id. |
+| `recoveryLabel` | `String` | *(getter, override)* `<driver> <host>:<port>/<database>`, naming the data source in a recovery's report and log lines. |
+
+##### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `commitPreparedSql` | `String commitPreparedSql(String quotedId)` | *(protected, abstract)* The statement committing the prepared branch `quotedId`. |
+| `rollbackPreparedSql` | `String rollbackPreparedSql(String quotedId)` | *(protected, abstract)* The statement rolling the prepared branch `quotedId` back. |
+| `preparedBranchOf` | `String? preparedBranchOf(TomTransaction transaction)` | *(override)* The branch id of `transaction` (`TomSqlBranch.xaId`), unquoted, or `null` when the data source holds no branch for it. |
+| `listPreparedBranches` | `Future<List<String>> listPreparedBranches()` | *(override)* Runs `listPreparedSql` on a pooled connection and reads `preparedIdColumn` of every row. |
+| `ownsBranch` | `bool ownsBranch(String branchId)` | *(override)* `tomSqlOwnsBranch` with this data source's `databaseName`, `host` and `port`. |
+| `branchOpenedAt` | `DateTime? branchOpenedAt(String branchId)` | *(override)* `tomSqlBranchOpenedAt(branchId)`. |
+| `commitPreparedBranch` | `Future<void> commitPreparedBranch(String branchId)` | *(override)* Runs `commitPreparedSql` over the quoted id. An id with a character `tomSqlBranchId` does not write is refused with `error.datasource.invalid_branch_id` before any statement runs. |
+| `rollbackPreparedBranch` | `Future<void> rollbackPreparedBranch(String branchId)` | *(override)* Runs `rollbackPreparedSql` over the quoted id, refusing an id the same way. |
+
 ### The MariaDB Driver
 
 #### MariaDbDatasource
@@ -1652,7 +1692,13 @@ commands. `endTransaction` is the inherited one: it issues nothing and hands the
 connection back, exactly as the one-phase sibling's does, because every XA
 statement belongs to `prepare`, `commit` and `rollback`.
 
+Its prepared branches are recovered through `TomSqlTwoPhaseRecovery`: `XA
+RECOVER` lists them — every database's on the server, the id in the `data`
+column, of which `ownsBranch` keeps this database's — and `XA COMMIT '<id>'` /
+`XA ROLLBACK '<id>'` resolve one.
+
 - **Extends:** `MariaDbDatasource`
+- **Mixes in:** `TomSqlTwoPhaseRecovery`
 
 ##### Constructors
 
@@ -1807,7 +1853,13 @@ vetoes every two-phase transaction this data source joins. Unlike MariaDB's
 `XA START`, `BEGIN` has a read-only form, so a read-only transaction is
 honoured here as on the one-phase driver.
 
+Its prepared transactions are recovered through `TomSqlTwoPhaseRecovery`:
+`SELECT gid FROM pg_prepared_xacts WHERE database = current_database()` lists
+this database's, and `COMMIT PREPARED '<id>'` / `ROLLBACK PREPARED '<id>'`
+resolve one.
+
 - **Extends:** `PostgresDatasource`
+- **Mixes in:** `TomSqlTwoPhaseRecovery`
 
 ##### Constructors
 
@@ -1827,7 +1879,7 @@ PostgresXADatasource()
 | ------ | --------- | ----------- |
 | `startTransaction` | `Future<bool> startTransaction(TomTransaction transaction)` | *(override)* Opens the transaction with `beginStatement` (read-only when it is) and names its branch. The branch id doubles as the in-transaction guard, exactly as on `MariaDbXADatasource`: a second start of the same transaction throws `error.transaction.already_active` with the open branch in `transactionId`. A start the database refused clears the id and hands the connection back. |
 | `prepare` | `Future<bool> prepare(TomTransaction transaction)` | *(override)* `PREPARE TRANSACTION '<id>'`. A failure keeps the branch for `rollback`, which the coordinator calls on every participant after a veto; PostgreSQL has already aborted the transaction, so that rollback finds an ordinary transaction-less session and only clears the branch. |
-| `commit` | `Future<bool> commit(TomTransaction transaction)` | *(override)* `COMMIT PREPARED '<id>'`, clearing the id. A failure leaves the branch in doubt, named in `pg_prepared_xacts`, for an operator to resolve. |
+| `commit` | `Future<bool> commit(TomTransaction transaction)` | *(override)* `COMMIT PREPARED '<id>'`, clearing the id. A failure leaves the branch in doubt, named in `pg_prepared_xacts`, where a recovery commits it when the decision is recorded. |
 | `rollback` | `Future<bool> rollback(TomTransaction transaction)` | *(override)* `ROLLBACK` while the transaction is open, `ROLLBACK PREPARED '<id>'` once it was prepared; nothing when no branch was opened or a commit cleared it. Clears the branch either way and reports whether it was undone. |
 
 ### Read Replicas
@@ -2371,6 +2423,8 @@ Fails](../datasources.md#when-a-write-fails).
 | `tomSqlBindValue` | `Object? tomSqlBindValue(Object? value)` | Marshals one bind value into the primitive a SQL driver binds: a `TomDbType` box is unwrapped; a Dart `bool` becomes `1`/`0`; a `TomZonedDate` becomes its `DATE` text and a `TomZonedTime` its `TIME` text; any other `DateTime` becomes its UTC instant text (`sqlInstant`); every other value is bound as-is. One encoding for every driver: MariaDB has no boolean type and rejects a bound `'false'` and an instant ending in `Z`, and PostgreSQL, sent each value as text with an unspecified type, reads the same text correctly into a `SMALLINT`, a `BOOLEAN` or a `TIMESTAMP`. |
 | `tomSqlBindParams` | `Map<String, Object?>? tomSqlBindParams(Map<String, dynamic>? params)` | `params` with every value marshalled through `tomSqlBindValue`, or `null` for `null`. Both statement paths marshal, so a hand-written store binding a `DateTime` or a `bool` gets the same encoding as a prepared statement. |
 | `tomSqlBranchId` | `String tomSqlBranchId({required String databaseName, required String host, required int port, required String processTag, required int counter, required int maxBytes})` | A process-unique two-phase branch id, `<database>@<host>:<port>_<process>_<time>_<counter>`, at most `maxBytes` long. Both servers refuse an over-long transaction id, so the unique tail is always kept whole and the readable head is truncated; characters outside `[A-Za-z0-9_.@:-]` become `_`, which keeps the id single-byte and safe to quote. |
+| `tomSqlOwnsBranch` | `bool tomSqlOwnsBranch(String branchId, {required String databaseName, required String host, required int port})` | Whether `branchId` is a `tomSqlBranchId` built for `databaseName` at `host` and `port`: its tail has the shape `tomSqlBranchId` writes, and its head is the coordinates — with the characters `tomSqlBranchId` replaces replaced — whole, or truncated to no fewer than sixteen characters. How a recovery tells its own branches from the rest of a server-wide `XA RECOVER`. |
+| `tomSqlBranchOpenedAt` | `DateTime? tomSqlBranchOpenedAt(String branchId)` | When the `tomSqlBranchId` `branchId` was opened — the UTC time its tail carries — or `null` for an id of another shape. |
 | `unknownFrameworkColumns` | `List<String> unknownFrameworkColumns(String sql, Iterable<TomFrameworkTable> tables)` | The identifiers in `sql` that are not a column of any of `tables`, not one of their names or index names, and not SQL. The guard for the half of a statement a column list cannot cover — the references inside `SET`, `WHERE` and `ORDER BY` — driven by passing every statement a store issued through it. String literals, `:bind` placeholders and numbers are stripped first, and anything surviving that is not a known SQL word is reported: a missing word is a noisy false positive in a test, a missed column reference is a production failure. |
 
 ### Constants

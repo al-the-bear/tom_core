@@ -103,7 +103,17 @@ keyring's key-encryption keys — which is why it comes after them. A value of t
 wrong shape stops the start with `privacy.config.invalid`; without the key no
 subject keys are installed, and personal values are recorded in the trail as
 they are (see [configuration.md](configuration.md#privacy) and
-[privacy.md](privacy.md#crypto-shredding-in-the-audit-trail)).
+[privacy.md](privacy.md#crypto-shredding-in-the-audit-trail)). Then it awaits
+the `transactions` key (`TomServer.recoverTransactions`): the one-phase data
+source two-phase commit decisions are recorded in, and whether to recover. With
+`recoverOnStart` it resolves the two-phase branches a dead process left
+prepared — committing those a recorded decision names, rolling back the rest —
+before the server takes a request that could meet their locks, and logs the
+report. A value of the wrong shape stops the start with
+`transactions.recovery.config.invalid`; without the key no decision is recorded
+and nothing is recovered (see
+[configuration.md](configuration.md#transaction-recovery) and
+[transactions.md](transactions.md#recovering-prepared-branches)).
 `start()` completes **when the socket is listening**, with the bound
 `HttpServer`. So a bind failure — a port already in use, an unreadable
 certificate, a malformed private key — rejects the returned future instead of
@@ -867,4 +877,4 @@ and an application that needs one builds it today rather than waiting:
 | [privacy](privacy.md) | module | `server.dart` | `TomPrivacy` (`configurePrivacy` applies the `privacy` key) |
 | [ratelimit](ratelimit.md) | module | `server.dart` | `TomRateLimits` (installed from configuration at start) and `tomRateLimitMiddleware` |
 | [tenancy](tenancy.md) | module | `server.dart` | `TomTenancy` and `TomTenantResolution` — the request's tenant, or the refusal to answer it with |
-| [transactions](transactions.md) | module | `server.dart` | `TomTransactionManager` |
+| [transactions](transactions.md) | module | `server.dart` | `TomTransactionManager`, and `TomTransactionRecovery` / `TomRecoveryReport` (`recoverTransactions` applies the `transactions` key and recovers at start) |

@@ -14,6 +14,12 @@ orchestrator runs each step as a local transaction and, when a step fails for
 good, runs the compensations of the steps already done, last first — see
 [TomSagaOrchestrator](#tomsagaorchestrator).
 
+A process that dies between the two phases leaves its branches prepared. The
+coordinator records its decision before the commit phase in a
+[TomTransactionDecisionLog](#tomtransactiondecisionlog), and
+[TomTransactionRecovery](#tomtransactionrecovery) commits the branches a
+recorded decision names and rolls back the rest.
+
 ## Table of Contents
 
 - [Overview](#overview)
@@ -24,6 +30,15 @@ good, runs the compensations of the steps already done, last first — see
   - [TomTransactionResult](#tomtransactionresult)
   - [TomTransaction](#tomtransaction)
   - [TomTransactionManager](#tomtransactionmanager)
+  - [TomPreparedBranchHolder](#tompreparedbranchholder)
+  - [TomTransactionDecisionLog](#tomtransactiondecisionlog)
+  - [TomMemoryDecisionLog](#tommemorydecisionlog)
+  - [TomSqlDecisionLog](#tomsqldecisionlog)
+  - [TomDecisionRow](#tomdecisionrow)
+  - [TomTwoPhaseRecoverable](#tomtwophaserecoverable)
+  - [TomRecoveryReport](#tomrecoveryreport)
+  - [TomTransactionRecovery](#tomtransactionrecovery)
+  - [TomTransactionRecoveryException](#tomtransactionrecoveryexception)
   - [TomSagaException](#tomsagaexception)
   - [TomSagaWork](#tomsagawork)
   - [TomSagaStep](#tomsagastep)
@@ -43,6 +58,7 @@ good, runs the compensations of the steps already done, last first — see
 ## Overview
 
 Source: `lib/src/tomserver/transactions/transaction_manager.dart`,
+`lib/src/tomserver/transactions/transaction_recovery.dart`,
 `lib/src/tomserver/transactions/saga.dart`,
 `lib/src/tomserver/transactions/saga_sql.dart`.
 
@@ -63,6 +79,20 @@ Code outside every scope shares one process-wide fallback scope. The pipeline
 opens a transaction for a `@TomTransactional` endpoint and commits/rolls it back
 when the call returns; the transaction clears itself from its scope on
 completion.
+
+`transaction_recovery.dart` holds the recovery of prepared branches. Between
+the phases the coordinator records the prepared branches of the participants
+that are `TomPreparedBranchHolder`s under `TomTransaction.id`, in
+`TomTransactionManager.decisionLog` — a `TomSqlDecisionLog` over the
+`tom_transaction_decision` table (`decisionTable`) of a one-phase data source —
+and forgets them once every branch committed. A record that cannot be written
+rolls the transaction back. `TomTransactionRecovery.recover` lists the prepared
+branches of every `TomTwoPhaseRecoverable` data source, passes over those it
+does not own and those younger than `minimumAge`, commits those a decision
+names, rolls back the rest, forgets the resolved decisions, and returns a
+`TomRecoveryReport`. `TomTransactionRecovery.configure` applies the
+`transactions` configuration, which `TomServer.recoverTransactions` reads at
+start.
 
 `saga.dart` holds the sagas. A `TomSaga` declares its `TomSagaStep`s, each an
 action and an optional compensation; `TomSagaOrchestrator` registers sagas,
@@ -86,6 +116,18 @@ TomServerException  (little_things)
 TomTransactionParticipant  (abstract)
 TomTransaction
 TomTransactionManager  (abstract, static-only)
+
+TomServerException  (little_things)
+    └── TomTransactionRecoveryException
+
+TomPreparedBranchHolder  (abstract interface)
+TomTransactionDecisionLog  (abstract interface)
+    ├── TomMemoryDecisionLog  (implements)
+    └── TomSqlDecisionLog  (implements)
+TomTwoPhaseRecoverable  (abstract interface)
+TomRecoveryReport
+TomTransactionRecovery  (abstract final, static-only)
+TomDecisionRow
 
 TomServerException  (little_things)
     └── TomSagaException
@@ -218,13 +260,14 @@ None — the constructor is private; obtain instances via
 | -------- | ---- | ----------- |
 | `isReadOnly` | `bool` | Whether this transaction was opened as read-only. Handed to every participant through `startTransaction`, which is the only path from the `@TomTransactional(isReadOnly: true)` that declares it to the resource that can act on it. The coordinator enforces nothing — it has no idea what a write is — so what it means is each participant's to decide: `MariaDbDatasource` opens `START TRANSACTION READ ONLY` and the server refuses the writes; `MariaDbXADatasource` cannot, XA having no read-only branch, and warns rather than appearing to. |
 | `isRunning` | `bool` | *(getter)* Whether the transaction is still open (not yet committed or rolled back). |
+| `id` | `String` | The transaction's id, `tx_<process tag>_<counter>`: unique in the process, and through a random process tag across the processes sharing a decision log. The key its commit decision is recorded under (final). |
 
 #### Methods
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `registerParticipant` | `Future<void> registerParticipant(TomTransactionParticipant ttp)` | Enlists `ttp`, calling its `startTransaction(transaction)` once; registering the same participant again is a no-op. A **different** object claiming an enlisted id is refused with `…duplicate_id` rather than dropped — a dropped resource's work is neither committed with the transaction nor rolled back with it. Enlistment is all or nothing: the participant is recorded only after a `true`, and a `false` or a throw leaves it unenlisted and raises `TomTransactionException` naming it (`…start_failed` / `…start_threw`, the latter carrying the original as `rootException`). Also throws when the transaction is no longer running. |
-| `commitTransaction` | `Future<TomTransactionResult> commitTransaction()` | Prepares every participant, then — only if all promised — commits every participant, then ends them all. A veto or a throw during prepare rolls the transaction back instead; a `commit` that fails after a successful prepare does not, and is logged as a partial commit. Clears the transaction from its scope (in a `finally`, so a transaction that is not running is never the current one) and returns a `TomTransactionResult` — a vetoed transaction returns the rollback's own result rather than claiming a commit that did not happen. Participants are driven **one at a time**: the order is what makes a veto's meaning knowable, and a transaction spanning *n* resources pays *n* round trips per phase. |
+| `commitTransaction` | `Future<TomTransactionResult> commitTransaction()` | Prepares every participant, then — only if all promised — records the decision in `TomTransactionManager.decisionLog` when one is installed and a participant holds a prepared branch (rolling back instead when the record cannot be written), commits every participant, forgets the decision once all committed, then ends them all. A veto or a throw during prepare rolls the transaction back instead; a `commit` that fails after a successful prepare does not, and is logged as a partial commit. Clears the transaction from its scope (in a `finally`, so a transaction that is not running is never the current one) and returns a `TomTransactionResult` — a vetoed transaction returns the rollback's own result rather than claiming a commit that did not happen. Participants are driven **one at a time**: the order is what makes a veto's meaning knowable, and a transaction spanning *n* resources pays *n* round trips per phase. |
 | `rollbackTransaction` | `Future<TomTransactionResult> rollbackTransaction()` | Rolls back every participant then ends them; clears the transaction from its scope (in a `finally`). Returns `rolledBack` when every participant undid its work and `rolledBackWithFailures` when one did not, naming it. |
 
 "Ends them" is unconditional on both paths: a participant whose
@@ -265,6 +308,229 @@ isolate cannot see each other's work. Abstract with a static-only surface.
 | -------- | ---- | ----------- |
 | `hasTransactionScope` | `static bool` | *(getter)* Whether the current zone carries a transaction scope of its own; `false` means `startTransaction` would use the process-wide fallback scope. |
 | `transactional` | `static bool` | *(getter)* Whether a transaction is currently active and still running. |
+| `decisionLog` | `static TomTransactionDecisionLog?` | Where two-phase commit decisions are recorded; `null` (the default) records none, and a process that dies between the phases then leaves its prepared branches to a recovery that can only roll them back. Set by `TomTransactionRecovery.configure` from the `transactions` configuration. |
+
+### TomPreparedBranchHolder
+
+A participant holding a two-phase branch: the id of the branch it prepared for
+a transaction, which the coordinator records before the commit phase.
+`MariaDbXADatasource` and `PostgresXADatasource` implement it through
+`TomSqlTwoPhaseRecovery`.
+
+- **Extends:** none (abstract interface)
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `preparedBranchOf` | `String? preparedBranchOf(TomTransaction transaction)` | The id of the branch prepared for `transaction`, or `null` for none. |
+
+### TomTransactionDecisionLog
+
+The coordinator's durable record of commit decisions: written before a
+two-phase transaction's commit phase, outside the transaction's scope;
+forgotten once every branch committed; read by a recovery to tell the prepared
+branches it must commit from those it must roll back. It belongs in a one-phase
+data source, and every process whose transactions reach a recovered database
+records into the same one.
+
+- **Extends:** none (abstract interface)
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `recordCommit` | `Future<void> recordCommit(String transactionId, List<String> branches)` | Records that `transactionId` decided to commit its `branches`. A throw means the decision is not taken: the coordinator rolls back. |
+| `forget` | `Future<void> forget(String transactionId)` | Forgets the decision of `transactionId`. |
+| `decisions` | `Future<Map<String, Set<String>>> decisions()` | Every recorded decision: transaction id to its branches. |
+
+### TomMemoryDecisionLog
+
+Records decisions in memory — for a test, or the example. It does not survive
+the process it protects, so it protects nothing in a deployment.
+
+- **Implements:** `TomTransactionDecisionLog`
+
+#### Constructors
+
+```dart
+TomMemoryDecisionLog()
+```
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `recordCommit` | `Future<void> recordCommit(String transactionId, List<String> branches)` | *(override)* Keeps the branches under `transactionId`, replacing a decision kept for it. |
+| `forget` | `Future<void> forget(String transactionId)` | *(override)* Drops the decision. |
+| `decisions` | `Future<Map<String, Set<String>>> decisions()` | *(override)* A copy of every kept decision. |
+
+### TomSqlDecisionLog
+
+Records decisions in a table of a SQL data source, one row per decided branch.
+The data source is resolved by name on every call; it has to be a one-phase
+data source, because the record must be durable on its own before the commit
+phase, and a two-phase one would hold it in a branch of its own.
+
+- **Implements:** `TomTransactionDecisionLog`
+
+#### Constructors
+
+```dart
+TomSqlDecisionLog(
+  String datasourceName, {
+  String table = defaultDecisionTable,
+  bool createSchema = true,
+})
+```
+
+A name that is not registered raises `transactions.recovery.no_datasource` at
+the first call. With `createSchema` the table is created on first use; a
+deployment whose database user may not run DDL applies the shipped migration
+and passes `false`.
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `datasourceName` | `String` | The registered name of the data source (final). |
+| `table` | `String` | The table's name (final). |
+| `createSchema` | `bool` | Whether the table is created on first use (final). |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `recordCommit` | `Future<void> recordCommit(String transactionId, List<String> branches)` | *(override)* Inserts one row per branch, stamped with the current UTC time, in a single multi-row `INSERT`: the decision is recorded whole or not at all. |
+| `forget` | `Future<void> forget(String transactionId)` | *(override)* Deletes the transaction's rows. |
+| `decisions` | `Future<Map<String, Set<String>>> decisions()` | *(override)* Reads the whole table, grouped by transaction. |
+
+### TomDecisionRow
+
+One row of the decision table, as `TomSqlDecisionLog` reads it. Reflected
+(`@tomReflector`) and annotated `@TomDbTable` with placeholder values, so the
+driver can map it; the real table name is a constructor argument of the log.
+
+#### Constructors
+
+```dart
+TomDecisionRow()
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `transactionId` | `String` | `transaction_id` — the transaction that decided. |
+| `branchId` | `String` | `branch_id` — a branch it decided to commit. |
+| `decidedAt` | `DateTime` | `decided_at` — when the decision was recorded. |
+
+### TomTwoPhaseRecoverable
+
+A data source whose two-phase branches a recovery can list and resolve.
+`MariaDbXADatasource` and `PostgresXADatasource` implement it through
+`TomSqlTwoPhaseRecovery`.
+
+- **Extends:** none (abstract interface)
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `recoveryLabel` | `String` | *(getter)* The name it describes itself by in a report and the recovery's log lines. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `listPreparedBranches` | `Future<List<String>> listPreparedBranches()` | The ids of the branches prepared on its database and not yet resolved — every program's, for MariaDB's server-wide `XA RECOVER`. |
+| `ownsBranch` | `bool ownsBranch(String branchId)` | Whether `branchId` is a branch this data source's kind opened on its database. A recovery touches no other. |
+| `branchOpenedAt` | `DateTime? branchOpenedAt(String branchId)` | When `branchId` was opened, read from the id, or `null` when it does not say. A recovery leaves a branch younger than its minimum age alone. |
+| `commitPreparedBranch` | `Future<void> commitPreparedBranch(String branchId)` | Commits the prepared branch `branchId`. |
+| `rollbackPreparedBranch` | `Future<void> rollbackPreparedBranch(String branchId)` | Rolls the prepared branch `branchId` back. |
+
+### TomRecoveryReport
+
+What one `TomTransactionRecovery.recover` did. Branches are named by id,
+decisions by transaction id.
+
+#### Constructors
+
+```dart
+TomRecoveryReport()
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `committed` | `List<String>` | Branches committed because their transaction had decided to commit (final). |
+| `rolledBack` | `List<String>` | Branches rolled back because no decision was recorded for them (final). |
+| `tooYoung` | `List<String>` | Branches left alone because they were younger than the minimum age (final). |
+| `failed` | `Map<String, String>` | Branches whose resolution failed, with the error (final). |
+| `forgotten` | `List<String>` | Decisions forgotten because none of their branches is left (final). |
+| `isClean` | `bool` | *(getter)* Whether every branch found was resolved or deliberately left alone — `failed.isEmpty`. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `toString` | `String toString()` | The five counts, for a log line. |
+
+### TomTransactionRecovery
+
+Resolves the prepared branches a dead process left behind, and applies the
+`transactions` configuration. Abstract final with a static-only surface.
+
+A recovery reads the decisions of the log, then for each prepared branch of
+each source: passes over a branch the source does not own; leaves a branch
+younger than `minimumAge` alone (`tooYoung`), because it may belong to a live
+process between its two phases; commits a branch a decision names; rolls back
+every other. A failure on one branch is reported in `failed` and the rest are
+still resolved — another node recovering at the same time is one cause. A
+decision is forgotten once none of its branches is still prepared, provided
+every one of them belongs to a scanned source.
+
+- **Extends:** none (abstract final, static members only)
+
+#### Static Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `configurationKey` | `String` | `const`, `'transactions'`: the key of the server configuration `configure` reads. |
+| `minimumAge` | `Duration` | How old a prepared branch has to be, by the time its id carries, before a recovery resolves it; one minute by default. Longer than any two-phase transaction stays open, plus the clock skew between nodes. |
+| `recoverOnStart` | `bool` | Whether the server recovers at start; `false` by default, set by `configure`. |
+
+#### Static Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `configure` | `static void configure(Object? config)` | Applies the `transactions` section: `decisionLog` installs a `TomSqlDecisionLog` (with `decisionTable` and `createSchema`) as `TomTransactionManager.decisionLog`; `recoverOnStart` is set when the value is `true`; `recoveryMinimumAgeSeconds` sets `minimumAge`. `null` leaves everything as it is. A value that is not a map, or an age that is not a whole number of seconds or is negative, raises `transactions.recovery.config.invalid`. |
+| `reset` | `static void reset()` | Restores the defaults — no decision log, a one-minute minimum age, no start recovery. For tests. |
+| `recover` | `static Future<TomRecoveryReport> recover({Iterable<TomTwoPhaseRecoverable>? sources, TomTransactionDecisionLog? log, DateTime? now})` | Resolves the prepared branches of `sources` — every operational registered data source that is a `TomTwoPhaseRecoverable` when `null` — against the decisions of `log` — `TomTransactionManager.decisionLog` when `null`, and then none, so every old enough branch is rolled back. `now` is the time ages are measured against, the current UTC time by default. |
+
+### TomTransactionRecoveryException
+
+Raised when transaction recovery is misconfigured, or its decision log names a
+data source that is not registered.
+
+| Key | Meaning |
+| --- | ------- |
+| `transactions.recovery.no_datasource` | The data source a `TomSqlDecisionLog` names is not registered. |
+| `transactions.recovery.config.invalid` | The `transactions` configuration is not a map, or its `recoveryMinimumAgeSeconds` is not a whole number of seconds or is negative. |
+
+- **Extends:** `TomServerException`
+
+#### Constructors
+
+```dart
+TomTransactionRecoveryException(
+  String key,
+  String defaultUserMessage, {
+  Map<String, Object?>? parameters,
+  Object? rootException,
+})
+```
 
 ### TomSagaException
 
@@ -670,6 +936,7 @@ Where a saga is in its life.
 | -------- | ---- | ----------- |
 | `tomSagaJobPrefix` | `String` | `'saga'`, the default prefix of the orchestrator's job names: a saga `place_order` runs its steps as job `saga.place_order` and its compensations as `saga.place_order.compensation`. Stable across restarts by necessity, like every job name: it ties queued runs to the definitions that execute them. |
 | `defaultSagaTable` | `String` | `'tom_saga'`, the saga table's name when nothing overrides it. |
+| `defaultDecisionTable` | `String` | `'tom_transaction_decision'`, the decision table's name when nothing overrides it. |
 
 ### Functions
 
@@ -677,3 +944,5 @@ Where a saga is in its life.
 | -------- | --------- | ----------- |
 | `sagaTable` | `TomFrameworkTable sagaTable(String table)` | The one declaration of the saga table: primary key `(tenant, saga_id)`, `status` and the `step` cursor, the `version` optimistic lock, the JSON `data` and the `error`, the `run_window` instant a resumption looks its run up by, `created_at` and `updated_at`, and the `(status, updated_at)` index resumption and the purge read. Listed by `frameworkOwnedTables`. |
 | `sagaTableDdl` | `String sagaTableDdl(String table)` | The `CREATE TABLE` statement for the saga table, derived from `sagaTable`. |
+| `decisionTable` | `TomFrameworkTable decisionTable(String table)` | The one declaration of the decision table: `transaction_id`, `branch_id` and `decided_at`, primary key `(transaction_id, branch_id)` — one row per decided branch. Listed by `frameworkOwnedTables`. |
+| `decisionTableDdl` | `String decisionTableDdl(String table)` | The `CREATE TABLE` statement for the decision table, derived from `decisionTable`. |

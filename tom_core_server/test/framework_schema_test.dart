@@ -171,9 +171,10 @@ void main() {
       ]);
     });
 
-    test('the transactions chain builds the saga descriptor', () {
+    test('the transactions chain builds the saga and decision descriptors', () {
       converges('example/transactions/migrations/main/tomcore', [
         sagaTable(defaultSagaTable),
+        decisionTable(defaultDecisionTable),
       ]);
     });
 
@@ -261,6 +262,7 @@ void main() {
 
     test('the sagas', () {
       maps(sagaTable(defaultSagaTable), [TomSagaRow]);
+      maps(decisionTable(defaultDecisionTable), [TomDecisionRow]);
     });
 
     test('the data keys', () {

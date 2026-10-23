@@ -202,6 +202,7 @@ export 'src/tomserver/tenancy/tenant_resolution.dart';
 export 'src/tomserver/transactions/saga.dart';
 export 'src/tomserver/transactions/saga_sql.dart';
 export 'src/tomserver/transactions/transaction_manager.dart';
+export 'src/tomserver/transactions/transaction_recovery.dart';
 export 'package:mysql_client/mysql_client.dart';
 // The driver's own barrel omits its exception taxonomy, but
 // [classifySqlFailure] states its contract in terms of `MySQLServerException`

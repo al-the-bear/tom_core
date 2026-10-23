@@ -35,6 +35,7 @@ import '../object_persistence/grouped_query.dart';
 import '../object_persistence/persistence_annotations.dart';
 import '../object_persistence/query_sentence_compiler.dart';
 import '../transactions/transaction_manager.dart';
+import '../transactions/transaction_recovery.dart';
 import 'connection_pool.dart';
 import 'datasource_initialization.dart';
 import 'queries.dart';
@@ -2419,4 +2420,116 @@ String tomSqlBranchId({
   );
   final room = maxBytes - tail.length;
   return (head.length > room ? head.substring(0, room) : head) + tail;
+}
+
+final RegExp _branchShape = RegExp(
+  r'^(.*)_([0-9a-f]{8})_([0-9a-z]+)_([0-9a-z]+)$',
+);
+final RegExp _branchCharacters = RegExp(r'^[A-Za-z0-9_.@:-]+$');
+
+/// Whether [branchId] is a [tomSqlBranchId] built for [databaseName] at
+/// [host] and [port] — whole, or with its readable head truncated.
+bool tomSqlOwnsBranch(
+  String branchId, {
+  required String databaseName,
+  required String host,
+  required int port,
+}) {
+  final match = _branchShape.firstMatch(branchId);
+  if (match == null) return false;
+  final head = match[1]!;
+  final full = '$databaseName@$host:$port'.replaceAll(
+    RegExp(r'[^A-Za-z0-9_.@:-]'),
+    '_',
+  );
+  // A head is truncated only when the whole one did not fit, so a truncated
+  // head still carries a good part of it; a few characters would match the
+  // branches of any database whose name starts the same way.
+  return head == full ||
+      (head.length >= 16 && head.length < full.length && full.startsWith(head));
+}
+
+/// When the [tomSqlBranchId] [branchId] was opened, or `null` for an id of
+/// another shape.
+DateTime? tomSqlBranchOpenedAt(String branchId) {
+  final match = _branchShape.firstMatch(branchId);
+  final micros = match == null ? null : int.tryParse(match[3]!, radix: 36);
+  return micros == null
+      ? null
+      : DateTime.fromMicrosecondsSinceEpoch(micros, isUtc: true);
+}
+
+/// What a two-phase SQL data source needs for recovery: the id of the
+/// branch it prepared for a transaction, and its database's prepared
+/// branches listed and resolved. A driver supplies the four statements.
+mixin TomSqlTwoPhaseRecovery on TomSqlDatasource
+    implements TomPreparedBranchHolder, TomTwoPhaseRecoverable {
+  /// The statement listing the prepared branches.
+  @protected
+  String get listPreparedSql;
+
+  /// The column of [listPreparedSql] holding a branch id.
+  @protected
+  String get preparedIdColumn;
+
+  /// The statement committing the prepared branch [quotedId].
+  @protected
+  String commitPreparedSql(String quotedId);
+
+  /// The statement rolling the prepared branch [quotedId] back.
+  @protected
+  String rollbackPreparedSql(String quotedId);
+
+  @override
+  String? preparedBranchOf(TomTransaction transaction) {
+    final quoted = branchOf(transaction)?.xaId;
+    if (quoted == null) return null;
+    return quoted.startsWith("'") && quoted.endsWith("'")
+        ? quoted.substring(1, quoted.length - 1)
+        : quoted;
+  }
+
+  @override
+  String get recoveryLabel => '$driverLabel $host:$port/$databaseName';
+
+  @override
+  Future<List<String>> listPreparedBranches() => withLink(
+    'listPreparedBranches',
+    (link) async => [
+      for (final row in (await runCommandOn(link, listPreparedSql, null)).rows)
+        ?row.text(preparedIdColumn),
+    ],
+  );
+
+  @override
+  bool ownsBranch(String branchId) => tomSqlOwnsBranch(
+    branchId,
+    databaseName: databaseName,
+    host: host,
+    port: port,
+  );
+
+  @override
+  DateTime? branchOpenedAt(String branchId) => tomSqlBranchOpenedAt(branchId);
+
+  @override
+  Future<void> commitPreparedBranch(String branchId) =>
+      executeCommand(commitPreparedSql(_quoted(branchId)));
+
+  @override
+  Future<void> rollbackPreparedBranch(String branchId) =>
+      executeCommand(rollbackPreparedSql(_quoted(branchId)));
+
+  /// [branchId] quoted for the statement — refused unless it is made of the
+  /// characters [tomSqlBranchId] writes, so nothing else reaches the text.
+  String _quoted(String branchId) {
+    if (!_branchCharacters.hasMatch(branchId)) {
+      throw datasourceException(
+        "error.datasource.invalid_branch_id",
+        "$driverLabel: '$branchId' is not a branch id this framework writes.",
+        parameters: {"branch": branchId},
+      );
+    }
+    return "'$branchId'";
+  }
 }

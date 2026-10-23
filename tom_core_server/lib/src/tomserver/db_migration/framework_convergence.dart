@@ -56,6 +56,7 @@ import '../object_persistence/persistence_annotations.dart';
 import '../privacy/subject_keys_sql.dart';
 import '../scheduling/sql_scheduling_sql.dart';
 import '../transactions/saga_sql.dart';
+import '../transactions/transaction_recovery.dart';
 import 'schema_convergence.dart';
 import 'schema_ddl_reader.dart';
 import 'schema_model.dart';
@@ -90,6 +91,7 @@ List<TomFrameworkTable> frameworkOwnedTables({
   String saga = defaultSagaTable,
   String encryptionKey = defaultEncryptionKeyTable,
   String subjectKey = defaultSubjectKeyTable,
+  String decision = defaultDecisionTable,
 }) => [
   jobRunTable(jobRun),
   leaseTable(lease),
@@ -106,6 +108,7 @@ List<TomFrameworkTable> frameworkOwnedTables({
   sagaTable(saga),
   encryptionKeyTable(encryptionKey),
   subjectKeyTable(subjectKey),
+  decisionTable(decision),
 ];
 
 /// Compares framework-owned table descriptors against everything else that

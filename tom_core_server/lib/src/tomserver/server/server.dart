@@ -28,6 +28,7 @@ import '../ratelimit/rate_limit.dart';
 import '../tenancy/tenancy.dart';
 import '../tenancy/tenant_resolution.dart';
 import '../transactions/transaction_manager.dart';
+import '../transactions/transaction_recovery.dart';
 
 /// A pass-through shelf [Middleware] that seeds the request [Request.context].
 ///
@@ -709,6 +710,7 @@ class TomServer {
     configureIdempotency();
     await configureFieldEncryption();
     configurePrivacy();
+    await recoverTransactions();
     await _installServerPrincipal();
     warnOnUnenforcedResourceKeys();
 
@@ -973,6 +975,27 @@ class TomServer {
         config ?? TomServerConfigResourceProvider.getServerConfig();
     if (!provider.exists(TomPrivacy.configurationKey)) return;
     TomPrivacy.configure(provider.get(TomPrivacy.configurationKey));
+  }
+
+  /// Applies the [TomTransactionRecovery.configurationKey] map of [config]
+  /// (the server configuration unless given) with
+  /// [TomTransactionRecovery.configure], and with `recoverOnStart` resolves
+  /// the two-phase branches a dead process left prepared, before the server
+  /// takes a request that could meet their locks. Called by [start]; the data
+  /// sources are registered by then.
+  static Future<TomRecoveryReport?> recoverTransactions([
+    TomServerConfigResourceProvider? config,
+  ]) async {
+    final provider =
+        config ?? TomServerConfigResourceProvider.getServerConfig();
+    if (!provider.exists(TomTransactionRecovery.configurationKey)) return null;
+    TomTransactionRecovery.configure(
+      provider.get(TomTransactionRecovery.configurationKey),
+    );
+    if (!TomTransactionRecovery.recoverOnStart) return null;
+    final report = await TomTransactionRecovery.recover();
+    tomLog.info('Transaction recovery at start: $report');
+    return report;
   }
 
   /// Applies [TomBaseServerConfiguration.logFormat]; see [applyLogFormat].

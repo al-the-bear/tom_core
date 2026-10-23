@@ -468,7 +468,22 @@ class PostgresDatasource extends TomSqlDatasource {
 /// transaction is honoured here as on the one-phase driver.
 @tomReflector
 @TomDatasourceDriver("postgresql_xa")
-class PostgresXADatasource extends PostgresDatasource {
+class PostgresXADatasource extends PostgresDatasource
+    with TomSqlTwoPhaseRecovery {
+  /// The prepared transactions of this database.
+  @override
+  String get listPreparedSql =>
+      'SELECT gid FROM pg_prepared_xacts WHERE database = current_database()';
+
+  @override
+  String get preparedIdColumn => 'gid';
+
+  @override
+  String commitPreparedSql(String quotedId) => 'COMMIT PREPARED $quotedId';
+
+  @override
+  String rollbackPreparedSql(String quotedId) => 'ROLLBACK PREPARED $quotedId';
+
   /// The most bytes a prepared transaction's id may hold.
   static const int maxBranchIdBytes = 200;
 

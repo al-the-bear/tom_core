@@ -2,6 +2,40 @@
 
 ### Added
 
+- **Recovery of prepared two-phase branches** (`transactions`,
+  `datasources`, `server` modules). Every `TomTransaction` has an `id`
+  (`tx_<process tag>_<counter>`). Between the phases the coordinator records
+  the prepared branches of its `TomPreparedBranchHolder` participants under
+  that id in `TomTransactionManager.decisionLog` (a
+  `TomTransactionDecisionLog`), outside the transaction's scope; a record that
+  cannot be written rolls the transaction back, and the record is forgotten
+  once every branch committed and kept when one broke its promise.
+  `TomSqlDecisionLog(datasourceName, {table, createSchema})` keeps decisions in
+  `tom_transaction_decision` (`decisionTable`, `decisionTableDdl`,
+  `defaultDecisionTable`, `TomDecisionRow`) of a one-phase data source,
+  `TomMemoryDecisionLog` in memory. `TomTransactionRecovery.recover({sources,
+  log, now})` lists the prepared branches of every `TomTwoPhaseRecoverable`
+  data source, passes over the branches it does not own and those younger than
+  `TomTransactionRecovery.minimumAge` (one minute), commits those a decision
+  names, rolls back the rest, forgets the decisions none of whose branches is
+  left, and returns a `TomRecoveryReport` (`committed`, `rolledBack`,
+  `tooYoung`, `failed`, `forgotten`); a branch that fails to resolve is
+  reported and the rest are still resolved. `MariaDbXADatasource` (`XA
+  RECOVER` / `XA COMMIT` / `XA ROLLBACK`) and `PostgresXADatasource`
+  (`pg_prepared_xacts` of the current database / `COMMIT PREPARED` /
+  `ROLLBACK PREPARED`) mix in `TomSqlTwoPhaseRecovery`, whose four statements a
+  driver supplies; `tomSqlOwnsBranch` and `tomSqlBranchOpenedAt` read a
+  branch id's data source and opening time, and an id of other characters is
+  refused with `error.datasource.invalid_branch_id`. The `transactions`
+  configuration key (`decisionLog`, `decisionTable`, `createSchema`,
+  `recoverOnStart`, `recoveryMinimumAgeSeconds`) is applied by
+  `TomServer.recoverTransactions`, which `start()` calls after
+  `configurePrivacy`; a malformed section is
+  `transactions.recovery.config.invalid`, an unregistered log data source
+  `transactions.recovery.no_datasource` (`TomTransactionRecoveryException`).
+  Reference migration
+  `example/transactions/migrations/main/tomcore/[2]-create_tom_transaction_decision.sql`
+  and its PostgreSQL form; `example/transactions/transaction_recovery_example.dart`.
 - **Down migrations and rollback** (`db_migration` module). A migration may
   have a down script beside it, named after its basename plus `.down`
   (`TomDbMigrations.downSuffix`): `[3]-add_column.down.sql` undoes

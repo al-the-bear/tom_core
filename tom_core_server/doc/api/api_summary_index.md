@@ -33,7 +33,7 @@ surface documented here.
 | Scheduling | [api_summary_scheduling.md](api_summary_scheduling.md) | The relational half of the job scheduler: the shared job queue, fencing leases, and the node roll call; and unique window instants for runs enqueued outside a schedule. |
 | Server | [api_summary_server.md](api_summary_server.md) | The HTTP server, per-request logging state and correlation ids, middleware, the log format, the paths whose credentials belong to the endpoint, and the graceful shutdown on SIGTERM. |
 | Tenancy | [api_summary_tenancy.md](api_summary_tenancy.md) | Multi-tenancy: the deployment's tenants, the three isolation models chosen per tenant, data-source routing, and the resolution of a request's tenant from its token, host or header. |
-| Transactions | [api_summary_transactions.md](api_summary_transactions.md) | Distributed transaction manager and participants, and sagas: work across services as local transactions undone by compensations, their orchestrator, stores and table. |
+| Transactions | [api_summary_transactions.md](api_summary_transactions.md) | Distributed transaction manager and participants, the recovery of prepared branches a dead process left — the decision log and the recovery — and sagas: work across services as local transactions undone by compensations, their orchestrator, stores and table. |
 
 ## Modules
 
@@ -364,6 +364,7 @@ surface documented here.
 | `TomSqlResultValues` | class | A `TomSqlResult` holding its values. |
 | `TomSqlLink` | abstract class | One pooled connection of a `TomSqlDatasource`. |
 | `TomSqlBranch` | class | One transaction's share of a data source: its pinned connection and two-phase branch. |
+| `TomSqlTwoPhaseRecovery` | mixin | A two-phase driver's part in recovery: the branch it prepared, and its database's prepared branches listed and resolved. |
 | `MariaDbDatasource` | class | MariaDB datasource over a connection pool. |
 | `MariaDbXADatasource` | class | XA-capable MariaDB datasource. |
 | `MariadbPreparedStatement<T>` | class | MariaDB prepared statement, prepared on each pooled connection that runs it. |
@@ -406,6 +407,8 @@ surface documented here.
 | `tomSqlBindValue` | function | Marshals one bind value into the primitive every SQL driver binds. |
 | `tomSqlBindParams` | function | A parameter map with every value marshalled through `tomSqlBindValue`. |
 | `tomSqlBranchId` | function | A bounded, process-unique two-phase branch id. |
+| `tomSqlOwnsBranch` | function | Whether a branch id is one `tomSqlBranchId` built for a data source's coordinates. |
+| `tomSqlBranchOpenedAt` | function | When a `tomSqlBranchId` was opened, read from the id. |
 | `tomDbStatementDurationMetric` / `tomDbStatementErrorsMetric` / `tomDbPoolConnectionsMetric` / `tomDbPoolAcquireDurationMetric` / `tomDbPoolAcquireFailuresMetric` | constant | The names of the statement and pool series every `TomSqlDatasource` records. |
 
 ### Database Migration (`lib/src/tomserver/db_migration/`)
@@ -895,6 +898,17 @@ surface documented here.
 | `TomTransactionResult` | class | What a conclusion did, and to whom. |
 | `TomTransactionOutcome` | enum | Committed, partially committed, rolled back, rolled back with failures. |
 | `TomTransactionException` | class | Transaction error. |
+| `TomPreparedBranchHolder` | abstract interface class | A participant holding a two-phase branch, whose id the coordinator records. |
+| `TomTransactionDecisionLog` | abstract interface class | The coordinator's durable record of commit decisions. |
+| `TomMemoryDecisionLog` | class | Decisions in memory; for tests. |
+| `TomSqlDecisionLog` | class | Decisions in `tom_transaction_decision` of a one-phase SQL data source. |
+| `TomDecisionRow` | class | One row of the decision table. |
+| `TomTwoPhaseRecoverable` | abstract interface class | A data source whose prepared branches a recovery lists and resolves. |
+| `TomTransactionRecovery` | abstract final class | Commits the prepared branches a recorded decision names, rolls back the rest; the `transactions` configuration. |
+| `TomRecoveryReport` | class | What one recovery did. |
+| `TomTransactionRecoveryException` | class | Transaction recovery misconfigured (extends `TomServerException`). |
+| `defaultDecisionTable` | top-level | `tom_transaction_decision`, the decision table's default name. |
+| `decisionTable` / `decisionTableDdl` | top-level | The decision table's descriptor, and its `CREATE TABLE` statement. |
 | `TomSagaException` | class | A saga that cannot be declared, begun or stored (extends `TomServerException`). |
 | `TomSagaWork` | typedef | The work of a step or a compensation. |
 | `TomSagaStep` | class | One step of a saga: an action and, optionally, the compensation that undoes it. |
@@ -944,10 +958,13 @@ surface documented here.
 | `DateTimeCol` | Object Persistence |
 | `DateTimeLiteral` | Object Persistence |
 | `DbCol` | Object Persistence |
+| `decisionTable` | Transactions |
+| `decisionTableDdl` | Transactions |
 | `defaultApiKeyTable` | Authentication |
 | `defaultAuditTrailTable` | Audit |
 | `defaultBlobChunkTable` | File Storage |
 | `defaultBlobManifestTable` | File Storage |
+| `defaultDecisionTable` | Transactions |
 | `defaultDeliveryReportTable` | Messaging |
 | `defaultEncryptionKeyTable` | Object Persistence |
 | `defaultIdempotencyTable` | Endpoints |
@@ -1250,6 +1267,7 @@ surface documented here.
 | `TomDbVersion` | Database Migration |
 | `TomDdlReplayError` | Database Migration |
 | `TomDdlReplayResult` | Database Migration |
+| `TomDecisionRow` | Transactions |
 | `tomDefaultAuthenticationMiddleware` | Server |
 | `TomDefaultErrorHandler` | Endpoints |
 | `TomDefaultHealthAnalyzer` | Health Check |
@@ -1424,6 +1442,7 @@ surface documented here.
 | `TomMemoryBlobStore` | File Storage |
 | `TomMemoryBlobStoreBackend` | File Storage |
 | `TomMemoryDataKeyStore` | Object Persistence |
+| `TomMemoryDecisionLog` | Transactions |
 | `TomMemoryDeliveryReportStore` | Messaging |
 | `TomMemoryExportStore` | Export |
 | `TomMemoryExternalIdentityStore` | Authentication |
@@ -1493,6 +1512,7 @@ surface documented here.
 | `TomPersonal` | Privacy |
 | `TomPersonalDataModel` | Privacy |
 | `TomPersonalField` | Privacy |
+| `TomPreparedBranchHolder` | Transactions |
 | `TomPreparedStatement` | Datasources |
 | `TomPrimaryReads` | Datasources |
 | `TomPrincipalDelegation` | Authorization |
@@ -1527,6 +1547,7 @@ surface documented here.
 | `TomReadinessCheck` | Health Check |
 | `TomRecipient` | Messaging |
 | `TomRecipientKind` | Messaging |
+| `TomRecoveryReport` | Transactions |
 | `TomRedirect` | Endpoints |
 | `tomReencryptionJobName` | Object Persistence |
 | `TomReencryptionReport` | Object Persistence |
@@ -1661,11 +1682,13 @@ surface documented here.
 | `tomSqlBindValue` | Datasources |
 | `TomSqlBranch` | Datasources |
 | `tomSqlBranchId` | Datasources |
+| `tomSqlBranchOpenedAt` | Datasources |
 | `TomSqlConnectionLostException` | Datasources |
 | `TomSqlDataKeyStore` | Object Persistence |
 | `TomSqlDatasource` | Datasources |
 | `TomSqlDatasourceException` | Datasources |
 | `TomSqlDatasourceRepository` | Object Persistence |
+| `TomSqlDecisionLog` | Transactions |
 | `TomSqlDeliveryReportStore` | Messaging |
 | `TomSqlFailureMode` | Datasources |
 | `TomSqlIdempotencyStore` | Endpoints |
@@ -1678,6 +1701,7 @@ surface documented here.
 | `TomSqlMigrationAdaptor` | Database Migration |
 | `TomSqlMigrationException` | Database Migration |
 | `TomSqlOAuthStateStore` | Authentication |
+| `tomSqlOwnsBranch` | Datasources |
 | `TomSqlPreparedStatement` | Datasources |
 | `TomSqlRateLimiter` | Rate Limiting |
 | `TomSqlResult` | Datasources |
@@ -1687,6 +1711,7 @@ surface documented here.
 | `TomSqlSchedulerNodes` | Scheduling |
 | `TomSqlScimStore` | Authentication |
 | `TomSqlSubjectKeyStore` | Privacy |
+| `TomSqlTwoPhaseRecovery` | Datasources |
 | `TomSqlTypeFamily` | Datasources |
 | `TomSqlTypeFamilyCompatibility` | Database Migration |
 | `TomStandardSqlDialect` | Datasources |
@@ -1726,12 +1751,16 @@ surface documented here.
 | `TomTotpSecretResolver` | Authentication |
 | `TomTransaction` | Transactions |
 | `TomTransactional` | Endpoints |
+| `TomTransactionDecisionLog` | Transactions |
 | `TomTransactionException` | Transactions |
 | `TomTransactionManager` | Transactions |
 | `TomTransactionOutcome` | Transactions |
 | `TomTransactionParticipant` | Transactions |
+| `TomTransactionRecovery` | Transactions |
+| `TomTransactionRecoveryException` | Transactions |
 | `TomTransactionResult` | Transactions |
 | `TomTransientDeliveryException` | Messaging |
+| `TomTwoPhaseRecoverable` | Transactions |
 | `TomTypedPersistenceBase` | Datasources |
 | `TomTypePersistenceInfo` | Datasources |
 | `TomUnaryOperator` | Object Persistence |

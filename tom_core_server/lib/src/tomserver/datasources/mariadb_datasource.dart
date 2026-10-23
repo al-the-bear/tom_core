@@ -507,7 +507,22 @@ class MariaDbDatasource extends TomSqlDatasource {
 /// [rollback] needs the branch to name.
 @tomReflector
 @TomDatasourceDriver("mariadb_xa")
-class MariaDbXADatasource extends MariaDbDatasource {
+class MariaDbXADatasource extends MariaDbDatasource
+    with TomSqlTwoPhaseRecovery {
+  /// `XA RECOVER` lists the server's prepared branches, its `data` column the
+  /// id; [ownsBranch] keeps this database's.
+  @override
+  String get listPreparedSql => 'XA RECOVER';
+
+  @override
+  String get preparedIdColumn => 'data';
+
+  @override
+  String commitPreparedSql(String quotedId) => 'XA COMMIT $quotedId';
+
+  @override
+  String rollbackPreparedSql(String quotedId) => 'XA ROLLBACK $quotedId';
+
   /// The most bytes an XA `gtrid` may hold; `XA START` refuses a longer one.
   static const int maxBranchIdBytes = 64;
 

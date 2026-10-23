@@ -51,6 +51,7 @@ declared.
   - [One statement per call](#one-statement-per-call)
   - [Reading rows](#reading-rows)
   - [Transactions](#transactions)
+  - [Recovering prepared branches](#recovering-prepared-branches)
   - [Session locks](#session-locks)
   - [The MariaDB driver](#the-mariadb-driver)
   - [The PostgreSQL driver](#the-postgresql-driver)
@@ -101,6 +102,8 @@ declared.
 | `TomSqlResultValues` | class | A `TomSqlResult` holding its values, optionally matching column names without regard to case |
 | `TomSqlLink` / `TomSqlBranch` | abstract class / class | One pooled connection of a SQL data source; one transaction's share of it — the pinned connection and any two-phase branch |
 | `tomSqlBindValue` / `tomSqlBindParams` / `tomSqlBranchId` | function | The one marshalling of a bind value every SQL driver uses; a bounded, process-unique two-phase branch id |
+| `tomSqlOwnsBranch` / `tomSqlBranchOpenedAt` | function | Whether a branch id is one `tomSqlBranchId` built for a data source's coordinates, and when it was opened — how a recovery tells its own branches and their age |
+| `TomSqlTwoPhaseRecovery` | mixin | What a two-phase SQL data source needs for recovery: the branch it prepared for a transaction, and its database's prepared branches listed and resolved; a driver supplies the four statements |
 | `TomPreparedStatement<T>` | abstract class | A reusable compiled statement, run any number of times — concurrently — through `execute` (rows) or `run` (rows, affected-row count, generated key) |
 | `TomStatementOutcome<T>` | class | What one execution of a prepared statement reported: its `rows`, its `affectedRows` and its `generatedId` |
 | `TomDatasourceDriver` | class | Marks a `TomDataSource` as the driver for a named type |
@@ -1476,6 +1479,70 @@ situation. And it is thrown as the module's own type rather than a bare
 `catch` narrow enough to act on the one case the caller can fix cannot be
 written against it.
 
+### Recovering prepared branches
+
+A process that dies between the two phases leaves its branches prepared on
+the server. The two-phase drivers take part in their recovery in two roles,
+both through the mixin `TomSqlTwoPhaseRecovery`:
+
+- as a **`TomPreparedBranchHolder`**, `preparedBranchOf(transaction)` answers
+  the id of the branch prepared for the transaction, unquoted, which the
+  coordinator records in its decision log before the commit phase;
+- as a **`TomTwoPhaseRecoverable`**, the data source lists its database's
+  prepared branches and commits or rolls back one by id, which is what
+  `TomTransactionRecovery.recover` drives — see
+  [transactions.md](transactions.md#recovering-prepared-branches) for the
+  decision record and the rules a recovery follows.
+
+| Data source | Lists prepared branches with | Commits one with | Rolls one back with |
+| ----------- | ---------------------------- | ---------------- | ------------------- |
+| `MariaDbXADatasource` | `XA RECOVER` (the id in its `data` column) | `XA COMMIT '<id>'` | `XA ROLLBACK '<id>'` |
+| `PostgresXADatasource` | `SELECT gid FROM pg_prepared_xacts WHERE database = current_database()` | `COMMIT PREPARED '<id>'` | `ROLLBACK PREPARED '<id>'` |
+
+A branch is committed or rolled back by a statement of its own, on any pooled
+connection — the session that prepared it is gone. Run a recovery outside a
+transaction: inside one, the data source enlists at its first statement and
+issues the `COMMIT` or `ROLLBACK` within the running transaction's branch.
+
+**A branch is recognised by its id.** `XA RECOVER` lists every prepared branch
+of the MariaDB server, whatever database or program it belongs to, so the
+listing alone cannot say which branches a recovery of this data source may
+touch. The id can: `tomSqlBranchId` writes the data source's coordinates as the
+id's head and a fixed-shape tail after it. `tomSqlOwnsBranch(branchId,
+databaseName:, host:, port:)` — what `ownsBranch` answers — accepts an id
+whose tail has that shape (`_<8 hex digits>_<base-36 time>_<base-36 counter>`)
+and whose head is `<database>@<host>:<port>`, with the characters
+`tomSqlBranchId` replaces replaced — whole, or truncated as `tomSqlBranchId`
+truncates a head that does not fit. A truncated head is accepted only when it
+keeps at least sixteen characters: fewer would match the branches of any
+database whose name begins the same way. The coordinates are those the data
+source is configured with, so two data sources reaching one server under two
+host names — `db` and its IP address — do not recognise each other's branches.
+
+**A branch is dated by its id.** `tomSqlBranchOpenedAt(branchId)` reads the
+time `tomSqlBranchId` wrote into the tail — the moment the transaction started
+on this data source — or answers `null` for an id of another shape. That is
+`branchOpenedAt`, which the recovery holds against its minimum age.
+
+**An id is checked before it is quoted.** A prepared branch's id comes from the
+server's listing, not from this process. Before it is spliced into a
+`COMMIT` or `ROLLBACK` statement it must consist of the characters
+`tomSqlBranchId` writes (`[A-Za-z0-9_.@:-]`); any other id is refused with the
+driver's `TomSqlDatasourceException` subtype keyed
+**`error.datasource.invalid_branch_id`**, its `branch` parameter naming it, and
+no statement runs. `recoveryLabel` names the data source in the recovery's
+report and log lines: `<driver> <host>:<port>/<database>`.
+
+**A driver of your own** that implements two-phase transactions on
+`TomSqlDatasource` mixes in `TomSqlTwoPhaseRecovery`, mints its branch ids with
+`tomSqlBranchId` (so `ownsBranch` and `branchOpenedAt` read them) and keeps the
+quoted id in `TomSqlBranch.xaId`, and supplies four members: `listPreparedSql`,
+the statement listing the prepared branches; `preparedIdColumn`, the result
+column holding an id; and `commitPreparedSql(quotedId)` /
+`rollbackPreparedSql(quotedId)`, the statements resolving one. Everything else
+— the listing, the ownership and age checks, the character check, the quoting —
+is the mixin's.
+
 ### Session locks
 
 Some work must run in one process at a time across a whole deployment — every
@@ -2315,10 +2382,13 @@ and `test/examples_test.dart` runs it.
 - **`TomSqlDatasource`** (+ `TomSqlPreparedStatement`, `TomSqlRow`,
   `TomSqlResult` / `TomSqlResultValues`, `TomSqlLink`, `TomSqlBranch`,
   `tomSqlBindValue` / `tomSqlBindParams`, `tomSqlBranchId`,
+  `tomSqlOwnsBranch` / `tomSqlBranchOpenedAt`, `TomSqlTwoPhaseRecovery`,
   `TomSqlDatasourceException`, `TomSqlConnectionLostException`) — everything a
   SQL driver does that does not depend on the database, once, including
-  `withSessionLock`, the database-wide lock its holder's session releases. See
-  [The SQL Drivers](#the-sql-drivers) and [Session locks](#session-locks).
+  `withSessionLock`, the database-wide lock its holder's session releases, and
+  the recovery of prepared branches. See
+  [The SQL Drivers](#the-sql-drivers), [Session locks](#session-locks) and
+  [Recovering prepared branches](#recovering-prepared-branches).
 - **`TomStatementOutcome`** — what one execution of a prepared statement
   reported, returned by `TomPreparedStatement.run` rather than kept on the
   shared handle. See [What one execution reports](#what-one-execution-reports).
@@ -2380,16 +2450,15 @@ and `test/examples_test.dart` runs it.
   there: a member that grows a body is one a driver can leave unanswered while
   the layers above read the default as its answer.
   <!-- unpinned: decision — abstract by design: only the driver knows the connection -->
-- **Two-phase transactions have no recovery.** `MariaDbXADatasource` and
-  `PostgresXADatasource` mint their branch ids in memory and keep them only
-  there, and nothing ever issues `XA RECOVER` or reads `pg_prepared_xacts`, so a
-  process that dies between the prepare and the commit leaves a prepared branch
-  holding its locks with no id left in the system to resolve it by. An operator
-  lists and resolves such a branch by hand at the server (`XA RECOVER` /
-  `XA COMMIT` on MariaDB, `pg_prepared_xacts` / `COMMIT PREPARED` on
-  PostgreSQL) until the drivers reconcile them on start-up; the sequences they
-  do issue are under [Transactions](#transactions).
-  <!-- unpinned: absence — nothing issues XA RECOVER or reads pg_prepared_xacts -->
+- **A prepared branch is recognised by the coordinates in its id.** A recovery
+  resolves only the branches whose id names its data source's database, host
+  and port as configured. A branch opened through a data source configured with
+  another host name for the same server, or prepared by a program that does not
+  build its ids with `tomSqlBranchId`, is not this data source's and is left
+  for whoever owns it — at the server, by hand, when nobody does (`XA RECOVER`
+  / `XA COMMIT` on MariaDB, `pg_prepared_xacts` / `COMMIT PREPARED` on
+  PostgreSQL). See [Recovering prepared branches](#recovering-prepared-branches).
+  <!-- pinned: test/transaction_recovery_test.dart › a branch id names its data source and when it was opened -->
 - **Read-your-writes holds on one node.** The writes that keep a principal's
   reads on the primary for `replicaStickinessMs` are remembered by the process
   that ran them, not shared across a cluster, so a request served by another
@@ -2416,4 +2485,4 @@ and `test/examples_test.dart` runs it.
 | `tom_core_kernel` | package | 7 of 16 files | `TomObject`, `tomReflector` / `ClassMirror` / `InstanceMirror`, `TomException`, `TomZonedDate` / `TomZonedTime`, `TomExecutionContext`, `runChecked` / `runCheckedSync`, `tomLog` |
 | [little_things](little_things.md) | module | `connection_pool.dart`, `datasource_initialization.dart`, `sql_datasource.dart` | `TomServerException` |
 | [object_persistence](object_persistence.md) | module | `sql_datasource.dart`, `sql_dialects.dart`, `read_replicas.dart` | `TomAnnotationAnalyzer` (also reading `@TomPrimaryReads` off an entity), `TomColumnInformation`, `TomDbTable`, `DbCol`, `TomQuerySentenceCompiler`, `TomGroupedSelect` / `TomGroupedRow`, `TomFieldEncryption` (decrypting an entity's encrypted columns, and the raw read) |
-| [transactions](transactions.md) | module | `datasource_initialization.dart`, `sql_datasource.dart`, `mariadb_datasource.dart`, `postgres_datasource.dart`, `framework_table.dart`, `read_replicas.dart` | `TomTransactionParticipant` for the contract `TomDataSource` implements, `TomTransaction` for the one a driver is handed on enlistment (which is where `isReadOnly` becomes a `READ ONLY` begin statement), `TomTransactionManager.runInTransaction` for `TomFrameworkTable.replaceRow`'s two statements, and `TomTransactionManager.getCurrentTransaction` for whether the running transaction is read-only work |
+| [transactions](transactions.md) | module | `datasource_initialization.dart`, `sql_datasource.dart`, `mariadb_datasource.dart`, `postgres_datasource.dart`, `framework_table.dart`, `read_replicas.dart` | `TomTransactionParticipant` for the contract `TomDataSource` implements, `TomTransaction` for the one a driver is handed on enlistment (which is where `isReadOnly` becomes a `READ ONLY` begin statement), `TomTransactionManager.runInTransaction` for `TomFrameworkTable.replaceRow`'s two statements, and `TomTransactionManager.getCurrentTransaction` for whether the running transaction is read-only work; `TomPreparedBranchHolder` and `TomTwoPhaseRecoverable`, the two roles `TomSqlTwoPhaseRecovery` gives a two-phase driver in recovering its prepared branches |

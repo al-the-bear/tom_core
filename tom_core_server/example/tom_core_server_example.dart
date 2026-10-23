@@ -125,6 +125,12 @@ const List<TourStop> tour = [
         'last first, a failed compensation, and a saga resumed after a restart',
   ),
   TourStop(
+    'example/transactions/transaction_recovery_example.dart',
+    'Two-phase recovery: the decision recorded before the commit phase and '
+        'forgotten after, a decided branch committed and an undecided one '
+        'rolled back, and branch ownership and age',
+  ),
+  TourStop(
     'example/configuration/configuration_example.dart',
     'Typed configuration from arguments, environment and YAML resources',
   ),

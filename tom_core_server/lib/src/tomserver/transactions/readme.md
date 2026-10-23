@@ -21,6 +21,13 @@ return a `TomTransactionResult` naming the `TomTransactionOutcome` and the
 participants involved, rather than a boolean that merged the four states with a
 fifth — whether every participant released its connection.
 
+A process that dies between the two phases leaves its branches **prepared**,
+holding their locks. The coordinator therefore records its decision — the
+transaction id and its prepared branches — in a `TomTransactionDecisionLog`
+before the commit phase and forgets it once every branch committed, and
+`TomTransactionRecovery.recover` commits the prepared branches a recorded
+decision names and rolls back the rest.
+
 Work that spans services, whose data no one transaction reaches, is a **saga**:
 `TomSagaOrchestrator` runs each step of a `TomSaga` as a local transaction and,
 when a step fails for good, runs the compensations of the steps already done,
@@ -33,6 +40,8 @@ last first.
 | `TomTransactionManager` | Zone-scoped coordinator; `runInTransaction(body)` opens a transaction, commits it on return and rolls it back on a throw. Also `startTransaction([isReadOnly])` returning `(transaction, isNew)`, `getCurrentTransaction()`, `transactional`, plus `runInTransactionScope(body)` / `hasTransactionScope` for isolating one flow of work from another. Binds the transaction to a `@TomTransactional` endpoint call. |
 | `TomTransaction` | The running transaction (created via the manager); `registerParticipant` (all or nothing — a participant whose `startTransaction` refuses or throws is not enlisted, and the failure is raised naming it), `commitTransaction()` (prepare-all then commit-all, rolling back on any veto), `rollbackTransaction()`. Both answer a `TomTransactionResult` naming what became of the work and which participants did not do what they said. |
 | `TomTransactionParticipant` | Abstract resource that enlists in a transaction (`startTransaction`, `prepare`, `commit`, `rollback`, `endTransaction`, each handed the transaction it concerns — a data source serving several transactions at once holds a connection per transaction). `rollback` answers whether the work was undone; `false` is the outcome needing a human. The transaction is handed over on enlistment, which is how `isReadOnly` reaches the resource — `MariaDbDatasource` opens `START TRANSACTION READ ONLY` for one. Datasources implement this; `MariaDbXADatasource` maps `prepare` onto `XA END` + `XA PREPARE` and `commit` onto `XA COMMIT`. |
+| `TomPreparedBranchHolder` · `TomTransactionDecisionLog` · `TomSqlDecisionLog` · `TomMemoryDecisionLog` · `TomDecisionRow` | The decision record: a participant holding a two-phase branch answers its id; `TomTransactionManager.decisionLog` records the transaction's branches under `TomTransaction.id` before the first commit — outside the transaction's scope, rolling back when it cannot — and forgets them after the last. `TomSqlDecisionLog` keeps them in `tom_transaction_decision` (`decisionTable`, `defaultDecisionTable`) of a one-phase data source. |
+| `TomTransactionRecovery` · `TomTwoPhaseRecoverable` · `TomRecoveryReport` | `recover()` lists every two-phase data source's prepared branches, passes over those it does not own and those younger than `minimumAge`, commits the decided ones, rolls back the rest, forgets resolved decisions, and reports each branch. `configure` applies the `transactions` configuration (`decisionLog`, `recoverOnStart`, `recoveryMinimumAgeSeconds`), which the server reads at start. `TomTransactionRecoveryException` carries the `transactions.recovery.*` keys. |
 | `TomSagaOrchestrator` | Runs sagas: `register(TomSaga)`, `begin(name, data:)`, `find(id)`, `start()` / `tick()` / `close()`, and `resume()`, which re-queues every unfinished saga whose run is gone — at start, every `sweepInterval`, and in every tenant of an installed `TomTenancy`. Each step and each compensation is a job run of its own inline scheduler, in a local transaction with the saga's move, which is written only over the version the run was queued for. |
 | `TomSaga` / `TomSagaStep` / `TomSagaContext` | A saga's declaration — its steps in order, each an action and an optional compensation (`TomSagaWork`), and the retry policies of both — and what an action or a compensation is given: the attempt, why the saga compensates, and the saga's data, which a step may change. |
 | `TomSagaStore` / `TomMemorySagaStore` / `TomSqlSagaStore` | Where saga states (`TomSagaState`, `TomSagaStatus`) are kept: in memory, or in `tom_saga` (`sagaTable`, `defaultSagaTable`) of a data source resolved by name per call, so a tenant's sagas live with its data. `TomSagaException` carries the `transactions.saga.*` keys. |
@@ -98,10 +107,16 @@ participant contract, what the prepare phase buys and what it cannot, and how a
 request acquires its scope, and
 `example/transactions/transactions_example.dart` for a walkthrough
 that checks its own results against an in-memory participant, so it needs no
-database; `example/transactions/saga_example.dart` does the same for sagas, and
+database; `example/transactions/transaction_recovery_example.dart` records
+decisions and recovers an in-memory data source, and `doc/transactions.md`
+§ Recovering Prepared Branches covers the decision record, where the log lives,
+the recovery's rules and its configuration;
+`example/transactions/saga_example.dart` does the same for sagas, and
 `doc/transactions.md` § Sagas covers when to use one, compensation, what a
 step's local transaction does and does not cover, and resumption.
-`test/saga_test.dart` and `test/saga_db_test.dart` cover the sagas. `test/transactions_test.dart` covers the module, runs the example, and
+`test/transaction_recovery_test.dart` and `test/transaction_recovery_db_test.dart`
+cover the recovery, the latter killing a process mid-commit against MariaDB and
+PostgreSQL. `test/saga_test.dart` and `test/saga_db_test.dart` cover the sagas. `test/transactions_test.dart` covers the module, runs the example, and
 holds this readme, `doc/transactions.md` and the API summary to what
 `TomTransactionParticipant` actually declares — so the prepare phase being
 removed from the contract fails the suite rather than leaving four texts

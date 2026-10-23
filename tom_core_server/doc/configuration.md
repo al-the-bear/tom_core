@@ -37,6 +37,7 @@ store before the configuration is built.
 - [Idempotency Keys](#idempotency-keys)
 - [Field-Level Encryption](#field-level-encryption)
 - [Privacy](#privacy)
+- [Transaction Recovery](#transaction-recovery)
 - [Source Precedence](#source-precedence)
   - [A `SCREAMING_SNAKE_CASE` variable names a `lowerCamelCase` field](#a-screaming_snake_case-variable-names-a-lowercamelcase-field)
 - [Secret References](#secret-references)
@@ -1097,6 +1098,59 @@ subject keys are per isolate. Which entities an erasure reaches, and the
 retention job, are registered in code (`TomPrivacy.register`,
 `TomPrivacy.retentionJob`), not configured. `privacy` is not a field of the
 configuration base, so the startup warning about
+[unknown keys](#unknown-keys-in-the-configuration-resources) names it.
+
+## Transaction Recovery
+
+A process that dies between the two phases of a two-phase commit leaves its
+branches prepared on the servers. The coordinator records its commit decision
+before the commit phase, and a recovery commits the branches a recorded
+decision names and rolls back the rest (see
+[transactions.md](transactions.md#recovering-prepared-branches)). The
+`transactions` key of the configuration resources
+(`TomTransactionRecovery.configurationKey`) says where decisions are recorded
+and whether the server recovers at start. It is a nested map read through
+`TomServerConfigResourceProvider`, not a field of the configuration base:
+`TomServer.start` hands it to `TomTransactionRecovery.configure` through
+`TomServer.recoverTransactions`. Without the key no decision is recorded and
+nothing is recovered.
+
+| Key | Type | Default | What it decides |
+| --- | ---- | ------- | --------------- |
+| `decisionLog` | `String` | none | The registered data source decisions are recorded in, as a `TomSqlDecisionLog` installed as `TomTransactionManager.decisionLog`. A **one-phase** data source (`mariadb`, `postgresql`): a decision has to be durable on its own before the first branch commits. Without it nothing is recorded, and a recovery can only roll back. |
+| `decisionTable` | `String` | `tom_transaction_decision` | The decision table's name. |
+| `createSchema` | `bool` | `true` | Whether the log creates the table on first use. `false` for a database user that may not run DDL; the deployment then applies the reference migration `example/transactions/migrations/main/tomcore/[2]-create_tom_transaction_decision.sql` (or its `migrations_postgresql` form). |
+| `recoverOnStart` | `bool` | `false` | Whether `start()` recovers every registered two-phase data source before the server takes a request. |
+| `recoveryMinimumAgeSeconds` | `int` | `60` | How old a prepared branch has to be before a recovery resolves it (`TomTransactionRecovery.minimumAge`). Longer than any two-phase transaction stays open, plus the clock skew between nodes: a younger branch may belong to a live process between its phases. |
+
+```yaml
+# assets/config-resources_default.yaml
+transactions:
+  decisionLog: main
+  recoverOnStart: true
+  recoveryMinimumAgeSeconds: 120
+```
+
+**Every process that writes through a two-phase data source records into the
+same log.** A recovery judges a branch by the decisions it can read; a decided
+branch recorded elsewhere looks undecided and is rolled back.
+
+**A value of the wrong shape stops the start.** `transactions` that is not a
+map, or a `recoveryMinimumAgeSeconds` that is not a whole number of seconds or
+is negative, throws a `TomTransactionRecoveryException` keyed
+`transactions.recovery.config.invalid` before anything is recovered. A
+`decisionLog` naming no registered data source throws
+`transactions.recovery.no_datasource` where the log is first read or written:
+the start's recovery, with `recoverOnStart`, which stops the start; otherwise
+the first decision, and the transaction recording it rolls back.
+
+**When it applies.** `start()` applies the key right after `privacy` and before
+the deployment's own login. The start recovery scans the data sources
+registered when `start()` is called, so the application registers them first.
+With `recoverOnStart` every node recovers at its start; two recoveries at once
+are safe — a branch both list is resolved by one and reported as failed by the
+other. The decision log and the minimum age are per isolate. `transactions` is
+not a field of the configuration base, so the startup warning about
 [unknown keys](#unknown-keys-in-the-configuration-resources) names it.
 
 ## Source Precedence
