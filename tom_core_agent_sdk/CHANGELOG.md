@@ -9,7 +9,7 @@
   Node child transport (credential isolation, ready line, stderr on death).
 - **The channel.** `CliServerAiChannel` with the stall bound as a gap and
   401-retry detection, and `SdkTrailTranslator` from Agent SDK messages to
-  `tom_core_llm` run events.
+  `tom_llm` run events.
 - **Selection.** `AgentSdkTransportSelector` and the availability gate with a
   reason a program can branch on.
 - **Sessions.** `AgentSdkSessionProvider` and one isolate per session.

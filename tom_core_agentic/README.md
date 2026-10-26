@@ -110,7 +110,7 @@ One prose page per module with a surface worth explaining, under
 | [`doc/api/api_summary_agent.md`](doc/api/api_summary_agent.md) | The symbol-level mirror of the same unit: every exported type, top-level function and constant with a section, held complete by `test/api_summary_test.dart` |
 | [`doc/bearer_auth.md`](doc/bearer_auth.md) | The transport-neutral bearer-token contract and its three failure reasons |
 | [`doc/mcp_auth.md`](doc/mcp_auth.md) | The MCP-specific `_meta` slot and JSON-RPC refusal code over that contract |
-| [`doc/llm.md`](doc/llm.md) | The Agent SDK provider over the `tom_core_llm` contract: its control inversion and single retry, and the three session strategies |
+| [`doc/llm.md`](doc/llm.md) | The Agent SDK provider over the `tom_llm` contract: its control inversion and single retry, and the three session strategies |
 | [`doc/api/api_summary_llm.md`](doc/api/api_summary_llm.md) | The symbol-level mirror of the same unit: six types with a section each and the session-error matcher |
 | [`doc/isolate_streaming.md`](doc/isolate_streaming.md) | Streaming results back across an isolate boundary |
 | [`doc/api/api_summary_isolate_streaming.md`](doc/api/api_summary_isolate_streaming.md) | The symbol-level mirror of the same unit: twelve types with a section each, and which side of the boundary each lives on |

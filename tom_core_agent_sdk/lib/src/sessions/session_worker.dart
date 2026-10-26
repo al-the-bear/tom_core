@@ -27,7 +27,7 @@ library;
 import 'dart:async';
 import 'dart:isolate';
 
-import 'package:tom_core_llm/tom_core_llm.dart';
+import 'package:tom_llm/tom_llm.dart';
 
 import '../stall_bound.dart';
 import '../transport/transport.dart';

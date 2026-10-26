@@ -1,7 +1,7 @@
 /// Requests as an application builds them, for the transport suites.
 library;
 
-import 'package:tom_core_llm/tom_core_llm.dart';
+import 'package:tom_llm/tom_llm.dart';
 
 /// A request for [purpose] with [instruction] as the user channel and
 /// [context] as the system channel — the shape the transports put on the wire

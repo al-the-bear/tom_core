@@ -44,7 +44,7 @@ import 'dart:async';
 import 'package:tom_vscode_scripting_api/tom_vscode_scripting_api.dart';
 
 import '../prompt_sha256.dart' show promptSha256;
-import 'package:tom_core_llm/tom_core_llm.dart';
+import 'package:tom_llm/tom_llm.dart';
 
 import 'agent_sdk_session.dart';
 

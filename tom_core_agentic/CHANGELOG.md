@@ -32,11 +32,11 @@
 
 ### Changed
 
-- **The provider contract is `tom_core_llm`'s.** `LlmProvider`, `WirePrompt`,
+- **The provider contract is `tom_llm`'s.** `LlmProvider`, `WirePrompt`,
   `LlmOptions`, `LlmCallReport`, `CapturedWirePrompt`, the tool types and the
   `LlmStream*` events are deleted here; the one contract the workspace has —
   `LlmProvider.run(LlmRequest)` as a stream of `LlmEvent`s, `complete` derived
-  from it — lives in `tom_core_llm`, which this package depends on and its
+  from it — lives in `tom_llm`, which this package depends on and its
   barrel re-exports. `AgentSdkLlmProvider` extends it: it implements `run`
   (`LlmRunStarted` naming purpose, provider, model and call; `LlmTextDelta`;
   `LlmRunCompleted` or `LlmRunFailed`, each naming the call), and through the

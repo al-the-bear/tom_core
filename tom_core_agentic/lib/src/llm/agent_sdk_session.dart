@@ -29,7 +29,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:tom_core_llm/tom_core_llm.dart' show LlmOptions;
+import 'package:tom_llm/tom_llm.dart' show LlmOptions;
 
 /// Decides, per call, whether the provider resumes a stored Claude-Code session
 /// or starts fresh, and records the session id a successful call produced.

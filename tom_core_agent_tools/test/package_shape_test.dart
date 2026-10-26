@@ -31,10 +31,7 @@ void main() {
         if (uri.startsWith('package:')) {
           expect(
             uri,
-            anyOf(
-              startsWith('package:meta/'),
-              startsWith('package:tom_core_llm/'),
-            ),
+            anyOf(startsWith('package:meta/'), startsWith('package:tom_llm/')),
             reason: '${entry.key} imports $uri',
           );
         }
@@ -42,7 +39,7 @@ void main() {
     }
   });
 
-  test('the pubspec depends on meta and tom_core_llm alone', () {
+  test('the pubspec depends on meta and tom_llm alone', () {
     final pubspec = File('pubspec.yaml').readAsStringSync();
     final dependencies = pubspec
         .split('\ndev_dependencies:')
@@ -53,7 +50,7 @@ void main() {
       r'^  (\w+):',
       multiLine: true,
     ).allMatches(dependencies).map((m) => m.group(1)).toSet();
-    expect(names, {'meta', 'tom_core_llm'});
+    expect(names, {'meta', 'tom_llm'});
   });
 
   test('an invocation has no public constructor: consent exists only through '

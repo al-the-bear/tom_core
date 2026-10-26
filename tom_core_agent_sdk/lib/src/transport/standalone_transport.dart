@@ -44,7 +44,7 @@ import 'dart:isolate';
 
 import 'package:meta/meta.dart';
 import 'package:tom_vscode_scripting_api/tom_vscode_scripting_api.dart';
-import 'package:tom_core_llm/tom_core_llm.dart';
+import 'package:tom_llm/tom_llm.dart';
 
 import '../server_payload.dart';
 import 'transport.dart';

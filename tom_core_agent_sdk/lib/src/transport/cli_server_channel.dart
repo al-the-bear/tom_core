@@ -37,7 +37,7 @@ import 'dart:async';
 
 import 'package:meta/meta.dart';
 import 'package:tom_vscode_scripting_api/tom_vscode_scripting_api.dart';
-import 'package:tom_core_llm/tom_core_llm.dart';
+import 'package:tom_llm/tom_llm.dart';
 
 import 'transport.dart';
 import 'sdk_trail_translator.dart';

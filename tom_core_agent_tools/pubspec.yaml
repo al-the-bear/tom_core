@@ -16,8 +16,8 @@ environment:
 dependencies:
   meta: ^1.15.0
   # The provider contract a binding implements (LlmToolBinding).
-  tom_core_llm:
-    path: ../tom_core_llm
+  tom_llm:
+    path: ../../basics/tom_llm
 
 dev_dependencies:
   lints: ^6.0.0

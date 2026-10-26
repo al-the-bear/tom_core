@@ -70,7 +70,7 @@ import 'package:test/test.dart';
 import 'package:tom_vscode_scripting_api/tom_vscode_scripting_api.dart';
 import 'package:tom_core_agent_sdk/live_probe.dart';
 import 'package:tom_core_agent_sdk/tom_core_agent_sdk.dart';
-import 'package:tom_core_llm/tom_core_llm.dart';
+import 'package:tom_llm/tom_llm.dart';
 
 import 'support/requests.dart';
 import 'support/completion_events.dart';

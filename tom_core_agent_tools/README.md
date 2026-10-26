@@ -48,7 +48,7 @@ writes are rolled back — and nothing else.
   and a program run through `agentAuditExecution`.
 - **The presentations** (`AgentToolBinding`, `AgentInProcessMcpServer`) are
   generated from the registry on every call and dispatch back into it. The
-  binding is the `LlmToolBinding` of `tom_core_llm` a tool-capable provider
+  binding is the `LlmToolBinding` of `tom_llm` a tool-capable provider
   receives per request; the MCP server is a JSON-RPC handler a caller invokes
   directly — no port, socket or pipe. A refusal is an answer the model sees;
   once a call of a run fails, every later call is refused rather than
@@ -191,7 +191,7 @@ The compiled form of this section is
 
 | Dependency | Kind | For |
 | ---------- | ---- | --- |
-| `tom_core_llm` | runtime | `LlmToolBinding`, the per-request binding a provider receives |
+| `tom_llm` | runtime | `LlmToolBinding`, the per-request binding a provider receives |
 | `meta` | runtime | `@visibleForTesting` |
 | `test`, `lints` | dev | the suite |
 

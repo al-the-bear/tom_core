@@ -16,7 +16,7 @@ library;
 import 'dart:io';
 
 import 'package:tom_core_agent_sdk/tom_core_agent_sdk.dart';
-import 'package:tom_core_llm/io.dart';
+import 'package:tom_llm/io.dart';
 
 Future<void> main(List<String> args) async {
   String? appData;

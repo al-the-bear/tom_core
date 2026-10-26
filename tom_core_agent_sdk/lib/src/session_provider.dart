@@ -20,7 +20,7 @@
 /// wire; only a completion does.
 library;
 
-import 'package:tom_core_llm/tom_core_llm.dart';
+import 'package:tom_llm/tom_llm.dart';
 
 import 'sessions/session_manager.dart';
 import 'stall_bound.dart';

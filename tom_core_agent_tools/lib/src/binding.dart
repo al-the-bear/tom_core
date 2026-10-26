@@ -19,7 +19,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:meta/meta.dart';
-import 'package:tom_core_llm/tom_core_llm.dart';
+import 'package:tom_llm/tom_llm.dart';
 
 import 'audit.dart';
 import 'errors.dart';

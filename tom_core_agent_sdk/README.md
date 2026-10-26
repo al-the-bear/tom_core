@@ -3,7 +3,7 @@
 > **Attribution.** The Tom Framework is developed by Peter Nicolai Alexis Kyaw.
 > These packages are BSD-3-Clause licensed and internal (`publish_to: none`).
 
-Anthropic's Claude Agent SDK as a `tom_core_llm` provider: one transport seam
+Anthropic's Claude Agent SDK as a `tom_llm` provider: one transport seam
 with two implementations — a running VS Code window's CLI server, and a
 standalone Node server the app starts and owns — the SDK's messages translated
 into run events, a liveness bound every run passes, sessions that each run in
@@ -15,7 +15,7 @@ and no credential store.
 ## Overview
 
 - **`AgentSdkSessionProvider`** is the `LlmProvider`. Every request runs in a
-  session; the run streams the events of `tom_core_llm` — the request's
+  session; the run streams the events of `tom_llm` — the request's
   prelude, the far end's start, thinking and text as they stream, each tool
   call with its result, retries, usage and exactly one end — and the end of a
   completed run carries its `LlmCallReport`, kept by an `LlmRunAccount` from the
@@ -120,7 +120,7 @@ Dart SDK `^3.10.8`. No Flutter dependency. It takes `tom_basics` and
 import 'dart:io';
 
 import 'package:tom_core_agent_sdk/tom_core_agent_sdk.dart';
-import 'package:tom_core_llm/io.dart';
+import 'package:tom_llm/io.dart';
 
 Future<void> main() async {
   const request = LlmRequest(
@@ -247,7 +247,7 @@ as outdated and installing again updates it. Removing it is deleting
 `<app-data>/ai/`.
 
 **Which Node.js.** The transport never spawns the bare name `node`: an app
-started from a launcher has a minimal `PATH`. It runs `tom_core_llm`'s Node
+started from a launcher has a minimal `PATH`. It runs `tom_llm`'s Node
 search (`llmDiscoverNode`) — every `PATH` entry, then nvm's versions newest
 first, then Homebrew and `/usr/local` — and takes the first at or above the
 floor by version. A path the user sets (`llmNodeAt`) replaces the search.
@@ -318,7 +318,7 @@ deadlines from `testing.dart`.
 
 | Dependency | Kind | For |
 | ---------- | ---- | --- |
-| `tom_core_llm` | runtime | the provider contract, the run events, the run account, sessions and the Node search |
+| `tom_llm` | runtime | the provider contract, the run events, the run account, sessions and the Node search |
 | `tom_vscode_scripting_api` | runtime | the CLI-server wire, the port scan and the Agent SDK message mirror |
 | `tom_basics` | runtime | the diagnostics port the session manager logs through |
 | `meta` | runtime | `@visibleForTesting` |

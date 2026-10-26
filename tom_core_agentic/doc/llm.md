@@ -5,8 +5,8 @@ whether a call resumes a Claude session.
 
 The provider contract it implements — `LlmProvider`, `LlmRequest`, the
 `LlmEvent` union and the `LlmCallReport` every call is attributed by — is
-`tom_core_llm`'s, documented in that package's
-[`doc/contract.md`](../../tom_core_llm/doc/contract.md). This unit re-exports
+`tom_llm`'s, documented in that package's
+[`doc/contract.md`](../../../basics/tom_llm/doc/contract.md). This unit re-exports
 it, so a caller of the Agent SDK provider names one import.
 
 > **Looking for a signature?** This page explains the provider.
@@ -172,6 +172,6 @@ fresh at once. When the editor writes a new session id, that one is resumed.
 | `dart:async` | dart | `agent_sdk_llm_provider.dart` | The `Stream` the provider returns and the `Future`s it awaits. `dart:core` re-exports both, so the import is a statement of which library declares them rather than a requirement |
 | `dart:convert` | dart | `agent_sdk_session.dart` | JSON, for the session cache file and the quest history file the strategies read |
 | `dart:io` | dart | `agent_sdk_session.dart` | The `brain` and `quest` strategies read and write those files |
-| `tom_core_llm` | package | `agent_sdk_llm_provider.dart`, `agent_sdk_session.dart`, `llm.dart` | The provider contract the provider implements, the `LlmOptions` the strategies key off, and the contract the barrel re-exports |
+| `tom_llm` | package | `agent_sdk_llm_provider.dart`, `agent_sdk_session.dart`, `llm.dart` | The provider contract the provider implements, the `LlmOptions` the strategies key off, and the contract the barrel re-exports |
 | `tom_vscode_scripting_api` | package | `agent_sdk_llm_provider.dart` | The Agent SDK client the provider streams through, and the VS Code bridge under it |
 | `prompt_sha256.dart` | module | `agent_sdk_llm_provider.dart` | `promptSha256`, the `sha256:<hex>` fingerprint every report is stamped with |

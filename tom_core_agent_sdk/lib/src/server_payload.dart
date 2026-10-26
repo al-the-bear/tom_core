@@ -39,7 +39,7 @@ import 'package:meta/meta.dart';
 // verifier and the consumer must name the same file, and one declaration is
 // how that stops being a thing anyone has to remember.
 
-import 'package:tom_core_llm/tom_core_llm.dart';
+import 'package:tom_llm/tom_llm.dart';
 
 import 'transport/transport.dart';
 import 'transport/standalone_transport.dart';

@@ -2,7 +2,7 @@
 /// an in-memory map, recording every call it is asked to make.
 library;
 
-import 'package:tom_core_llm/tom_core_llm.dart';
+import 'package:tom_llm/tom_llm.dart';
 
 /// The in-process MCP server name the suites declare tools on.
 const testToolServer = 'tools';

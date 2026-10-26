@@ -22,7 +22,7 @@ import 'dart:io';
 
 import 'package:test/test.dart';
 import 'package:tom_core_agent_sdk/tom_core_agent_sdk.dart';
-import 'package:tom_core_llm/tom_core_llm.dart';
+import 'package:tom_llm/tom_llm.dart';
 
 /// How each discovered site is judged. Keyed by file and by the start of the
 /// message expression as it appears in source (whitespace collapsed).

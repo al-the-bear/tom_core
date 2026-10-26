@@ -37,7 +37,7 @@
 /// dead.
 library;
 
-import 'package:tom_core_llm/tom_core_llm.dart';
+import 'package:tom_llm/tom_llm.dart';
 
 /// One completion request at the transport layer.
 ///

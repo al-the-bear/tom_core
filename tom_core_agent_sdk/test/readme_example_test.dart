@@ -17,7 +17,7 @@ import 'dart:io';
 
 import 'package:test/test.dart';
 import 'package:tom_core_agent_sdk/tom_core_agent_sdk.dart';
-import 'package:tom_core_llm/io.dart';
+import 'package:tom_llm/io.dart';
 
 import '../example/readme_example.dart' as example;
 

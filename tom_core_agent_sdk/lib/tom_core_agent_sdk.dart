@@ -1,10 +1,10 @@
-/// Anthropic's Claude Agent SDK as a `tom_core_llm` provider.
+/// Anthropic's Claude Agent SDK as a `tom_llm` provider.
 ///
 /// [AgentSdkSessionProvider] serves every request from a session over the
 /// transport an [AgentSdkTransportSelector] chose: [HostedCliServerAiTransport]
 /// (a running VS Code with the Tom extension's CLI server) or
 /// [StandaloneNodeAiTransport] (a Node server the app starts and owns). The
-/// run streams `tom_core_llm` events; a request's tools are relayed back to the
+/// run streams `tom_llm` events; a request's tools are relayed back to the
 /// app through an in-process MCP server.
 library;
 

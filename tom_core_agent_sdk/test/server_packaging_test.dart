@@ -33,7 +33,7 @@ import 'dart:io';
 import 'package:test/test.dart';
 
 import 'package:tom_core_agent_sdk/tom_core_agent_sdk.dart';
-import 'package:tom_core_llm/tom_core_llm.dart';
+import 'package:tom_llm/tom_llm.dart';
 
 import 'package:tom_core_agent_sdk/testing.dart';
 import 'support/sessions.dart';

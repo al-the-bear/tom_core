@@ -3,7 +3,7 @@ description: >-
   Anthropic's Claude Agent SDK as an LLM provider for Tom applications: one
   transport seam with two implementations — a running VS Code CLI server and a
   standalone Node server the app starts and owns — the SDK's messages
-  translated into tom_core_llm run events, a liveness bound, sessions each in
+  translated into tom_llm run events, a liveness bound, sessions each in
   an isolate of its own, an availability gate with its reason, and an
   on-demand install of the server's npm dependencies.
 version: 0.1.0
@@ -19,8 +19,8 @@ dependencies:
   tom_basics: ">=3.3.0"
   # The provider contract this package implements and the run events it
   # streams.
-  tom_core_llm:
-    path: ../tom_core_llm
+  tom_llm:
+    path: ../../basics/tom_llm
   # The CLI-server wire, its 19900–19909 discovery scan, and the Agent SDK
   # message mirror.
   tom_vscode_scripting_api:
