@@ -1,8 +1,10 @@
 # Tom Core Server API Reference: Export Module
 
 The rendering and delivery half of reporting: a streaming tabular result in,
-a byte stream out in CSV, XLSX or PDF, and the two delivery channels that hand
-those bytes back to a caller or write them into storage.
+a byte stream out in CSV, XLSX or PDF with charts of the result's own rows, the
+delivery channels that hand those bytes back to a caller, write them into
+storage or send them by email, and the register of stored exports that a
+per-owner quota and a retention purge work from.
 
 ## Table of Contents
 
@@ -15,6 +17,8 @@ those bytes back to a caller or write them into storage.
   - [TomTabularRow](#tomtabularrow)
   - [TomTabularSection](#tomtabularsection)
   - [TomTabularResult](#tomtabularresult)
+  - [TomChartType](#tomcharttype)
+  - [TomTabularChart](#tomtabularchart)
   - [TomTabularRenderer](#tomtabularrenderer)
   - [TomExportFormats](#tomexportformats)
   - [TomCsvRenderer](#tomcsvrenderer)
@@ -27,6 +31,17 @@ those bytes back to a caller or write them into storage.
   - [TomMemoryExportStore](#tommemoryexportstore)
   - [TomBlobExportStore](#tomblobexportstore)
   - [TomExportService](#tomexportservice)
+  - [TomExportEmailMode](#tomexportemailmode)
+  - [TomExportEmailDelivery](#tomexportemaildelivery)
+  - [TomExportRecord](#tomexportrecord)
+  - [TomExportUsage](#tomexportusage)
+  - [TomExportRegister](#tomexportregister)
+  - [TomMemoryExportRegister](#tommemoryexportregister)
+  - [TomSqlExportRegister](#tomsqlexportregister)
+  - [TomExportRecordRow](#tomexportrecordrow)
+  - [TomExportUsageRow](#tomexportusagerow)
+  - [TomExportQuota](#tomexportquota)
+  - [TomExportRetention](#tomexportretention)
 - [Global Functions and Constants](#global-functions-and-constants)
 
 ## Overview
@@ -38,7 +53,10 @@ Source: `lib/src/tomserver/export/tabular_result.dart`,
 `lib/src/tomserver/export/pdf_renderer.dart`,
 `lib/src/tomserver/export/export_store.dart`,
 `lib/src/tomserver/export/blob_export_store.dart`,
-`lib/src/tomserver/export/export_service.dart`.
+`lib/src/tomserver/export/export_service.dart`,
+`lib/src/tomserver/export/export_email.dart`,
+`lib/src/tomserver/export/export_register.dart`,
+`lib/src/tomserver/export/export_register_sql.dart`.
 
 The module is three replaceable parts joined by one seam. A **shape** —
 `TomTabularResult`, a title, metadata and one or more `TomTabularSection`s of
@@ -59,7 +77,10 @@ is still on the stack. For an export of entities,
 columns from a reflected entity's `@TomDbColumn` declarations instead of
 requiring a hand-written projection, so the export has no second declaration to
 drift from; `@TomAudited`-redacted fields and `@TomFileReference` columns are
-left out by default.
+left out by default. A section may carry `TomTabularChart`s — bar, line or pie
+charts naming its own columns — which the PDF renderer draws below the table,
+the XLSX renderer writes as native charts bound to the sheet's cells, and CSV
+leaves out.
 
 Formats are a registry rather than a switch. `TomExportFormats` maps a format
 id onto a renderer, `TomExportFormats.standard()` builds one holding
@@ -73,8 +94,8 @@ Storage is a deliberately narrow contract: put a stream under a key, read it
 back, ask whether it is there, delete it, and reclaim a whole prefix. Those
 methods are final on `TomExportStore`; a backend implements `doStore`, `doOpen`,
 `doExists`, `doDelete` and — when it can — `doDeletePrefix` instead. There is no
-listing: enumerating what was stored belongs to the deployment's own record of
-it, not to storage. That split is what makes the interface's two promises
+listing: enumerating what was stored is the `TomExportRegister`'s, not
+storage's. That split is what makes the interface's two promises
 hold by construction rather than by each backend remembering them — every key is
 validated before any backend sees it, so none can be handed a traversal, and
 every backend failure is translated into a `TomExportException` carrying the
@@ -86,6 +107,15 @@ success, `TomMemoryExportStore` is the test and development backend, and
 same contract — every configured blob backend at once. `TomExportService`
 is the seam an endpoint calls: `respondWith` for the `apiResponse` channel,
 `storeAs` for `fileExport`, and `render` for everything else.
+`TomExportEmailDelivery` is the `email` channel: it sends a stored export as a
+link or an attachment through the messaging module's `TomMessageOutbox`.
+
+Given a `TomExportRegister`, `storeAs` records every export it stores — owner,
+size, media type, time, title — in `TomMemoryExportRegister` or the relational
+`TomSqlExportRegister` (table `tom_export`). A `TomExportQuota` caps what one
+owner holds, checked before rendering and again after the store, and
+`TomExportRetention` deletes exports older than a maximum age, by hand or as a
+scheduled job.
 
 ## Class Hierarchy
 
@@ -98,6 +128,8 @@ TomTabularColumn
 TomTabularRow
 TomTabularSection
 TomTabularResult
+TomChartType  (enum)
+TomTabularChart
 
 TomTabularRenderer  (abstract)
     ├── TomCsvRenderer
@@ -114,6 +146,19 @@ TomExportStore  (abstract)
 
 TomStoredExport
 TomExportService
+
+TomExportEmailMode  (enum)
+TomExportEmailDelivery
+
+TomExportRegister  (abstract)
+    ├── TomMemoryExportRegister
+    └── TomSqlExportRegister
+TomExportRecord
+TomExportUsage
+TomExportRecordRow
+TomExportUsageRow
+TomExportQuota
+TomExportRetention
 ```
 
 ## Classes
@@ -252,12 +297,15 @@ TomTabularSection({
   required List<TomTabularColumn> columns,
   required Stream<TomTabularRow> rows,
   String? title,
+  List<TomTabularChart> charts = const [],
 })
 ```
 
 Throws `TomExportException` when `columns` is empty
 (`export.section.no_columns`) or names the same column twice
-(`export.section.duplicate_column`).
+(`export.section.duplicate_column`), and checks every chart against the columns
+(`TomTabularChart.validateAgainst`, keys `export.chart.*`). `charts` is copied
+into an unmodifiable list.
 
 #### Factory Constructors
 
@@ -266,12 +314,14 @@ factory TomTabularSection.ofRows(
   List<TomTabularColumn> columns,
   Iterable<TomTabularRow> rows, {
   String? title,
+  List<TomTabularChart> charts = const [],
 })
 
 factory TomTabularSection.ofMaps(
   List<TomTabularColumn> columns,
   Stream<Map<String, Object?>> rows, {
   String? title,
+  List<TomTabularChart> charts = const [],
 })
 ```
 
@@ -294,7 +344,7 @@ that wants derived columns has `ofEntities`, which reads a declaration.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `ofEntities` | `static TomTabularSection ofEntities<T>(Stream<T> rows, {String? title, List<String>? include, Set<String> exclude = const {}, Map<String, String> titles = const {}, bool includeFileReferences = false})` | Builds a section whose columns are derived from the reflected entity `T` and whose cells are read off each entity, so there is no hand-written projection to drift from the entity. See below. |
+| `ofEntities` | `static TomTabularSection ofEntities<T>(Stream<T> rows, {String? title, List<String>? include, Set<String> exclude = const {}, Map<String, String> titles = const {}, bool includeFileReferences = false, List<TomTabularChart> charts = const []})` | Builds a section whose columns are derived from the reflected entity `T` and whose cells are read off each entity, so there is no hand-written projection to drift from the entity. See below. |
 
 `ofEntities` turns every `@TomDbColumn` field of `T` into a column in
 declaration order, keyed by **declared field name** (`createdAt`, not
@@ -336,6 +386,7 @@ aggregate, or a computed or reformatted column keeps `ofRows` / `ofMaps`.
 | `title` | `String?` | An optional table caption; becomes the XLSX sheet name and the PDF heading (final). |
 | `columns` | `List<TomTabularColumn>` | The section's typed columns, in output order (final). |
 | `rows` | `Stream<TomTabularRow>` | The section's rows — pulled once, in order, by whichever renderer runs (final). |
+| `charts` | `List<TomTabularChart>` | The charts drawn from this section's rows, in output order; unmodifiable, empty by default (final). |
 
 ### TomTabularResult
 
@@ -378,6 +429,53 @@ factory TomTabularResult.single({
 | `title` | `String` | The document title: printed as the PDF heading and carried in that document's info dictionary, carried by XLSX as `dc:title` in the workbook's core properties, dropped by CSV, which has nowhere to put it (final). |
 | `sections` | `List<TomTabularSection>` | The sections, in output order; one XLSX sheet each (final). |
 | `metadata` | `Map<String, String>` | Unmodifiable name/value pairs describing how the result was produced — the filter, the account, the as-of timestamp. Each format puts it where it has room: PDF prints it as a header block, XLSX writes it to the workbook's custom document properties rather than to cells, and CSV drops it (final). |
+
+### TomChartType
+
+The kinds of chart a `TomTabularChart` draws.
+
+#### Values
+
+| Value | Description |
+| ----- | ----------- |
+| `bar` | Vertical bars, one group per category, one bar per series. |
+| `line` | One line per series across the categories. |
+| `pie` | One slice per category, of exactly one series. |
+
+### TomTabularChart
+
+A chart of a section's own rows, drawn beside its table. It names columns of its
+section rather than carrying data, so it plots exactly the rows the table shows:
+`categoryColumn` labels the points, each of `valueColumns` is one series, and
+every row is a point. PDF draws it as vector graphics below the table; XLSX as a
+native chart on the section's sheet, bound to the exported cells so a recipient
+can restyle it; CSV leaves it out.
+
+#### Constructors
+
+```dart
+const TomTabularChart({
+  required TomChartType type,
+  required String categoryColumn,
+  required List<String> valueColumns,
+  String? title,
+})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `type` | `TomChartType` | What kind of chart (final). |
+| `categoryColumn` | `String` | The `TomTabularColumn.name` labelling each point (final). |
+| `valueColumns` | `List<String>` | The `TomTabularColumn.name`s of the series — numeric columns, exactly one for a pie (final). |
+| `title` | `String?` | The chart's caption, or `null` for none: printed above the chart in a PDF, the chart title in XLSX (final). |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `validateAgainst` | `void validateAgainst(List<TomTabularColumn> columns)` | Throws `TomExportException` unless the chart can be drawn from `columns`: `export.chart.unknown_column` for a category or value column not among them, `export.chart.no_series` for no value column, `export.chart.pie_series` for a pie with other than one, `export.chart.not_numeric` for a series that is not an `integer` or `decimal` column. Called by every `TomTabularSection` constructor. |
 
 ### TomTabularRenderer
 
@@ -524,7 +622,7 @@ const TomXlsxRenderer({
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `render` | `Stream<List<int>> render(TomTabularResult result)` | *(override)* Emits the fixed package parts — content types, relationships, `docProps/core.xml`, `docProps/custom.xml` when there is metadata, the workbook and its styles — then one worksheet part per section as its rows arrive, then the ZIP central directory. Numbers are numeric cells, booleans `t="b"`, timestamps Excel date serials computed from calendar fields. Every column gets a `<col width>` from its `effectiveWidth` — OOXML's unit is already a character count — rather than only the hinted ones, since Excel's 8.43 default shows an ISO timestamp as `#####`. |
+| `render` | `Stream<List<int>> render(TomTabularResult result)` | *(override)* Emits the fixed package parts — content types, relationships, `docProps/core.xml`, `docProps/custom.xml` when there is metadata, the workbook and its styles — then one worksheet part per section as its rows arrive, followed, for a section with charts, by its drawing (the charts anchored right of the table and stacked downwards) and one `xl/charts/` part per chart, its series bound to the sheet's cells by absolute references; then the ZIP central directory. Numbers are numeric cells, booleans `t="b"`, timestamps Excel date serials computed from calendar fields. Every column gets a `<col width>` from its `effectiveWidth` — OOXML's unit is already a character count — rather than only the hinted ones, since Excel's 8.43 default shows an ISO timestamp as `#####`. |
 
 ### TomPdfRenderer
 
@@ -548,6 +646,7 @@ const TomPdfRenderer({
   double baseFontSize = 8,
   pw.ThemeData? theme,
   bool compress = true,
+  double chartHeight = 180,
 })
 ```
 
@@ -562,6 +661,7 @@ const TomPdfRenderer({
 | `baseFontSize` | `double` | The body text size in points; header text is one point larger and bold (final). |
 | `theme` | `pw.ThemeData?` | An optional theme, typically supplying an embedded Unicode font — needed for text outside Latin-1, since the default base-14 Helvetica encodes only WinAnsi. Also the only way to stop `package:pdf`'s `has no Unicode support` diagnostic, which it prints twice per document from inside an `assert` and so never emits in a deployment (final). |
 | `compress` | `bool` | Whether to deflate the document's object streams; `false` leaves the text readable in a hex dump (final). |
+| `chartHeight` | `double` | How high a chart is drawn, in points (final). |
 | `formatId` | `String` | *(getter, override)* `pdf`. |
 | `mediaType` | `String` | *(getter, override)* `application/pdf`. |
 | `fileExtension` | `String` | *(getter, override)* `pdf`. |
@@ -571,7 +671,7 @@ const TomPdfRenderer({
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `render` | `Stream<List<int>> render(TomTabularResult result)` | *(override)* Pulls and formats every section's rows, lays the document out, and yields it as a single chunk. Numeric columns are right-aligned; every column's `effectiveWidth` becomes its flex factor, so the character counts survive the page fit as a ratio. They are deliberately not converted to points first: flex is scale invariant, so a single conversion factor would cancel exactly across all columns. |
+| `render` | `Stream<List<int>> render(TomTabularResult result)` | *(override)* Pulls and formats every section's rows, lays the document out, and yields it as a single chunk. Each section's charts follow its table, drawn with `package:pdf`'s chart widgets — a `null` cell is no point, a pie slice of zero or less is left out, and a chart of several series has a legend. Numeric columns are right-aligned; every column's `effectiveWidth` becomes its flex factor, so the character counts survive the page fit as a ratio. They are deliberately not converted to points first: flex is scale invariant, so a single conversion factor would cancel exactly across all columns. |
 
 ### TomStoredExport
 
@@ -643,8 +743,10 @@ The missing listing is a decision rather than an omission. A listing is a
 paginated call over an object store and a scan over a blob table, and neither
 answers which export, rendered for whom, is old enough to purge. `TomStoredExport`
 is a row, and the deployment that keeps one per export enumerates from there and
-reclaims with `deletePrefix`; that pass runs on every backend, including the ones
-that cannot prefix-delete. See `example/export/export_retention.dart`.
+The enumeration is `TomExportRegister`'s, which `TomExportService.storeAs` writes
+and `TomExportRetention` purges from, deleting key by key — so the purge runs on
+every backend, including the ones that cannot prefix-delete. See
+`example/export/export_retention.dart`.
 
 - **Extends:** none (abstract)
 
@@ -821,11 +923,15 @@ hard is in the renderers or the store.
 TomExportService({
   TomExportFormats? formats,
   TomExportStore? store,
+  TomExportRegister? register,
+  TomExportQuota? quota,
 })
 ```
 
 `formats` defaults to `TomExportFormats.standard()`. `store` is optional: an
 application that only streams exports back through its API never needs one.
+`register`, when given, records every export `storeAs` stores; `quota` counts
+against it, so a `quota` without a `register` throws `ArgumentError`.
 
 #### Static Methods
 
@@ -839,6 +945,8 @@ application that only streams exports back through its API never needs one.
 | -------- | ---- | ----------- |
 | `formats` | `TomExportFormats` | The formats this service can produce (final). |
 | `store` | `TomExportStore?` | Where `storeAs` writes, when the application has somewhere to write (final). |
+| `register` | `TomExportRegister?` | The record of stored exports, or `null` when nothing is recorded (final). |
+| `quota` | `TomExportQuota?` | How much one owner may store, or `null` for no limit (final). |
 
 #### Methods
 
@@ -846,17 +954,318 @@ application that only streams exports back through its API never needs one.
 | ------ | --------- | ----------- |
 | `render` | `Stream<List<int>> render(TomTabularResult result, String format)` | Renders `result` as `format` to a byte stream — the primitive both channels are built on, and the one to call when neither fits. The **only** place in this class where a format id becomes bytes: `respondWith` and `storeAs` deliver whatever stream this returns, so an override adding a metric, a trace or a row limit is on every channel's path. An override may wrap, meter or refuse the stream, but should not change which *format* it produces: the channels ask `formats` what a format **is** and this method only what it **produces**. |
 | `respondWith` | `Response respondWith(TomTabularResult result, String format, {required String baseName, bool inline = false})` | The `apiResponse` channel: a shelf response whose body is `render`'s stream, with the content type and a `Content-Disposition` naming `baseName` plus the format's extension. Unbuffered and without a `Content-Length`, so shelf falls back to chunked transfer encoding. `inline` switches the disposition from `attachment`, which is worth doing only for PDF. An unknown format throws before a response object exists, rather than as an error on its body. |
-| `storeAs` | `Future<TomStoredExport> storeAs(TomTabularResult result, String format, {required String key})` | The `fileExport` channel: streams `render`'s output into `store` under `key` and returns the descriptor. Throws `TomExportException` (`export.service.no_store`) when no store is configured. |
+| `storeAs` | `Future<TomStoredExport> storeAs(TomTabularResult result, String format, {required String key, String owner = ''})` | The `fileExport` channel: streams `render`'s output into `store` under `key` and returns the descriptor. Throws `TomExportException` (`export.service.no_store`) when no store is configured. With a `register`, records the export under `owner` with the result's title. With a `quota` and a non-empty `owner`, checks the owner's usage before rendering and the stored size after it; a store that does not fit is deleted, its record removed, and refused (`export.quota.count_exceeded`, `export.quota.bytes_exceeded`). A store over a key the owner already holds replaces that export and is counted without it; a refused replacement leaves the key empty, since the store had already written over it. |
+| `deleteStored` | `Future<bool> deleteStored(String key)` | Deletes the stored export under `key` and its register record; answers whether the store held it. Throws `TomExportException` (`export.service.no_store`) when no store is configured. |
 | `keyFor` | `String keyFor(String baseName, String format, {DateTime? partitionOn})` | A storage key for `baseName` in `format`; with `partitionOn` it is prefixed `yyyy/MM/dd/`, so exports do not accumulate in one unlistable directory and expiry becomes a prefix deletion. `baseName` is the **same report name `respondWith` takes** and is sanitised for the same reason — neither channel should refuse a name the other accepts. The spelling differs because the grammars do (`Q3 sales` downloads as `Q3 sales.csv`, stores as `Q3_sales.csv`); the accepted set does not. The only path structure in the result is the partition, which this method owns, so a `/` in the name is replaced rather than honoured and `../etc/passwd` is defused rather than refused. Throws `TomExportException` (`export.store.invalid_key`) for a name too long to be a key — the one fault not sanitised away, because truncating would give two reports one key and the second export would overwrite the first in silence. |
+
+### TomExportEmailMode
+
+How `TomExportEmailDelivery.send` delivers an export.
+
+#### Values
+
+| Value | Description |
+| ----- | ----------- |
+| `link` | A link to the export, built by `TomExportEmailDelivery.linkFor`. |
+| `attach` | The export's bytes as an attachment. |
+| `auto` | An attachment up to `TomExportEmailDelivery.maxAttachmentBytes`, a link beyond it. |
+
+### TomExportEmailDelivery
+
+The `email` channel: sends stored exports by email through a `TomMessageOutbox`.
+The export is rendered and stored once (`TomExportService.storeAs`); this class
+builds a message about it and queues it, so durability, retry and
+one-runner-per-message are the outbox's. An attachment is read back from the
+store rather than rendered again — the stored export is what was delivered.
+
+#### Constructors
+
+```dart
+TomExportEmailDelivery({
+  required TomExportStore store,
+  required TomMessageOutbox outbox,
+  Uri Function(TomStoredExport export)? linkFor,
+  TomRecipient? from,
+  int maxAttachmentBytes = defaultMaxAttachmentBytes,
+})
+```
+
+#### Static Constants
+
+| Constant | Type | Description |
+| -------- | ---- | ----------- |
+| `defaultMaxAttachmentBytes` | `int` | The largest export `auto` attaches by default: 10 MiB, beneath the limits common mail servers apply to a whole message. |
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `store` | `TomExportStore` | Where the exports are stored (final). |
+| `outbox` | `TomMessageOutbox` | The outbox the messages are queued in (final). |
+| `linkFor` | `Uri Function(TomStoredExport export)?` | The address a recipient fetches an export from — the deployment's own download route, a signed URL — or `null` when the deployment serves none, which leaves only attachments (final). |
+| `from` | `TomRecipient?` | The default sender, or `null` for the transport's own (final). |
+| `maxAttachmentBytes` | `int` | The largest export sent as an attachment; also the ceiling of `attach` (final). |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `send` | `Future<TomMessage> send(TomStoredExport export, {required List<TomRecipient> to, required String subject, String text = 'Your export is ready.', String? fileName, TomRecipient? from, TomExportEmailMode mode = TomExportEmailMode.auto})` | Queues an email delivering `export` to `to` and returns the queued message. `text` opens the body; in link mode the link follows it after a blank line. `fileName` names the attachment, by default the last segment of the key; its media type is the export's. `auto` attaches when the export fits `maxAttachmentBytes` or when there is no `linkFor`. Throws `TomExportException` before anything is queued: `export.email.no_recipient` for an empty `to`, `export.email.too_large` for an attachment larger than `maxAttachmentBytes`, `export.email.no_link` when a link is needed and `linkFor` is not set. |
+
+### TomExportRecord
+
+What the register knows about one stored export.
+
+#### Constructors
+
+```dart
+TomExportRecord({
+  required String key,
+  required String owner,
+  required String mediaType,
+  required int byteCount,
+  required DateTime storedAt,
+  String? title,
+})
+```
+
+`storedAt` is normalised to UTC.
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `key` | `String` | The export's storage key (final). |
+| `owner` | `String` | Who the export counts against — a user, a tenant, a report job; `''` for an export that belongs to no one, which no quota counts (final). |
+| `mediaType` | `String` | The export's media type (final). |
+| `byteCount` | `int` | Its size (final). |
+| `storedAt` | `DateTime` | When it was stored, in UTC (final). |
+| `title` | `String?` | The report's title, when the export was stored with one (final). |
+
+### TomExportUsage
+
+How much an owner holds: `count` exports of `bytes` in total.
+
+#### Constructors
+
+```dart
+const TomExportUsage({required int count, required int bytes})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `count` | `int` | How many exports (final). |
+| `bytes` | `int` | Their total size (final). |
+
+### TomExportRegister
+
+The record of stored exports: who stored what, how large, and when. The store
+holds bytes under keys and cannot list them; the register is the enumeration,
+written by `TomExportService.storeAs` beside the bytes, which a quota sums and
+the retention purge queries.
+
+- **Extends:** none (abstract)
+
+#### Constructors
+
+```dart
+const TomExportRegister()
+```
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `record` | `Future<void> record(TomExportRecord record)` | Records `record`, replacing any record under its key. |
+| `find` | `Future<TomExportRecord?> find(String key)` | The record under `key`, or `null`. |
+| `ownedBy` | `Future<List<TomExportRecord>> ownedBy(String owner)` | `owner`'s exports, newest first. |
+| `usageOf` | `Future<TomExportUsage> usageOf(String owner)` | What `owner` holds. |
+| `storedBefore` | `Future<List<TomExportRecord>> storedBefore(DateTime before, {int limit = 500})` | Up to `limit` exports stored before `before`, oldest first. |
+| `remove` | `Future<bool> remove(String key)` | Removes the record under `key`; answers whether there was one. |
+
+### TomMemoryExportRegister
+
+A `TomExportRegister` in memory: right for tests and a single process whose
+store is in memory too, wrong for anything that outlives the process.
+
+- **Extends:** `TomExportRegister`
+
+#### Constructors
+
+```dart
+TomMemoryExportRegister()
+```
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `record` | `Future<void> record(TomExportRecord record)` | *(override)* Keeps `record` under its key. |
+| `find` | `Future<TomExportRecord?> find(String key)` | *(override)* The record under `key`, or `null`. |
+| `ownedBy` | `Future<List<TomExportRecord>> ownedBy(String owner)` | *(override)* `owner`'s records, newest first. |
+| `usageOf` | `Future<TomExportUsage> usageOf(String owner)` | *(override)* Counts and sums `owner`'s records. |
+| `storedBefore` | `Future<List<TomExportRecord>> storedBefore(DateTime before, {int limit = 500})` | *(override)* The records stored before `before`, oldest first, at most `limit`. |
+| `remove` | `Future<bool> remove(String key)` | *(override)* Drops the record under `key`. |
+
+### TomSqlExportRegister
+
+The relational `TomExportRegister`: one row per stored export, in the database
+the deployment already has. The table (`tom_export` by default) is declared once
+as `exportRegisterTable`, keyed by the storage key and indexed on
+`(owner, stored_at)` and on `stored_at`.
+
+- **Extends:** `TomExportRegister`
+
+#### Constructors
+
+```dart
+TomSqlExportRegister(
+  TomDataSource datasource, {
+  String table = defaultExportRegisterTable,
+  bool createSchema = true,
+})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `datasource` | `TomDataSource` | The data source the table lives in (final). |
+| `table` | `String` | The register table (final). |
+| `createSchema` | `bool` | Whether to create the table on first use; `false` where the migration module owns the schema (final). |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `ensureSchema` | `Future<void> ensureSchema()` | Creates the table if it does not exist (when `createSchema`); idempotent, and called by every operation. |
+| `record` | `Future<void> record(TomExportRecord record)` | *(override)* Writes the row, replacing any row under its key; `stored_at` is written as a UTC instant. |
+| `find` | `Future<TomExportRecord?> find(String key)` | *(override)* The row under `key`, or `null`. |
+| `ownedBy` | `Future<List<TomExportRecord>> ownedBy(String owner)` | *(override)* `owner`'s rows, newest first, then by key. |
+| `usageOf` | `Future<TomExportUsage> usageOf(String owner)` | *(override)* One `COUNT(*)` / `SUM(byte_count)` over `owner`'s rows, read back as a `TomExportUsageRow`. |
+| `storedBefore` | `Future<List<TomExportRecord>> storedBefore(DateTime before, {int limit = 500})` | *(override)* The rows stored before `before`, oldest first, then by key, at most `limit`. |
+| `remove` | `Future<bool> remove(String key)` | *(override)* Deletes the row under `key`; answers whether one was deleted. |
+| `deleteAll` | `Future<void> deleteAll()` | Empties the table — for provisioning and tests. |
+
+### TomExportRecordRow
+
+One row of the export register table, as the driver hands it back. Reflected and
+`@TomDbTable`-annotated because the data source's row mapper requires both; the
+annotation's table values are placeholders, since the real table name is a
+constructor argument of `TomSqlExportRegister`.
+
+#### Constructors
+
+```dart
+TomExportRecordRow()
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `key` | `String` | The export's storage key (column `export_key`). |
+| `owner` | `String` | Who the export counts against (column `owner`). |
+| `mediaType` | `String` | The export's media type (column `media_type`). |
+| `byteCount` | `int` | Its size (column `byte_count`). |
+| `storedAt` | `String` | When it was stored, as the stored text, parsed as a UTC instant (column `stored_at`). |
+| `title` | `String?` | The report's title (column `title`). |
+
+### TomExportUsageRow
+
+The aggregate row `TomSqlExportRegister.usageOf` reads. Reflected and
+`@TomDbTable`-annotated for the same reason as `TomExportRecordRow`.
+
+#### Constructors
+
+```dart
+TomExportUsageRow()
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `exportCount` | `int` | How many exports (column `export_count`). |
+| `exportBytes` | `int` | Their total size (column `export_bytes`). |
+
+### TomExportQuota
+
+How much one owner may hold: at most `maxCount` exports and at most `maxBytes`
+in total; `null` leaves that dimension unbounded. Checked by
+`TomExportService.storeAs` for an export stored with an owner: the count and the
+bytes already held before rendering, so a full owner costs no render; the size
+of the new export once it is stored, undoing a store that takes the owner past
+`maxBytes`.
+
+#### Constructors
+
+```dart
+const TomExportQuota({int? maxCount, int? maxBytes})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `maxCount` | `int?` | The most exports one owner may hold (final). |
+| `maxBytes` | `int?` | The most bytes one owner's exports may total (final). |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `check` | `void check(String owner, TomExportUsage usage, {int addedBytes = 0, bool countingNew = true})` | Throws unless `owner`, holding `usage`, may hold one more export. Before the store `addedBytes` is `0` and the bytes already held must be below `maxBytes`; after it, `addedBytes` is the stored size and the total must not exceed `maxBytes`. `countingNew` is `false` for a store that replaces an export the owner already holds, which adds nothing to the count. Keyed `export.quota.count_exceeded` (parameters `owner`, `count`, `limit`) or `export.quota.bytes_exceeded` (`owner`, `bytes`, `limit`). |
+
+### TomExportRetention
+
+Deletes stored exports older than `maxAge` — the bytes from `store`, the records
+from `register`. It works from the register, deleting key by key, so it reaches
+every export the service stored whatever the store's backend.
+
+#### Constructors
+
+```dart
+TomExportRetention({
+  required TomExportStore store,
+  required TomExportRegister register,
+  required Duration maxAge,
+  int batchSize = 500,
+})
+```
+
+Throws `ArgumentError` when `maxAge` is not positive or `batchSize` is below 1.
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `store` | `TomExportStore` | Where the exports are stored (final). |
+| `register` | `TomExportRegister` | The record of what was stored when (final). |
+| `maxAge` | `Duration` | How long an export is kept (final). |
+| `batchSize` | `int` | How many exports one batch deletes (final). |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `purge` | `Future<int> purge({DateTime? now})` | Deletes every export stored before `now` (default: the current time) minus `maxAge`, reading `storedBefore` a batch at a time, and answers how many went. The bytes go before the record, so an interrupted purge leaves a record whose bytes are gone — deleted again, harmlessly, by the next purge — and never bytes no record names. |
+| `jobDefinition` | `TomJobDefinition jobDefinition({String name = 'tom.export.purge', TomSchedule? schedule})` | A job running `purge` on `schedule` (default: hourly, a `TomIntervalSchedule`), with a missed window run once, for a `TomScheduler`. Its body holds this retention, so the scheduler must run it in its own isolate with a `TomInlineJobDispatcher`. |
 
 ## Global Functions and Constants
 
 ### Constants
 
-None — this module exposes no top-level constants.
+| Constant | Type | Description |
+| -------- | ---- | ----------- |
+| `defaultExportRegisterTable` | `String` | The default name of the export register table, `tom_export`. |
 
 ### Functions
 
 | Function | Signature | Description |
 | -------- | --------- | ----------- |
+| `exportRegisterTable` | `TomFrameworkTable exportRegisterTable(String table)` | The one declaration of the export register table: `export_key` as the primary key, sized from `TomBlobStore.maxKeyLength`; `owner` (`VARCHAR(191) NOT NULL DEFAULT ''`), `media_type`, `byte_count`, `stored_at` as `DATETIME(6)` and a nullable `title`; indexed on `(owner, stored_at)` for a quota and an owner's listing and on `stored_at` for the purge. Listed by `frameworkOwnedTables` under `exportRegister`. |
+| `exportRegisterTableDdl` | `String exportRegisterTableDdl(String table)` | The `CREATE TABLE` statement for the register table, derived from `exportRegisterTable`. For the default name that text is the shipped `example/export/migrations/main/tomcore/[1]-create_tom_export.sql`. |
 | `tomFormatCellAsText` | `String tomFormatCellAsText(Object? value)` | The shared text rule for the text-oriented renderers: `null` is empty, a `DateTime` is ISO-8601, a whole `double` drops its trailing `.0` so it does not read as an approximation, and everything else is `toString()`. |

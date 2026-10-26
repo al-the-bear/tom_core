@@ -2,6 +2,49 @@
 
 ### Added
 
+- **Export charts, the email channel, and the export register with quota and
+  retention** (`export`, `db_migration` modules). `TomTabularChart({type,
+  categoryColumn, valueColumns, title})` with `TomChartType` (`bar`, `line`,
+  `pie`) names columns of its section, every row a point; `TomTabularSection`
+  and its `ofRows`, `ofMaps` and `ofEntities` take `charts`, checked by
+  `validateAgainst` (error keys `export.chart.unknown_column`,
+  `export.chart.no_series`, `export.chart.pie_series`,
+  `export.chart.not_numeric`). `TomPdfRenderer` draws each chart below its
+  section's table with `package:pdf`'s chart widgets (constructor argument
+  `chartHeight`, default 180), skipping `null` cells and pie slices of zero or
+  less; `TomXlsxRenderer` writes native `barChart` / `lineChart` / `pieChart`
+  parts under `xl/charts/` with one drawing per charted sheet, anchored right of
+  the table, the series bound to the sheet's cells by absolute references; CSV
+  leaves charts out. `TomExportEmailDelivery({store, outbox, linkFor, from,
+  maxAttachmentBytes})` (`defaultMaxAttachmentBytes`, 10 MiB) sends a stored
+  export with `send(export, {to, subject, text, fileName, from, mode})` as a
+  link or an attachment read back from the store (`TomExportEmailMode`: `link`,
+  `attach`, `auto`), queued through `TomMessageOutbox`; error keys
+  `export.email.no_recipient`, `export.email.too_large`, `export.email.no_link`.
+  `TomExportRegister` (`record`, `find`, `ownedBy`, `usageOf`, `storedBefore`,
+  `remove`) with `TomExportRecord` and `TomExportUsage`, in memory
+  (`TomMemoryExportRegister`) or in the table `tom_export`
+  (`TomSqlExportRegister`, `exportRegisterTable`, `exportRegisterTableDdl`,
+  `defaultExportRegisterTable`, rows `TomExportRecordRow` and
+  `TomExportUsageRow`), listed by `frameworkOwnedTables` under the
+  `exportRegister` argument. `TomExportService({formats, store, register,
+  quota})` records what `storeAs(result, format, {key, owner})` stores and
+  enforces `TomExportQuota({maxCount, maxBytes})` before rendering and after
+  storing (error keys `export.quota.count_exceeded`,
+  `export.quota.bytes_exceeded`; a quota without a register is an
+  `ArgumentError`); `deleteStored(key)` removes the export and its record.
+  `TomExportRetention({store, register, maxAge, batchSize})` deletes exports
+  older than `maxAge` with `purge({now})`, or as the job
+  `jobDefinition({name = 'tom.export.purge', schedule})` run by a
+  `TomInlineJobDispatcher`. Reference migration
+  `example/export/migrations/main/tomcore/[1]-create_tom_export.sql` and its
+  PostgreSQL form; `doc/export.md` § Charts, § The Email Channel, § The Export
+  Register, § Quota, § Retention and § Error Keys;
+  `example/export/export_email.dart`, `example/export/export_retention.dart`
+  and steps 7 and 8 of `example/export/export_example.dart`; tests in
+  `test/export_test.dart`, `test/export_register_test.dart`,
+  `test/export_register_db_test.dart`, `test/framework_schema_test.dart` and
+  `test/reference_migrations_test.dart`.
 - **Preference defaults and the bulk preference write** (`preferences`
   module). `TomPreferenceDefault` (table `tom_preference_default`,
   `createTableSql`), `TomPreferenceDefaultScope` (`deployment`, `role`),

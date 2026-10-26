@@ -1,34 +1,28 @@
-/// The third delivery channel, composed rather than built in.
+/// The email channel: a stored export sent to people through the outbox.
 ///
-/// The export module answers two channels itself — `apiResponse`
-/// ([TomExportService.respondWith]) and `fileExport`
-/// ([TomExportService.storeAs]). The third the specification names, **email**,
-/// is deliberately absent from it: an emailed export is a message with an
-/// attachment, which is the `messaging` module's subject, and a third path in
-/// the export service would be a second copy of the outbox's durability, retry
-/// and idempotence — the one thing that module exists to own.
-///
-/// So the channel is a composition, and this file is it. Neither module learns
-/// about the other: export renders and stores, messaging delivers, and the
-/// twenty lines that put them together live in the application. That is the
-/// whole point of the seam, and it is worth showing rather than asserting,
-/// because "composes out of the two" is easy to write and easy to be wrong
-/// about.
+/// The export module answers three channels — `apiResponse`
+/// ([TomExportService.respondWith]), `fileExport` ([TomExportService.storeAs])
+/// and **email** ([TomExportEmailDelivery.send]). The email channel does not
+/// render anything: the export is rendered and stored once, and the channel
+/// builds a message about it and queues that message in the `messaging`
+/// module's [TomMessageOutbox], which owns durability, retry and
+/// one-runner-per-message. So nothing here repeats what the outbox does.
 ///
 /// Two shapes are shown, because they are not interchangeable:
 ///
-///  * **link** — the message carries the storage key, and the recipient fetches
-///    it. The export is already durable in the store; attaching it copies it
-///    once per recipient and pushes it through a mail server's size limit.
-///  * **attach** — the bytes ride along. Right for a small export, and for a
-///    recipient who cannot reach the store at all.
+///  * **link** — the message carries the address the deployment serves the
+///    export at, and the recipient fetches it. The export is already durable in
+///    the store; attaching it copies it once per recipient and pushes it
+///    through a mail server's size limit.
+///  * **attach** — the bytes ride along, read back from the store. Right for a
+///    small export, and for a recipient who cannot reach the deployment.
+///
+/// The default, **auto**, attaches up to a size and links beyond it.
 ///
 /// Run with `dart run example/export/export_email.dart`. Every step checks its
 /// own result and the run fails when one does not hold, so a green run is a
 /// verification and not just a transcript.
 library;
-
-import 'dart:typed_data';
 
 import 'package:tom_core_server/tom_core_server.dart';
 
@@ -53,10 +47,29 @@ TomTabularResult monthlyRevenue() => TomTabularResult.single(
   ),
 );
 
+/// The address the deployment serves a stored export at — its own download
+/// route. The export module serves none; it only needs to know how to name one.
+Uri downloadLink(TomStoredExport export) =>
+    Uri.parse('https://reports.example.com/exports/${export.key}');
+
+/// Who the messages go to.
+final _ada = TomRecipient('ada@example.com', displayName: 'Ada');
+
+/// Runs [send] and answers the key of the [TomExportException] it throws, or
+/// `''` when it throws none.
+Future<String> refusalOf(Future<Object?> Function() send) async {
+  try {
+    await send();
+  } on TomExportException catch (error) {
+    return error.key;
+  }
+  return '';
+}
+
 Future<void> run() async {
-  // 1. The two halves, each configured without knowing the other. The export
-  //    service renders and stores; the outbox delivers. Nothing below passes
-  //    one to the other — the application holds both.
+  // 1. The store, the outbox, and the delivery that joins them. The export
+  //    service renders and stores; the outbox delivers; the delivery builds
+  //    the message between the two and knows the deployment's download route.
   final exports = TomMemoryExportStore();
   final service = TomExportService(store: exports);
   final transport = TomMemoryMessageTransport();
@@ -64,17 +77,21 @@ Future<void> run() async {
     router: TomMessageRouter([transport]),
     store: TomMemoryJobStore(),
   );
-  print(
-    '1. formats                   : ${service.formats.formatIds.join(', ')}',
+  final email = TomExportEmailDelivery(
+    store: exports,
+    outbox: outbox,
+    linkFor: downloadLink,
+    from: TomRecipient('reports@example.com', displayName: 'Reporting'),
   );
+  print('1. attachment limit          : ${email.maxAttachmentBytes} bytes');
   check(
-    service.formats.supports('xlsx'),
-    'the export service renders the format the report will be delivered in',
+    email.maxAttachmentBytes ==
+        TomExportEmailDelivery.defaultMaxAttachmentBytes,
+    'the delivery attaches up to 10 MiB unless told otherwise',
   );
 
-  // 2. Render and store, which is the `fileExport` channel unchanged. The key
-  //    is built by `keyFor`, so the extension matches the format and the name
-  //    is safe to use as a key — a report name comes from a user.
+  // 2. Render and store once — the `fileExport` channel unchanged. Every
+  //    message below is about this one stored export; none renders it again.
   final key = service.keyFor(
     'Monthly revenue',
     'xlsx',
@@ -82,7 +99,6 @@ Future<void> run() async {
   );
   final stored = await service.storeAs(monthlyRevenue(), 'xlsx', key: key);
   print('2. stored                    : ${stored.key}');
-  print('   media type                : ${stored.mediaType}');
   print('   bytes                     : ${stored.byteCount}');
   check(
     stored.key == '2026/08/01/Monthly_revenue.xlsx',
@@ -90,100 +106,120 @@ Future<void> run() async {
   );
   check(stored.byteCount > 0, 'the export was rendered and written');
 
-  // 3. The **link** shape. The message names the key; the recipient fetches the
-  //    bytes from wherever the deployment serves its stored exports. The export
-  //    is durable already, so an attachment would be a second copy per
-  //    recipient — and the one most likely to be refused by a mail server.
-  final link = TomMessage.email(
-    from: TomRecipient('reports@example.com', displayName: 'Reporting'),
-    to: [TomRecipient('ada@example.com', displayName: 'Ada')],
+  // 3. The **link** shape. The message carries the address after its text; the
+  //    recipient fetches the bytes from the deployment.
+  final linked = await email.send(
+    stored,
+    to: [_ada],
     subject: 'Monthly revenue is ready',
-    text: 'Your report is ready: ${stored.key} (${stored.byteCount} bytes).',
+    text: 'Your report is ready.',
+    mode: TomExportEmailMode.link,
   );
-  print('3. link message              : ${link.subject}');
+  print(
+    '3. link in the message       : '
+    '${linked.bodies.single.content.split('\n').last}',
+  );
   check(
-    link.attachments.isEmpty,
+    linked.attachments.isEmpty,
     'the link shape carries no bytes — the store already has them',
   );
   check(
-    link.bodies.single.content.contains(stored.key),
-    'the message names the key the recipient reads it back with',
+    linked.bodies.single.content ==
+        'Your report is ready.\n\n${downloadLink(stored)}',
+    'the link follows the text, as the deployment serves the export',
   );
 
-  // 4. The **attach** shape. The bytes are read back from the store rather than
-  //    rendered a second time: the stored export is what was delivered, and
-  //    rendering again could produce a different document if the data moved.
-  //    The file name and media type come from the renderer, so the recipient
-  //    sees an extension that matches the bytes.
-  final renderer = service.formats.rendererFor('xlsx');
-  final bytes = await collect(exports.open(stored.key));
-  final attached = TomMessage.email(
-    from: TomRecipient('reports@example.com', displayName: 'Reporting'),
-    to: [TomRecipient('ada@example.com', displayName: 'Ada')],
+  // 4. The **attach** shape. The bytes are read back from the store rather
+  //    than rendered a second time: the stored export is what was delivered,
+  //    and rendering again could produce a different document if the data
+  //    moved. The file name is the key's last segment, the media type the
+  //    stored export's.
+  final attached = await email.send(
+    stored,
+    to: [_ada],
     subject: 'Monthly revenue',
-    text: 'The report is attached.',
-    attachments: [
-      TomAttachment(
-        fileName: renderer.fileNameFor('monthly-revenue'),
-        bytes: bytes,
-        mediaType: renderer.mediaType,
-      ),
-    ],
+    mode: TomExportEmailMode.attach,
   );
-  print(
-    '4. attachment                : ${attached.attachments.single.fileName}',
-  );
-  print(
-    '   attachment media type     : ${attached.attachments.single.mediaType}',
-  );
+  final attachment = attached.attachments.single;
+  print('4. attachment                : ${attachment.fileName}');
+  print('   attachment media type     : ${attachment.mediaType}');
   check(
-    attached.attachments.single.bytes.length == stored.byteCount,
+    attachment.bytes.length == stored.byteCount,
     'the attachment is the stored export, not a second rendering',
   );
   check(
-    attached.attachments.single.mediaType == renderer.mediaType,
-    'the recipient is told what the bytes are, by the renderer that made them',
+    attachment.fileName == 'Monthly_revenue.xlsx' &&
+        attachment.mediaType == stored.mediaType,
+    'the recipient is told what the bytes are',
   );
 
-  // 5. Delivery is the outbox's, not this file's. `send` returns once the
-  //    message is durably queued; a tick delivers it. Retry, backoff and
-  //    at-most-one-runner-per-message are the outbox's, which is why the export
-  //    module does not grow a third channel: it would have to reproduce all of
-  //    that or deliver worse.
-  await outbox.send(attached);
-  print('5. delivered before a tick   : ${transport.count}');
+  // 5. **auto**, the default, decides by size: attach up to the limit, link
+  //    beyond it. Delivery is the outbox's: `send` queues durably and returns;
+  //    a tick delivers. Retry and backoff are the outbox's too, which is why
+  //    the channel does not deliver anything itself.
+  final small = await email.send(stored, to: [_ada], subject: 'Small');
+  final tight = TomExportEmailDelivery(
+    store: exports,
+    outbox: outbox,
+    linkFor: downloadLink,
+    maxAttachmentBytes: stored.byteCount - 1,
+  );
+  final large = await tight.send(stored, to: [_ada], subject: 'Large');
+  print(
+    '5. auto, under the limit     : ${small.attachments.length} attachment',
+  );
+  print(
+    '   auto, over the limit      : ${large.attachments.length} attachments',
+  );
+  check(
+    small.attachments.length == 1 && large.attachments.isEmpty,
+    'auto attaches what fits and links what does not',
+  );
   check(transport.count == 0, 'send() queues durably without delivering');
   await outbox.tick();
   print('   delivered after a tick    : ${transport.count}');
-  check(transport.count == 1, 'the tick delivered the message with its export');
   check(
-    transport.sent.single.attachments.single.bytes.length == stored.byteCount,
-    'the export arrived at the transport intact',
+    transport.count == 4,
+    'the tick delivered the four messages the steps above queued',
   );
 
-  // 6. One render, two deliveries. The store still holds the export after the
-  //    message carrying a copy of it has gone out — which is what makes the
-  //    link shape possible at all, and what makes re-sending a report cost
-  //    nothing. Rendering again would re-run the query behind it and could
-  //    produce a different document.
-  final again = await collect(exports.open(stored.key));
-  print('6. still in the store         : ${again.length} bytes');
+  // 6. What the channel cannot deliver it refuses before anything is queued:
+  //    no recipient, an attachment over the limit, or a link with nowhere to
+  //    point. And delivering an export does not consume it — the store is the
+  //    durable half, which is what makes sending it again cost nothing.
+  final noLink = TomExportEmailDelivery(
+    store: exports,
+    outbox: outbox,
+    maxAttachmentBytes: stored.byteCount - 1,
+  );
+  final refusals = [
+    await refusalOf(() => email.send(stored, to: const [], subject: 'x')),
+    await refusalOf(() => noLink.send(stored, to: [_ada], subject: 'x')),
+    await refusalOf(
+      () => noLink.send(
+        stored,
+        to: [_ada],
+        subject: 'x',
+        mode: TomExportEmailMode.link,
+      ),
+    ),
+  ];
+  print('6. refused                   : ${refusals.join(', ')}');
   check(
-    again.length == stored.byteCount,
-    'delivering an export does not consume it: the store is the durable half '
-    'and a message carries a copy',
+    refusals.join(',') ==
+        'export.email.no_recipient,export.email.too_large,'
+            'export.email.no_link',
+    'each undeliverable message is refused by name',
+  );
+  await outbox.tick();
+  check(transport.count == 4, 'a refused message was never queued');
+  check(
+    await exports.exists(stored.key),
+    'the export is still in the store after it was sent',
   );
 
+  await outbox.close();
   print('\nExport email-channel example completed.');
-}
-
-/// Collects a byte stream into one buffer.
-Future<Uint8List> collect(Stream<List<int>> bytes) async {
-  final builder = BytesBuilder(copy: false);
-  await for (final chunk in bytes) {
-    builder.add(chunk);
-  }
-  return builder.takeBytes();
 }
 
 void main() async {

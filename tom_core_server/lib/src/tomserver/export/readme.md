@@ -3,7 +3,9 @@
 > **Attribution.** The Tom Framework is developed by Peter Nicolai Alexis Kyaw.
 > These packages are BSD-3-Clause licensed and internal (`publish_to: none`).
 
-A tabular result rendered to CSV, XLSX or PDF, and stored for later retrieval.
+A tabular result rendered to CSV, XLSX or PDF — with charts of its own rows —
+and stored for later retrieval or sent by email, with a register of what was
+stored that a per-owner quota and a retention purge work from.
 
 The shape a caller builds is deliberately **not** a spreadsheet or a document:
 it is a titled result of typed columns over a **stream** of rows. That is what
@@ -27,6 +29,7 @@ CSV so a parser can read it back.
 | `TomTabularColumn` · `TomColumnType` | A named, typed column, with a width in characters. |
 | `TomTabularRow` | Cell values, positional to the section's columns. |
 | `TomTabularSection.ofEntities` · `TomTabularResult.fromEntities` | The same, with the columns derived from a reflected entity — so an export follows the entity rather than being a second declaration of it. |
+| `TomTabularChart` · `TomChartType` | A bar, line or pie chart on a section, naming its category and value columns rather than carrying data, so it plots exactly the rows the table shows. PDF draws it below the table, XLSX writes a native chart bound to the sheet's cells, CSV leaves it out. |
 | `TomExportException` | The module's error. |
 
 ### The renderers
@@ -41,11 +44,21 @@ CSV so a parser can read it back.
 
 | Type | What it is |
 | ---- | ---------- |
-| `TomExportService` | Renders and answers: `respondWith` returns the bytes as an HTTP response, `inline` or as a download. |
-| `TomExportStore` · `TomStoredExport` | Where a rendered export is kept when it is not answered immediately, and what is known about one. It stores, reads, probes, deletes and reclaims a prefix; it does not enumerate — the deployment's own record of what it stored is what retention queries. |
+| `TomExportService` | Renders and answers: `respondWith` returns the bytes as an HTTP response, `inline` or as a download; `storeAs` stores them, recording the export and checking the owner's quota when it has a register and a quota. |
+| `TomExportStore` · `TomStoredExport` | Where a rendered export is kept when it is not answered immediately, and what is known about one. It stores, reads, probes, deletes and reclaims a prefix; it does not enumerate — the register does. |
 | `TomDirectoryExportStore` · `TomMemoryExportStore` | The two stores needing no infrastructure. |
 | `TomBlobExportStore` | The same over a `TomBlobStore`, so an export lands wherever the deployment's files already live rather than in a second place. |
 | `TomExportStoreOperation` | What the caller asked for when a store failed, carrying a stable error key. |
+| `TomExportEmailDelivery` · `TomExportEmailMode` | The email channel: a stored export sent as a link or an attachment (or `auto`, by size), queued through the `messaging` module's outbox, which owns the delivery. |
+
+### The register, quota and retention
+
+| Type | What it is |
+| ---- | ---------- |
+| `TomExportRegister` · `TomExportRecord` · `TomExportUsage` | The record of stored exports — key, owner, size, media type, time, title — which `storeAs` writes; the enumeration the store does not have. |
+| `TomMemoryExportRegister` · `TomSqlExportRegister` | In memory, and one row per export in `tom_export` (`exportRegisterTable`, `exportRegisterTableDdl`, `defaultExportRegisterTable`; rows `TomExportRecordRow`, `TomExportUsageRow`), listed by `frameworkOwnedTables`. |
+| `TomExportQuota` | How many exports and bytes one owner may hold, checked before rendering and again after the store. |
+| `TomExportRetention` | Deletes exports older than a maximum age, bytes and records, by hand (`purge`) or as a scheduled job (`jobDefinition`). |
 
 ## Quick start
 
@@ -91,13 +104,16 @@ to meet it. `doc/export.md` names the seams it will use and the property that
 keeps that adaptation cheap.
 
 See [`doc/export.md`](../../../../doc/export.md) for the full treatment: the
-streaming contract, what each format does with a column type, deriving columns
-from an entity, the store seam, and the reporting boundary.
-`example/export/export_example.dart` runs the whole surface without a server,
-and `example/export/export_email.dart` composes the third delivery channel out
-of this module and `messaging` — store the export, then send it as a link or as
-an attachment, with the outbox owning the delivery. `test/export_test.dart` and
-`test/export_entities_test.dart` cover the module.
+streaming contract, what each format does with a column type and a chart,
+deriving columns from an entity, the store seam, the delivery channels, the
+register, quota and retention, and the reporting boundary.
+`example/export/export_example.dart` runs the rendering and storage surface
+without a server, `example/export/export_email.dart` sends a stored export as a
+link and as an attachment through the outbox, and
+`example/export/export_retention.dart` runs the register, the quota and the
+purge. `test/export_test.dart`, `test/export_entities_test.dart`,
+`test/export_register_test.dart` and `test/export_register_db_test.dart` cover
+the module.
 
 ---
 

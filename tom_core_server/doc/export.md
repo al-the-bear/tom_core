@@ -1,11 +1,13 @@
 # Export Module
 
 The rendering engines: a tabular result in, a byte stream out, in CSV, XLSX or
-PDF — plus the two delivery channels that stream matters back to a caller or
-into storage.
+PDF, with charts drawn from the result's own rows — plus the delivery channels
+that stream it back to a caller, into storage or to people by email, and the
+register of stored exports that a per-owner quota counts against and a
+retention purge works from.
 
 This module is **rendering and delivery only**. It does not model report
-definitions, projections, parameters or scheduling; those belong to the
+definitions, projections, parameters or report schedules; those belong to the
 CodeSpecs reporting element, which is deferred and unspecified. What is here is
 the part that has to exist under any such model, built so that when the model
 arrives it is adapted onto this shape rather than the renderers being rewritten.
@@ -20,6 +22,7 @@ arrives it is adapted onto this shape rather than the renderers being rewritten.
   - [Two Kinds of Column That Are Not Exported](#two-kinds-of-column-that-are-not-exported)
   - [What Keeps the Explicit Route](#what-keeps-the-explicit-route)
   - [Deriving the Column Type](#deriving-the-column-type)
+- [Charts](#charts)
 - [The Renderer Contract](#the-renderer-contract)
 - [Formats Are a Registry, Not a Switch](#formats-are-a-registry-not-a-switch)
 - [Format Choices and Licences](#format-choices-and-licences)
@@ -29,14 +32,19 @@ arrives it is adapted onto this shape rather than the renderers being rewritten.
 - [PDF, and Why It Is the One That Does Not Stream](#pdf-and-why-it-is-the-one-that-does-not-stream)
 - [Storage: A Deliberately Narrow Seam](#storage-a-deliberately-narrow-seam)
 - [Every Backend at Once](#every-backend-at-once)
-- [The Two Delivery Channels](#the-two-delivery-channels)
+- [The Delivery Channels](#the-delivery-channels)
+  - [The Email Channel](#the-email-channel)
+- [The Export Register](#the-export-register)
+- [Quota](#quota)
 - [Untrusted Text in Four Places](#untrusted-text-in-four-places)
 - [Wiring a Server](#wiring-a-server)
 - [Verification](#verification)
 - [Core Components](#core-components)
 - [Retention](#retention)
+  - [Reclaiming a partition](#reclaiming-a-partition)
 - [The Reporting Half This Is The Lower Half Of](#the-reporting-half-this-is-the-lower-half-of)
 - [Not Yet Implemented](#not-yet-implemented)
+- [Error Keys](#error-keys)
 - [Dependencies](#dependencies)
 
 ---
@@ -50,6 +58,7 @@ arrives it is adapted onto this shape rather than the renderers being rewritten.
 | `TomTabularSection.ofEntities` / `TomTabularResult.fromEntities` | static | The same, with the columns derived from a reflected entity |
 | `TomTabularColumn` / `TomColumnType` | class / enum | A named, typed column, with a width in characters |
 | `TomTabularRow` | class | Cell values positional to the section's columns |
+| `TomTabularChart` / `TomChartType` | class / enum | A bar, line or pie chart of a section's own rows, naming its category and value columns |
 | `TomTabularRenderer` | abstract class | One format: a result in, a byte stream out |
 | `TomExportFormats` | class | The formats an application offers, by format id |
 | `TomCsvRenderer` | class | RFC 4180 CSV; the baseline that always works |
@@ -60,7 +69,15 @@ arrives it is adapted onto this shape rather than the renderers being rewritten.
 | `TomBlobExportStore` | class | The same interface over the `file_storage` blob API — every configured backend at once |
 | `TomStoredExport` | class | What was stored, where, and how big it turned out |
 | `TomExportStoreOperation` | enum | What the caller asked for when a store failed — `write` / `read` / `probe` / `delete` / `deletePrefix`, each carrying a stable `export.store.*` error key (`export.store.write_failed`, `export.store.read_failed`, `export.store.probe_failed`, `export.store.delete_failed`, `export.store.prefix_delete_failed`), so the same failure reads the same whichever backend is configured |
-| `TomExportService` | class | The seam an endpoint calls: respond with, or store, an export |
+| `TomExportService` | class | The seam an endpoint calls: respond with, or store, an export; with a register and a quota, records it and enforces the owner's limits |
+| `TomExportEmailDelivery` / `TomExportEmailMode` | class / enum | The email channel: a stored export sent as a link or an attachment, queued through the messaging outbox |
+| `TomExportRegister` | abstract class | The record of stored exports — who, how large, when — which the store itself cannot list |
+| `TomMemoryExportRegister` / `TomSqlExportRegister` | classes | In-memory and relational registers |
+| `TomExportRecord` / `TomExportUsage` | classes | One stored export as the register knows it; what one owner holds |
+| `TomExportRecordRow` / `TomExportUsageRow` | classes | The register table's rows as the driver hands them back |
+| `exportRegisterTable` / `exportRegisterTableDdl` / `defaultExportRegisterTable` | functions / constant | The register table (`tom_export`), declared once, and its DDL |
+| `TomExportQuota` | class | How many exports, and how many bytes, one owner may hold |
+| `TomExportRetention` | class | Deletes exports older than a maximum age, by hand or as a scheduled job |
 | `tomFormatCellAsText` | function | The one answer to "how does a value look as text" |
 | `TomExportException` | class | The module's base error |
 
@@ -124,6 +141,7 @@ Decisions in that shape worth knowing:
   | A section naming one column twice | `export.section.duplicate_column` |
   | A column with an empty name | `export.column.name_empty` |
   | A column whose stated `width` is below one | `export.column.invalid_width` |
+  | A chart that cannot be drawn from its section's columns | `export.chart.*` — see [Charts](#charts) |
 
 `metadata` is the context that makes a downloaded file interpretable months
 later — the filter that produced it, who ran it, as of when. Each format puts it
@@ -318,6 +336,74 @@ because the schema-convergence check ([`db_migration.md`](db_migration.md#schema
 asks the same question of the same annotations, and a second answer would be a
 second thing to keep in step.
 
+## Charts
+
+A section can carry charts of its own rows:
+
+```dart
+TomTabularSection.ofMaps(
+  [
+    TomTabularColumn('region', label: 'Region'),
+    TomTabularColumn('revenue', label: 'Revenue', type: TomColumnType.decimal),
+    TomTabularColumn('cost', label: 'Cost', type: TomColumnType.decimal),
+  ],
+  regionRows,
+  title: 'By region',
+  charts: const [
+    TomTabularChart(
+      type: TomChartType.bar,
+      categoryColumn: 'region',
+      valueColumns: ['revenue', 'cost'],
+      title: 'Revenue and cost by region',
+    ),
+  ],
+);
+```
+
+**A chart names columns; it carries no data.** `categoryColumn` labels the
+points and each of `valueColumns` is one series, so a chart plots exactly the
+rows the table shows and cannot disagree with them. Every row is a point — a
+chart of a ten-thousand-row section has ten thousand points, so the section to
+chart is a summary, not the detail. Every way of building a section takes
+`charts`: the constructor, `ofRows`, `ofMaps` and `ofEntities`, where the
+columns are named by declared field name like everything else there;
+`TomTabularResult.fromEntities` takes none, so a charted entity export builds its
+section with `ofEntities` and the result around it. Charts
+live on the section, inside the result, so `render` still takes the result and
+nothing else.
+
+| `TomChartType` | Draws |
+| -------------- | ----- |
+| `bar` | Vertical bars, one group per category, one bar per series |
+| `line` | One line per series across the categories |
+| `pie` | One slice per category, of exactly one series |
+
+A chart is checked against its section's columns when the section is built
+(`TomTabularChart.validateAgainst`), so a chart that cannot be drawn fails while
+the caller who built it is on the stack rather than halfway through a render:
+
+| Mistake | Error key |
+| ------- | --------- |
+| A category or value column the section does not have | `export.chart.unknown_column` |
+| No value column | `export.chart.no_series` |
+| A pie with other than exactly one value column | `export.chart.pie_series` |
+| A value column that is not `integer` or `decimal` | `export.chart.not_numeric` |
+
+Each format draws a chart where it can:
+
+| Format | What a chart becomes |
+| ------ | -------------------- |
+| PDF | Vector graphics from `package:pdf`'s chart widgets, below the section's table: the chart's title in bold, then the chart in a box `chartHeight` points high (default 180). Bars and lines sit on a grid with the category labels along the bottom and about five value ticks on a 1-2-5 step from zero (or the lowest negative value); a chart of more than one series has a legend. A `null` cell is no point, and a pie slice whose value is zero or less is left out. |
+| XLSX | A native Excel chart: a `barChart` (clustered columns), `lineChart` or `pieChart` part under `xl/charts/`, and one drawing per charted sheet anchoring its charts to the right of the table, one column clear of it and stacked downwards, so no chart covers a cell. The series are bound to the sheet's own cells by absolute references — values from row 2 to the last row, the series name from the header cell — so a recipient can restyle the chart, and it follows any edit made to the data. |
+| CSV | Nothing. A CSV has nowhere to put a chart and leaves it out. |
+
+Neither streaming claim changes. XLSX writes a section's drawing and chart parts
+after its sheet, once the last row number is known; the content types naming
+them are written first, from the charts declared, before any row is read. The
+PDF renderer, which holds the result anyway, keeps a charted section's raw
+values beside the text it lays out — a chart plots the values, not their
+formatting — and keeps nothing extra for a section without one.
+
 ## The Renderer Contract
 
 ```dart
@@ -334,7 +420,8 @@ abstract class TomTabularRenderer {
 **Why a byte stream out.** `Future<Uint8List>` would force the whole document
 into memory before anything could be done with it. A stream feeds a shelf
 response body, a file sink or a blob upload without any of them waiting for the
-last row — and makes both delivery channels the *same* code path.
+last row — and makes the `apiResponse` and `fileExport` channels the *same*
+code path.
 
 **Why bytes and not text.** CSV is text, XLSX is a ZIP archive, PDF is a binary
 document. Typing the abstraction as `String` would make two of three formats
@@ -411,10 +498,11 @@ whole file, with the workbook object graph and the encoded archive resident at
 once. Second, it pins `xml <7.0.0`, while `package:pdf` moves to `xml ^7` at
 3.13.0 — depending on both would freeze the PDF renderer at 3.12.x
 indefinitely. The alternative was not "write a spreadsheet format": the hard
-parts of XLSX — a formula engine, styles, charts, shared strings, the entire
-reading side — are precisely the parts an export does not use. What is left is
-six small XML parts and a ZIP container, and the compression is `dart:io`'s
-`ZLibEncoder`.
+parts of XLSX — a formula engine, styles, shared strings, the entire reading
+side — are precisely the parts an export does not use. What is left is six small
+XML parts, one per sheet, one more for metadata, a drawing and a chart part per
+charted sheet — each chart a fixed DrawingML template bound to the sheet's
+cells — and a ZIP container, and the compression is `dart:io`'s `ZLibEncoder`.
 
 **`package:pdf` — adopted.** Here the calculus inverts. Paginating a table means
 knowing how wide a string is in a given font at a given size: font metrics, line
@@ -536,6 +624,7 @@ than discovering them:
 | `baseFontSize` | 8 | Header text is one point larger and bold |
 | `theme` | *unset* | Where an embedded Unicode font goes |
 | `compress` | `true` | `false` makes the text readable in a hex dump |
+| `chartHeight` | 180 | The height of each [chart](#charts), in points |
 
 `rowLimit` fails rather than truncating. A silently shortened report is a wrong
 report that looks right; the error, `export.pdf.row_limit_exceeded`, names the
@@ -617,8 +706,9 @@ abstract class TomExportStore {
 ```
 
 No metadata to update, no partial reads — and **no listing**. The first two are
-narrowness for its own sake; the third is a decision with a consequence, and
-[Retention](#retention) is where it lands. Keeping the interface this narrow is
+narrowness for its own sake; the third is a decision with a consequence: the
+enumeration is the [register](#the-export-register)'s, and
+[Retention](#retention) works from it. Keeping the interface this narrow is
 what made `TomBlobExportStore` a handful of delegating methods when the blob
 storage arrived (see [Every Backend at Once](#every-backend-at-once)); nothing
 that renders or delivers an export changed.
@@ -740,7 +830,7 @@ Two things it does rather than delegate:
   A caller of this module catches `TomExportException` and never has to learn a
   second error vocabulary because of which backend was configured.
 
-## The Two Delivery Channels
+## The Delivery Channels
 
 `TomExportService` is what an endpoint actually calls. It is a thin object on
 purpose — everything hard is in the renderers or the store; what is left is the
@@ -748,9 +838,10 @@ part that would otherwise be copied into every endpoint that exports something.
 
 | Channel | Method | Result |
 | ------- | ------ | ------ |
-| `apiResponse` | `respondWith(result, format, baseName:, inline:)` | A shelf `Response` streaming the document |
-| `fileExport` | `storeAs(result, format, key:)` | A `TomStoredExport` descriptor |
-| *(neither)* | `render(result, format)` | The raw byte stream, for everything else |
+| `apiResponse` | `TomExportService.respondWith(result, format, baseName:, inline:)` | A shelf `Response` streaming the document |
+| `fileExport` | `TomExportService.storeAs(result, format, key:, owner:)` | A `TomStoredExport` descriptor, recorded in the [register](#the-export-register) when the service has one |
+| `email` | `TomExportEmailDelivery.send(export, to:, subject:, mode:)` | A `TomMessage` queued in the messaging outbox — see [The Email Channel](#the-email-channel) |
+| *(none of them)* | `TomExportService.render(result, format)` | The raw byte stream, for everything else |
 
 **`render` is the one place a format id becomes bytes**, and the two channels
 deliver whatever stream it returns. That is what makes it an extension point
@@ -778,8 +869,9 @@ worth it only for PDF — the one of the three a browser can display itself.
 `keyFor(baseName, format, partitionOn: DateTime.now())` produces
 `2026/07/28/sales.xlsx`. Exports accumulate, and a flat directory of them becomes
 unlistable long before it becomes large; partitioning by day is the cheap fix
-that also makes expiry a matter of deleting a prefix — see
-[Retention](#retention) for the call that does it and who runs it.
+that also lets a whole day be reclaimed by deleting a prefix — see
+[Retention](#retention) for that call and for the purge that works from the
+register.
 
 **`keyFor` takes the same report name `respondWith` does, and sanitises it for
 the same reason.** A report is named by a person, so `Q3 sales` is the ordinary
@@ -803,27 +895,174 @@ One fault is not sanitised away: a name too long to be a key throws
 key, and the second export would overwrite the first with nothing reported
 anywhere — a refusal the caller can see beats a collision it cannot.
 
-`storeAs` without a configured store throws `export.service.no_store`. The store
-is optional because an application that only streams exports back through its API
-never needs one, and requiring it would force a filesystem decision on a
-deployment with no use for it.
+`storeAs` without a configured store throws `export.service.no_store`, and so
+does `deleteStored(key)`, which deletes a stored export and its register record.
+The store is optional because an application that only streams exports back
+through its API never needs one, and requiring it would force a filesystem
+decision on a deployment with no use for it.
 
-**The third channel named in the specification, `email`, is deliberately absent
-from this module.** An emailed export is a message with an attachment, which is
-the `messaging` module's subject; it composes by rendering to bytes or to the
-store and attaching the result. Inventing a third path here would duplicate the
-outbox's retry and delivery semantics — the one thing that module exists to own.
+### The Email Channel
 
-`example/export/export_email.dart` is that composition, run end to end: store
-the export, then send it either as a **link** (the message carries the key, the
-store keeps the bytes) or as an **attachment** (the bytes ride along, read back
-from the store rather than rendered a second time). The two are not
-interchangeable — an attachment is a copy per recipient and the first thing a
-mail server refuses on size, while a link needs a recipient who can reach the
-store. Delivery is `TomMessageOutbox.send`, so retry, backoff and
-at-most-one-runner-per-message are the outbox's and not a second implementation
-here. Neither module learns about the other: the twenty lines that join them
-live in the application, which is what the example is.
+`TomExportEmailDelivery` sends a **stored** export to people. The export is
+rendered and stored once, by `storeAs`; the channel builds a message about it and
+queues that message with `TomMessageOutbox.send`. Durability, retry, backoff and
+at-most-one-runner-per-message are the outbox's — the `messaging` module owns
+delivery, and this channel adds nothing to it but the message.
+
+```dart
+final email = TomExportEmailDelivery(
+  store: exportStore,
+  outbox: outbox,
+  // The deployment's own download route; this module serves none.
+  linkFor: (export) =>
+      Uri.parse('https://reports.example.com/exports/${export.key}'),
+  from: TomRecipient('reports@example.com', displayName: 'Reporting'),
+);
+
+final stored = await exports.storeAs(result, 'xlsx', key: key, owner: userId);
+await email.send(
+  stored,
+  to: [TomRecipient('ada@example.com', displayName: 'Ada')],
+  subject: 'Monthly revenue is ready',
+);
+```
+
+| `TomExportEmailMode` | The message carries | Right for |
+| -------------------- | ------------------- | --------- |
+| `link` | the address `linkFor` builds, after the body text | large exports; recipients who can reach the deployment |
+| `attach` | the stored bytes, read back from the store | small exports; recipients who cannot reach the store |
+| `auto` *(default)* | the bytes up to `maxAttachmentBytes`, a link beyond it | the usual choice |
+
+The two shapes are not interchangeable. An attachment is a copy per recipient
+and the first thing a mail server refuses on size; a link needs a recipient who
+can reach the deployment. `maxAttachmentBytes` defaults to
+`TomExportEmailDelivery.defaultMaxAttachmentBytes`, 10 MiB — beneath the limits
+common mail servers apply to a whole message — and is also the ceiling of
+`attach`. Without `linkFor`, `auto` attaches whatever the size and so refuses
+an export over the ceiling.
+
+**The bytes are read back from the store, not rendered again.** The stored
+export is what was delivered; rendering again would re-run the query behind it
+and could produce a different document if the data moved. The attachment is
+named by `fileName`, by default the last segment of the key, and typed by the
+stored export's media type. The store still holds the export after the message
+has gone, so sending it again costs nothing.
+
+`send` refuses before anything is queued:
+
+| Refusal | Error key |
+| ------- | --------- |
+| No recipient | `export.email.no_recipient` |
+| `attach` (or `auto` without `linkFor`) for an export larger than `maxAttachmentBytes` | `export.email.too_large` |
+| A link needed and no `linkFor` configured | `export.email.no_link` |
+
+`from` on `send` overrides the delivery's default sender, which in turn falls
+back to the transport's own. `send` returns the queued `TomMessage`.
+
+`example/export/export_email.dart` runs the channel end to end against an
+in-memory store and outbox.
+
+## The Export Register
+
+`TomExportStore` holds bytes under keys and cannot list them (see
+[Storage](#storage-a-deliberately-narrow-seam)) — and a listing would not say
+*whose* an export is or how old it is anyway. The **register** is the record
+that does: one `TomExportRecord` per stored export, written by `storeAs` beside
+the bytes when the service is constructed with one.
+
+```dart
+final exports = TomExportService(
+  store: TomBlobExportStore.named('archive', keyPrefix: 'exports'),
+  register: TomSqlExportRegister(datasource),
+  quota: const TomExportQuota(maxCount: 50, maxBytes: 200 * 1024 * 1024),
+);
+
+await exports.storeAs(result, 'xlsx', key: key, owner: principal.userId);
+```
+
+| `TomExportRecord` field | Holds |
+| ----------------------- | ----- |
+| `key` | the storage key |
+| `owner` | who the export counts against — a user, a tenant, a report job; `''` for an export of no one, which no quota counts |
+| `mediaType` / `byteCount` | as the store reported them |
+| `storedAt` | when it was stored, in UTC |
+| `title` | the result's title |
+
+`storeAs` records the export under the `owner` it is given (default `''`) after
+the bytes are stored, and `deleteStored` removes both. An export written straight
+through `TomExportStore.store` bypasses the service and is not recorded: the
+register knows what the service stored.
+
+| `TomExportRegister` method | Answers |
+| -------------------------- | ------- |
+| `record(record)` | records it, replacing any record under its key |
+| `find(key)` | the record under `key`, or `null` |
+| `ownedBy(owner)` | the owner's exports, newest first — the listing a "my exports" page reads |
+| `usageOf(owner)` | a `TomExportUsage`: how many exports and how many bytes |
+| `storedBefore(before, limit:)` | up to `limit` (default 500) exports stored before `before`, oldest first — what the purge reads |
+| `remove(key)` | removes the record; answers whether there was one |
+
+Two registers ship:
+
+- **`TomMemoryExportRegister`** — for tests and a single process whose store is
+  in memory too; wrong for anything that outlives the process.
+- **`TomSqlExportRegister(datasource, {table, createSchema})`** — one row per
+  export in the database the deployment already has. The table defaults to
+  `tom_export` (`defaultExportRegisterTable`) and is declared once, as
+  `exportRegisterTable(name)`, a `TomFrameworkTable`; `exportRegisterTableDdl`
+  is its `CREATE TABLE`. With `createSchema` (the default) the table is created
+  on first use (`ensureSchema`); set it `false` where the migration module owns
+  the schema. `deleteAll` empties the table, for provisioning and tests. Rows are
+  read back as `TomExportRecordRow`, and `usageOf`'s aggregate as
+  `TomExportUsageRow`.
+
+The table is keyed by `export_key`, at the blob store's key width
+(`VARCHAR(512)`), with `owner` (`VARCHAR(191) NOT NULL DEFAULT ''`),
+`media_type`, `byte_count`, `stored_at` (`DATETIME(6)`, always UTC) and a
+nullable `title`. It is indexed on `(owner, stored_at)` — a quota sums an
+owner's rows, a listing reads them newest first — and on `stored_at`, which the
+purge reads oldest first. The reference migration is
+`example/export/migrations/main/tomcore/[1]-create_tom_export.sql`, with its
+PostgreSQL form in
+`example/export/migrations_postgresql/main/tomcore/[1]-create_tom_export.sql`,
+and `frameworkOwnedTables()` lists the table under the `exportRegister` argument,
+so the framework schema check covers it (see
+[db_migration.md](db_migration.md#the-frameworks-own-tables)).
+
+## Quota
+
+`TomExportQuota({maxCount, maxBytes})` bounds what one owner may hold: at most
+`maxCount` exports and at most `maxBytes` in total; `null` leaves that dimension
+unbounded. It counts what a register records, so a service given a quota and no
+register is a configuration error (`ArgumentError`).
+
+`storeAs` checks it for an export stored with a non-empty `owner`, in two
+places:
+
+1. **Before rendering**, against what the owner already holds: an owner at
+   `maxCount` exports, or at or past `maxBytes`, is refused before a single row
+   is read. A full owner costs no render.
+2. **After storing**, against the size the export turned out to be, which is
+   known only then: a store that takes the owner past `maxBytes` is undone — the
+   export deleted, its record removed — and refused.
+
+| Refusal | Error key | Parameters |
+| ------- | --------- | ---------- |
+| The owner holds `maxCount` exports | `export.quota.count_exceeded` | `owner`, `count`, `limit` |
+| The owner's exports would exceed `maxBytes` | `export.quota.bytes_exceeded` | `owner`, `bytes`, `limit` |
+
+A store over a key the same owner already holds is a **replacement**: the
+previous export is counted out — it adds nothing to the count, and its bytes are
+subtracted — so replacing a report is never refused for the report it replaces.
+A refused replacement leaves the key empty: the store had already written over
+the previous export when the size check failed.
+
+The check reads the usage and then stores; it is not a reservation. Two stores
+for one owner running at once both see the usage from before either, so a burst
+can pass the limit by the stores in flight.
+
+`TomExportQuota.check(owner, usage, {addedBytes, countingNew})` is the check
+itself, public for a caller that stores by another route.
 
 ## Untrusted Text in Four Places
 
@@ -891,7 +1130,8 @@ differ, how the name is spelled once it gets there.
 ## Verification
 
 Two suites, split by which of the module's two routes into a column set they
-cover, a third that pins the error vocabulary, and one example that runs both.
+cover, a third that pins the error vocabulary, two for the register and what is
+built on it, and three examples.
 
 `test/export_error_keys_test.dart` pins the module's error vocabulary: each case reaches a raise with a real input and asserts the exact key, so a key the module stops raising, or raises for a different condition, fails by name. None needs a database.
 
@@ -901,10 +1141,16 @@ format registry including an application format plugged in from outside, and
 each renderer against its own format's rules — CSV's quoting, formula
 neutralisation and CRLF; the XLSX archive's parts, relationships, cell types and
 document properties; the PDF's pagination. Then the storage seam — both own
-backends and the blob adaptor, against one shared error contract — the two
-delivery channels, and the file-name and key grammars that differ between them.
-The streaming claim is asserted rather than described: bytes are required to
-reach the output *before* the row stream closes.
+backends and the blob adaptor, against one shared error contract — the
+`apiResponse` and `fileExport` channels, and the file-name and key grammars that
+differ between them. The streaming claim is asserted rather than described:
+bytes are required to reach the output *before* the row stream closes. Its
+`charts` group checks a chart against its section, reads the XLSX chart, drawing
+and relationship parts and the absolute cell ranges the series are bound to
+(including a sheet name holding a quote), finds no drawing part in a workbook
+without charts, finds the charts' titles and the pie's legend in an
+uncompressed PDF and neither in one without charts, and finds CSV unchanged by
+charts.
 
 `TomBlobExportStore` is covered there and not in `test/file_storage_test.dart`,
 which is worth saying because it spent its life in the neighbour's suite. It is
@@ -924,6 +1170,17 @@ a blob key are one grammar in two vocabularies — stays in
 the mirror-image reason: `TomExportService.keyFor` applies it and then hands the
 result to `validateKey`, so it is tested where it would break.
 
+`test/export_register_test.dart` covers the register and what is built on it,
+in memory: what `storeAs` records (owner, size, media type, title), that a quota
+needs a register, the count and byte limits before and after the store including
+a replacement, the purge — bytes and record, by age, by hand and as a scheduled
+job under `TomInlineJobDispatcher`, with an empty age or batch refused — and the
+email channel's attachment, link and refusals. It also compares the shipped
+migration with `exportRegisterTableDdl`, so the two cannot drift.
+`test/export_register_db_test.dart` runs `TomSqlExportRegister` against a live
+database — records, finds, sums, lists and removes, then the quota and the purge
+over it. It is tagged `db` and skips itself without a server.
+
 `test/export_entities_test.dart` covers the derived route, and holds the one
 claim no single run can make. Drift needs two versions of an entity that differ
 by exactly one column, so the suite derives from both — with no export-side edit
@@ -935,8 +1192,10 @@ designed around — rows pulled one at a time, cells positional.
 
 `example/export/export_example.dart` is the readable path through all of it, in
 fourteen numbered steps: the tabular shape and its stream, the derived column
-set of step 5, the renderer contract, what each format makes of one result, the
-registry, storage across all three backends at once, and both delivery channels.
+set of step 5, the renderer contract, what each format makes of one result —
+including a chart, as native chart parts in the XLSX of step 7 and as vector
+graphics in the PDF of step 8 — the registry, storage across all three backends
+at once, and the `apiResponse` and `fileExport` channels.
 Its entity lives beside it in `example/export/export_entities.dart`, because a
 type the reflection generator captures cannot also live in a file that imports
 the generator's output; it is registered in `example/example_reflection.dart`,
@@ -959,17 +1218,19 @@ suite, because every example shares one definition and checking it per example
 would be one test of one function, repeated.
 
 `example/export/export_email.dart` is the second export example, in six steps:
-the two halves configured without knowing each other, the store, the link shape,
-the attachment read back from the store, the outbox delivering it, and the
-export still in the store afterwards.
+the store and the outbox joined by a `TomExportEmailDelivery`, the export stored
+once, a link message, an attachment read back from the store, `auto` choosing
+between the two by size and the outbox delivering the four messages, and the
+refusals —
+no recipient, an attachment over the limit, a link with no link builder — with
+the export still in the store afterwards.
 
 `example/export/export_retention.dart` is the third, in seven: three exports
-across three day partitions with a row recorded for each, the store declining to
-enumerate, the register naming the expired partitions instead, a `deletePrefix`
-per partition checked against the rows it should have removed, the current
-export surviving, the same pass over a blob-backed store — asking
-`supportsPrefixDelete` rather than assuming it — and the empty-prefix refusal
-that keeps a wrong answer from being a quiet one.
+stored for one owner and recorded in a `TomMemoryExportRegister`, the register
+answering what the store cannot list, the count quota refusing a fourth export
+before rendering while a replacement passes, the byte quota undoing a store that
+does not fit, a purge by age removing bytes and records together, the same purge
+over a blob-backed store, and the purge as a scheduled job.
 
 Both are spawned by `test/examples_test.dart` with the rest, and their step
 counts are recorded there — an added step that nobody listed is a surface
@@ -990,14 +1251,66 @@ nothing checks.
 - **`TomExportStore` / `TomDirectoryExportStore` / `TomMemoryExportStore` /
   `TomBlobExportStore` / `TomStoredExport`** — the storage seam, its two own
   backends, and the adaptor onto the `file_storage` module's backends.
-- **`TomExportService`** — the `apiResponse` and `fileExport` channels.
+- **`TomTabularChart` / `TomChartType`** — charts of a section's own rows,
+  drawn by the PDF and XLSX renderers.
+- **`TomExportService`** — the `apiResponse` and `fileExport` channels, the
+  register record and the quota check.
+- **`TomExportEmailDelivery` / `TomExportEmailMode`** — the `email` channel,
+  through the messaging outbox.
+- **`TomExportRegister` / `TomMemoryExportRegister` / `TomSqlExportRegister` /
+  `TomExportRecord` / `TomExportUsage`** — the record of stored exports, and its
+  table (`exportRegisterTable`, `exportRegisterTableDdl`,
+  `TomExportRecordRow`, `TomExportUsageRow`).
+- **`TomExportQuota` / `TomExportRetention`** — the per-owner limits and the
+  purge by age.
 - **`TomExportException`** — the module's base error.
 
 ## Retention
 
-Stored exports accumulate. The day partitioning `keyFor` writes is what makes
-reclaiming them cheap, and `TomExportStore.deletePrefix` is the call that does
-it:
+Stored exports accumulate. With a [register](#the-export-register),
+`TomExportRetention` deletes every export older than a maximum age:
+
+```dart
+final retention = TomExportRetention(
+  store: exportStore,
+  register: exportRegister,
+  maxAge: const Duration(days: 30),
+);
+
+final purged = await retention.purge(); // how many went
+```
+
+**It works from the register, not from the store.** The store cannot list what
+it holds; the register can say which exports were stored before a cutoff. So
+`purge({now})` reads `storedBefore(now − maxAge)` in batches of `batchSize`
+(default 500), oldest first, and deletes each export through `TomExportStore.delete`
+— which every backend has — and then its record. It therefore reaches every
+export the service stored, on every backend, whether or not the backend can
+delete by prefix. `now` defaults to the current time; a `maxAge` that is not
+positive or a `batchSize` below one is a programming error (`ArgumentError`).
+
+**The bytes go before the record.** An interrupted purge leaves a record whose
+bytes are gone, which the next purge deletes again, harmlessly — never bytes no
+record names, which nothing would ever find.
+
+**On a schedule.** `jobDefinition({name, schedule})` is a `TomJobDefinition`
+running `purge` — named `tom.export.purge` and hourly
+(`TomIntervalSchedule(Duration(hours: 1))`) unless given otherwise, with a
+missed window run once. Its body holds the retention object itself, so the
+`TomScheduler` it is registered with must run it in its own isolate, with a
+`TomInlineJobDispatcher` — the requirement the message outbox's delivery has too.
+
+```dart
+scheduler.register(retention.jobDefinition());
+```
+
+*How long* an export is kept is the deployment's decision, which is why `maxAge`
+has no default.
+
+### Reclaiming a partition
+
+The day partitioning `keyFor` writes also lets a whole day be reclaimed in one
+call, without a register:
 
 ```dart
 // Everything exported on 8 July, in one call.
@@ -1028,33 +1341,10 @@ up. A backend that *claims* the capability and forgets the method gets the same
 refusal rather than an empty purge, because the base class's implementation
 throws rather than returning zero.
 
-**The deployment owns the enumeration, on every backend.** `deletePrefix` is
-the reclaim primitive — the one thing a caller cannot build from what it has —
-and it is deliberately not paired with a listing. *Which* partitions are old
-enough to go is not a question storage can answer: a listing is a paginated call
-over an object store and a scan over a blob table, and neither knows which
-export was rendered for whom. The descriptor `store` returns is a row — key,
-media type, size, time — and a system that stores exports for later retrieval
-keeps one per export anyway, beside the tenant and the user that storage has no
-business holding. Retention is a query over those rows and a `deletePrefix` per
-partition, which is a database question rather than a storage one, and which is
-why neither this contract nor the blob one carries a listing.
-
-That split is also what makes the pass portable: a retention loop written
-against a *listing* would run only on the backends that have one. Written
-against the deployment's own rows it runs everywhere, and falls back to deleting
-key by key where `supportsPrefixDelete` is `false` — which, since the blob
-contract grew the same primitive for the same reason, is now no shipped store at
-all.
-`example/export/export_retention.dart` is that pass, run against both kinds of
-store.
-
-**The schedule is the deployment's.** Nothing here runs on a timer. A nightly
-purge belongs in the back-office tier, beside the other passes that tidy up
-after the day — the scheduling module already provides the machinery, and a
-second copy of it here would give this module two reasons to change. What this
-module owes such a job is the partition layout it created and the call that
-reclaims one, and both are above.
+`deletePrefix` goes past the register: the records of the exports it removes
+stay, and keep counting against their owners' quota until the purge or
+`TomExportRegister.remove` clears them. Where the service keeps a register, the
+purge is the call that keeps the two in step.
 
 ## The Reporting Half This Is The Lower Half Of
 
@@ -1075,13 +1365,14 @@ deferral is safe rather than merely convenient:
 | a shape to put its result in | `TomTabularResult` — a title, one or more sections, and a `metadata` map for the report's name, its parameters and when it ran |
 | a way to build that shape from a query it ran | `TomTabularSection.ofMaps` (a `TomGroupedRow`'s `values` feed it directly), `ofRows`, or `ofEntities` when the report is over one entity |
 | a document, in a format a definition names | `TomExportFormats.rendererFor(id)` — with its media type and file extension available *without* rendering, which is what a schedule needs to name a stored file |
-| delivery with no request in sight | `TomExportService.storeAs` and `keyFor`; neither takes a `Request`, so a scheduled run is not a special case |
+| delivery with no request in sight | `TomExportService.storeAs` and `keyFor`, and `TomExportEmailDelivery.send` for the `email` channel; none takes a `Request`, so a scheduled run is not a special case |
+| a record of what it delivered, and limits on it | the [register](#the-export-register), the [quota](#quota) and the [retention purge](#retention) |
 | a schedule | the [scheduling](scheduling.md) module. A reporting module runs on the existing scheduled-work machinery rather than growing its own |
 
 **The property the deferral rests on is that `TomTabularRenderer.render` takes
-the result and nothing else.** A second parameter — a report definition, a
-locale, a chart set — would mean every renderer changes on the day the envelope
-lands, including one an application registered itself, and that is exactly the
+the result and nothing else.** Charts travel inside the result, on its sections,
+for that reason. A second parameter — a report definition, a locale — would mean
+every renderer changes on the day the envelope lands, including one an application registered itself, and that is exactly the
 rebuild the deferral was chosen to avoid. It is held by tests rather than by
 intention: `export_test.dart` asserts the contract's signature, asserts that
 each shipped renderer declares it, and renders a result built the way an
@@ -1093,67 +1384,76 @@ adapted to an envelope.
 
 ## Not Yet Implemented
 
-- **Charts, and they wait on the envelope below.** The specification names
-  series and axes; two of the three formats cannot express a chart at all, so a
-  chart model would be a field only the PDF renderer ever read. When charts are
-  specified they belong *beside* `TomTabularResult`, not inside it.
-
-  The order is the decision. A chart is a projection of a **report** result, not
-  of a tabular one, so its shape follows from the report envelope — which is the
-  next entry in this list and is itself unspecified. Specifying a chart model
-  first would mean guessing what carries it, and a model built on a guess is how
-  a field ends up with exactly one reader.
-
-  Nothing is prepared for charts on purpose, and that includes the things their
-  absence might look like an oversight in: there is no chart field on
-  `TomTabularResult`, no capability flag beside `streamsRows`, and no way for a
-  renderer to declare that it cannot draw one. Each of those would be a
-  declaration *about a shape that does not exist* — the same mistake as the model
-  itself, one layer down.
-
-  An application that needs charts before the envelope does is not blocked.
-  `TomExportFormats` is an open registry: register a renderer that draws them
-  under its own format id, or replace a shipped one, and the module neither
-  knows nor needs to. That is the same seam
-  [Formats Are a Registry, Not a Switch](#formats-are-a-registry-not-a-switch)
-  is about, and it is why waiting costs a caller nothing.
-  <!-- unpinned: absence — waits on the report envelope, which is unwritten -->
 - **The report-result envelope, report definitions, projections and
-  scheduling.** The reporting element is deferred and its specification
+  report schedules.** The reporting element is deferred and its specification
   unwritten. `TomTabularResult` is deliberately the minimal shape the renderers
   need, so the envelope is adapted onto it later rather than the renderers being
   rebuilt around it. What that means concretely is
   [The Reporting Half This Is The Lower Half Of](#the-reporting-half-this-is-the-lower-half-of).
   <!-- unpinned: absence — the reporting element is deferred -->
-- **The `email` delivery channel**, which composes out of this module and the
-  `messaging` module rather than living in either alone — worked end to end in
-  `example/export/export_email.dart`, and deliberately not a third method on
-  `TomExportService`.
-  <!-- unpinned: absence — composes from export and messaging; not built here -->
-- **A purge on a schedule, and quota.** `TomExportStore.deletePrefix` reclaims a
-  day partition in one call, and nothing in this module runs it on a timer:
-  *how long* an export is worth keeping is a deployment's decision, and *when*
-  the pass runs belongs with its other nightly work. Nor does it enumerate what
-  to purge — that is the deployment's own record, for the reason
-  [Retention](#retention) gives. There is no quota either — nothing refuses a
-  write because an account has stored too much, which would need the same record
-  and a limit to compare it against.
-  <!-- unpinned: absence — the timer and the quota are the deployment's -->
+
+## Error Keys
+
+Every key the module raises, each on a `TomExportException`:
+
+| Key | Raised when |
+| --- | ----------- |
+| `export.result.no_sections` | A result is built with no sections |
+| `export.section.no_columns` | A section is built with no columns |
+| `export.section.duplicate_column` | A section names one column twice |
+| `export.column.name_empty` | A column has an empty name |
+| `export.column.invalid_width` | A column states a `width` below one |
+| `export.chart.unknown_column` | A chart names a column its section does not have |
+| `export.chart.no_series` | A chart names no value column |
+| `export.chart.pie_series` | A pie chart names other than exactly one value column |
+| `export.chart.not_numeric` | A chart series is not an `integer` or `decimal` column |
+| `export.entities.unknown_column` | `ofEntities` is given a name in `include`, `exclude` or `titles` that no field carries |
+| `export.entities.redacted_column` | `include` names a field the audit trail redacts |
+| `export.entities.file_reference_column` | `include` names a file-reference field without `includeFileReferences` |
+| `export.entities.not_reflected` | The entity declares no columns or is not registered with the reflector |
+| `export.entities.no_columns` | The selection leaves no column |
+| `export.format.unknown` | A format id is not registered |
+| `export.pdf.row_limit_exceeded` | A result passes the PDF renderer's `rowLimit` |
+| `export.xlsx.too_many_rows` | A sheet passes `maxRowsPerSheet` |
+| `export.xlsx.too_many_columns` | A section passes `maxColumnsPerSheet` |
+| `export.xlsx.archive_too_large` | A part, offset or the directory passes `maxPartBytes` |
+| `export.store.invalid_key` | A key or prefix is not a valid export key, or an empty prefix is given to `deletePrefix` |
+| `export.store.not_found` | `open` is asked for a key that holds nothing |
+| `export.store.write_failed` | A backend fails a `store` |
+| `export.store.read_failed` | A backend fails an `open` |
+| `export.store.probe_failed` | A backend fails an `exists` |
+| `export.store.delete_failed` | A backend fails a `delete` |
+| `export.store.prefix_delete_failed` | A backend fails a `deletePrefix` |
+| `export.store.prefix_delete_unsupported` | `deletePrefix` is called on a store that cannot delete by prefix |
+| `export.service.no_store` | `storeAs` or `deleteStored` is called on a service with no store |
+| `export.quota.count_exceeded` | An owner already holds the most exports the quota allows |
+| `export.quota.bytes_exceeded` | An owner's exports would exceed the bytes the quota allows |
+| `export.email.no_recipient` | An export email is sent to no one |
+| `export.email.too_large` | An export larger than `maxAttachmentBytes` is to be attached |
+| `export.email.no_link` | A link is needed and no `linkFor` is configured |
+
+The keys are asserted by name: the chart, store and XLSX keys in
+`test/export_test.dart`, the entity keys in `test/export_entities_test.dart`,
+the quota and email keys in `test/export_register_test.dart`, and the
+construction, format, PDF and service keys in
+`test/export_error_keys_test.dart`.
 
 ## Dependencies
 
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
-| `dart:async` | dart | 7 of 8 files | `Future`, `Stream` |
+| `dart:async` | dart | 7 of 11 files | `Future`, `Stream` |
 | `dart:convert` | dart | `csv_renderer.dart`, `export_store.dart`, `xlsx_renderer.dart` | `utf8` |
 | `dart:io` | dart | `export_store.dart`, `xlsx_renderer.dart` | `ZLibEncoder` for the XLSX archive; `File` / `Directory` for the filesystem store |
-| `dart:typed_data` | dart | `export_store.dart`, `xlsx_renderer.dart` | `Uint32List`, `Uint8List` |
+| `dart:math` | dart | `pdf_renderer.dart` | `pow` and `log` for a chart's value-axis ticks |
+| `dart:typed_data` | dart | `export_email.dart`, `export_store.dart`, `xlsx_renderer.dart` | `Uint32List`, `Uint8List`, `BytesBuilder` (an attachment read back from the store) |
 | `path` | package | `export_store.dart` | key-to-path joining in `TomDirectoryExportStore` |
-| `pdf` | package | `pdf_renderer.dart` | the PDF document model and its layout engine |
+| `pdf` | package | `pdf_renderer.dart` | the PDF document model, its layout engine and its chart widgets |
 | `shelf` | package | `export_service.dart` | the `Response` returned by the `apiResponse` channel |
-| `tom_core_kernel` | package | `export_service.dart` | `TomHeader` (the two response headers), `TomServerException` by way of `TomExportException` |
+| `tom_core_kernel` | package | `export_service.dart`, `export_register.dart`, `export_register_sql.dart` | `TomHeader` (the two response headers); the scheduling types the purge job is built from — `TomJobDefinition`, `TomSchedule`, `TomIntervalSchedule`, `TomMissedWindowPolicy`, `TomCommand`; `TomDataSource` and `tomReflector` for the SQL register; `TomServerException` by way of `TomExportException` |
 | [audit](audit.md) | module | `tabular_result.dart` | `TomAuditTrail.policyFor`, so that the fields a trail redacts are the fields an export omits. Consulting the same declaration is the point; a second redaction list here would be a second thing to get wrong |
-| [datasources](datasources.md) | module | `tabular_result.dart` | `TomSqlTypeFamily` |
-| [file_storage](file_storage.md) | module | `blob_export_store.dart`, `export_service.dart`, `export_store.dart` | `TomBlobStore` and its registry, used only by `TomBlobExportStore`; the rest of the module does not know it exists |
+| [datasources](datasources.md) | module | `tabular_result.dart`, `export_register_sql.dart` | `TomSqlTypeFamily`; for the SQL register, `TomFrameworkTable` (the table declared once), `TomSchemaProvisioning` (create on first use) and `sqlInstant` / `parseSqlInstant` (UTC instants) |
+| [file_storage](file_storage.md) | module | `blob_export_store.dart`, `export_service.dart`, `export_store.dart`, `export_register_sql.dart` | `TomBlobStore` and its registry behind `TomBlobExportStore`; the blob key grammar the other stores validate against (`isValidKey`, `sanitiseKeySegment`, `auxiliaryMarker`) and its width (`maxKeyLength`, the register's key column) |
 | [little_things](little_things.md) | module | `tabular_result.dart` | `TomServerException` |
-| [object_persistence](object_persistence.md) | module | `tabular_result.dart` | `TomAnnotationAnalyzer` and `TomColumnInformation`, read only by the reflected projection |
+| [messaging](messaging.md) | module | `export_email.dart` | `TomMessage`, `TomRecipient`, `TomAttachment` and `TomMessageOutbox` — the email channel builds the message and queues it; delivery is the outbox's |
+| [object_persistence](object_persistence.md) | module | `tabular_result.dart`, `export_register_sql.dart` | `TomAnnotationAnalyzer` and `TomColumnInformation`, read only by the reflected projection; `@TomDbTable` / `@TomDbColumn` on the register's row types |

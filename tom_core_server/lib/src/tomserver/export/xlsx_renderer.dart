@@ -18,10 +18,11 @@
 ///    depending on both would freeze the PDF renderer at 3.12.x indefinitely.
 ///
 /// The alternative was not "write a spreadsheet format". The **hard** parts of
-/// XLSX — a formula engine, styles, charts, shared strings, the reading side —
-/// are exactly the parts an export does not use. What is left is a fixed set of
-/// small XML parts — six, plus one per sheet, plus one more when the result
-/// carries metadata — and a ZIP container, and the ZIP compression itself is
+/// XLSX — a formula engine, styles, shared strings, the reading side — are
+/// exactly the parts an export does not use. What is left is a fixed set of
+/// small XML parts — six, plus one per sheet, one more when the result carries
+/// metadata, and for a sheet with charts its drawing and one part per chart —
+/// and a ZIP container, and the ZIP compression itself is
 /// `dart:io`'s `ZLibEncoder`. So this renderer takes no dependency at all.
 ///
 /// ## Where the title and the metadata go

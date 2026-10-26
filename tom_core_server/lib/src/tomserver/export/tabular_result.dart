@@ -37,21 +37,12 @@
 /// export — and so that when the envelope lands it is adapted to this shape
 /// rather than the renderers being rewritten.
 ///
-/// The one thing `tom_core_codespecs/doc/codespecs_mapping.md` §5.28 names that
-/// is **not** here is **charts** (series and axes). Two of the three output
-/// formats cannot express a chart at all, so a chart model would be a field
-/// that only the PDF renderer ever read. When charts are specified they belong
-/// beside this type, not inside it — and they wait on the same envelope,
-/// because a chart is a projection of a *report* result rather than of a
-/// tabular one, so its shape follows from the envelope's.
-///
-/// Nothing here anticipates them, deliberately: no chart field, no capability
-/// flag beside [TomTabularRenderer.streamsRows], no way for a renderer to
-/// declare that it cannot draw one. Each would be a declaration about a shape
-/// that does not exist yet — the same mistake as the model itself, one layer
-/// down. An application that needs charts sooner registers a renderer that
-/// draws them through [TomExportFormats], which the module neither knows about
-/// nor has to.
+/// **Charts** (`tom_core_codespecs/doc/codespecs_mapping.md` §5.28) are a
+/// section's own: a [TomTabularChart] names the section's columns — a category
+/// and numeric series — rather than carrying data, so it plots exactly the rows
+/// the table shows. PDF draws it as vector graphics, XLSX as a native chart
+/// bound to the exported cells, and CSV, which has nowhere to put one, leaves
+/// it out.
 /// ## Why there are two ways to build a section
 ///
 /// [TomTabularSection.ofRows] / [TomTabularSection.ofMaps] make the caller

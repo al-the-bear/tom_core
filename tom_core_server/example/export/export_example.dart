@@ -5,7 +5,7 @@
 /// renderers consume, the same shape with its columns derived from a reflected
 /// entity instead of written out, the one abstraction all three formats
 /// implement, the registry that keeps the format set open, what each format
-/// does with the same result, the storage seam and its adaptor onto the
+/// does with the same result and with a chart of it, the storage seam and its adaptor onto the
 /// framework's blob store, and the two delivery channels an endpoint actually
 /// calls.
 ///
@@ -67,6 +67,29 @@ TomTabularResult salesResult() => TomTabularResult.single(
       },
     ]),
     title: 'Regions',
+  ),
+);
+
+/// The same two rows with a chart of them: a section names the columns a chart
+/// plots rather than handing it data, so the chart cannot disagree with the
+/// table beside it.
+TomTabularResult chartedSalesResult() => TomTabularResult.single(
+  title: 'Sales',
+  section: TomTabularSection.ofMaps(
+    columns(),
+    Stream.fromIterable([
+      {'product': 'Widget', 'amount': 19.5},
+      {'product': 'Gadget, large', 'amount': 4.0},
+    ]),
+    title: 'Regions',
+    charts: const [
+      TomTabularChart(
+        type: TomChartType.bar,
+        categoryColumn: 'product',
+        valueColumns: ['amount'],
+        title: 'Amounts',
+      ),
+    ],
   ),
 );
 
@@ -353,6 +376,51 @@ Future<void> run() async {
   );
   check(xlsx[0] == 0x50 && xlsx[1] == 0x4B, 'the xlsx output is a ZIP');
 
+  //    A chart on a section becomes a native Excel chart: a chart part bound to
+  //    the sheet's own cells, so a recipient can restyle it and it follows any
+  //    edit to the data. Part names sit uncompressed in a ZIP's local headers,
+  //    which is what lets the bytes be searched for one.
+  final chartedXlsx = latin1.decode(
+    await collect(formats, chartedSalesResult(), 'xlsx'),
+  );
+  print(
+    '   chart part                : '
+    '${chartedXlsx.contains('xl/charts/chart1.xml') ? 'xl/charts/chart1.xml' : 'none'}',
+  );
+  check(
+    chartedXlsx.contains('xl/charts/chart1.xml') &&
+        chartedXlsx.contains('xl/drawings/drawing1.xml'),
+    'a charted section gets a drawing and a chart part',
+  );
+  check(
+    !latin1.decode(xlsx).contains('xl/charts/'),
+    'a workbook without charts carries no chart part',
+  );
+
+  //    A chart that cannot be drawn fails where the section is built, not
+  //    halfway through a render: a text column is no series.
+  var chartKey = '';
+  try {
+    TomTabularSection.ofRows(
+      columns(),
+      const [],
+      charts: const [
+        TomTabularChart(
+          type: TomChartType.line,
+          categoryColumn: 'sold',
+          valueColumns: ['product'],
+        ),
+      ],
+    );
+  } on TomExportException catch (e) {
+    chartKey = e.key;
+    print('   chart of a text column    : ${e.key}');
+  }
+  check(
+    chartKey == 'export.chart.not_numeric',
+    'a chart series must be a numeric column',
+  );
+
   // 8. PDF is the exception, and says so. Its file structure ends with a table
   //    of byte offsets into everything before it, so no conforming writer can
   //    emit the first page before placing the last object. The renderer states
@@ -366,6 +434,26 @@ Future<void> run() async {
   check(
     utf8.decode(pdf.take(5).toList()) == '%PDF-',
     'the pdf output carries the PDF signature',
+  );
+
+  //    The same chart in a PDF is vector graphics below the table, its title
+  //    above it. Uncompressed, the title is readable in the bytes — and absent
+  //    from the same document without the chart. (The page writes each word as
+  //    its own text run, which is why the title searched for is one word.)
+  Future<String> pdfText(TomTabularResult result) async => latin1.decode(
+    await const TomPdfRenderer(compress: false)
+        .render(result)
+        .fold<List<int>>(<int>[], (all, chunk) => all..addAll(chunk)),
+  );
+  final chartedPdf = await pdfText(chartedSalesResult());
+  print(
+    '   chart title in the pdf    : '
+    '${chartedPdf.contains('(Amounts)')}',
+  );
+  check(
+    chartedPdf.contains('(Amounts)') &&
+        !(await pdfText(salesResult())).contains('(Amounts)'),
+    'the pdf draws the chart, and only where the section has one',
   );
 
   //    A width is a count of characters, in every format — the one unit that

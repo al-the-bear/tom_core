@@ -18,7 +18,7 @@ surface documented here.
 | Datasources | [api_summary_datasources.md](api_summary_datasources.md) | DB type system, SQL dialects, queries, MariaDB datasource/prepared statements, read replicas. |
 | Database Migration | [api_summary_db_migration.md](api_summary_db_migration.md) | Migration runner, versioning, rollback with down scripts, the record of the last run readiness reads, and the MariaDB and PostgreSQL migration adaptors. |
 | Endpoints | [api_summary_endpoints.md](api_summary_endpoints.md) | Service/endpoint annotations, routing, handler pipeline, error handling, and the three transports over it: HTML form bodies, redirects and WebSockets — plus the HTTP surface of file columns, and idempotency keys that answer a retried request with the first one's response. |
-| Export | [api_summary_export.md](api_summary_export.md) | Tabular results rendered to CSV, XLSX or PDF, and stored for later retrieval. |
+| Export | [api_summary_export.md](api_summary_export.md) | Tabular results rendered to CSV, XLSX or PDF with charts, stored for later retrieval or sent by email, and the register of stored exports with a per-owner quota and a retention purge. |
 | File Storage | [api_summary_file_storage.md](api_summary_file_storage.md) | Streaming blob storage: one put/get contract over memory, directory, database and S3 backends. |
 | Health Check | [api_summary_healthcheck.md](api_summary_healthcheck.md) | Health analyzer and health-check service/server — process-wide or per instance, with cooperative cancellation of a timed-out analysis — and the framework readiness checks `/ready` answers with by default — or `503 shutting down` once a graceful shutdown has begun. |
 | Item Authorization | [api_summary_item_authorization.md](api_summary_item_authorization.md) | Item authorizations kept by an external authority: the port to it, a caching client for checks, accessible items and the user's sharing acts, and the row scope it feeds. |
@@ -513,19 +513,35 @@ surface documented here.
 | `TomTabularColumn` | class | One typed column: machine key, human label, type. |
 | `TomTabularRow` | class | One row: cell values positional to the columns. |
 | `TomColumnType` | enum | The value types a column may hold. |
+| `TomTabularChart` | class | A bar, line or pie chart of a section's own rows, naming its columns. |
+| `TomChartType` | enum | The kinds of chart: bar, line, pie. |
 | `TomTabularRenderer` | abstract class | Renders a result to a byte stream in one format. |
 | `TomCsvRenderer` | class | RFC 4180 CSV, one row at a time. |
 | `TomXlsxRenderer` | class | Office Open XML workbook, one worksheet per section. |
 | `TomPdfRenderer` | class | Paginated PDF with title, metadata block and tables. |
 | `TomExportFormats` | class | The set of formats an application offers. |
 | `TomExportStore` | abstract class | Stores and retrieves rendered exports by key. |
-| `TomExportStoreOperation` | enum | The four store operations and the error key each failure carries. |
+| `TomExportStoreOperation` | enum | The five store operations and the error key each failure carries. |
 | `TomDirectoryExportStore` | class | Export store over a local directory tree. |
 | `TomMemoryExportStore` | class | In-memory export store, for tests. |
 | `TomBlobExportStore` | class | Export store backed by a `TomBlobStore`. |
 | `TomStoredExport` | class | What was written, where, and how big it turned out. |
-| `TomExportService` | class | The seam an endpoint calls: render, optionally store. |
+| `TomExportService` | class | The seam an endpoint calls: render, optionally store, record and enforce a quota. |
+| `TomExportEmailDelivery` | class | The email channel: a stored export sent as a link or an attachment through the outbox. |
+| `TomExportEmailMode` | enum | Link, attach, or attach up to a size and link beyond. |
+| `TomExportRegister` | abstract class | The record of stored exports: who, how large, when. |
+| `TomMemoryExportRegister` | class | In-memory register, for tests and a single process. |
+| `TomSqlExportRegister` | class | The register in a SQL table, `tom_export`. |
+| `TomExportRecord` | class | One stored export as the register knows it. |
+| `TomExportUsage` | class | What one owner holds: a count and a byte total. |
+| `TomExportRecordRow` | class | One row of the register table, as the SQL register reads it. |
+| `TomExportUsageRow` | class | The aggregate row the SQL register's usage query reads. |
+| `TomExportQuota` | class | How many exports, and bytes, one owner may hold. |
+| `TomExportRetention` | class | Deletes exports older than a maximum age; also as a scheduled job. |
 | `TomExportException` | class | Export failure (extends `TomServerException`). |
+| `defaultExportRegisterTable` | constant | `tom_export`. |
+| `exportRegisterTable` | function | The register table, declared once. |
+| `exportRegisterTableDdl` | function | The `CREATE TABLE` for it, for a deployment that applies DDL by hand. |
 | `tomFormatCellAsText` | top-level | The shared text rule for the text-oriented renderers. |
 
 ### File Storage (`lib/src/tomserver/file_storage/`)
@@ -976,6 +992,7 @@ surface documented here.
 | `defaultDecisionTable` | Transactions |
 | `defaultDeliveryReportTable` | Messaging |
 | `defaultEncryptionKeyTable` | Object Persistence |
+| `defaultExportRegisterTable` | Export |
 | `defaultIdempotencyTable` | Endpoints |
 | `defaultInboxTable` | Messaging |
 | `defaultInvalidationTable` | Cache |
@@ -998,6 +1015,8 @@ surface documented here.
 | `encryptionKeyTable` | Object Persistence |
 | `encryptionKeyTableDdl` | Object Persistence |
 | `Eq` | Object Persistence |
+| `exportRegisterTable` | Export |
+| `exportRegisterTableDdl` | Export |
 | `extractAuthentication` | Server |
 | `filterAuditEntries` | Audit |
 | `frameworkOwnedTables` | Database Migration |
@@ -1223,6 +1242,7 @@ surface documented here.
 | `TomCacheRemoveMessage` | Cache |
 | `TomCacheRetrieveMessage` | Cache |
 | `TomCacheStoreMessage` | Cache |
+| `TomChartType` | Export |
 | `TomClassScanResult` | Endpoints |
 | `TomClientAddress` | Rate Limiting |
 | `TomColumnAuthorization` | Object Persistence |
@@ -1339,11 +1359,20 @@ surface documented here.
 | `TomEventInstants` | Scheduling |
 | `TomExclusiveCanonicalizer` | Authentication |
 | `TomExists` | Object Persistence |
+| `TomExportEmailDelivery` | Export |
+| `TomExportEmailMode` | Export |
 | `TomExportException` | Export |
 | `TomExportFormats` | Export |
+| `TomExportQuota` | Export |
+| `TomExportRecord` | Export |
+| `TomExportRecordRow` | Export |
+| `TomExportRegister` | Export |
+| `TomExportRetention` | Export |
 | `TomExportService` | Export |
 | `TomExportStore` | Export |
 | `TomExportStoreOperation` | Export |
+| `TomExportUsage` | Export |
+| `TomExportUsageRow` | Export |
 | `TomExternalIdentity` | Authentication |
 | `TomExternalIdentityDirectory` | Authentication |
 | `TomExternalIdentityLink` | Authentication |
@@ -1464,6 +1493,7 @@ surface documented here.
 | `TomMemoryDataKeyStore` | Object Persistence |
 | `TomMemoryDecisionLog` | Transactions |
 | `TomMemoryDeliveryReportStore` | Messaging |
+| `TomMemoryExportRegister` | Export |
 | `TomMemoryExportStore` | Export |
 | `TomMemoryExternalIdentityStore` | Authentication |
 | `TomMemoryIdempotencyStore` | Endpoints |
@@ -1714,6 +1744,7 @@ surface documented here.
 | `TomSqlDatasourceRepository` | Object Persistence |
 | `TomSqlDecisionLog` | Transactions |
 | `TomSqlDeliveryReportStore` | Messaging |
+| `TomSqlExportRegister` | Export |
 | `TomSqlFailureMode` | Datasources |
 | `TomSqlIdempotencyStore` | Endpoints |
 | `TomSqlInbox` | Messaging |
@@ -1753,6 +1784,7 @@ surface documented here.
 | `TomSubjectKeys` | Privacy |
 | `TomSubjectKeyStore` | Privacy |
 | `TomSubquery` | Object Persistence |
+| `TomTabularChart` | Export |
 | `TomTabularColumn` | Export |
 | `TomTabularRenderer` | Export |
 | `TomTabularResult` | Export |

@@ -1,30 +1,18 @@
-/// Reclaiming what stored exports accumulate, and who owns the enumeration.
+/// The register of stored exports, and what it makes possible: a per-owner
+/// quota and a purge by age.
 ///
-/// A store that keeps every export a deployment ever rendered fills up. The
-/// module answers half of that itself: [TomExportService.keyFor] partitions by
-/// day, and [TomExportStore.deletePrefix] reclaims a partition in one call.
+/// A store that keeps every export a deployment ever rendered fills up, and
+/// [TomExportStore] cannot answer the question retention asks: it holds bytes
+/// under keys and deliberately has no listing, and a listing would not say
+/// *whose* an export is or *how old* anyway. The [TomExportRegister] is the
+/// record that does — one [TomExportRecord] per export, written by
+/// [TomExportService.storeAs] beside the bytes. A [TomExportQuota] is then a
+/// sum over an owner's records, and [TomExportRetention] a query over their
+/// ages that deletes key by key, so it runs on every backend.
 ///
-/// It does **not** answer the other half. The store contract has no listing —
-/// no `list`, no `keysUnder`, nothing that walks the key space — and this file
-/// is as much about that absence as about the call. The reason is that a
-/// listing is the wrong question to ask storage: over an object store it is a
-/// paginated call whose cost the caller has to understand, over a database
-/// blob table it is a scan, and neither answers what retention actually needs
-/// to know — *which* export, rendered for *whom*, is now old enough to go.
-///
-/// So the enumeration belongs to the deployment, in the record it almost
-/// certainly keeps already: the descriptor [TomExportStore.store] returns
-/// carries the key, the media type, the byte count and the time, which is a
-/// row. The `_ExportRegister` below stands in for that table. It is deliberately
-/// not a framework type — a real one has a tenant, a requesting user and a
-/// report id on it, and none of those are storage's business.
-///
-/// That split is what makes retention work on *every* backend rather than the
-/// ones that can reclaim by prefix. Step 6 runs the same pass against
-/// `TomBlobExportStore` and asks `supportsPrefixDelete` rather than assuming
-/// it: every shipped store answers `true` today, and the fallback is there
-/// because the flag belongs to the contract and an application's own backend
-/// may not.
+/// The example uses [TomMemoryExportRegister]; a deployment uses
+/// [TomSqlExportRegister], one row per export in `tom_export`, with the same
+/// calls.
 ///
 /// Run with `dart run example/export/export_retention.dart`. Every step checks
 /// its own result and the run fails when one does not hold, so a green run is a
@@ -53,197 +41,234 @@ TomTabularResult dailySales(String day) => TomTabularResult.single(
   ),
 );
 
-/// The deployment's own record of what it stored — one row per export.
-///
-/// A row per export is what a system that lets a user re-download yesterday's
-/// report already has; retention is then a query over it rather than a walk of
-/// the storage. The framework does not ship this type because the columns that
-/// matter are the application's: who asked, which report, which tenant.
-class _ExportRegister {
-  final List<({TomStoredExport export, DateTime renderedAt})> _rows = [];
-
-  /// Records [export] as rendered at [renderedAt].
-  void record(TomStoredExport export, DateTime renderedAt) =>
-      _rows.add((export: export, renderedAt: renderedAt));
-
-  /// How many exports are on the register.
-  int get length => _rows.length;
-
-  /// The keys recorded, oldest first.
-  List<String> get keys => [for (final row in _rows) row.export.key];
-
-  /// The day partitions holding exports rendered before [cutoff].
-  ///
-  /// A partition rather than a key, because that is the unit a prefix delete
-  /// reclaims — one call per day instead of one per export.
-  Set<String> partitionsBefore(DateTime cutoff) => {
-    for (final row in _rows)
-      if (row.renderedAt.isBefore(cutoff))
-        row.export.key.split('/').take(3).join('/'),
-  };
-
-  /// The keys recorded under [partition].
-  List<String> keysUnder(String partition) => [
-    for (final row in _rows)
-      if (row.export.key.startsWith('$partition/')) row.export.key,
-  ];
-
-  /// Drops every row under [partition], and answers how many went.
-  int forget(String partition) {
-    final before = _rows.length;
-    _rows.removeWhere((row) => row.export.key.startsWith('$partition/'));
-    return before - _rows.length;
-  }
-}
-
-/// Renders [reports] into [service], recording each on [register].
-Future<void> renderInto(
-  TomExportService service,
-  _ExportRegister register,
-  Map<String, DateTime> reports,
-) async {
-  for (final entry in reports.entries) {
-    final stored = await service.storeAs(
-      dailySales(entry.key),
-      'csv',
-      key: service.keyFor(entry.key, 'csv', partitionOn: entry.value),
-    );
-    register.record(stored, entry.value);
-  }
-}
-
-/// Three days of reports, two of them old enough to go by step 3's cutoff.
+/// Three days of reports, two of them old enough to go by step 5's cutoff.
 final _renderedOn = {
   'sales-08': DateTime.utc(2026, 7, 8),
   'sales-09': DateTime.utc(2026, 7, 9),
   'sales-15': DateTime.utc(2026, 7, 15),
 };
 
-Future<void> run() async {
-  // 1. Store three exports across three day partitions, recording each one as
-  //    it is written. The descriptor `storeAs` returns is the row: key, media
-  //    type, byte count. Recording it costs the line below and is what makes
-  //    every later step possible.
-  final store = TomMemoryExportStore();
-  final service = TomExportService(store: store);
-  final register = _ExportRegister();
-  await renderInto(service, register, _renderedOn);
-  print('1. stored                    : ${register.length} exports');
-  for (final key in register.keys) {
-    print('   key                       : $key');
-  }
-  check(register.length == 3, 'three exports were stored and recorded');
-  check(
-    register.keys.first == '2026/07/08/sales-08.csv',
-    'keyFor partitions by the day the export was rendered for',
-  );
+/// Stores the three reports through [service] for `ada`, and answers their
+/// keys in the order of [_renderedOn].
+Future<List<String>> renderInto(TomExportService service) async => [
+  for (final entry in _renderedOn.entries)
+    (await service.storeAs(
+      dailySales(entry.key),
+      'csv',
+      key: service.keyFor(entry.key, 'csv', partitionOn: entry.value),
+      owner: 'ada',
+    )).key,
+];
 
-  // 2. The store cannot answer "what is in here" — and that is the design, not
-  //    a gap. `TomExportStore` is store / open / exists / delete /
-  //    deletePrefix; none of them enumerates. What it *can* answer is whether
-  //    one key it is given holds something, which is all a download needs.
-  final present = await store.exists(register.keys.first);
-  print('2. exists(a stored key)      : $present');
-  check(present, 'the store answers for a key it is handed');
-  check(
-    !await store.exists('2026/07/08/never-rendered.csv'),
-    'and answers no for one it was not',
-  );
-
-  // 3. The register answers it instead. Which partitions hold exports older
-  //    than the cutoff is a query over rows, and it is the application's own
-  //    columns — not the key space — that decide the answer.
-  final cutoff = DateTime.utc(2026, 7, 10);
-  final expired = register.partitionsBefore(cutoff);
-  print('3. expired partitions       : ${expired.join(', ')}');
-  check(
-    expired.length == 2 && expired.contains('2026/07/08'),
-    'the two days before the cutoff are named, and the later one is not',
-  );
-
-  // 4. Reclaim. One `deletePrefix` per partition, and the count it returns is
-  //    checked against the rows the register expected — the two halves must
-  //    agree, and a mismatch means something wrote to the store behind the
-  //    register's back.
-  var reclaimed = 0;
-  for (final partition in expired) {
-    final expectedKeys = register.keysUnder(partition);
-    final removed = await store.deletePrefix(partition);
-    check(
-      removed == expectedKeys.length,
-      'the store removed exactly the exports the register recorded under '
-      '$partition',
+/// Re-records [keys] as stored on the days their reports were rendered for.
+///
+/// A record is stamped with the moment of storing, which in a run of this
+/// example is now. Re-recording is what lets a purge by age be shown without
+/// waiting a week; `record` replaces the record under the same key.
+Future<void> backdate(TomExportRegister register, List<String> keys) async {
+  final days = _renderedOn.values.toList();
+  for (var i = 0; i < keys.length; i++) {
+    final record = (await register.find(keys[i]))!;
+    await register.record(
+      TomExportRecord(
+        key: record.key,
+        owner: record.owner,
+        mediaType: record.mediaType,
+        byteCount: record.byteCount,
+        storedAt: days[i],
+        title: record.title,
+      ),
     );
-    register.forget(partition);
-    reclaimed += removed;
   }
-  print('4. reclaimed                 : $reclaimed exports');
-  check(reclaimed == 2, 'both expired days went');
+}
+
+/// Runs [store] and answers the key of the [TomExportException] it throws, or
+/// `''` when it throws none.
+Future<String> refusalOf(Future<Object?> Function() store) async {
+  try {
+    await store();
+  } on TomExportException catch (error) {
+    return error.key;
+  }
+  return '';
+}
+
+Future<void> run() async {
+  // 1. A service with a register records every export it stores: the owner it
+  //    counts against, its size, its media type, when, and the report's title.
+  final store = TomMemoryExportStore();
+  final register = TomMemoryExportRegister();
+  final service = TomExportService(store: store, register: register);
+  final keys = await renderInto(service);
+  final usage = await register.usageOf('ada');
+  print('1. recorded for ada          : $usage');
+  check(usage.count == 3, 'the three stored exports were recorded');
+  final first = (await register.find(keys.first))!;
   check(
-    register.length == 1,
-    'the register kept the one that is still current',
+    first.owner == 'ada' &&
+        first.title == 'Daily sales' &&
+        first.mediaType == 'text/csv; charset=utf-8',
+    'a record names the owner, the title and the media type',
   );
 
-  // 5. Nothing else was touched. A prefix that reaches a sibling is an ordinary
-  //    convenience everywhere except in a delete, so the match is by key
-  //    segment: `2026/07/08` never reaches `2026/07/15`.
-  final survivor = register.keys.single;
-  print('5. still stored              : $survivor');
-  check(await store.exists(survivor), 'the current export survived the purge');
+  // 2. The register answers what the store cannot: which exports an owner
+  //    holds. `TomExportStore` is store / open / exists / delete /
+  //    deletePrefix, and none of them enumerates.
+  final owned = await register.ownedBy('ada');
+  print('2. ada holds                 : ${owned.length} exports');
+  for (final record in owned) {
+    print('   key                       : ${record.key}');
+  }
   check(
-    !await store.exists('2026/07/08/sales-08.csv'),
-    'the expired one is gone',
+    owned.map((r) => r.key).toSet().containsAll(keys),
+    'the register lists every export stored for the owner',
   );
 
-  // 6. The same pass over a blob-backed store. It reclaims by prefix — the
-  //    blob contract grew the same primitive for the same reason, so the
-  //    adaptor delegates — and the pass is written so that either branch is
-  //    correct. `supportsPrefixDelete` is what it asks, not what it assumes:
-  //    the flag belongs to the contract, and an application writing its own
-  //    backend may answer `false`.
+  // 3. A count quota. Ada holds three of three, so a fourth is refused before
+  //    a row is rendered — a full owner costs no render. Storing over a key she
+  //    already holds is a replacement, counted without the export it replaces,
+  //    so it passes.
+  final capped = TomExportService(
+    store: store,
+    register: register,
+    quota: const TomExportQuota(maxCount: 3),
+  );
+  final fourthKey = capped.keyFor(
+    'sales-16',
+    'csv',
+    partitionOn: DateTime.utc(2026, 7, 16),
+  );
+  final countRefusal = await refusalOf(
+    () => capped.storeAs(
+      dailySales('sales-16'),
+      'csv',
+      key: fourthKey,
+      owner: 'ada',
+    ),
+  );
+  print('3. a fourth export           : $countRefusal');
+  check(
+    countRefusal == 'export.quota.count_exceeded',
+    'the count quota refuses a fourth export',
+  );
+  check(!await store.exists(fourthKey), 'and nothing was stored for it');
+  final replaced = await capped.storeAs(
+    dailySales('sales-15'),
+    'csv',
+    key: keys.last,
+    owner: 'ada',
+  );
+  print('   replacing one she holds   : stored ${replaced.key}');
+  check(
+    (await register.usageOf('ada')).count == 3,
+    'a replacement leaves the count where it was',
+  );
+
+  // 4. A byte quota. The size of an export is known only once it is stored,
+  //    so a store that takes the owner past the limit is undone — the bytes
+  //    deleted, the record removed — and refused.
+  final held = await register.usageOf('ada');
+  final tight = TomExportService(
+    store: store,
+    register: register,
+    quota: TomExportQuota(maxBytes: held.bytes + 10),
+  );
+  final bytesKey = tight.keyFor(
+    'sales-17',
+    'csv',
+    partitionOn: DateTime.utc(2026, 7, 17),
+  );
+  final bytesRefusal = await refusalOf(
+    () => tight.storeAs(
+      dailySales('sales-17'),
+      'csv',
+      key: bytesKey,
+      owner: 'ada',
+    ),
+  );
+  print('4. past the byte limit       : $bytesRefusal');
+  check(
+    bytesRefusal == 'export.quota.bytes_exceeded',
+    'the byte quota refuses an export that does not fit',
+  );
+  check(
+    !await store.exists(bytesKey) && await register.find(bytesKey) == null,
+    'the refused export was deleted again and left no record',
+  );
+
+  // 5. The purge. Exports older than `maxAge` go — the bytes, then the record
+  //    — found through the register, not by walking the store. With the
+  //    records dated to their days and "now" on 16 July, a five-day age takes
+  //    the 8th and the 9th and keeps the 15th.
+  await backdate(register, keys);
+  final retention = TomExportRetention(
+    store: store,
+    register: register,
+    maxAge: const Duration(days: 5),
+  );
+  final purged = await retention.purge(now: DateTime.utc(2026, 7, 16));
+  print('5. purged                    : $purged exports');
+  check(purged == 2, 'the two exports older than five days went');
+  check(
+    !await store.exists(keys.first) && await register.find(keys.first) == null,
+    'an expired export lost its bytes and its record',
+  );
+  check(
+    await store.exists(keys.last) && (await register.usageOf('ada')).count == 1,
+    'the current export survived, and the quota counts only it',
+  );
+
+  // 6. The same purge over a blob-backed store. It deletes key by key, so it
+  //    needs no prefix delete and no listing from the backend — it runs on
+  //    every store the service can write to.
   final blobStore = TomBlobExportStore(
     TomMemoryBlobStore(),
     keyPrefix: 'exports',
   );
-  final blobService = TomExportService(store: blobStore);
-  final blobRegister = _ExportRegister();
-  await renderInto(blobService, blobRegister, _renderedOn);
-  print('6. supportsPrefixDelete      : ${blobStore.supportsPrefixDelete}');
-
-  var reclaimedElsewhere = 0;
-  for (final partition in blobRegister.partitionsBefore(cutoff)) {
-    if (blobStore.supportsPrefixDelete) {
-      reclaimedElsewhere += await blobStore.deletePrefix(partition);
-    } else {
-      for (final key in blobRegister.keysUnder(partition)) {
-        if (await blobStore.delete(key)) reclaimedElsewhere++;
-      }
-    }
-    blobRegister.forget(partition);
-  }
-  print('   reclaimed                 : $reclaimedElsewhere exports');
-  check(reclaimedElsewhere == 2, 'the same two days went on the other backend');
+  final blobRegister = TomMemoryExportRegister();
+  final blobKeys = await renderInto(
+    TomExportService(store: blobStore, register: blobRegister),
+  );
+  await backdate(blobRegister, blobKeys);
+  final blobPurged = await TomExportRetention(
+    store: blobStore,
+    register: blobRegister,
+    maxAge: const Duration(days: 5),
+  ).purge(now: DateTime.utc(2026, 7, 16));
+  print('6. purged from the blob store: $blobPurged exports');
+  check(blobPurged == 2, 'the same two days went on the other backend');
   check(
-    blobRegister.length == 1 &&
-        await blobStore.exists(blobRegister.keys.single),
+    await blobStore.exists(blobKeys.last) &&
+        !await blobStore.exists(blobKeys.first),
     'and the current export survived here too',
   );
 
-  // 7. The refusal worth knowing about: an empty prefix names every export
-  //    there is, and a configuration value that turned out empty should not
-  //    empty the store. The count would otherwise be the whole store's, and a
-  //    nightly job would report a very successful purge.
-  var refused = false;
-  try {
-    await store.deletePrefix('');
-  } on TomExportException catch (error) {
-    refused = true;
-    print('7. empty prefix              : ${error.key}');
-  }
-  check(refused, 'an empty prefix is an exception rather than a purge');
+  // 7. On a schedule. `jobDefinition` is the purge as a job — hourly unless
+  //    told otherwise — and its body holds the retention object, so the
+  //    scheduler runs it in its own isolate with the inline dispatcher. How
+  //    long an export is kept stays the deployment's decision: `maxAge` has no
+  //    default.
+  await backdate(register, [keys.last]);
+  var now = DateTime.utc(2026, 7, 21, 12);
+  final scheduler = TomScheduler(
+    store: TomMemoryJobStore(),
+    dispatcher: const TomInlineJobDispatcher(),
+    clock: () => now,
+    onAlert: (_) {},
+  );
+  final job = retention.jobDefinition();
+  scheduler.register(job);
+  await scheduler.tick();
+  now = now.add(const Duration(hours: 1, minutes: 1));
+  await scheduler.tick();
+  await scheduler.drain();
+  await scheduler.close();
+  print('7. job                       : ${job.name}');
+  check(job.name == 'tom.export.purge', 'the job has its default name');
   check(
-    await blobStore.exists(blobRegister.keys.single),
-    'and nothing was removed on the way to finding that out',
+    !await store.exists(keys.last) &&
+        (await register.usageOf('ada')).count == 0,
+    'the scheduled purge removed the export once it was past its age',
   );
 
   print('\nExport retention example completed.');

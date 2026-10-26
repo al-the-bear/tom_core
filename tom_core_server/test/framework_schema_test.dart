@@ -254,6 +254,12 @@ void main() {
       maps(leaseTable(defaultLeaseTable), [TomLeaseRow]);
     });
 
+    test('the export register', () {
+      maps(exportRegisterTable(defaultExportRegisterTable), [
+        TomExportRecordRow,
+      ]);
+    });
+
     test('the pause table and the run archive', () {
       maps(jobPauseTable(defaultJobPauseTable), [TomJobPauseRow]);
       maps(jobRunArchiveTable(defaultJobRunArchiveTable), [
@@ -431,6 +437,33 @@ void main() {
           await _issuing(() => store.archivedRuns(jobName: 'job'));
           await _issuing(() => store.purgeArchive(now));
           await _issuing(() => store.deleteAll());
+        },
+      );
+    });
+
+    test('the export register', () async {
+      final datasource = _RecordingDataSource();
+      final register = TomSqlExportRegister(datasource);
+      await audit(
+        datasource,
+        [exportRegisterTable(defaultExportRegisterTable)],
+        () async {
+          await _issuing(
+            () => register.record(
+              TomExportRecord(
+                key: 'a.csv',
+                owner: 'ada',
+                mediaType: 'text/csv',
+                byteCount: 3,
+                storedAt: DateTime.utc(2026),
+              ),
+            ),
+          );
+          await _issuing(() => register.find('a.csv'));
+          await _issuing(() => register.ownedBy('ada'));
+          await _issuing(() => register.storedBefore(DateTime.utc(2026)));
+          await _issuing(() => register.remove('a.csv'));
+          await _issuing(() => register.deleteAll());
         },
       );
     });

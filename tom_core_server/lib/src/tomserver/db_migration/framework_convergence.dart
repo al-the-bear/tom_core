@@ -73,8 +73,8 @@ import 'schema_model.dart';
 ///
 /// The direction of the dependency is deliberate: this module reaches into
 /// `scheduling/`, `file_storage/`, `audit/`, `authentication/`, `messaging/`,
-/// `cache/`, `endpoints/`, `transactions/`, `object_persistence/` and
-/// `privacy/` for their descriptors, and none of them reaches back. A deployment can run the
+/// `cache/`, `endpoints/`, `transactions/`, `object_persistence/`, `privacy/`
+/// and `export/` for their descriptors, and none of them reaches back. A deployment can run the
 /// scheduler without ever loading a migration.
 List<TomFrameworkTable> frameworkOwnedTables({
   String jobRun = defaultJobRunTable,
