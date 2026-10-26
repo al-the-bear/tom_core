@@ -127,7 +127,7 @@ handle declared so far so a missing binding fails at start-up.
 | `logging` | isolate & remote log output/server, `TomJsonLogOutput`, `TomLogContext` | Structured logging across isolates and the wire; one JSON object per line with the trace, span and tenant read from the zone |
 | `isolate_pooling` | `TomWorker`, `TomWorkerPool`, `TomExecutor`, `TomCommand` | Worker-pool execution across isolates |
 | `metrics` | `TomMetricRegistry`, `TomCounter`, `TomGauge`, `TomHistogram`, `TomMetrics.registry`, `tomPrometheusText` | Per-isolate counters, gauges, histograms and observed gauges; one snapshot rendered as Prometheus text and read by the server's OTLP exporter |
-| `scheduling` | `TomScheduler`, `TomJobDefinition`, `TomSchedule` (cron / calendar / interval / once / event), `TomJobStore`, `TomLeaseLock` | Durable, leased job scheduling with retry and catch-up policies |
+| `scheduling` | `TomScheduler`, `TomJobDefinition`, `TomSchedule` (cron / calendar / interval / once / event), `TomJobStore`, `TomLeaseLock` | Durable, leased job scheduling with retry and catch-up policies, job priorities, pausing, and checkpoints a run resumes from |
 | `json` | map-merge, pretty-print helpers | JSON tree merge/serialization utilities |
 | `resources` | `TomTextResourceProvider`, `TomConfigResourceProvider` | Text and configuration resource resolution |
 | `settings` | client settings/authorization | Settings management |
@@ -182,7 +182,7 @@ so anything listed below is executed on every run.
 | [`example/samples/resources/`](example/samples/resources/) | Text & config resource providers |
 | [`example/samples/preferences/`](example/samples/preferences/) | The preference codec's scalar, `DateTime` and reflected round-trips, and the `/preferences` contract |
 | [`example/samples/metrics/`](example/samples/metrics/) | The three instruments and every misuse refused, the exact Prometheus text of a snapshot, and the `tom_job_*` series a scheduler records |
-| [`example/samples/scheduling/`](example/samples/scheduling/) | The in-memory substrate, `@TomScheduledJob` discovery, every schedule kind against the missed-window policies, and what at-least-once asks of a job body |
+| [`example/samples/scheduling/`](example/samples/scheduling/) | The in-memory substrate, `@TomScheduledJob` discovery, every schedule kind against the missed-window policies, what at-least-once asks of a job body, the file store across a restart, and priority, pausing and checkpoints |
 | [`example/samples/json/`](example/samples/json/) · [`example/samples/timezoned/`](example/samples/timezoned/) · [`example/samples/settings/`](example/samples/settings/) · [`example/samples/shutdown_cleanup/`](example/samples/shutdown_cleanup/) · [`example/samples/http_connection/`](example/samples/http_connection/) · [`example/samples/little_things/`](example/samples/little_things/) · [`example/samples/reflection/`](example/samples/reflection/) | The remaining utility modules |
 
 Run the whole set:
@@ -383,8 +383,8 @@ the common dependency of the server and Flutter layers. See the
 - Per-module guides under [`doc/`](doc/) — one folder per module
   (`doc/observable/`, `doc/security/`, `doc/scope_ids/`, …).
 - [`doc/scheduling/scheduling.md`](doc/scheduling/scheduling.md) — the job
-  scheduler: schedule kinds, retry and missed-window policies, the job store,
-  and the lease lock that keeps one owner per job across processes.
+  scheduler: schedule kinds, retry and missed-window policies, priority,
+  pausing and checkpoints, the job store, and the lease lock that keeps one owner per job across processes.
 - [`doc/metrics/metrics.md`](doc/metrics/metrics.md) — counters, gauges,
   histograms and observed gauges, the snapshot both exporters read, and the
   series the framework records.

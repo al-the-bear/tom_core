@@ -10,11 +10,12 @@
 /// dart run --enable-asserts example/run_all_samples.dart
 /// ```
 ///
-/// The five files build on each other and are worth reading in order: the
+/// The six files build on each other and are worth reading in order: the
 /// substrate, then the declarative route on top of it, then the trigger kinds,
-/// then the guarantee every job body has to live with — and finally the same
-/// substrate on disk, which is the only one of them that says anything across a
-/// restart.
+/// then the guarantee every job body has to live with, then the same substrate
+/// on disk, which is the only one of them that says anything across a restart —
+/// and finally the controls over queued runs: priority, pausing and
+/// checkpoints.
 library;
 
 import '../../sample_bootstrap.dart';
@@ -24,6 +25,7 @@ import '02_declared_job_example.dart' as declared_job;
 import '03_schedule_kinds_example.dart' as schedule_kinds;
 import '04_execution_guarantee_example.dart' as execution_guarantee;
 import '05_durable_store_example.dart' as durable_store;
+import '06_priority_pause_checkpoint_example.dart' as priority_pause_checkpoint;
 
 /// Standalone entry point for running scheduling examples.
 Future<void> main() async {
@@ -52,6 +54,9 @@ Future<void> run() async {
 
   await durable_store.run();
   print('✓ Durable store examples passed\n');
+
+  await priority_pause_checkpoint.run();
+  print('✓ Priority, pause and checkpoint examples passed\n');
 
   sampleGroupFooter('Scheduling');
 }

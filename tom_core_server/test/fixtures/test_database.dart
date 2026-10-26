@@ -724,10 +724,18 @@ CREATE TABLE IF NOT EXISTS fixture_nullable (
     String jobRunTable = defaultJobRunTable,
     String leaseTable = defaultLeaseTable,
     String nodeTable = defaultSchedulerNodeTable,
+    String pauseTable = defaultJobPauseTable,
+    String archiveTable = defaultJobRunArchiveTable,
   }) async {
-    await execute(dsi.datasource, 'DROP TABLE IF EXISTS $jobRunTable');
-    await execute(dsi.datasource, 'DROP TABLE IF EXISTS $leaseTable');
-    await execute(dsi.datasource, 'DROP TABLE IF EXISTS $nodeTable');
+    for (final table in [
+      jobRunTable,
+      leaseTable,
+      nodeTable,
+      pauseTable,
+      archiveTable,
+    ]) {
+      await execute(dsi.datasource, 'DROP TABLE IF EXISTS $table');
+    }
   }
 
   /// Drops the relational audit trail's table and its optional guard triggers.

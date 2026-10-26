@@ -528,6 +528,8 @@ is in context. Where the tenant matters, it is a column.
 | ----- | ----- | ------ |
 | `tom_job_run` | `TomSqlJobStore` | a `tenant` column; `''` for a run of no tenant; part of the unique window key |
 | `tom_lease` | `TomSqlLeaseLock` | none — a lease names a run or a job, and a job's lease names its tenant |
+| `tom_job_pause` | `TomSqlJobStore` | none — a pause names a job, and holds for every tenant's runs of it |
+| `tom_job_run_archive` | `TomSqlJobStore` | the archived run's `tenant` column, carried over from `tom_job_run` |
 | `tom_scheduler_node` | `TomSqlSchedulerNodes` | none — nodes serve every tenant |
 | `tom_delivery_report` | `TomSqlDeliveryReportStore` | a nullable `tenant` column |
 | `tom_cache_invalidation` | `TomSqlInvalidationChannel` | none — the keys it carries are already qualified |

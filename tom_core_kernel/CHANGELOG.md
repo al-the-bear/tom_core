@@ -2,6 +2,32 @@
 
 ### Added
 
+- **Job priority, pausing and checkpoints** (`scheduling/`).
+  `TomJobDefinition.priority` and `TomScheduledJob.priority` (default 0) are
+  copied onto every run the scheduler plans (`TomJobRun.priority`), and
+  `TomJobStore.claimDue` takes due runs by descending priority, in queue order
+  among equals. `TomScheduler.pauseJob` / `resumeJob` / `pausedJobs` (store
+  contract `pauseJob(jobName, now)`, `resumeJob`, `pausedJobs`) hold a job's
+  runs out of `claimDue` and `backlog` on every node sharing the store; a paused
+  clock-driven job is not planned, so on resume its missed windows follow its
+  `TomMissedWindowPolicy`, and a paused event job's events wait in the queue.
+  `TomJobRunContext` (`current`, `require()`, `runId`, `jobName`, `checkpoint`,
+  `saveCheckpoint`) lets a running body save an opaque JSON map as its progress
+  (`TomJobRun.checkpoint`, `TomJobStore.saveCheckpoint`, fenced on the claim and
+  `false` once the claim no longer holds the run); the checkpoint is kept across
+  retries and recovery and handed to the next attempt, and recovery still
+  re-queues a started run only when its job sets `requestsRecovery`. The
+  scheduler dispatches every body inside a `TomJobRunCommand`, whose port carries
+  a save from a worker isolate back to the scheduler. Error keys
+  `schedule.job.checkpoint` (not JSON-encodable,
+  `TomJobStore.encodeCheckpoint`), `schedule.job.checkpoint_failed` (the store
+  could not write it) and `schedule.run_context.missing` (`require()` outside a
+  job body). `doc/scheduling/scheduling.md` § Priority, § Pausing a Job,
+  § Checkpoints; sample
+  `example/samples/scheduling/06_priority_pause_checkpoint_example.dart`; tests
+  in `test/scheduling_test.dart`, `test/scheduled_job_test.dart`,
+  `test/scheduling_error_keys_test.dart` and the store contract suite
+  `test/contracts/scheduling_contract.dart`.
 - **HTTP client resilience** (`http_connection/`, `resilience.dart`):
   `TomResilientClient` wraps a `package:http` client and applies the
   `TomHttpResiliencePolicy` of each call's destination (`scheme://host:port`) —
@@ -139,6 +165,10 @@
   `TomWebAuthn2FAService` and `tom_core_flutter`'s passkey mechanism.
 
 ### Changed
+
+- **`TomFileJobStore` writes a JSON object.** The queue file is
+  `{"runs": [...], "paused": {"<job>": "<ISO instant>"}}`; a file holding a bare
+  array is treated as damaged — moved to `<queue>.corrupt` and started empty.
 
 - **`TomDefaultHttpClientFactory.getClient()` returns the platform client inside
   a `TomResilientClient`.** Every `TomServerChannel` call — and with it every

@@ -22,6 +22,12 @@ const String defaultLeaseTable = 'tom_lease';
 /// The default name of the scheduler roll-call table.
 const String defaultSchedulerNodeTable = 'tom_scheduler_node';
 
+/// The default name of the paused-job table.
+const String defaultJobPauseTable = 'tom_job_pause';
+
+/// The default name of the table purged runs are archived to.
+const String defaultJobRunArchiveTable = 'tom_job_run_archive';
+
 /// The job queue table [table], declared once.
 ///
 /// Notes on the shape, because each column earns its place:
@@ -58,32 +64,81 @@ const String defaultSchedulerNodeTable = 'tom_scheduler_node';
 ///  * `job_name` is `VARCHAR(150)` rather than 191 so the composite unique key
 ///    stays inside the 767-byte index limit of older InnoDB row formats
 ///    (150 × 4 + 32 × 4 bytes of utf8mb4 + 8 bytes of `DATETIME(6)` = 736).
+///  * `priority` orders the claim scan (`ORDER BY priority DESC, seq`); it is
+///    copied from the job when the run is planned, so every node reads the
+///    same order.
+///  * `checkpoint` is the JSON text of the progress the job last saved, kept
+///    across retries and recovery so the next attempt can continue from it.
 TomFrameworkTable jobRunTable(String table) => TomFrameworkTable(
   name: table,
   origin: 'jobRunTable',
-  columns: const [
-    TomFrameworkColumn('seq', 'BIGINT', autoIncrement: true),
-    TomFrameworkColumn('id', 'VARCHAR(191)'),
-    TomFrameworkColumn('job_name', 'VARCHAR(150)'),
-    TomFrameworkColumn('tenant', 'VARCHAR(32)', defaultValue: "''"),
-    TomFrameworkColumn('scheduled_for', 'DATETIME(6)'),
-    TomFrameworkColumn('run_at', 'DATETIME(6)'),
-    TomFrameworkColumn('state', 'VARCHAR(16)'),
-    TomFrameworkColumn('attempt', 'INT', defaultValue: '1'),
-    TomFrameworkColumn('claimed_by', 'VARCHAR(191)', nullable: true),
-    TomFrameworkColumn('claimed_at', 'DATETIME(6)', nullable: true),
-    TomFrameworkColumn('claim_token', 'BIGINT', defaultValue: '0'),
-    TomFrameworkColumn('started_at', 'DATETIME(6)', nullable: true),
-    TomFrameworkColumn('last_error', 'TEXT', nullable: true),
-    TomFrameworkColumn('completed_at', 'DATETIME(6)', nullable: true),
-    TomFrameworkColumn('payload', 'LONGTEXT', nullable: true),
-  ],
+  columns: _jobRunColumns,
   primaryKey: const ['id'],
   keys: const [
     TomFrameworkKey.unique('seq', ['seq']),
     TomFrameworkKey.unique('window', ['job_name', 'tenant', 'scheduled_for']),
     TomFrameworkKey('due', ['state', 'run_at']),
     TomFrameworkKey('lease', ['state', 'claimed_at']),
+  ],
+);
+
+/// The columns of a run, shared by the queue and its archive.
+const List<TomFrameworkColumn> _jobRunColumns = [
+  TomFrameworkColumn('seq', 'BIGINT', autoIncrement: true),
+  TomFrameworkColumn('id', 'VARCHAR(191)'),
+  TomFrameworkColumn('job_name', 'VARCHAR(150)'),
+  TomFrameworkColumn('tenant', 'VARCHAR(32)', defaultValue: "''"),
+  TomFrameworkColumn('scheduled_for', 'DATETIME(6)'),
+  TomFrameworkColumn('run_at', 'DATETIME(6)'),
+  TomFrameworkColumn('state', 'VARCHAR(16)'),
+  TomFrameworkColumn('attempt', 'INT', defaultValue: '1'),
+  TomFrameworkColumn('claimed_by', 'VARCHAR(191)', nullable: true),
+  TomFrameworkColumn('claimed_at', 'DATETIME(6)', nullable: true),
+  TomFrameworkColumn('claim_token', 'BIGINT', defaultValue: '0'),
+  TomFrameworkColumn('started_at', 'DATETIME(6)', nullable: true),
+  TomFrameworkColumn('last_error', 'TEXT', nullable: true),
+  TomFrameworkColumn('completed_at', 'DATETIME(6)', nullable: true),
+  TomFrameworkColumn('payload', 'LONGTEXT', nullable: true),
+  TomFrameworkColumn('priority', 'INT', defaultValue: '0'),
+  TomFrameworkColumn('checkpoint', 'LONGTEXT', nullable: true),
+];
+
+/// The paused-job table [table], declared once.
+///
+/// One row per paused job, deleted on resume. A table of its own rather than a
+/// flag on the queue's rows, because a pause belongs to the job, not to its
+/// runs: runs enqueued while the job is paused must wait too, and a pause of a
+/// job with no runs yet is still a pause. The claim scan excludes the jobs
+/// named here.
+TomFrameworkTable jobPauseTable(String table) => TomFrameworkTable(
+  name: table,
+  origin: 'jobPauseTable',
+  columns: const [
+    TomFrameworkColumn('job_name', 'VARCHAR(150)'),
+    TomFrameworkColumn('paused_at', 'DATETIME(6)'),
+  ],
+  primaryKey: const ['job_name'],
+);
+
+/// The archive table [table] purged runs are moved to, declared once.
+///
+/// Every column of the queue, plus `archived_at`, when the run was moved.
+/// `seq` is the queue's insertion order carried over, not an `AUTO_INCREMENT`
+/// of its own, and the archive has no unique window key: a window can be
+/// planned again after its run was archived. Indexed on `archived_at` for the
+/// archive's own purge and on `(job_name, scheduled_for)` for a job's history.
+TomFrameworkTable jobRunArchiveTable(String table) => TomFrameworkTable(
+  name: table,
+  origin: 'jobRunArchiveTable',
+  columns: [
+    for (final column in _jobRunColumns)
+      column.name == 'seq' ? const TomFrameworkColumn('seq', 'BIGINT') : column,
+    const TomFrameworkColumn('archived_at', 'DATETIME(6)'),
+  ],
+  primaryKey: const ['id'],
+  keys: const [
+    TomFrameworkKey('archived', ['archived_at']),
+    TomFrameworkKey('job', ['job_name', 'scheduled_for']),
   ],
 );
 
@@ -148,3 +203,10 @@ String leaseTableDdl(String table) => leaseTable(table).createTableDdl;
 /// The DDL for the scheduler roll-call table [table].
 String schedulerNodeTableDdl(String table) =>
     schedulerNodeTable(table).createTableDdl;
+
+/// The DDL for the paused-job table [table].
+String jobPauseTableDdl(String table) => jobPauseTable(table).createTableDdl;
+
+/// The DDL for the run archive table [table].
+String jobRunArchiveTableDdl(String table) =>
+    jobRunArchiveTable(table).createTableDdl;

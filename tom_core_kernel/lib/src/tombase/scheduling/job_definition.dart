@@ -600,6 +600,17 @@ class TomJobDefinition {
   /// the same reason.
   final bool requestsRecovery;
 
+  /// How urgent the job's runs are: among runs due at the same moment, a
+  /// higher priority is claimed first. `0` by default; negative values rank
+  /// below the default.
+  ///
+  /// Stamped onto each run when it is planned ([TomJobRun.priority]), so a
+  /// change takes effect for runs planned after it. It orders the claim only:
+  /// a running run is never pre-empted, and a low-priority run still runs once
+  /// nothing more urgent is due — it waits, it is not starved, unless more
+  /// urgent work never stops arriving.
+  final int priority;
+
   /// Creates a job definition.
   TomJobDefinition({
     required this.name,
@@ -611,6 +622,7 @@ class TomJobDefinition {
     this.catchUpLimit = 10,
     this.allowOverlap = false,
     this.requestsRecovery = false,
+    this.priority = 0,
   }) {
     if (name.trim().isEmpty) {
       throw TomScheduleException(

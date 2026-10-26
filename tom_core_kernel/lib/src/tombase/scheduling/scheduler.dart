@@ -44,15 +44,18 @@
 library;
 
 import 'dart:async';
+import 'dart:isolate';
 import 'dart:math';
 
 import 'package:tom_basics/tom_basics.dart';
 
 import '../context/tenant_context.dart';
 import '../isolate_pooling/tom_worker.dart';
+import '../little_things/exception_base.dart';
 import '../metrics/metrics.dart';
 import '../shutdown_cleanup/tom_shutdown_cleanup.dart';
 import 'job_definition.dart';
+import 'job_run_context.dart';
 import 'job_store.dart';
 import 'lease_lock.dart';
 import 'schedule.dart';
@@ -427,6 +430,30 @@ class TomScheduler implements TomClosable {
     _cancel(_eventSubscriptions.remove(name));
   }
 
+  /// Pauses the job [name] across every node sharing [store]: none of its
+  /// runs is claimed until [resumeJob].
+  ///
+  /// A run already executing is not interrupted. While the job is paused no
+  /// window of a clock-driven job is planned, so on [resumeJob] the windows it
+  /// missed are dealt with by its [TomMissedWindowPolicy], exactly as windows
+  /// missed while the scheduler was down. An event-driven job keeps enqueueing
+  /// its events, which wait in the queue: an event is data, and pausing a job
+  /// is not a way to lose it.
+  Future<void> pauseJob(String name) async {
+    _requireOpen();
+    await store.pauseJob(name, clock());
+  }
+
+  /// Ends the pause of the job [name]; its due runs are claimed from the next
+  /// pass on, on whichever node gets to them first.
+  Future<void> resumeJob(String name) async {
+    _requireOpen();
+    await store.resumeJob(name);
+  }
+
+  /// The paused jobs, each with the instant it was paused.
+  Future<Map<String, DateTime>> pausedJobs() => store.pausedJobs();
+
   /// Cancels [subscription] without waiting for it.
   ///
   /// Cancellation of a broadcast/controller subscription completes on a later
@@ -651,8 +678,11 @@ class TomScheduler implements TomClosable {
       final now = clock();
       _catchUpBudget = maxCatchUpPerTick;
       await _recoverAbandoned(now);
+      final paused = await store.pausedJobs();
       for (final job in List.of(_jobs.values)) {
-        if (!job.schedule.isClockDriven) continue;
+        if (!job.schedule.isClockDriven || paused.containsKey(job.name)) {
+          continue;
+        }
         await _planWindows(job, now);
       }
       await _dispatchDue(now);
@@ -887,6 +917,7 @@ class TomScheduler implements TomClosable {
         jobName: job.name,
         scheduledFor: scheduledFor,
         runAt: runAt,
+        priority: job.priority,
       ),
     );
     return true;
@@ -913,6 +944,7 @@ class TomScheduler implements TomClosable {
         runAt: now,
         payload: payload,
         tenant: tenant,
+        priority: job.priority,
       ),
     );
   }
@@ -1059,13 +1091,13 @@ class TomScheduler implements TomClosable {
     // `finally` then hands the run's protection over instead of releasing it.
     Future<Object?>? overrunningBody;
     try {
-      final TomCommand command;
+      final TomCommand body;
       try {
         // A run of a tenant is built and executed inside that tenant: the
         // factory runs in its zone, and the command carries it — across an
         // isolate hop too, where the zone does not follow.
         final tenant = run.tenant;
-        command = tenant == null
+        body = tenant == null
             ? job.body(run)
             : TomTenantScopedCommand(
                 tenant,
@@ -1090,11 +1122,28 @@ class TomScheduler implements TomClosable {
       });
       await store.markStarted(claim, started);
       attempt.start();
-      final body = dispatcher.dispatch(command);
+      final checkpoints = _receiveCheckpoints(claim);
+      final execution = dispatcher.dispatch(
+        TomJobRunCommand(
+          inner: body,
+          runId: run.id,
+          jobName: run.jobName,
+          checkpoint: run.checkpoint,
+          saves: checkpoints.sendPort,
+        ),
+      );
+      // Closed when the body settles, not when the attempt ends: a body that
+      // outlived its timeout may still save, and a save sent to a closed port
+      // would never be answered.
+      unawaited(
+        execution
+            .then<void>((_) {}, onError: (Object _, StackTrace _) {})
+            .whenComplete(checkpoints.close),
+      );
       try {
-        await body.timeout(job.timeout);
+        await execution.timeout(job.timeout);
       } on TimeoutException {
-        overrunningBody = body;
+        overrunningBody = execution;
         rethrow;
       }
       if (_stillOurs(run)) {
@@ -1132,6 +1181,34 @@ class TomScheduler implements TomClosable {
         _holdUntilSettled(job, run, overrun, heartbeat);
       }
     }
+  }
+
+  /// The port [claim]'s body saves its checkpoints through — see
+  /// [TomJobRunContext].
+  ///
+  /// Each save is stored under the claim, so a save from an attempt that lost
+  /// its run is refused by the store's fence and answered `false`; with a
+  /// [lock], a lease this node already knows it lost answers `false` without
+  /// asking the store.
+  ReceivePort _receiveCheckpoints(TomJobClaim claim) {
+    final port = ReceivePort();
+    port.listen((message) async {
+      final (checkpoint, reply) = message as (Map<String, Object?>?, SendPort);
+      try {
+        reply.send(
+          _stillOurs(claim.run) &&
+              await store.saveCheckpoint(claim, checkpoint),
+        );
+      } on TomException catch (error) {
+        reply.send((error.key, error.defaultUserMessage));
+      } catch (error) {
+        reply.send((
+          'schedule.job.checkpoint_failed',
+          'The checkpoint of run ${claim.id} could not be stored: $error',
+        ));
+      }
+    });
+    return port;
   }
 
   /// Keeps [run]'s overlap protection — its busy mark and its lease, kept

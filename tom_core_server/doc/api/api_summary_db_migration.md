@@ -1125,16 +1125,18 @@ here rather than on the dialect.
 
 | Name | Signature | Description |
 | ---- | --------- | ----------- |
-| `frameworkOwnedTables` | `List<TomFrameworkTable> frameworkOwnedTables({String jobRun = defaultJobRunTable, String lease = defaultLeaseTable, String schedulerNode = defaultSchedulerNodeTable, String blobManifest = defaultBlobManifestTable, String blobChunk = defaultBlobChunkTable, String auditTrail = defaultAuditTrailTable, String oauthState = defaultOAuthStateTable, String deliveryReport = defaultDeliveryReportTable, String invalidation = defaultInvalidationTable, String scimResource = defaultScimResourceTable, String inbox = defaultInboxTable, String idempotency = defaultIdempotencyTable, String saga = defaultSagaTable, String encryptionKey = defaultEncryptionKeyTable, String subjectKey = defaultSubjectKeyTable, String decision = defaultDecisionTable})` | Every table the framework owns, at the names it uses when nothing overrides them — so that "all of them" is a thing a caller can name rather than a list each caller assembles and each forgets to extend. A deployment that renames a table passes the corresponding argument. The dependency runs one way: this module reads the descriptors of `scheduling/`, `file_storage/`, `audit/`, `authentication/`, `messaging/`, `cache/`, `endpoints/`, `transactions/`, `object_persistence/` and `privacy/`, and none of them reads back, so the scheduler runs without loading a migration. |
+| `frameworkOwnedTables` | `List<TomFrameworkTable> frameworkOwnedTables({String jobRun = defaultJobRunTable, String lease = defaultLeaseTable, String schedulerNode = defaultSchedulerNodeTable, String jobPause = defaultJobPauseTable, String jobRunArchive = defaultJobRunArchiveTable, String blobManifest = defaultBlobManifestTable, String blobChunk = defaultBlobChunkTable, String auditTrail = defaultAuditTrailTable, String oauthState = defaultOAuthStateTable, String deliveryReport = defaultDeliveryReportTable, String invalidation = defaultInvalidationTable, String scimResource = defaultScimResourceTable, String inbox = defaultInboxTable, String idempotency = defaultIdempotencyTable, String saga = defaultSagaTable, String encryptionKey = defaultEncryptionKeyTable, String subjectKey = defaultSubjectKeyTable, String decision = defaultDecisionTable})` | Every table the framework owns, at the names it uses when nothing overrides them — so that "all of them" is a thing a caller can name rather than a list each caller assembles and each forgets to extend. A deployment that renames a table passes the corresponding argument. The dependency runs one way: this module reads the descriptors of `scheduling/`, `file_storage/`, `audit/`, `authentication/`, `messaging/`, `cache/`, `endpoints/`, `transactions/`, `object_persistence/` and `privacy/`, and none of them reads back, so the scheduler runs without loading a migration. |
 
 The signature names the defaulting constants rather than their values, and each
-is declared by the module that owns the table — so the fifteen names the check
+is declared by the module that owns the table — so the eighteen names the check
 actually covers in a deployment that renames nothing are spread across ten other
 modules. They are, parameter → constant → table name (owner):
 
 - `jobRun` → `defaultJobRunTable` → `tom_job_run` (Scheduling)
 - `lease` → `defaultLeaseTable` → `tom_lease` (Scheduling)
 - `schedulerNode` → `defaultSchedulerNodeTable` → `tom_scheduler_node` (Scheduling)
+- `jobPause` → `defaultJobPauseTable` → `tom_job_pause` (Scheduling)
+- `jobRunArchive` → `defaultJobRunArchiveTable` → `tom_job_run_archive` (Scheduling)
 - `blobManifest` → `defaultBlobManifestTable` → `tom_blob` (File Storage)
 - `blobChunk` → `defaultBlobChunkTable` → `tom_blob_chunk` (File Storage)
 - `auditTrail` → `defaultAuditTrailTable` → `tom_audit_trail` (Audit)

@@ -2,6 +2,30 @@
 
 ### Added
 
+- **Job priority, pauses, checkpoints and the run archive** (`scheduling`,
+  `db_migration` modules). `TomSqlJobStore` implements the kernel's priority,
+  pause and checkpoint contract: `tom_job_run` carries `priority INT NOT NULL
+  DEFAULT 0` and `checkpoint LONGTEXT NULL`, the claim scan reads `ORDER BY
+  priority DESC, seq` and leaves out paused jobs, and `saveCheckpoint` is an
+  `UPDATE` fenced on the claim. Paused jobs are rows of `tom_job_pause`
+  (`jobPauseTable`, `jobPauseTableDdl`, `defaultJobPauseTable`,
+  `TomJobPauseRow`; constructor argument `pauseTable`); `pauseJob` keeps the
+  first pause's instant. `purgeFinished(before, {now})` moves finished runs into
+  `tom_job_run_archive` (`jobRunArchiveTable`, `jobRunArchiveTableDdl`,
+  `defaultJobRunArchiveTable`; constructor argument `archiveTable`, `null` for a
+  purge that deletes) in one transaction — an `INSERT … SELECT`, then a
+  `DELETE` of exactly the archived runs; `archivedRuns({jobName, limit})` reads
+  it newest first as `TomArchivedJobRun`s and `purgeArchive(before)` trims it.
+  `deleteAll` empties all three tables, `TomJobRunRow` carries `priority` and
+  `checkpoint`, `TomJobRunArchiveRow` maps an archived run, and `frameworkOwnedTables` lists both tables
+  (arguments `jobPause`, `jobRunArchive`). Reference migrations
+  `example/scheduling/migrations/main/tomcore/[1]-create_tom_job_run.sql` (the
+  two columns), `[4]-create_tom_job_pause.sql`,
+  `[5]-create_tom_job_run_archive.sql` and their PostgreSQL forms;
+  `doc/scheduling.md` § Priority, Pausing and Checkpoints and § The Archive;
+  step 11 of `example/scheduling/scheduling_example.dart`; tests in
+  `test/scheduling_db_test.dart`, `test/scheduling_schema_test.dart` and
+  `test/framework_schema_test.dart`.
 - **Recovery of prepared two-phase branches** (`transactions`,
   `datasources`, `server` modules). Every `TomTransaction` has an `id`
   (`tx_<process tag>_<counter>`). Between the phases the coordinator records

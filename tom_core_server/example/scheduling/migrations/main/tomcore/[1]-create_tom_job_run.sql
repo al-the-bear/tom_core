@@ -33,6 +33,11 @@
 -- mid-execution and may only be offered again when the job opted in
 -- (`requestsRecovery`). Quartz spends two trigger states on the same line.
 --
+-- `priority` orders the claim (most urgent first, insertion order among
+-- equals); it is copied from the job when the run is planned. `checkpoint` is
+-- the JSON text of the progress the job last saved, kept across retries and
+-- recovery so the next attempt can continue from it.
+--
 -- Instants are DATETIME(6) and are always written in UTC by the store.
 CREATE TABLE IF NOT EXISTS tom_job_run (
   seq           BIGINT       NOT NULL AUTO_INCREMENT,
@@ -50,6 +55,8 @@ CREATE TABLE IF NOT EXISTS tom_job_run (
   last_error    TEXT         NULL,
   completed_at  DATETIME(6)  NULL,
   payload       LONGTEXT     NULL,
+  priority      INT          NOT NULL DEFAULT 0,
+  checkpoint    LONGTEXT     NULL,
   PRIMARY KEY (id),
   UNIQUE KEY uq_tom_job_run_seq (seq),
   UNIQUE KEY uq_tom_job_run_window (job_name, tenant, scheduled_for),

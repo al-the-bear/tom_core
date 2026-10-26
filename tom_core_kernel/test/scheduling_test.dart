@@ -110,6 +110,21 @@ class IsolateMarkerCommand extends TomCommand {
   }
 }
 
+/// Saves a checkpoint from a worker isolate and records, in the checkpoint
+/// itself, that the save was acknowledged and where it ran.
+class IsolateCheckpointCommand extends TomCommand {
+  @override
+  Future<Object?> execute() async {
+    final context = TomJobRunContext.require();
+    final stored = await context.saveCheckpoint({'stored': false});
+    await context.saveCheckpoint({
+      'stored': stored,
+      'isolate': Isolate.current.debugName,
+    });
+    return null;
+  }
+}
+
 /// Builds a scheduler wired to [store] with everything deterministic.
 TomScheduler schedulerFor(
   TomJobStore store,
@@ -1069,8 +1084,15 @@ void main() {
         lastError: 'previous failure',
         completedAt: DateTime.utc(2026, 3, 1, 10, 7),
         payload: {'key': 'value'},
+        priority: -3,
+        checkpoint: {
+          'offset': 40,
+          'done': ['a'],
+        },
       );
       final copy = TomJobRun.fromJson(original.toJson());
+      expect(copy.priority, -3);
+      expect(copy.checkpoint, original.checkpoint);
       expect(copy.id, original.id);
       expect(copy.jobName, original.jobName);
       expect(copy.scheduledFor, original.scheduledFor);
@@ -1138,6 +1160,25 @@ void main() {
         );
         expect(recovered.single.id, 'a');
         expect(recovered.single.state, TomJobRunState.pending);
+      },
+    );
+
+    test(
+      'a pause and a checkpoint survive losing the store instance',
+      () async {
+        final path = '${makeTempDir().path}/queue.json';
+        final first = TomFileJobStore(path);
+        await first.enqueue(
+          TomJobRun(id: 'a', jobName: 'job', scheduledFor: at, runAt: at),
+        );
+        await first.saveCheckpoint((await first.claimDue(at, 'o')).single, {
+          'offset': 7,
+        });
+        await first.pauseJob('job', at);
+
+        final second = TomFileJobStore(path);
+        expect(await second.pausedJobs(), {'job': at});
+        expect((await second.all()).single.checkpoint, {'offset': 7});
       },
     );
 
@@ -1370,15 +1411,15 @@ void main() {
       });
 
       test('reports a truncated array left by a crash', () async {
-        File(path).writeAsStringSync('[${goodRecord('a')},');
+        File(path).writeAsStringSync('{"runs":[${goodRecord('a')},');
 
         expect(await TomFileJobStore(path).all(), isEmpty);
         expect(captured.messages.join('\n'), contains('could not be read'));
         expect(quarantine().existsSync(), isTrue);
       });
 
-      test('reports a top level that is not a list', () async {
-        File(path).writeAsStringSync('{"not":"a list"}');
+      test('reports a top level that is not a queue object', () async {
+        File(path).writeAsStringSync('[${goodRecord('a')}]');
 
         expect(await TomFileJobStore(path).all(), isEmpty);
         expect(captured.messages.join('\n'), contains('could not be read'));
@@ -1386,16 +1427,18 @@ void main() {
       });
 
       test('skips a single corrupt record and keeps the rest', () async {
-        File(path).writeAsStringSync('[{"id":"bad"},${goodRecord('good')}]');
+        File(
+          path,
+        ).writeAsStringSync('{"runs":[{"id":"bad"},${goodRecord('good')}]}');
 
         expect((await TomFileJobStore(path).all()).map((r) => r.id), ['good']);
       });
 
       test('counts the skipped records rather than dropping them in '
           'silence', () async {
-        File(
-          path,
-        ).writeAsStringSync('[{"id":"bad"},${goodRecord('good')},"nonsense"]');
+        File(path).writeAsStringSync(
+          '{"runs":[{"id":"bad"},${goodRecord('good')},"nonsense"]}',
+        );
 
         await TomFileJobStore(path).all();
 
@@ -1408,7 +1451,9 @@ void main() {
       });
 
       test('re-persists what it salvaged so a restart sees it', () async {
-        File(path).writeAsStringSync('[{"id":"bad"},${goodRecord('good')}]');
+        File(
+          path,
+        ).writeAsStringSync('{"runs":[{"id":"bad"},${goodRecord('good')}]}');
 
         expect((await TomFileJobStore(path).all()).single.id, 'good');
 
@@ -3812,6 +3857,244 @@ void main() {
       });
     });
 
+    group('priority, pausing and checkpoints', () {
+      TomJobDefinition job(
+        String name, {
+        int priority = 0,
+        TomCommand Function(TomJobRun run)? body,
+        bool requestsRecovery = false,
+        Duration timeout = const Duration(minutes: 5),
+        TomSchedule? schedule,
+      }) => TomJobDefinition(
+        name: name,
+        schedule: schedule ?? TomCronSchedule('0 0 * * *'),
+        body: body ?? (_) => OkCommand(),
+        priority: priority,
+        requestsRecovery: requestsRecovery,
+        timeout: timeout,
+        retryPolicy: const TomRetryPolicy(
+          jitter: 0,
+          initialBackoff: Duration(minutes: 1),
+        ),
+      );
+
+      test('the run of the more urgent job is claimed first', () async {
+        final order = <String>[];
+        final scheduler = schedulerFor(
+          store,
+          clock,
+          alerts: alerts,
+          maxRunsPerTick: 1,
+        );
+        addTearDown(scheduler.close);
+        TomCommand record(TomJobRun run) {
+          order.add(run.jobName);
+          return OkCommand();
+        }
+
+        // Registered, and so planned, first: queue order alone would take it.
+        scheduler.register(job('routine', body: record));
+        scheduler.register(job('urgent', priority: 10, body: record));
+        await scheduler.tick();
+        expect(
+          {for (final r in await store.all()) r.jobName: r.priority},
+          {'routine': 0, 'urgent': 10},
+        );
+
+        clock.now = DateTime.utc(2026, 3, 2, 0, 1);
+        await scheduler.tick();
+        await scheduler.drain();
+        await scheduler.tick();
+        await scheduler.drain();
+
+        expect(order, ['urgent', 'routine']);
+      });
+
+      test('a paused job is neither planned nor run; resumed, its missed '
+          'windows follow its policy', () async {
+        final scheduler = schedulerFor(store, clock, alerts: alerts);
+        addTearDown(scheduler.close);
+        scheduler.register(job('daily'));
+        await scheduler.tick(); // plans 2026-03-02T00:00Z
+
+        await scheduler.pauseJob('daily');
+        expect(await scheduler.pausedJobs(), {'daily': clock.now});
+
+        clock.now = DateTime.utc(2026, 3, 4, 1);
+        await scheduler.tick();
+        await scheduler.drain();
+        final whilePaused = await store.all();
+        expect(whilePaused, hasLength(1), reason: 'nothing planned');
+        expect(whilePaused.single.state, TomJobRunState.pending);
+
+        await scheduler.resumeJob('daily');
+        expect(await scheduler.pausedJobs(), isEmpty);
+        // The job does not allow overlap: one window per pass.
+        for (var pass = 0; pass < 2; pass++) {
+          await scheduler.tick();
+          await scheduler.drain();
+        }
+
+        final runs = {
+          for (final r in await store.all()) r.scheduledFor: r.state,
+        };
+        // The window planned before the pause runs late; of the two missed
+        // while paused, runOnce keeps the latest and reports the other.
+        expect(runs[DateTime.utc(2026, 3, 2)], TomJobRunState.succeeded);
+        expect(runs[DateTime.utc(2026, 3, 4)], TomJobRunState.succeeded);
+        expect(runs.containsKey(DateTime.utc(2026, 3, 3)), isFalse);
+        expect(
+          alerts.where((a) => a.kind == TomJobAlertKind.windowsMissed),
+          hasLength(1),
+        );
+      });
+
+      test('a paused event job keeps its events and runs them on '
+          'resume', () async {
+        final events = makeEventSource();
+        final scheduler = schedulerFor(store, clock, alerts: alerts);
+        addTearDown(scheduler.close);
+        scheduler.register(
+          job('on-event', schedule: TomEventSchedule(events.stream)),
+        );
+        await scheduler.pauseJob('on-event');
+
+        events.add('order-1');
+        await settle();
+        await scheduler.tick();
+        await scheduler.drain();
+        expect((await store.all()).single.state, TomJobRunState.pending);
+
+        await scheduler.resumeJob('on-event');
+        await scheduler.tick();
+        await scheduler.drain();
+        expect((await store.all()).single.state, TomJobRunState.succeeded);
+      });
+
+      test('a failed attempt\'s retry continues from its checkpoint', () async {
+        final seen = <Object?>[];
+        final scheduler = schedulerFor(store, clock, alerts: alerts);
+        addTearDown(scheduler.close);
+        scheduler.register(
+          job('import', body: (run) => _CheckpointingCommand(seen, failAt: 1)),
+        );
+        await scheduler.tick();
+        clock.now = DateTime.utc(2026, 3, 2, 0, 1);
+        await scheduler.tick();
+        await scheduler.drain();
+        clock.now = clock.now.add(const Duration(hours: 1));
+        await scheduler.tick();
+        await scheduler.drain();
+
+        expect(seen, [null, 10]);
+        final run = (await store.all()).firstWhere(
+          (r) => r.scheduledFor == DateTime.utc(2026, 3, 2),
+        );
+        expect(run.state, TomJobRunState.succeeded);
+        expect(run.checkpoint, {'offset': 20});
+      });
+
+      test('a recovered run resumes from the checkpoint its dead node '
+          'saved', () async {
+        final seen = <Object?>[];
+        final scheduler = schedulerFor(
+          store,
+          clock,
+          alerts: alerts,
+          leaseTimeout: const Duration(minutes: 5),
+        );
+        addTearDown(scheduler.close);
+        scheduler.register(
+          job(
+            'import',
+            requestsRecovery: true,
+            body: (run) => _CheckpointingCommand(seen),
+          ),
+        );
+        final past = clock.now.subtract(const Duration(hours: 1));
+        await store.enqueue(
+          TomJobRun(
+            id: 'interrupted',
+            jobName: 'import',
+            scheduledFor: past,
+            runAt: past,
+            state: TomJobRunState.running,
+            claimedBy: 'a-node-that-died',
+            claimedAt: past,
+            startedAt: past,
+            checkpoint: {'offset': 300},
+          ),
+        );
+
+        await scheduler.tick();
+        await scheduler.drain();
+
+        expect(seen.first, 300);
+        expect(
+          (await store.all()).firstWhere((r) => r.id == 'interrupted').state,
+          TomJobRunState.succeeded,
+        );
+      });
+
+      test('a save after the attempt timed out is refused', () async {
+        final gate = Completer<void>();
+        final saved = Completer<bool>();
+        final scheduler = schedulerFor(store, clock, alerts: alerts);
+        addTearDown(scheduler.close);
+        scheduler.register(
+          job(
+            'slow',
+            timeout: const Duration(milliseconds: 20),
+            body: (_) => _LateSaveCommand(gate.future, saved),
+          ),
+        );
+        await scheduler.tick();
+        clock.now = DateTime.utc(2026, 3, 2, 0, 1);
+        await scheduler.tick();
+        await scheduler.drain();
+        expect(
+          alerts.where((a) => a.kind == TomJobAlertKind.timedOut),
+          hasLength(1),
+        );
+
+        gate.complete();
+        expect(await saved.future, isFalse);
+        expect(
+          (await store.all())
+              .firstWhere((r) => r.scheduledFor == DateTime.utc(2026, 3, 2))
+              .checkpoint,
+          isNull,
+        );
+      });
+
+      test('a store that cannot save is reported to the body', () async {
+        final failures = <Object>[];
+        final failing = _CheckpointFailingStore();
+        final scheduler = schedulerFor(failing, clock, alerts: alerts);
+        addTearDown(scheduler.close);
+        scheduler.register(
+          job('import', body: (_) => _CatchingSaveCommand(failures)),
+        );
+        await scheduler.tick();
+        clock.now = DateTime.utc(2026, 3, 2, 0, 1);
+        await scheduler.tick();
+        await scheduler.drain();
+
+        expect(
+          failures.single,
+          isA<TomScheduleException>().having(
+            (e) => e.key,
+            'key',
+            'schedule.job.checkpoint_failed',
+          ),
+        );
+      });
+
+      test('the run context exists only inside a job body', () {
+        expect(TomJobRunContext.current, isNull);
+      });
+    });
+
     group('lifecycle', () {
       test(
         'start runs a pass immediately rather than waiting an interval',
@@ -4015,6 +4298,41 @@ void main() {
         run = await pooledRun();
       }
       expect(run.state, TomJobRunState.succeeded);
+    });
+
+    test('a body on the isolate pool saves its checkpoint through the '
+        'scheduler', () async {
+      final pool = await TomWorkerPool.withSize(1, SchedulingWorkerContext());
+      addTearDown(pool.close);
+      final clock = FakeClock(DateTime.utc(2026, 3, 1, 10));
+      final store = TomMemoryJobStore();
+      final scheduler = TomScheduler(
+        store: store,
+        dispatcher: TomWorkerPoolJobDispatcher(pool),
+        clock: clock.call,
+        ownerId: 'pool-checkpoint',
+        onAlert: (_) {},
+      );
+      addTearDown(scheduler.close);
+      scheduler.register(
+        TomJobDefinition(
+          name: 'pooled',
+          schedule: TomCronSchedule('0 0 * * *'),
+          body: (_) => IsolateCheckpointCommand(),
+          timeout: const Duration(seconds: 20),
+        ),
+      );
+
+      await scheduler.tick();
+      clock.now = DateTime.utc(2026, 3, 2, 0, 1);
+      await scheduler.tick();
+      await scheduler.drain();
+
+      final run = (await store.all()).firstWhere(
+        (r) => r.scheduledFor == DateTime.utc(2026, 3, 2),
+      );
+      expect(run.state, TomJobRunState.succeeded);
+      expect(run.checkpoint, {'stored': true, 'isolate': startsWith('Sched')});
     });
 
     test(
@@ -5207,4 +5525,65 @@ class _TokenProbe extends TomCommand {
     tokens.add((await lock.inspect('job:job')).lease!.token);
     return 'probed';
   }
+}
+
+/// Reads its checkpoint's offset into [seen], saves `offset + 10`, then saves
+/// once more and fails when the attempt is [failAt].
+class _CheckpointingCommand extends TomCommand {
+  _CheckpointingCommand(this.seen, {this.failAt});
+
+  final List<Object?> seen;
+  final int? failAt;
+
+  @override
+  Future<Object?> execute() async {
+    final context = TomJobRunContext.require();
+    final offset = context.checkpoint?['offset'] as int?;
+    seen.add(offset);
+    await context.saveCheckpoint({'offset': (offset ?? 0) + 10});
+    if (failAt != null && offset == null) throw StateError('interrupted');
+    return null;
+  }
+}
+
+/// Waits for [gate], then saves a checkpoint and reports whether it stored.
+class _LateSaveCommand extends TomCommand {
+  _LateSaveCommand(this.gate, this.saved);
+
+  final Future<void> gate;
+  final Completer<bool> saved;
+
+  @override
+  Future<Object?> execute() async {
+    final context = TomJobRunContext.require();
+    await gate;
+    saved.complete(await context.saveCheckpoint({'late': true}));
+    return null;
+  }
+}
+
+/// Tries to save a checkpoint and records what the save threw.
+class _CatchingSaveCommand extends TomCommand {
+  _CatchingSaveCommand(this.failures);
+
+  final List<Object> failures;
+
+  @override
+  Future<Object?> execute() async {
+    try {
+      await TomJobRunContext.require().saveCheckpoint({'offset': 1});
+    } catch (error) {
+      failures.add(error);
+    }
+    return null;
+  }
+}
+
+/// A store whose checkpoint writes fail, as a database outage would.
+class _CheckpointFailingStore extends TomMemoryJobStore {
+  @override
+  Future<bool> saveCheckpoint(
+    TomJobClaim claim,
+    Map<String, Object?>? checkpoint,
+  ) => throw StateError('database unreachable');
 }

@@ -20,7 +20,7 @@ names the tenant through a `TomTenantEvent`.
 | Type | Responsibility |
 | ---- | -------------- |
 | `TomScheduler` | The engine: recovers interrupted runs, plans windows, claims, dispatches, records. |
-| `TomJobDefinition` | A registered job — trigger, body, and the retry, timeout and overlap policy around both. |
+| `TomJobDefinition` | A registered job — trigger, body, priority, and the retry, timeout and overlap policy around both. |
 | `TomJobBase` | What a declared job extends; gives the body the `TomJobRun` it is executing. |
 | `TomScheduledJob` | Annotation that makes a class its own registration. |
 | `TomScheduledJobs` | Scans the annotated classes and registers what it finds. |
@@ -46,7 +46,7 @@ names the tenant through a `TomTenantEvent`.
 | `TomJobStore` | Durable storage for job runs; the queue the scheduler works from. |
 | `TomMemoryJobStore` | Keeps everything in memory and nothing across restarts. For tests and single-shot processes. |
 | `TomFileJobStore` | Keeps the queue in a JSON file that survives a restart. Several stores over one file share one queue: every operation holds a file mutex and re-reads the file, so a claim is atomic between processes and isolates. |
-| `TomJobRun` | One attempt-carrying occurrence of a job: its window, attempt count, state, claim and tenant. |
+| `TomJobRun` | One attempt-carrying occurrence of a job: its window, attempt count, state, claim, tenant, priority and checkpoint. |
 | `TomJobRunState` | The lifecycle of a single `TomJobRun`. |
 | `TomJobClaim` | A ticket proving one particular claim of a run was won — the fencing token a displaced node fails to present. |
 | `TomJobBacklog` | One job's due, unclaimed runs — how many and since when — as `TomJobStore.backlog` answers them. |
@@ -56,6 +56,8 @@ names the tenant through a `TomTenantEvent`.
 | Type | Responsibility |
 | ---- | -------------- |
 | `TomJobDispatcher` | Where a job's work body is actually run. |
+| `TomJobRunContext` | What a running body may ask of its run: its id and job, the checkpoint it starts from, and `saveCheckpoint`. |
+| `TomJobRunCommand` | The command the scheduler dispatches around every body: runs it inside its `TomJobRunContext`, and carries the port a checkpoint save travels back through. |
 | `TomInlineJobDispatcher` | Runs bodies in the calling isolate. |
 | `TomWorkerPoolJobDispatcher` | Runs bodies on an existing `TomWorkerPool`. |
 | `TomRetryPolicy` | How a failed attempt is retried: attempts, backoff, ceiling. |
@@ -86,6 +88,17 @@ Beside the alerts, the scheduler records `tom_job_*` series into
 `TomMetrics.registry` — start lag, run duration, runs by outcome, the last
 success, and the backlog gauges observed from `TomJobStore.backlog` — see
 [Observability](../../../../doc/scheduling/scheduling.md#observability).
+
+Three controls act on runs already in the queue. A job's **priority** is copied
+onto every run it plans, and a claim takes the most urgent due run first.
+`TomScheduler.pauseJob` holds a job's runs out of every claim, on every node
+sharing the store, until `resumeJob`. A body saves its progress as a
+**checkpoint** through `TomJobRunContext.saveCheckpoint`; it is kept across
+retries and recovery, and the next attempt starts from it. The refusals are
+`schedule.job.checkpoint` (the checkpoint is not JSON-encodable),
+`schedule.job.checkpoint_failed` (the store could not write it) and
+`schedule.run_context.missing` (`TomJobRunContext.require()` outside a job body)
+— see [Checkpoints](../../../../doc/scheduling/scheduling.md#checkpoints).
 
 ## Quick start
 

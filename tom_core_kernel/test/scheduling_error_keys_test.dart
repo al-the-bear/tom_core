@@ -201,6 +201,32 @@ void main() {
     );
   });
 
+  group('TomJobStore', () {
+    test('a checkpoint that is not JSON-encodable is refused under '
+        'schedule.job.checkpoint', () {
+      final run = TomJobRun(
+        id: 'r',
+        jobName: 'job',
+        scheduledFor: DateTime.utc(2026),
+        runAt: DateTime.utc(2026),
+      );
+      expect(
+        () => TomJobStore.encodeCheckpoint(run, {'at': DateTime.utc(2026)}),
+        _throwsKey('schedule.job.checkpoint'),
+      );
+    });
+  });
+
+  group('TomJobRunContext', () {
+    test('require outside a job body is refused under '
+        'schedule.run_context.missing', () {
+      expect(
+        TomJobRunContext.require,
+        _throwsKey('schedule.run_context.missing'),
+      );
+    });
+  });
+
   group('TomScheduledJobs.discover', () {
     bool Function(ClassMirror) only(String className) =>
         (candidate) => candidate.simpleName == className;

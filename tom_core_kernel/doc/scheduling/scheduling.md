@@ -31,6 +31,10 @@ fails*, and *which node in a cluster actually runs a given occurrence*.
 - [Recovering an Interrupted Run](#recovering-an-interrupted-run)
   - [And what the losing node must not do](#and-what-the-losing-node-must-not-do)
 - [Retries, Backoff and Timeouts](#retries-backoff-and-timeouts)
+- [Priority](#priority)
+- [Pausing a Job](#pausing-a-job)
+- [Checkpoints](#checkpoints)
+  - [Where a save goes](#where-a-save-goes)
 - [Running More Than One Node](#running-more-than-one-node)
   - [What the lease is taken on](#what-the-lease-is-taken-on)
 - [Runs and Tenants](#runs-and-tenants)
@@ -83,6 +87,8 @@ fails*, and *which node in a cluster actually runs a given occurrence*.
 | `TomScheduleException` | class | Thrown when a schedule expression cannot be parsed or is self-contradictory. |
 | `TomScheduledJobException` | class | Raised when an annotated job cannot be turned into a `TomJobDefinition`. |
 | `TomJobClaim` | class | A ticket proving that one particular claim of `run` was won. |
+| `TomJobRunContext` | class | What a running body may ask of its run: its id and job, the checkpoint it starts from, and `saveCheckpoint`. |
+| `TomJobRunCommand` | class | The command the scheduler dispatches around every body: runs it inside its `TomJobRunContext`, and carries the port a save travels back through. |
 | `TomOneShotResource` | extension type | A lease resource name that will never be acquired again once its work is done — the only kind `TomLeaseLock.forget` accepts. |
 
 A **job** pairs a [schedule](#schedules) with a body. The **scheduler** turns the
@@ -149,6 +155,8 @@ timing.
 | [`02_declared_job_example.dart`](../../example/samples/scheduling/02_declared_job_example.dart) | `@TomScheduledJob` discovery, a malformed declaration failing the scan by name, and declared jobs coexisting with hand-written ones |
 | [`03_schedule_kinds_example.dart`](../../example/samples/scheduling/03_schedule_kinds_example.dart) | What each schedule kind answers, an event job in motion, and every missed-window policy across one outage — including a one-shot deadline that survives it |
 | [`04_execution_guarantee_example.dart`](../../example/samples/scheduling/04_execution_guarantee_example.dart) | The duplicate a retry produces, the two abandonment cases, a fencing token making a displaced node harmless, and a body that outlives its timeout holding its job until it settles |
+| [`05_durable_store_example.dart`](../../example/samples/scheduling/05_durable_store_example.dart) | `TomFileJobStore` and `TomFileLeaseLock` across a restart: a planned window, an in-flight run and a lease outliving their process, and two stores over one file sharing one queue |
+| [`06_priority_pause_checkpoint_example.dart`](../../example/samples/scheduling/06_priority_pause_checkpoint_example.dart) | The most urgent due run claimed first, a paused job's queued run waiting and running after the resume, and a retried attempt starting from the checkpoint the failed one saved |
 
 ```bash
 dart run --enable-asserts example/samples/scheduling/00_run_all_examples.dart
@@ -343,8 +351,8 @@ trigger is declared instead by four **mutually exclusive** fields, of which
 | `event: true` | `TomEventSchedule` | see [Event Jobs](#event-jobs) |
 
 The remaining fields map one-to-one onto `TomJobDefinition`: `retry`, `timeout`,
-`missedWindow`, `catchUpLimit`, `allowOverlap` and `requestsRecovery`, with the
-same defaults. `requestsRecovery` is the one to think about deliberately — see
+`missedWindow`, `catchUpLimit`, `allowOverlap`, `requestsRecovery` and
+`priority`, with the same defaults. `requestsRecovery` is the one to think about deliberately — see
 [Recovering an Interrupted Run](#recovering-an-interrupted-run).
 
 `TomOnceSchedule` has no annotation field on purpose — a one-shot's instant is a
@@ -497,6 +505,7 @@ TomJobDefinition(
   catchUpLimit: 24,
   allowOverlap: false,
   requestsRecovery: false,        // may a partial execution be re-run?
+  priority: 0,                    // higher is claimed first
 )
 ```
 
@@ -523,6 +532,8 @@ the command is the unit that crosses the isolate boundary.
 | `claimedBy` / `claimedAt` | The node holding it, and when — the store's own lease |
 | `claimToken` | Which claim of this run is current: a counter that rises on every claim and never repeats |
 | `startedAt` | When execution actually began, or `null` if it never did |
+| `priority` | The job's priority when the run was planned; the claim takes higher first — see [Priority](#priority) |
+| `checkpoint` | The progress the body last saved, an opaque JSON map, or `null` — see [Checkpoints](#checkpoints) |
 
 `startedAt` is not a duplicate of `claimedAt`. A run can be claimed and never
 start — the node dies in the gap — and the two cases must be recovered
@@ -534,14 +545,21 @@ in the node that is about to disappear.
 The store also answers `backlog(now)`: the runs that are due — `pending`, with
 `runAt` at or before `now` — and that nobody has claimed, grouped per job as a
 `TomJobBacklog` (`due`, `oldestDueAt`). It changes nothing; the scheduler reads
-it for its [backlog gauges](#metrics).
+it for its [backlog gauges](#metrics). A paused job's runs are not in it.
+
+The contract also holds the paused jobs (`pauseJob`, `resumeJob`, `pausedJobs` —
+see [Pausing a Job](#pausing-a-job)) and the checkpoint a running body saves
+(`saveCheckpoint`, fenced on the claim like every transition — see
+[Checkpoints](#checkpoints)). `claimDue` takes due runs by descending
+`priority`, in queue order among equals, and passes over the runs of a paused
+job.
 
 Two implementations ship here:
 
 - **`TomMemoryJobStore`** — one process, nothing survives a restart. Right for
   tests and for jobs whose loss on restart is acceptable.
-- **`TomFileJobStore`** — a JSON file holding the whole queue as **one array**,
-  rewritten on every mutation. Survives a restart; an in-flight run comes back
+- **`TomFileJobStore`** — a JSON file holding the whole queue as **one
+  document**, rewritten on every mutation. Survives a restart; an in-flight run comes back
   as an *expired claim* rather than as lost work, so the scheduler recovers it
   on its next tick. Several stores over one file — processes on one host or a
   shared mount, isolates in one process — share **one queue**: every operation
@@ -556,42 +574,50 @@ the production choice for a cluster; see
 
 ### The on-disk format
 
-One array of run objects, and nothing else. A queue holding a single pending
-run, pretty-printed (the file itself is written unindented):
+One JSON object with two members: `runs`, an array of run objects, and `paused`,
+the paused jobs by name with the instant each was paused. A queue holding a
+single pending run of a job that is not paused, pretty-printed (the file itself
+is written unindented):
 
 ```json
-[
-  {
-    "id": "nightly-report:1772330400000000:0",
-    "jobName": "nightly-report",
-    "scheduledFor": "2026-03-01T02:00:00.000Z",
-    "runAt": "2026-03-01T02:00:00.000Z",
-    "state": "pending",
-    "attempt": 1,
-    "claimedBy": null,
-    "claimedAt": null,
-    "claimToken": 0,
-    "startedAt": null,
-    "lastError": null,
-    "completedAt": null,
-    "payload": null
-  }
-]
+{
+  "runs": [
+    {
+      "id": "nightly-report:1772330400000000:0",
+      "jobName": "nightly-report",
+      "scheduledFor": "2026-03-01T02:00:00.000Z",
+      "runAt": "2026-03-01T02:00:00.000Z",
+      "state": "pending",
+      "attempt": 1,
+      "claimedBy": null,
+      "claimedAt": null,
+      "claimToken": 0,
+      "startedAt": null,
+      "lastError": null,
+      "completedAt": null,
+      "payload": null,
+      "priority": 0,
+      "checkpoint": null
+    }
+  ],
+  "paused": {}
+}
 ```
 
 Every field is written, `null` included, rather than omitted when empty — so the
 shape on disk is the same for every run and a file can be eyeballed without
 cross-referencing which fields a given build chose to skip. Decoding tolerates
-more than that: a missing `attempt` reads as `1`, a missing `claimToken` as `0`,
-and an unrecognised `state` reads as `pending`, so a queue written by a newer
+more than that: a missing `attempt` reads as `1`, a missing `claimToken` and a
+missing `priority` as `0`, a missing `checkpoint` as none, a missing `paused` as
+no paused jobs, and an unrecognised `state` reads as `pending`, so a queue written by a newer
 build cannot stop an older one from starting.
 
 The `id` is `<jobName>:<microsecondsSinceEpoch>:<counter>`, assigned by the
 scheduler as it enqueues the window. Treat it as opaque — it is the store's own
 handle for the record. The idempotence key is `scheduledFor`.
 
-**The array is the whole point of the format, and it is worth being precise
-about it**, because the obvious alternative fails differently and a reader who
+**The single document is the whole point of the format, and it is worth being
+precise about it**, because the obvious alternative fails differently and a reader who
 assumes the wrong one will size the risk wrongly. This is *not* a JSON-lines /
 append-per-record log, where a torn last line costs one record and the rest of
 the file is still good. It is rewritten in full every time, so there is no such
@@ -661,8 +687,10 @@ Loading therefore salvages what it can and carries on. Three things follow:
 
 Partial damage is treated the same way as total damage, and for the same reason:
 a file whose entries mostly decode loads as a *shorter* queue, which reads
-exactly like a queue that had been drained. The count of dropped runs goes into
-the message.
+exactly like a queue that had been drained. The count of dropped entries — runs
+and paused jobs — goes into the message. A file that is not an object with a
+`runs` array (and, when present, a `paused` object) is damage of the whole file,
+a bare array included.
 
 There is one `.corrupt` file, not one per incident, so a queue that keeps being
 damaged does not fill the directory. A second corruption therefore overwrites
@@ -958,6 +986,133 @@ A **body factory that throws** is different: that is a permanent defect, not a
 transient failure, so the run fails outright rather than retrying identically
 four more times.
 
+## Priority
+
+`TomJobDefinition.priority` — `priority:` on `@TomScheduledJob` — is an `int`,
+`0` unless a job sets it. The scheduler copies it onto every run it plans
+(`TomJobRun.priority`), and `claimDue` takes due runs **most urgent first**:
+descending priority, and among runs of equal priority the order they were
+queued in. A negative priority is allowed and goes behind the default.
+
+```dart
+@tomReflector
+@TomScheduledJob(name: 'billing-close', cron: '0 1 * * *', priority: 10)
+class BillingCloseJob extends TomJobBase { /* … */ }
+```
+
+Priority orders the claim and nothing else. It decides which due run a pass
+takes when it cannot take them all — `maxRunsPerTick`, a busy worker pool, a
+backlog after an outage — and it does not make a run due earlier, preempt one
+already running, or lift the overlap rule. A run carries the priority its job
+had when it was planned, so every node sharing the store orders it the same way;
+changing a job's priority applies to the windows planned after the change.
+
+## Pausing a Job
+
+`TomScheduler.pauseJob(name)` holds a job's runs back without unregistering it,
+on every node sharing the store; `resumeJob(name)` lets them go, and
+`pausedJobs()` lists the paused jobs with the instant each was paused. The pause
+lives in the store (`TomJobStore.pauseJob`, `resumeJob`, `pausedJobs`), not in
+the scheduler, so it outlives a restart wherever the store does.
+
+While a job is paused:
+
+- **No run of it is claimed.** `claimDue` passes over its runs, and `backlog`
+  leaves them out: a paused job is waiting by decision, not falling behind.
+- **A run already executing is not interrupted.** The pause stops what starts
+  after it.
+- **A clock-driven job plans no window.** On `resumeJob` the windows it missed
+  are dealt with by its [`TomMissedWindowPolicy`](#missed-windows), exactly as
+  windows missed while the scheduler was down; a window planned before the pause
+  is already in the queue, and runs once the job is resumed.
+- **An event job keeps enqueueing its events**, which wait in the queue. An
+  event is data, and pausing a job is not a way to lose it.
+
+Pausing a paused job keeps the instant of the first pause; resuming a job that
+is not paused does nothing. Both refuse on a closed scheduler
+(`schedule.scheduler.closed`).
+
+## Checkpoints
+
+A long body — an import of a million rows, a sweep over every tenant — that
+fails halfway would start again from the first row when its run is retried or
+recovered. A **checkpoint** is the body's own note of how far it got: an opaque
+JSON map it saves whenever it chooses, stored with the run
+(`TomJobRun.checkpoint`) and handed to the next attempt.
+
+The body reaches its run through **`TomJobRunContext`**:
+
+```dart
+class ImportOrders extends TomCommand {
+  @override
+  Future<Object?> execute() async {
+    final context = TomJobRunContext.require();
+    var offset = context.checkpoint?['offset'] as int? ?? 0;
+    while (true) {
+      final batch = await readBatch(offset, 500);
+      if (batch.isEmpty) return null;
+      await writeBatch(batch);
+      offset += batch.length;
+      if (!await context.saveCheckpoint({'offset': offset})) return null;
+    }
+  }
+
+  // Your own work — not framework API.
+  Future<List<Object?>> readBatch(int offset, int count) async => const [];
+  Future<void> writeBatch(List<Object?> batch) async {}
+}
+```
+
+| Member | What it gives |
+| ------ | ------------- |
+| `TomJobRunContext.current` | The context of the run the calling code executes, or `null` outside a job body. |
+| `TomJobRunContext.require()` | The same, throwing `schedule.run_context.missing` outside a job body — code that saves a checkpoint and is not running as a job is a mistake worth hearing about. |
+| `runId`, `jobName` | The run and its job. |
+| `checkpoint` | The checkpoint this attempt started from, or the last one it saved; `null` when there is none. |
+| `saveCheckpoint(map)` | Stores `map` as the run's progress, replacing the previous one; `null` clears it. Completes with `true` once stored, with `false` when the run is no longer this attempt's. |
+
+What the map means, and how a body continues from it, is the job's business;
+the framework stores it and hands it back. Three rules fix the rest:
+
+- **A checkpoint is kept across retries and recovery.** A retried attempt and a
+  recovered run start from the last checkpoint saved; a run that succeeds or
+  fails for good keeps its last one in the store.
+- **Recovery does not change.** A started run is re-queued only when its job
+  sets `requestsRecovery` — see
+  [Recovering an Interrupted Run](#recovering-an-interrupted-run). The work done
+  after the last checkpoint may have happened, so the body still has to
+  tolerate repeating that stretch; what the checkpoint saves is repeating
+  everything before it.
+- **A body that never saves one restarts from the beginning**, every time.
+
+`saveCheckpoint` answers `false` when the attempt's claim no longer holds the run
+— its lease was lost, or the attempt timed out and a later one took over. Whoever
+holds the run now continues from the checkpoint it was handed, so a body that
+sees `false` stops: whatever it does next is not the run's progress. Two
+refusals throw a `TomScheduleException`:
+
+| Key | Raised when |
+| --- | ----------- |
+| `schedule.job.checkpoint` | The map is not JSON-encodable (`TomJobStore.encodeCheckpoint`); nothing is stored |
+| `schedule.job.checkpoint_failed` | The store could not write it |
+| `schedule.run_context.missing` | `TomJobRunContext.require()` was called outside a job body |
+
+The store keeps a copy, so a body that goes on mutating its map after saving
+does not change what was stored.
+
+### Where a save goes
+
+The scheduler dispatches every body inside a **`TomJobRunCommand`**: a command
+wrapping the body's own, which runs it inside its `TomJobRunContext`. Because it
+is a command, it crosses an isolate hop with the body — on a
+`TomWorkerPoolJobDispatcher` as much as inline. A save travels as a message to a
+port the scheduler opened for that attempt, and the scheduler writes it with
+`TomJobStore.saveCheckpoint` under the attempt's `TomJobClaim`; the answer comes
+back on a reply port. `saveCheckpoint` therefore completes only once the
+checkpoint is stored, wherever the body runs. The port stays open until the body
+settles, not until the attempt ends, so a body that outlived its timeout is
+still answered — with `false`.
+
 ## Running More Than One Node
 
 Point two schedulers at one shared store and both will try to claim the same due
@@ -1252,15 +1407,16 @@ Two alert rules cover most of what an operator wants:
 
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
-| `dart:async` | dart | `job_definition.dart`, `scheduler.dart` | `Completer`, `Future`, `StreamSubscription`, `Timer`, `unawaited` |
+| `dart:async` | dart | `job_definition.dart`, `job_run_context.dart`, `scheduler.dart` | `Completer`, `Future`, `StreamSubscription`, `Timer`, `unawaited`; `Zone` and `runZoned`, which carry a body's `TomJobRunContext` |
 | `dart:convert` | dart | `job_store.dart`, `lease_lock.dart` | `base64Url`, `jsonDecode`, `jsonEncode`, `utf8` |
 | `dart:io` | dart | `job_store.dart`, `lease_lock.dart` | `TomFileJobStore` and `TomFileLeaseLock` only |
+| `dart:isolate` | dart | `job_run_context.dart`, `scheduler.dart` | `SendPort` and `ReceivePort`, the channel a checkpoint save travels through |
 | `dart:math` | dart | `job_definition.dart`, `job_store.dart`, `scheduler.dart` | `Random` and `pow`; in `job_store.dart`, the random part of `TomFileJobStore`'s mutex owner |
 | `tom_basics` | package | `job_store.dart`, `scheduler.dart` | `tomLog`, the default `onAlert` sink |
 | `tom_reflection` | package | `scheduled_job.dart` | `ClassMirror`, which appears in `TomScheduledJobs.discover`'s own signature. The whole of [Declaring a Job](#declaring-a-job) rests on it |
 | [context](../context/context.md) | module | `scheduler.dart` | `TomTenantContext`, `TomTenantScopedCommand` and `TomTenantEvent` — a run's body runs inside its tenant |
-| [isolate_pooling](../isolate_pooling/isolate_pooling.md) | module | `job_definition.dart`, `scheduled_job.dart`, `scheduler.dart` | `TomCommand`, which *is* the job body type; `TomWorkerPool` for `TomWorkerPoolJobDispatcher` |
-| [little_things](../little_things/little_things.md) | module | `job_store.dart`, `schedule.dart`, `scheduled_job.dart` | `TomException`, base of `TomScheduleException` and `TomScheduledJobException`; `tomWriteFileAtomically` for `TomFileJobStore` |
+| [isolate_pooling](../isolate_pooling/isolate_pooling.md) | module | `job_definition.dart`, `job_run_context.dart`, `scheduled_job.dart`, `scheduler.dart` | `TomCommand`, which *is* the job body type and what `TomJobRunCommand` extends; `TomWorkerPool` for `TomWorkerPoolJobDispatcher` |
+| [little_things](../little_things/little_things.md) | module | `job_store.dart`, `schedule.dart`, `scheduled_job.dart`, `scheduler.dart` | `TomException`, base of `TomScheduleException` and `TomScheduledJobException`, whose key a refused checkpoint save carries back to the body; `tomWriteFileAtomically` for `TomFileJobStore` |
 | [metrics](../metrics/metrics.md) | module | `scheduler.dart` | `TomMetrics.registry` and its instruments — the `tom_job_*` series of [Metrics](#metrics) |
 | [reflection](../reflection/reflection.md) | module | `scheduled_job.dart` | The global `tomReflector` and the `@tomReflector` annotation — the only query the scan has |
 | [shutdown_cleanup](../shutdown_cleanup/shutdown_cleanup.md) | module | `scheduler.dart` | `TomClosable`, implemented by `TomScheduler` |

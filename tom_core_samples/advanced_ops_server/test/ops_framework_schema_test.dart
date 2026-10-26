@@ -57,11 +57,13 @@ void main() {
         datasource: 'app_db',
         schema: 'app_schema',
         tables: [
-          // Exactly the four `[100]` creates, and no more: the blob tables of
+          // Exactly the six `[100]` creates, and no more: the blob tables of
           // the same chain are the app server's, checked by its own suite.
           jobRunTable(defaultJobRunTable),
           leaseTable(defaultLeaseTable),
           schedulerNodeTable(defaultSchedulerNodeTable),
+          jobPauseTable(defaultJobPauseTable),
+          jobRunArchiveTable(defaultJobRunArchiveTable),
           auditTrailTable(defaultAuditTrailTable),
         ],
         chain: _wholeChain(),
@@ -91,11 +93,13 @@ void main() {
       '${_opsSchemaDir}[100]-ops_framework_tables.sql',
     ).readAsStringSync();
 
-    test('the migration creates all four framework tables', () {
+    test('the migration creates all six framework tables', () {
       for (final table in [
         defaultJobRunTable,
         defaultLeaseTable,
         defaultSchedulerNodeTable,
+        defaultJobPauseTable,
+        defaultJobRunArchiveTable,
         defaultAuditTrailTable,
       ]) {
         expect(sql, contains(table), reason: table);

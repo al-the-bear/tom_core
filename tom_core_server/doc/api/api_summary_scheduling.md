@@ -11,7 +11,10 @@ runs a component enqueues itself.
 - [Class Hierarchy](#class-hierarchy)
 - [Classes](#classes)
   - [TomSqlJobStore](#tomsqljobstore)
+  - [TomArchivedJobRun](#tomarchivedjobrun)
   - [TomJobRunRow](#tomjobrunrow)
+  - [TomJobRunArchiveRow](#tomjobrunarchiverow)
+  - [TomJobPauseRow](#tomjobpauserow)
   - [TomJobRunWindowRow](#tomjobrunwindowrow)
   - [TomJobBacklogRow](#tomjobbacklogrow)
   - [TomSqlLeaseLock](#tomsqlleaselock)
@@ -37,7 +40,9 @@ execution guarantee — and `TomScheduler` itself live in `tom_core_kernel`.
 `TomSqlJobStore` implements the kernel's `TomJobStore` over one row per
 scheduled run, and `TomSqlLeaseLock` implements `TomLeaseLock` over one row per
 contended resource. Both are verified against the kernel's own parameterised
-contract suite. There is no scheduler, no job registry and no schedule
+contract suite. The store also keeps the paused jobs in a table of their own,
+scans candidates by descending `priority`, stores each run's checkpoint, and
+moves the runs it purges into an archive table. There is no scheduler, no job registry and no schedule
 expression here.
 
 The queue and the lock must share a failure domain — a queue that says node A
@@ -68,7 +73,7 @@ roll-call failure is logged rather than propagated. The failure test itself is
 Quartz's, exposed as the pure functions `schedulerNodeFailedAfter` and
 `isSchedulerNodeFailed` so it can be asserted without a database.
 
-All three tables are declared exactly once, as `TomFrameworkTable` descriptors
+All five tables are declared exactly once, as `TomFrameworkTable` descriptors
 in `sql_scheduling_sql.dart`; the `CREATE TABLE` each store issues (in its data
 source's dialect), the column list of every `SELECT` and every replacing write
 and insert are derived from that one declaration. Table names are constructor arguments, and index names follow them.
@@ -94,7 +99,11 @@ TomLeaseLock  (tom_core_kernel)
 TomSqlSchedulerNodes
 TomSchedulerNode
 
+TomArchivedJobRun
+
 TomJobRunRow
+TomJobRunArchiveRow
+TomJobPauseRow
 TomJobRunWindowRow
 TomJobBacklogRow
 TomLeaseRow
@@ -120,6 +129,8 @@ statement.
 TomSqlJobStore(
   TomDataSource datasource, {
   String table = defaultJobRunTable,
+  String pauseTable = defaultJobPauseTable,
+  String? archiveTable = defaultJobRunArchiveTable,
   bool createSchema = true,
   int candidateFactor = 8,
   TomSqlSchedulerNodes? nodes,
@@ -132,6 +143,8 @@ TomSqlJobStore(
 factory TomSqlJobStore.named(
   String datasourceName, {
   String table = defaultJobRunTable,
+  String pauseTable = defaultJobPauseTable,
+  String? archiveTable = defaultJobRunArchiveTable,
   bool createSchema = true,
   int candidateFactor = 8,
   TomSqlSchedulerNodes? nodes,
@@ -149,6 +162,8 @@ tick.
 | -------- | ---- | ----------- |
 | `datasource` | `TomDataSource` | Where the queue table lives (final). |
 | `table` | `String` | Name of the queue table; index names follow it, so two queues can share a schema (final). |
+| `pauseTable` | `String` | Name of the table holding the paused jobs, one row per job (final). |
+| `archiveTable` | `String?` | Name of the table `purgeFinished` moves finished runs into, or `null` for a store whose purge deletes them (final). |
 | `createSchema` | `bool` | Whether `CREATE TABLE IF NOT EXISTS` is issued lazily on first use; `false` leaves the schema to the migration module (final). |
 | `candidateFactor` | `int` | How many due runs to scan per claim when an `accept` predicate is present, as a multiple of `limit`, so rejected candidates do not starve the accepted ones behind them (final). |
 | `nodes` | `TomSqlSchedulerNodes?` | The cluster roll call, or `null` when the lease timeout is the only liveness signal (final). |
@@ -157,22 +172,46 @@ tick.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `ensureSchema` | `Future<void> ensureSchema()` | Creates the queue table if it does not exist. Idempotent, called by every operation, and exposed so a start-up sequence can provision the schema before serving traffic. |
+| `ensureSchema` | `Future<void> ensureSchema()` | Creates the queue, pause and archive tables if they do not exist. Idempotent, called by every operation, and exposed so a start-up sequence can provision the schema before serving traffic. |
 | `enqueue` | `Future<void> enqueue(TomJobRun run)` | *(override)* Writes the run with a replacing write (`TomFrameworkTable.replaceRow`: `REPLACE` on MariaDB; on PostgreSQL a `DELETE` of the rows it supersedes and an upsert, in one transaction), so re-planning a window overwrites it; the unique key on `(job_name, tenant, scheduled_for)` keeps one-run-per-window — per tenant — a database invariant. A payload that is not JSON-encodable is refused by `TomJobStore.encodePayload` while the bind map is built, so no statement is sent. |
 | `findWindow` | `Future<TomJobRun?> findWindow(String jobName, DateTime scheduledFor, {String? tenant})` | *(override)* The run recorded for that job and window for `tenant` (`null` matching the stored `''` of a run of no tenant), or `null`. |
 | `lastWindow` | `Future<DateTime?> lastWindow(String jobName)` | *(override)* The greatest `scheduled_for` recorded for the job, as a UTC instant, or `null` when it has no runs. |
-| `claimDue` | `Future<List<TomJobClaim>> claimDue(DateTime now, String owner, {int limit = 16, bool Function(TomJobRun run)? accept})` | *(override)* Scans pending runs due at `now` ordered by `seq`, applies `accept` in Dart, and issues one conditional compare-and-set per survivor; a candidate a peer claimed first is skipped. Returns a ticket per run actually won, at most `limit`. |
+| `claimDue` | `Future<List<TomJobClaim>> claimDue(DateTime now, String owner, {int limit = 16, bool Function(TomJobRun run)? accept})` | *(override)* Scans pending runs due at `now` whose job is not paused, ordered by `priority` descending and `seq` among equals, applies `accept` in Dart, and issues one conditional compare-and-set per survivor; a candidate a peer claimed first is skipped. Returns a ticket per run actually won, at most `limit`. |
 | `release` | `Future<void> release(TomJobClaim claim)` | *(override)* Returns a claimed run to `pending` and clears its lease, fenced on the claim so a completion that raced the release wins. `claim_token` is left where it is — the next claim raises it, and a token that repeats is not a fence. |
 | `markStarted` | `Future<void> markStarted(TomJobClaim claim, DateTime now)` | *(override)* Stamps `started_at` at the moment the dispatcher takes the run, fenced on the claim; this is what lets recovery tell an interrupted execution from an abandoned reservation. |
 | `renewClaim` | `Future<void> renewClaim(TomJobClaim claim, DateTime now)` | *(override)* Re-stamps `claimed_at`, fenced on the claim, so a run the lease recovered elsewhere is not renewed. Only the heartbeat moves; the token is the claim's identity and touching it would let an attempt's first heartbeat invalidate its own ticket. |
 | `complete` | `Future<void> complete(TomJobClaim claim, DateTime now)` | *(override)* Moves the run to `succeeded`, records `completed_at` and clears the lease, fenced on the claim so a late outcome cannot overwrite a peer's or restart a purged run's retention clock. |
 | `fail` | `Future<void> fail(TomJobClaim claim, String error, DateTime now, {DateTime? retryAt})` | *(override)* Without `retryAt`, writes the run off as `failed`; with it, returns the run to `pending` at that instant and increments `attempt` in the statement rather than from a possibly stale copy. Both branches are fenced on the claim — the retrying one doubly needs it, since it spends a retry. |
+| `saveCheckpoint` | `Future<bool> saveCheckpoint(TomJobClaim claim, Map<String, Object?>? checkpoint)` | *(override)* Writes the JSON text of `checkpoint` (`null` clears it) to the run, fenced on the claim like every transition; `false` when the claim no longer holds the run. A checkpoint that is not JSON-encodable is refused by `TomJobStore.encodeCheckpoint` (`schedule.job.checkpoint`) before any statement. |
 | `recoverAbandoned` | `Future<List<TomJobRun>> recoverAbandoned(DateTime now, Duration leaseTimeout, {bool Function(String jobName)? requestsRecovery})` | *(override)* Checks this node in, then re-queues runs whose lease lapsed (and, with a roll call wired, those held by a failed peer). A run that never started is always re-queued; a started one only when the job opted in, otherwise it is written off with `TomJobStore.recoveryDeclinedError`. |
 | `all` | `Future<List<TomJobRun>> all()` | *(override)* Every row in the queue, in insertion order. |
-| `backlog` | `Future<List<TomJobBacklog>> backlog(DateTime now)` | *(override)* One `TomJobBacklog` per job with pending runs due at `now` — how many, and the earliest `run_at` among them — in one grouped `SELECT` (projected as `TomJobBacklogRow`). The kernel scheduler reads it for the `tom_job_backlog` and `tom_job_backlog_age_seconds` gauges when a scrape or an export takes a snapshot. |
-| `purgeFinished` | `Future<int> purgeFinished(DateTime before)` | *(override)* Deletes terminal runs completed before the cutoff and returns how many were removed. |
-| `deleteAll` | `Future<void> deleteAll()` | Empties the queue table. Not part of `TomJobStore` — for provisioning and for tests that need a known-empty queue. |
+| `backlog` | `Future<List<TomJobBacklog>> backlog(DateTime now)` | *(override)* One `TomJobBacklog` per job that is not paused and has pending runs due at `now` — how many, and the earliest `run_at` among them — in one grouped `SELECT` (projected as `TomJobBacklogRow`). The kernel scheduler reads it for the `tom_job_backlog` and `tom_job_backlog_age_seconds` gauges when a scrape or an export takes a snapshot. |
+| `purgeFinished` | `Future<int> purgeFinished(DateTime before, {DateTime? now})` | *(override)* Removes terminal runs completed before the cutoff from the queue and returns how many were removed. With an archive table it moves them, in one transaction: an `INSERT … SELECT` into the archive stamped `archived_at = now` (default the current UTC time), then a `DELETE` of exactly the runs the archive holds. Without one it deletes them. |
+| `archivedRuns` | `Future<List<TomArchivedJobRun>> archivedRuns({String? jobName, int limit = 100})` | The archived runs, newest `archived_at` first, at most `limit`, of one job when `jobName` is given. An empty list when the store has no archive table. |
+| `purgeArchive` | `Future<int> purgeArchive(DateTime before)` | Deletes archived runs archived before the cutoff and returns how many; `0` when the store has no archive table. |
+| `pauseJob` | `Future<void> pauseJob(String jobName, DateTime now)` | *(override)* Records the job as paused at `now`, with an insert that keeps a stored row on a conflict, so pausing a paused job keeps the first instant. Its runs are left out of `claimDue` and `backlog` on every node until it is resumed. |
+| `resumeJob` | `Future<void> resumeJob(String jobName)` | *(override)* Deletes the job's pause row; a job that is not paused is left as it is. |
+| `pausedJobs` | `Future<Map<String, DateTime>> pausedJobs()` | *(override)* The paused jobs and the instant each was paused. |
+| `deleteAll` | `Future<void> deleteAll()` | Empties the queue, pause and archive tables. Not part of `TomJobStore` — for provisioning and for tests that need a known-empty queue. |
 | `toString` | `String toString()` | *(override)* Renders `"TomSqlJobStore(<table>)"`. |
+
+### TomArchivedJobRun
+
+A run read back from the archive by `TomSqlJobStore.archivedRuns`: the run as it
+was when `purgeFinished` moved it, and when that was.
+
+#### Constructors
+
+```dart
+const TomArchivedJobRun(TomJobRun run, DateTime archivedAt)
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `run` | `TomJobRun` | The archived run, with its outcome, attempt count, priority and checkpoint (final). |
+| `archivedAt` | `DateTime` | When the run was moved into the archive, in UTC (final). |
 
 ### TomJobRunRow
 
@@ -205,7 +244,69 @@ TomJobRunRow()
 | `lastError` | `String?` | The message of the most recent failure. |
 | `completedAt` | `String?` | When the run reached a terminal state, as stored UTC text. |
 | `payload` | `String?` | The JSON text of the run's payload, written by the kernel's `TomJobStore.encodePayload` so that every store refuses the same payloads under the same key. |
-| `seq` | `int` | Insertion order, which is the queue's natural order. |
+| `seq` | `int` | Insertion order, which is the queue's natural order among runs of equal priority. |
+| `priority` | `int` | The claim order, copied from the job: higher is claimed first. |
+| `checkpoint` | `String?` | The JSON text of the progress the body last saved, or `null`. |
+
+### TomJobRunArchiveRow
+
+One row of the run archive, as `TomSqlJobStore.archivedRuns` reads it: every
+`TomJobRunRow` column plus `archived_at`. A type of its own because a row type
+maps only the columns its table declares. Reflected and `@TomDbTable`-annotated
+with placeholder values, like `TomJobRunRow`.
+
+#### Constructors
+
+```dart
+TomJobRunArchiveRow()
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `id` | `String` | The run's stable id. |
+| `jobName` | `String` | The job the run belonged to. |
+| `tenant` | `String` | The run's tenant, or `''` for a run of no tenant. |
+| `scheduledFor` | `String` | The schedule window, as stored UTC text. |
+| `runAt` | `String` | When the run was last due, as stored UTC text. |
+| `state` | `String` | The `TomJobRunState` name. |
+| `attempt` | `int` | How many times the run was attempted, counting from one. |
+| `claimedBy` | `String?` | The node that last held the run, if any. |
+| `claimedAt` | `String?` | When the claim was last stamped, as stored UTC text. |
+| `claimToken` | `int` | The run's last fencing token. |
+| `startedAt` | `String?` | When the last attempt began, as stored UTC text. |
+| `lastError` | `String?` | The message of the most recent failure. |
+| `completedAt` | `String?` | When the run reached its terminal state, as stored UTC text. |
+| `payload` | `String?` | The JSON text of the run's payload. |
+| `seq` | `int` | The queue's insertion order, carried over. |
+| `priority` | `int` | How urgent the run was. |
+| `checkpoint` | `String?` | The JSON text of the progress the run last saved. |
+| `archivedAt` | `String` | When the run was archived, as stored UTC text. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `toRunRow` | `TomJobRunRow toRunRow()` | The run's columns as a queue row, so one conversion turns both into a `TomJobRun`. |
+
+### TomJobPauseRow
+
+One row of the pause table, as `TomSqlJobStore.pausedJobs` reads it. Reflected
+and `@TomDbTable`-annotated with placeholder values, like `TomJobRunRow`.
+
+#### Constructors
+
+```dart
+TomJobPauseRow()
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `jobName` | `String` | The paused job (`job_name`), the table's primary key. |
+| `pausedAt` | `String` | When the job was paused, as stored UTC text (`paused_at`). |
 
 ### TomJobRunWindowRow
 
@@ -467,6 +568,8 @@ job for one tenant in the same microsecond can still meet.
 | -------- | ---- | ----------- |
 | `defaultNodeFailureSlack` | `Duration` | Quartz's 7.5 s grace period added on top of a peer's expected check-in, absorbing the jitter of a poll that waited on a slow query or a busy pool. |
 | `defaultJobRunTable` | `String` | The default name of the job queue table, `tom_job_run`. |
+| `defaultJobPauseTable` | `String` | The default name of the paused-job table, `tom_job_pause`. |
+| `defaultJobRunArchiveTable` | `String` | The default name of the job run archive table, `tom_job_run_archive`. |
 | `defaultLeaseTable` | `String` | The default name of the lease table, `tom_lease`. |
 | `defaultSchedulerNodeTable` | `String` | The default name of the scheduler roll-call table, `tom_scheduler_node`. |
 
@@ -476,9 +579,13 @@ job for one tenant in the same microsecond can still meet.
 | -------- | --------- | ----------- |
 | `schedulerNodeFailedAfter` | `DateTime schedulerNodeFailedAfter({required TomSchedulerNode peer, required DateTime now, required DateTime lastSelfCheckin, Duration slack = defaultNodeFailureSlack})` | The instant after which `peer` counts as failed: its last check-in plus the greater of its own published interval and the asking node's lateness, plus `slack`. Pure, so the judgement is assertable without a database. |
 | `isSchedulerNodeFailed` | `bool isSchedulerNodeFailed({required TomSchedulerNode peer, required DateTime now, required DateTime lastSelfCheckin, Duration slack = defaultNodeFailureSlack})` | Whether `now` is past `schedulerNodeFailedAfter` for that peer. |
-| `jobRunTable` | `TomFrameworkTable jobRunTable(String table)` | The one declaration of the job queue table: `seq` as an auto-increment ordering surrogate, `id` as the key, the `tenant` column (`VARCHAR(32)`, default `''`), the unique key on `(job_name, tenant, scheduled_for)`, and the `(state, run_at)` and `(state, claimed_at)` indexes the claim and recovery scans ride. |
+| `jobRunTable` | `TomFrameworkTable jobRunTable(String table)` | The one declaration of the job queue table: `seq` as an auto-increment ordering surrogate, `id` as the key, the `tenant` column (`VARCHAR(32)`, default `''`), the unique key on `(job_name, tenant, scheduled_for)`, and the `(state, run_at)` and `(state, claimed_at)` indexes the claim and recovery scans ride; `priority` (`INT`, default `0`) and the nullable `checkpoint` text. |
+| `jobPauseTable` | `TomFrameworkTable jobPauseTable(String table)` | The one declaration of the paused-job table: `job_name` as the key and `paused_at`. |
+| `jobRunArchiveTable` | `TomFrameworkTable jobRunArchiveTable(String table)` | The one declaration of the archive table: every column of `jobRunTable` (`seq` a plain `BIGINT`) plus `archived_at`, keyed by `id`, indexed on `archived_at` and on `(job_name, scheduled_for)`, with no unique window key. |
 | `leaseTable` | `TomFrameworkTable leaseTable(String table)` | The one declaration of the lease table, keyed by `resource`, carrying the fencing `token` and the `version` write counter. |
 | `schedulerNodeTable` | `TomFrameworkTable schedulerNodeTable(String table)` | The one declaration of the roll-call table, keyed by `node_id`, with no index beyond its key because a cluster is read in full. |
 | `jobRunTableDdl` | `String jobRunTableDdl(String table)` | The `CREATE TABLE` statement for the job queue table, derived from `jobRunTable`. |
+| `jobPauseTableDdl` | `String jobPauseTableDdl(String table)` | The `CREATE TABLE` statement for the paused-job table, derived from `jobPauseTable`. |
+| `jobRunArchiveTableDdl` | `String jobRunArchiveTableDdl(String table)` | The `CREATE TABLE` statement for the archive table, derived from `jobRunArchiveTable`. |
 | `leaseTableDdl` | `String leaseTableDdl(String table)` | The `CREATE TABLE` statement for the lease table, derived from `leaseTable`. |
 | `schedulerNodeTableDdl` | `String schedulerNodeTableDdl(String table)` | The `CREATE TABLE` statement for the roll-call table, derived from `schedulerNodeTable`. |

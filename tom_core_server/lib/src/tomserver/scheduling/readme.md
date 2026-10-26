@@ -10,9 +10,10 @@ cluster whose nodes share a database but not a filesystem.
 
 | Type | Implements | Backing |
 | ---- | ---------- | ------- |
-| `TomSqlJobStore` | `TomJobStore` | one row per scheduled run in `tom_job_run` |
+| `TomSqlJobStore` | `TomJobStore` | one row per scheduled run in `tom_job_run`, one per paused job in `tom_job_pause`, finished runs moved to `tom_job_run_archive` |
 | `TomSqlLeaseLock` | `TomLeaseLock` | one row per resource in `tom_lease` |
 | `TomSqlSchedulerNodes` | — | one row per node in `tom_scheduler_node` |
+| `TomArchivedJobRun` | — | a run read back from the archive, with the instant it was archived |
 
 The first two are ordinary implementations of contracts defined in
 `tom_core_kernel`; nothing in this module extends or narrows those contracts, and
@@ -142,6 +143,42 @@ and the lock can now agree about who holds a run. See `TomJobStore` and
 `TomJobClaim` for the rule; `test/contracts/scheduling_contract.dart` in
 `tom_core_kernel` asserts it against this store too.
 
+## Priority, pause and checkpoints
+
+The claim scan reads `ORDER BY priority DESC, seq`: the most urgent run first,
+queue order among runs of equal priority. `priority` is copied onto the run from
+its job when the run is planned.
+
+A pause is a row in `tom_job_pause`, keyed by job name, so every node sharing
+the queue sees it. The claim scan and `backlog` leave out every job named there.
+`pauseJob` inserts and keeps the stored row on a conflict, so pausing a paused
+job leaves the instant of the first pause; `resumeJob` deletes the row and
+`pausedJobs` lists them. A run the scan nominated a moment before its job was
+paused may still be claimed: a pause stops what starts after it.
+
+`checkpoint` holds the JSON text a running body saved through
+`TomJobRunContext.saveCheckpoint`. `saveCheckpoint` is fenced like every other
+transition out of a claim — an `UPDATE` with the `_heldByClaim` fragment — and
+answers `false` when it affected no row, because the claim no longer holds the
+run. A checkpoint that is not JSON-encodable is refused under
+`schedule.job.checkpoint` before any statement runs, as in the kernel stores.
+
+## Archive
+
+`purgeFinished(before, {now})` moves the finished runs completed before
+`before` into `tom_job_run_archive` in one transaction: an `INSERT … SELECT` of
+every queue column plus `archived_at`, then a `DELETE` of exactly the runs the
+archive now holds. A run is therefore in one table or the other. The archive
+carries the queue's `seq` as a plain column and has no unique window key, since a
+window may be planned again after its run was archived.
+
+`archivedRuns({jobName, limit})` reads the archive newest first (100 rows by
+default) as `TomArchivedJobRun`s, and `purgeArchive(before)` deletes archived
+runs by `archived_at`. Constructing the store with `archiveTable: null` turns the
+archive off: `purgeFinished` then deletes, `archivedRuns` answers an empty list
+and `purgeArchive` deletes nothing. `deleteAll` empties the queue, the pauses
+and the archive.
+
 ## When the claim's answer is lost
 
 Because the affected-row count *is* the arbitration, a claim whose
@@ -197,18 +234,18 @@ The DDL lives in `sql_scheduling_sql.dart` and is shipped as migration files
 under `example/scheduling/migrations/`; `test/scheduling_schema_test.dart`
 asserts the two have not drifted apart.
 
-Each of the three tables is declared once there, as a `TomFrameworkTable`
+Each of the five tables is declared once there, as a `TomFrameworkTable`
 descriptor, and everything else is derived from it:
 
 | Declaration | What it gives |
 | ----------- | ------------- |
-| `jobRunTable(table)` · `leaseTable(table)` · `schedulerNodeTable(table)` | The descriptor for one table under a caller-chosen name — the columns, their families, and the keys. |
-| `jobRunTableDdl(table)` · `leaseTableDdl(table)` · `schedulerNodeTableDdl(table)` | That descriptor rendered as canonical (MariaDB-spelled) `CREATE TABLE` — what the shipped MariaDB migration contains. `createSchema: true` runs the descriptor's `create`, which renders it in the connected database's dialect. |
-| `defaultJobRunTable` · `defaultLeaseTable` · `defaultSchedulerNodeTable` | The names used when a deployment chooses none: `tom_job_run`, `tom_lease`, `tom_scheduler_node`. |
+| `jobRunTable(table)` · `jobPauseTable(table)` · `jobRunArchiveTable(table)` · `leaseTable(table)` · `schedulerNodeTable(table)` | The descriptor for one table under a caller-chosen name — the columns, their families, and the keys. |
+| `jobRunTableDdl(table)` · `jobPauseTableDdl(table)` · `jobRunArchiveTableDdl(table)` · `leaseTableDdl(table)` · `schedulerNodeTableDdl(table)` | That descriptor rendered as canonical (MariaDB-spelled) `CREATE TABLE` — what the shipped MariaDB migration contains. `createSchema: true` runs the descriptor's `create`, which renders it in the connected database's dialect. |
+| `defaultJobRunTable` · `defaultJobPauseTable` · `defaultJobRunArchiveTable` · `defaultLeaseTable` · `defaultSchedulerNodeTable` | The names used when a deployment chooses none: `tom_job_run`, `tom_job_pause`, `tom_job_run_archive`, `tom_lease`, `tom_scheduler_node`. |
 
 The table name is a parameter rather than a constant so two deployments can
 share one database, and the descriptor is what the convergence check compares a
-provisioned schema against. Both stores can also create their table
+provisioned schema against. Both stores can also create their tables
 on first use (`createSchema: true`, the default), which is what a test or a
 single-service deployment wants; set it `false` when the migration module owns
 the schema and the application's database user may not run DDL.

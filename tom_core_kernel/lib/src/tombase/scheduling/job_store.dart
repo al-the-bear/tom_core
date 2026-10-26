@@ -47,6 +47,7 @@ import 'dart:math';
 import 'package:tom_basics/tom_basics.dart';
 
 import '../little_things/atomic_file.dart';
+import 'job_run_context.dart';
 import 'lease_lock.dart';
 import 'schedule.dart';
 
@@ -171,6 +172,28 @@ class TomJobRun {
   /// events arriving in the same instant are two runs, not one.
   final String? tenant;
 
+  /// How urgent the run is: among runs due at the same moment, a higher
+  /// priority is claimed first. `0` by default; negative values are allowed.
+  ///
+  /// Copied from [TomJobDefinition.priority] when the run is planned, so the
+  /// order is a property of the queue every node reads, not of whichever node
+  /// happens to scan it. Priority orders the claim and nothing else: it does
+  /// not pre-empt a run already executing, and a low-priority run still runs
+  /// once nothing more urgent is due.
+  final int priority;
+
+  /// The progress the run last recorded, or `null` when it never recorded any.
+  ///
+  /// A body saves it through [TomJobRunContext.saveCheckpoint] whenever it
+  /// chooses — after each batch of a long import, say — and it is kept with the
+  /// run across retries and across recovery after a node died. The attempt that
+  /// runs next reads it here (or from [TomJobRunContext.checkpoint]) and decides
+  /// how to continue; a body that never saves one starts over every time.
+  ///
+  /// What it holds is the job's business — the framework stores it and hands it
+  /// back. It is restricted to JSON-native values for the reason [payload] is.
+  Map<String, Object?>? checkpoint;
+
   /// Creates a run record.
   TomJobRun({
     required this.id,
@@ -187,6 +210,8 @@ class TomJobRun {
     this.completedAt,
     this.payload,
     this.tenant,
+    this.priority = 0,
+    this.checkpoint,
   });
 
   /// Whether this run has reached a terminal state.
@@ -213,6 +238,8 @@ class TomJobRun {
     'completedAt': completedAt?.toIso8601String(),
     'payload': payload,
     'tenant': tenant,
+    'priority': priority,
+    'checkpoint': checkpoint,
   };
 
   /// Decodes a map produced by [toJson].
@@ -242,6 +269,11 @@ class TomJobRun {
     completedAt: _parseOrNull(map['completedAt']),
     payload: map['payload'],
     tenant: map['tenant'] as String?,
+    priority: map['priority'] as int? ?? 0,
+    checkpoint: switch (map['checkpoint']) {
+      final Map<Object?, Object?> value => value.cast<String, Object?>(),
+      _ => null,
+    },
   );
 
   static DateTime? _parseOrNull(Object? value) =>
@@ -431,6 +463,36 @@ abstract class TomJobStore {
     }
   }
 
+  /// The JSON text a durable store writes for [checkpoint], or `null` when
+  /// there is none.
+  ///
+  /// The checkpoint's counterpart of [encodePayload], called by every
+  /// implementation of [saveCheckpoint] before it changes anything — the
+  /// in-memory one included, for the reason given there.
+  ///
+  /// Throws a `schedule.job.checkpoint` [TomScheduleException] naming the job
+  /// and the offending type.
+  static String? encodeCheckpoint(
+    TomJobRun run,
+    Map<String, Object?>? checkpoint,
+  ) {
+    if (checkpoint == null) return null;
+    try {
+      return jsonEncode(checkpoint);
+    } on JsonUnsupportedObjectError catch (error, stack) {
+      final type = error.unsupportedObject.runtimeType;
+      throw TomScheduleException(
+        'schedule.job.checkpoint',
+        "The checkpoint of job '${run.jobName}' is not JSON-encodable: it "
+            'contains $type. A checkpoint is stored with the run, so it must be '
+            'built from JSON-native values.',
+        parameters: {'job': run.jobName, 'run': run.id, 'type': '$type'},
+        rootException: error,
+        stack: stack,
+      );
+    }
+  }
+
   /// Adds [run] to the queue.
   ///
   /// The caller is responsible for idempotence via [findWindow]; the store
@@ -462,6 +524,10 @@ abstract class TomJobStore {
 
   /// Atomically claims up to [limit] runs that are due at [now], marking each
   /// `running` and leasing it to [owner].
+  ///
+  /// Runs are taken in descending [TomJobRun.priority], and in insertion order
+  /// among equal priorities. A run of a paused job ([pauseJob]) is not
+  /// claimed, whatever its priority, until the job is resumed.
   ///
   /// Returns one [TomJobClaim] per run won — the ticket every transition below
   /// requires. When [accept] is supplied, only runs it approves are claimed;
@@ -521,6 +587,25 @@ abstract class TomJobStore {
   /// ticket carries is untouched, so the claimant keeps the right to record its
   /// own outcome for as long as the attempt lasts.
   Future<void> renewClaim(TomJobClaim claim, DateTime now);
+
+  /// Stores [checkpoint] as the progress of [claim]'s run, replacing the one
+  /// it had; `null` clears it. Returns whether it was stored.
+  ///
+  /// The checkpoint stays with the run across retries and across recovery, so
+  /// the attempt that runs next can continue from it — see
+  /// [TomJobRun.checkpoint].
+  ///
+  /// Fenced like the transitions: `false`, and nothing written, unless the
+  /// store still holds the run as `running` under [claim]. Progress reported by
+  /// an attempt that lost its run is not the run's progress — a peer is
+  /// executing it from the checkpoint *it* was handed.
+  ///
+  /// Throws a `schedule.job.checkpoint` [TomScheduleException], before writing,
+  /// when [checkpoint] is not JSON-encodable — see [encodeCheckpoint].
+  Future<bool> saveCheckpoint(
+    TomJobClaim claim,
+    Map<String, Object?>? checkpoint,
+  );
 
   /// Marks [claim]'s run succeeded at [now] and releases its lease.
   ///
@@ -594,8 +679,28 @@ abstract class TomJobStore {
   /// history to keep is a deployment decision, not the store's.
   Future<int> purgeFinished(DateTime before);
 
+  /// Pauses [jobName] as of [now]: none of its runs is claimed until
+  /// [resumeJob].
+  ///
+  /// The pause is held by the store, so it applies to every node sharing the
+  /// queue and survives a restart. It does not touch a run already executing —
+  /// that one finishes, or fails and is retried after the resume — and it does
+  /// not drop anything: runs stay in the queue, and runs enqueued meanwhile
+  /// wait there too. Pausing a paused job keeps the instant of the first pause.
+  Future<void> pauseJob(String jobName, DateTime now);
+
+  /// Ends the pause of [jobName]; its due runs are claimable at once. A no-op
+  /// for a job that is not paused.
+  Future<void> resumeJob(String jobName);
+
+  /// The paused jobs, each with the instant it was paused.
+  Future<Map<String, DateTime>> pausedJobs();
+
   /// The runs due at [now] that nobody has claimed, per job: how many, and
   /// since when the oldest has been due.
+  ///
+  /// A paused job has no backlog: its runs are waiting because somebody said
+  /// so, not because no node takes them.
   ///
   /// The scheduler reports it as the `tom_job_backlog` and
   /// `tom_job_backlog_age_seconds` gauges. A run that is due and unclaimed is
@@ -636,6 +741,9 @@ class TomJobBacklog {
 class TomMemoryJobStore implements TomJobStore {
   /// Runs keyed by [TomJobRun.id], in insertion order.
   final Map<String, TomJobRun> _runs = {};
+
+  /// Paused jobs and the instant each was paused.
+  final Map<String, DateTime> _paused = {};
 
   /// Hook for subclasses that mirror the queue somewhere durable. Called after
   /// every mutation, and never during a read.
@@ -689,12 +797,20 @@ class TomMemoryJobStore implements TomJobStore {
     bool Function(TomJobRun run)? accept,
   }) async {
     final claimed = <TomJobClaim>[];
+    // Highest priority first; `List.sort` is not stable, so the insertion index
+    // breaks ties and keeps equal priorities in queue order.
+    final indexed = _runs.values.indexed.toList()
+      ..sort(
+        (a, b) => a.$2.priority != b.$2.priority
+            ? b.$2.priority.compareTo(a.$2.priority)
+            : a.$1.compareTo(b.$1),
+      );
     // No `await` inside the loop: selecting and stamping happen in one
     // uninterrupted turn of the event loop, which is what makes the claim
     // atomic against a concurrent caller in this isolate.
-    for (final run in _runs.values) {
+    for (final (_, run) in indexed) {
       if (claimed.length >= limit) break;
-      if (!run.isDue(now)) continue;
+      if (!run.isDue(now) || _paused.containsKey(run.jobName)) continue;
       if (accept != null && !accept(run)) continue;
       run.state = TomJobRunState.running;
       run.claimedBy = owner;
@@ -749,6 +865,27 @@ class TomMemoryJobStore implements TomJobStore {
     stored.claimedAt = now;
     onMutated();
   }
+
+  @override
+  Future<bool> saveCheckpoint(
+    TomJobClaim claim,
+    Map<String, Object?>? checkpoint,
+  ) async {
+    TomJobStore.encodeCheckpoint(claim.run, checkpoint);
+    final stored = _held(claim);
+    if (stored == null) return false;
+    // A copy, so a body that keeps mutating its map after saving cannot change
+    // what was stored.
+    final copy = checkpoint == null ? null : _copyJson(checkpoint);
+    stored.checkpoint = copy;
+    claim.run.checkpoint = copy;
+    onMutated();
+    return true;
+  }
+
+  /// A deep copy of a JSON-native map, through its encoding.
+  static Map<String, Object?> _copyJson(Map<String, Object?> value) =>
+      (jsonDecode(jsonEncode(value)) as Map).cast<String, Object?>();
 
   @override
   Future<void> complete(TomJobClaim claim, DateTime now) async {
@@ -820,7 +957,7 @@ class TomMemoryJobStore implements TomJobStore {
     final due = <String, int>{};
     final oldest = <String, DateTime>{};
     for (final run in _runs.values) {
-      if (!run.isDue(now)) continue;
+      if (!run.isDue(now) || _paused.containsKey(run.jobName)) continue;
       due[run.jobName] = (due[run.jobName] ?? 0) + 1;
       final first = oldest[run.jobName];
       if (first == null || run.runAt.isBefore(first)) {
@@ -858,11 +995,37 @@ class TomMemoryJobStore implements TomJobStore {
     return doomed.length;
   }
 
-  /// Replaces the queue's contents. Used by [TomFileJobStore] when reloading.
-  void replaceAll(Iterable<TomJobRun> runs) {
+  @override
+  Future<void> pauseJob(String jobName, DateTime now) async {
+    if (_paused.containsKey(jobName)) return;
+    _paused[jobName] = now;
+    onMutated();
+  }
+
+  @override
+  Future<void> resumeJob(String jobName) async {
+    if (_paused.remove(jobName) != null) onMutated();
+  }
+
+  @override
+  Future<Map<String, DateTime>> pausedJobs() async => pausedSync();
+
+  /// The paused jobs, without going through the asynchronous contract — see
+  /// [snapshotSync].
+  Map<String, DateTime> pausedSync() => Map.of(_paused);
+
+  /// Replaces the queue's contents, and with [paused] its paused jobs. Used by
+  /// [TomFileJobStore] when reloading.
+  void replaceAll(
+    Iterable<TomJobRun> runs, [
+    Map<String, DateTime> paused = const {},
+  ]) {
     _runs
       ..clear()
       ..addEntries(runs.map((r) => MapEntry(r.id, r)));
+    _paused
+      ..clear()
+      ..addAll(paused);
   }
 }
 
@@ -882,7 +1045,7 @@ class TomMemoryJobStore implements TomJobStore {
 /// sibling file and renamed over the target, so an interrupted write leaves the
 /// previous queue rather than a truncated one. That is not a refinement but the
 /// difference between losing one mutation and losing the whole queue — the file
-/// is rewritten whole each time, and [_load] can only discard an array it
+/// is rewritten whole each time, and [_load] can only discard a queue it
 /// cannot parse.
 ///
 /// The queue is small (one record per window, purged once terminal), so
@@ -1029,6 +1192,12 @@ class TomFileJobStore extends TomMemoryJobStore {
       _exclusively(() => super.renewClaim(claim, now));
 
   @override
+  Future<bool> saveCheckpoint(
+    TomJobClaim claim,
+    Map<String, Object?>? checkpoint,
+  ) => _exclusively(() => super.saveCheckpoint(claim, checkpoint));
+
+  @override
   Future<void> complete(TomJobClaim claim, DateTime now) =>
       _exclusively(() => super.complete(claim, now));
 
@@ -1064,6 +1233,18 @@ class TomFileJobStore extends TomMemoryJobStore {
   Future<int> purgeFinished(DateTime before) =>
       _exclusively(() => super.purgeFinished(before));
 
+  @override
+  Future<void> pauseJob(String jobName, DateTime now) =>
+      _exclusively(() => super.pauseJob(jobName, now));
+
+  @override
+  Future<void> resumeJob(String jobName) =>
+      _exclusively(() => super.resumeJob(jobName));
+
+  @override
+  Future<Map<String, DateTime>> pausedJobs() =>
+      _exclusively(() => super.pausedJobs());
+
   /// Where damaged content is moved so the next [_persist] cannot overwrite the
   /// evidence of what was lost.
   ///
@@ -1074,7 +1255,7 @@ class TomFileJobStore extends TomMemoryJobStore {
   String get _corruptPath => '${file.path}.corrupt';
 
   /// Reads runs from [file] if it exists, leaving the queue empty when the file
-  /// is missing, empty, or not a JSON array.
+  /// is missing, empty, or not the queue object (a `runs` array beside a `paused` map).
   ///
   /// A record that fails to decode is skipped rather than aborting the load: a
   /// single corrupt entry must not stop the scheduler from starting, since
@@ -1116,16 +1297,30 @@ class TomFileJobStore extends TomMemoryJobStore {
       _recoverFrom('could not be read (invalid JSON: $error)');
       return;
     }
-    if (decoded is! List) {
+    if (decoded is! Map ||
+        decoded['runs'] is! List ||
+        (decoded['paused'] != null && decoded['paused'] is! Map)) {
       _recoverFrom(
-        'could not be read (expected a JSON array, got ${decoded.runtimeType})',
+        'could not be read (expected an object with a "runs" array and a '
+        '"paused" object, got ${decoded.runtimeType})',
       );
       return;
     }
 
-    final runs = <TomJobRun>[];
+    final paused = <String, DateTime>{};
     var skipped = 0;
-    for (final entry in decoded) {
+    for (final MapEntry(:key, :value)
+        in (decoded['paused'] as Map? ?? {}).entries) {
+      final since = value is String ? DateTime.tryParse(value) : null;
+      if (key is String && since != null) {
+        paused[key] = since;
+      } else {
+        skipped++;
+      }
+    }
+
+    final runs = <TomJobRun>[];
+    for (final entry in decoded['runs'] as List) {
       if (entry is! Map) {
         skipped++;
         continue;
@@ -1136,13 +1331,13 @@ class TomFileJobStore extends TomMemoryJobStore {
         skipped++;
       }
     }
-    replaceAll(runs);
+    replaceAll(runs, paused);
     if (skipped > 0) {
       // Partial corruption presents as a shorter queue, which reads exactly
       // like a queue that had been drained. Count what was dropped.
       _recoverFrom(
-        'contained $skipped unreadable ${skipped == 1 ? 'run' : 'runs'} which '
-        'were dropped (${runs.length} recovered)',
+        'contained $skipped unreadable ${skipped == 1 ? 'entry' : 'entries'} '
+        'which were dropped (${runs.length} runs recovered)',
       );
     }
   }
@@ -1204,13 +1399,17 @@ class TomFileJobStore extends TomMemoryJobStore {
   ///
   /// The write is atomic — see [tomWriteFileAtomically]. It has to be: the
   /// queue is rewritten whole on every mutation, and [_load] can do nothing
-  /// with a truncated array but discard it. An overwrite interrupted by a kill
+  /// with a truncated queue but discard it. An overwrite interrupted by a kill
   /// or a full disk would therefore not lose *a* run, it would lose the entire
   /// durable queue, silently, at the next start.
   void _persist() {
-    final encoded = jsonEncode(
-      snapshotSync().map((run) => run.toJson()).toList(),
-    );
+    final encoded = jsonEncode({
+      'runs': [for (final run in snapshotSync()) run.toJson()],
+      'paused': {
+        for (final MapEntry(:key, :value) in pausedSync().entries)
+          key: value.toIso8601String(),
+      },
+    });
     tomWriteFileAtomically(file, encoded);
   }
 }

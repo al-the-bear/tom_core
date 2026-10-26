@@ -49,6 +49,7 @@ class NightlyReconciliation extends TomJobBase {
   missedWindow: TomMissedWindowPolicy.skip,
   catchUpLimit: 3,
   allowOverlap: true,
+  priority: 4,
 )
 class RenamedCleanup extends TomJobBase {
   @override
@@ -281,6 +282,7 @@ void main() {
       expect(job.missedWindowPolicy, TomMissedWindowPolicy.skip);
       expect(job.catchUpLimit, 3);
       expect(job.allowOverlap, isTrue);
+      expect(job.priority, 4);
     });
 
     test('each trigger field builds its own schedule kind', () {

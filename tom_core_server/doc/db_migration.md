@@ -1283,6 +1283,7 @@ entry.
 ### The Framework's Own Tables
 
 The framework's tables — `tom_job_run`, `tom_lease`, `tom_scheduler_node`,
+`tom_job_pause`, `tom_job_run_archive`,
 `tom_blob`, `tom_blob_chunk`, `tom_audit_trail`, `tom_oauth_state`,
 `tom_scim_resource`, `tom_delivery_report`, `tom_message_inbox`,
 `tom_cache_invalidation`, `tom_idempotency_key`, `tom_saga`,
@@ -1739,5 +1740,5 @@ here it cannot drift silently.
 | [messaging](messaging.md) | module | `framework_convergence.dart` | `defaultDeliveryReportTable`, `deliveryReportTable`, `defaultInboxTable`, `inboxTable` |
 | [object_persistence](object_persistence.md) | module | `framework_convergence.dart`, `sql_migration_adaptor.dart`, `schema_convergence.dart` | `TomDbTable` / `TomDbColumn` on `TomDbVersion`; `defaultEncryptionKeyTable` and `encryptionKeyTable`, the data-key table of field-level encryption |
 | [privacy](privacy.md) | module | `framework_convergence.dart` | `defaultSubjectKeyTable`, `subjectKeyTable` |
-| [scheduling](scheduling.md) | module | `framework_convergence.dart` | `defaultJobRunTable`, `defaultLeaseTable`, `defaultSchedulerNodeTable`, `jobRunTable`, `leaseTable`, `schedulerNodeTable` |
+| [scheduling](scheduling.md) | module | `framework_convergence.dart` | `defaultJobRunTable`, `defaultLeaseTable`, `defaultSchedulerNodeTable`, `defaultJobPauseTable`, `defaultJobRunArchiveTable`, `jobRunTable`, `leaseTable`, `schedulerNodeTable`, `jobPauseTable`, `jobRunArchiveTable` |
 | [transactions](transactions.md) | module | `framework_convergence.dart`, `postgres_migration_adapter.dart` | `defaultSagaTable` and `sagaTable`, `defaultDecisionTable` and `decisionTable`; `TomTransactionManager.runInTransaction`, which runs a PostgreSQL script and its version row — or a down script and the deletion of its record — as one transaction |

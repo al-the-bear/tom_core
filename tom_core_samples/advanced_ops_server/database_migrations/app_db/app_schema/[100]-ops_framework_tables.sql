@@ -33,10 +33,10 @@
 -- fact. It also keeps the sample's promise: no new infrastructure.
 --
 -- The DDL is copied verbatim from the framework's canonical reference migrations
--- (tom_core_server/example/scheduling/migrations/main/tomcore/[1]–[3] and
+-- (tom_core_server/example/scheduling/migrations/main/tomcore/[1]–[5] and
 -- example/audit/migrations/main/tomcore/[1]) and kept in step with the
--- jobRunTable() / leaseTable() / schedulerNodeTable() / auditTrailTable()
--- descriptors by test/ops_framework_schema_test.dart, which fails if this file
+-- jobRunTable() / leaseTable() / schedulerNodeTable() / jobPauseTable() /
+-- jobRunArchiveTable() / auditTrailTable() descriptors by test/ops_framework_schema_test.dart, which fails if this file
 -- and those descriptors drift apart.
 --
 -- Untagged on purpose: schema, not demo content, so it reaches every environment.
@@ -53,7 +53,9 @@
 -- `claim_token` is the other clustered column: it rises on every claim of a run
 -- and never repeats, so a node whose lease expired cannot report an outcome
 -- over the peer that re-claimed its work. Single-node it never advances past 1,
--- and it is here for the same reason the unique key is.
+-- and it is here for the same reason the unique key is. `priority` orders the
+-- claim and `checkpoint` keeps a job's saved progress across retries and
+-- recovery.
 CREATE TABLE IF NOT EXISTS tom_job_run (
   seq           BIGINT       NOT NULL AUTO_INCREMENT,
   id            VARCHAR(191) NOT NULL,
@@ -70,11 +72,55 @@ CREATE TABLE IF NOT EXISTS tom_job_run (
   completed_at  DATETIME(6)  NULL,
   last_error    TEXT         NULL,
   payload       LONGTEXT     NULL,
+  priority      INT          NOT NULL DEFAULT 0,
+  checkpoint    LONGTEXT     NULL,
   PRIMARY KEY (id),
   UNIQUE KEY uq_tom_job_run_seq (seq),
   UNIQUE KEY uq_tom_job_run_window (job_name, tenant, scheduled_for),
   KEY ix_tom_job_run_due (state, run_at),
   KEY ix_tom_job_run_lease (state, claimed_at)
+);
+
+-- ---------------------------------------------------------------------------
+-- Paused jobs.
+-- ---------------------------------------------------------------------------
+-- One row per paused job; the claim scan leaves out every job named here, on
+-- every node. The store reads it on every pass, so it must exist even when no
+-- job is ever paused.
+CREATE TABLE IF NOT EXISTS tom_job_pause (
+  job_name  VARCHAR(150) NOT NULL,
+  paused_at DATETIME(6)  NOT NULL,
+  PRIMARY KEY (job_name)
+);
+
+-- ---------------------------------------------------------------------------
+-- The run archive.
+-- ---------------------------------------------------------------------------
+-- Where the nightly housekeeping moves finished runs instead of deleting them:
+-- every queue column plus `archived_at`. No unique window key — a window may be
+-- planned again after its run was archived.
+CREATE TABLE IF NOT EXISTS tom_job_run_archive (
+  seq           BIGINT       NOT NULL,
+  id            VARCHAR(191) NOT NULL,
+  job_name      VARCHAR(150) NOT NULL,
+  tenant        VARCHAR(32)  NOT NULL DEFAULT '',
+  scheduled_for DATETIME(6)  NOT NULL,
+  run_at        DATETIME(6)  NOT NULL,
+  state         VARCHAR(16)  NOT NULL,
+  attempt       INT          NOT NULL DEFAULT 1,
+  claimed_by    VARCHAR(191) NULL,
+  claimed_at    DATETIME(6)  NULL,
+  claim_token   BIGINT       NOT NULL DEFAULT 0,
+  started_at    DATETIME(6)  NULL,
+  last_error    TEXT         NULL,
+  completed_at  DATETIME(6)  NULL,
+  payload       LONGTEXT     NULL,
+  priority      INT          NOT NULL DEFAULT 0,
+  checkpoint    LONGTEXT     NULL,
+  archived_at   DATETIME(6)  NOT NULL,
+  PRIMARY KEY (id),
+  KEY ix_tom_job_run_archive_archived (archived_at),
+  KEY ix_tom_job_run_archive_job (job_name, scheduled_for)
 );
 
 -- ---------------------------------------------------------------------------

@@ -23,8 +23,9 @@
 /// creates it in a deployment, the UTC instant encoding both stores use, the two
 /// cluster decisions that are pure functions — when a peer node counts as failed
 /// ([isSchedulerNodeFailed]) and whether a failed write leaves the claim in
-/// doubt ([classifySqlFailure]) — and the wiring, including the error you get
-/// when the named data source is not registered.
+/// doubt ([classifySqlFailure]) — the wiring, including the error you get
+/// when the named data source is not registered, and the columns and tables
+/// that carry priority, paused jobs, checkpoints and the run archive.
 ///
 /// Run with `dart run example/scheduling/scheduling_example.dart`. Every step
 /// checks its own result and the run fails when one does not hold, so a green
@@ -217,7 +218,7 @@ void run() {
     '   <directory>/<datasourceName>/<schemaName>/'
     '[<version>]-<description>[@<env>[,<env>...]].<anyfileextension>',
   );
-  // The three shipped files below carry no @<env> tag, so they apply in every
+  // The five shipped files below carry no @<env> tag, so they apply in every
   // environment — a scheduling schema is not a per-environment fixture.
   print(
     '   example/scheduling/migrations/main/tomcore/'
@@ -230,6 +231,14 @@ void run() {
   print(
     '   example/scheduling/migrations/main/tomcore/'
     '[3]-create_tom_scheduler_node.sql',
+  );
+  print(
+    '   example/scheduling/migrations/main/tomcore/'
+    '[4]-create_tom_job_pause.sql',
+  );
+  print(
+    '   example/scheduling/migrations/main/tomcore/'
+    '[5]-create_tom_job_run_archive.sql',
   );
   print(
     '   With the tables already migrated, construct the stores with '
@@ -289,6 +298,50 @@ void run() {
        lock: lock,
        leaseTtl: const Duration(minutes: 1),
      );''');
+
+  // 11. Priority, pauses, checkpoints and the archive. The claim scan orders by
+  //     `priority DESC, seq`, so the queue carries each run's priority; the
+  //     checkpoint a body saves is stored with its run. A pause belongs to the
+  //     job, not its runs, so it is a table keyed by the job name — every node
+  //     sees it, and a job with no runs yet can be paused. The archive holds
+  //     every queue column plus `archived_at`, without the unique window key: a
+  //     window may be planned again once its run was archived.
+  final pauseDdl = jobPauseTableDdl(defaultJobPauseTable);
+  final archiveDdl = jobRunArchiveTableDdl(defaultJobRunArchiveTable);
+  print('\n11. priority, checkpoints, pauses and the archive:');
+  print('   queue columns:');
+  for (final line in queueDdl.split('\n')) {
+    if (line.contains('priority') || line.contains('checkpoint')) {
+      print('  $line');
+    }
+  }
+  print('   pause table `$defaultJobPauseTable`:');
+  print(pauseDdl);
+  print('   archive table `$defaultJobRunArchiveTable`:');
+  print(archiveDdl);
+  check(
+    queueDdl.contains('priority      INT          NOT NULL DEFAULT 0') &&
+        queueDdl.contains('checkpoint    LONGTEXT     NULL'),
+    'a run carries the priority the claim orders by and its checkpoint',
+  );
+  check(
+    pauseDdl.contains('PRIMARY KEY (job_name)'),
+    'a pause is one row per job, seen by every node',
+  );
+  check(
+    archiveDdl.contains('archived_at   DATETIME(6)  NOT NULL') &&
+        !archiveDdl.contains('UNIQUE') &&
+        !archiveDdl.contains('AUTO_INCREMENT'),
+    'the archive keeps the queue order and no window key, so a window may '
+    'be planned again after its run was archived',
+  );
+  check(
+    frameworkOwnedTables().map((t) => t.name).toSet().containsAll({
+      defaultJobPauseTable,
+      defaultJobRunArchiveTable,
+    }),
+    'both tables are framework-owned, so the schema check covers them',
+  );
 
   print('\nScheduling example completed.');
 }

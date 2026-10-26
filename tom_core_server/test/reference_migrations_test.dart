@@ -173,6 +173,13 @@ final Map<String, String> _guardedElsewhere = {
       'descriptor table — framework_schema_test.dart converges the chain, and '
       'scheduling_schema_test.dart compares the file to '
       'schedulerNodeTableDdl',
+  _migration('scheduling', '[4]-create_tom_job_pause.sql'):
+      'descriptor table — framework_schema_test.dart converges the chain, and '
+      'scheduling_schema_test.dart compares the file to jobPauseTableDdl',
+  _migration('scheduling', '[5]-create_tom_job_run_archive.sql'):
+      'descriptor table — framework_schema_test.dart converges the chain, and '
+      'scheduling_schema_test.dart compares the file to '
+      'jobRunArchiveTableDdl',
 };
 
 /// Every `.sql` file actually shipped under `example/`, read from disk.

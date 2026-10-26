@@ -219,6 +219,9 @@ class TomScheduledJob {
   /// started is re-queued either way.
   final bool requestsRecovery;
 
+  /// How urgent the job's runs are — see [TomJobDefinition.priority].
+  final int priority;
+
   /// Declares a scheduled job. Exactly one of [cron], [interval], [calendar]
   /// and [event] must be given.
   const TomScheduledJob({
@@ -233,6 +236,7 @@ class TomScheduledJob {
     this.catchUpLimit = 10,
     this.allowOverlap = false,
     this.requestsRecovery = false,
+    this.priority = 0,
   });
 }
 
@@ -380,6 +384,7 @@ class TomScheduledJobs {
         catchUpLimit: annotation.catchUpLimit,
         allowOverlap: annotation.allowOverlap,
         requestsRecovery: annotation.requestsRecovery,
+        priority: annotation.priority,
       );
     } on TomScheduleException catch (error) {
       throw TomScheduledJobException(

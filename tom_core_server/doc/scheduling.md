@@ -21,11 +21,15 @@ covers only what changes when the substrate is a database.
 - [Why the Claim Is One Statement per Run](#why-the-claim-is-one-statement-per-run)
 - [When the Answer to a Claim Is Lost](#when-the-answer-to-a-claim-is-lost)
 - [Reporting an Outcome for a Run You May Have Lost](#reporting-an-outcome-for-a-run-you-may-have-lost)
+- [Priority, Pausing and Checkpoints](#priority-pausing-and-checkpoints)
+- [The Archive](#the-archive)
 - [The Roll Call](#the-roll-call)
 - [Recovering an Interrupted Run](#recovering-an-interrupted-run)
 - [What Was Taken from Quartz, and What Was Not](#what-was-taken-from-quartz-and-what-was-not)
 - [The Schema](#the-schema)
   - [tom_job_run](#tom_job_run)
+  - [tom_job_pause](#tom_job_pause)
+  - [tom_job_run_archive](#tom_job_run_archive)
   - [tom_lease](#tom_lease)
   - [tom_scheduler_node](#tom_scheduler_node)
 - [Creating the Schema](#creating-the-schema)
@@ -45,15 +49,16 @@ covers only what changes when the substrate is a database.
 
 | Type | Kind | Purpose |
 | ---- | ---- | ------- |
-| `TomSqlJobStore` | class | `TomJobStore` over one row per scheduled run |
+| `TomSqlJobStore` | class | `TomJobStore` over one row per scheduled run, one row per paused job, and an archive of purged runs |
+| `TomArchivedJobRun` | class | A run read back from the archive, with the instant it was archived |
 | `TomSqlLeaseLock` | class | `TomLeaseLock` over one row per contended resource |
 | `TomSqlSchedulerNodes` | class | The cluster roll call: one row per node, so a *node* departing is noticed |
 | `TomSchedulerNode` | class | One node's published check-in instant and cadence |
 | `schedulerNodeFailedAfter` / `isSchedulerNodeFailed` | function | The failure test, as pure functions |
-| `jobRunTable` / `leaseTable` / `schedulerNodeTable` | function | The three table declarations, from which the DDL, the statements and the convergence guard's schema model all derive |
-| `jobRunTableDdl` / `leaseTableDdl` / `schedulerNodeTableDdl` | function | The shipped DDL, parameterised by table name |
-| `defaultJobRunTable` / `defaultLeaseTable` / `defaultSchedulerNodeTable` | const String | `tom_job_run`, `tom_lease`, `tom_scheduler_node` |
-| `TomJobRunRow` / `TomLeaseRow` / `TomSchedulerNodeRow` | class | The reflected row types the stores' result mappers materialise, one per table |
+| `jobRunTable` / `jobPauseTable` / `jobRunArchiveTable` / `leaseTable` / `schedulerNodeTable` | function | The five table declarations, from which the DDL, the statements and the convergence guard's schema model all derive |
+| `jobRunTableDdl` / `jobPauseTableDdl` / `jobRunArchiveTableDdl` / `leaseTableDdl` / `schedulerNodeTableDdl` | function | The shipped DDL, parameterised by table name |
+| `defaultJobRunTable` / `defaultJobPauseTable` / `defaultJobRunArchiveTable` / `defaultLeaseTable` / `defaultSchedulerNodeTable` | const String | `tom_job_run`, `tom_job_pause`, `tom_job_run_archive`, `tom_lease`, `tom_scheduler_node` |
+| `TomJobRunRow` / `TomJobRunArchiveRow` / `TomJobPauseRow` / `TomLeaseRow` / `TomSchedulerNodeRow` | class | The reflected row types the stores' result mappers materialise, one per table |
 | `TomJobRunWindowRow` | class | The single aggregate column `TomSqlJobStore.lastWindow` projects — its own row type because the mapper binds by column name and that select has no other columns |
 | `TomJobBacklogRow` | class | One job's aggregate row of `TomSqlJobStore.backlog`: its due, unclaimed runs and the earliest `run_at` among them |
 | `TomEventInstants` | abstract final class | Strictly increasing window instants for the runs a component enqueues itself — the outbox, the saga orchestrator — so two of them never share a window key. Statics only |
@@ -203,7 +208,8 @@ database a question it cannot otherwise answer.
 
 ## Reporting an Outcome for a Run You May Have Lost
 
-Every transition out of a claim carries the same four-way guard:
+Every transition out of a claim — and `saveCheckpoint`, which writes under one —
+carries the same four-way guard:
 
 ```sql
 UPDATE tom_job_run SET state='succeeded', completed_at=:now, claimed_by=NULL,
@@ -239,7 +245,7 @@ that the *successor* still completes normally — a fence that rejected everythi
 would pass the first three.
 
 The single fragment is written once in the store (`_heldByClaim`) rather than
-spelled out five times, because a lost conjunct only ever *widens* what a
+spelled out six times, because a lost conjunct only ever *widens* what a
 statement matches — it fails nothing until two nodes race.
 
 The retrying branch of `fail` has a second reason to be gated: it runs
@@ -252,6 +258,72 @@ write would have re-inserted it. The guard makes the *stated* contract the same
 everywhere rather than an accident of the storage medium, and
 `test/contracts/scheduling_contract.dart` in `tom_core_kernel` asserts it
 against all three stores.
+
+## Priority, Pausing and Checkpoints
+
+The kernel's model of all three is in
+`tom_core_kernel/doc/scheduling/scheduling.md`; this is what the database adds.
+
+**Priority.** The claim scan is
+
+```sql
+SELECT … FROM tom_job_run
+ WHERE state = 'pending' AND run_at <= :now
+   AND job_name NOT IN (SELECT job_name FROM tom_job_pause)
+ ORDER BY priority DESC, seq
+```
+
+so the most urgent due run is nominated first and runs of equal priority keep
+queue order. `priority` is copied onto the run from its job's `priority` when
+the run is planned.
+
+**Pausing.** A pause is a row in [`tom_job_pause`](#tom_job_pause), so every
+node sharing the queue sees it at its next scan. The claim scan and `backlog`
+leave out every job named there; its runs stay `pending` and wait. `pauseJob`
+inserts and keeps the stored row on a conflict (`INSERT IGNORE` on MariaDB,
+`ON CONFLICT DO NOTHING` on PostgreSQL), so a second pause leaves the instant of
+the first; `resumeJob` deletes the row; `pausedJobs` reads them all. The claim
+statement does not re-check the pause: a run nominated a moment before its job
+was paused may still be claimed, as it could have been a moment earlier — a
+pause stops what starts after it.
+
+**Checkpoints.** `checkpoint` holds the JSON text a running body saved through
+`TomJobRunContext.saveCheckpoint`. `saveCheckpoint` is an `UPDATE … SET
+checkpoint = :checkpoint` with the [four-way guard](#reporting-an-outcome-for-a-run-you-may-have-lost),
+and answers `false` when it affected no row — the claim no longer holds the run,
+and whoever holds it continues from the checkpoint it was handed. A checkpoint
+that is not JSON-encodable is refused under `schedule.job.checkpoint` before any
+statement runs, through the kernel's `TomJobStore.encodeCheckpoint`, as in the
+memory and file stores. The column survives `fail` and recovery, so a retried or
+recovered attempt starts from the last checkpoint; a value that does not decode
+as a JSON object reads back as no checkpoint.
+
+## The Archive
+
+`purgeFinished(before, {now})` moves the terminal runs completed before `before`
+into [`tom_job_run_archive`](#tom_job_run_archive), in one transaction:
+
+```sql
+INSERT INTO tom_job_run_archive (<every queue column>, archived_at)
+SELECT <every queue column>, :now FROM tom_job_run WHERE <finished before>;
+DELETE FROM tom_job_run WHERE <finished before>
+   AND id IN (SELECT id FROM tom_job_run_archive);
+```
+
+The `DELETE` removes exactly the runs the archive now holds, so a run that
+finished between the two statements stays in the queue for the next purge, and
+every run is in one table or the other. `now` stamps `archived_at` and defaults
+to the current UTC time.
+
+`archivedRuns({jobName, limit})` answers "did the nightly export run last March":
+the archive newest first, at most `limit` rows (100 by default), optionally for
+one job, each a `TomArchivedJobRun(run, archivedAt)`. The archive is bounded by
+its own purge, `purgeArchive(before)`, on `archived_at`.
+
+`archiveTable` is a constructor argument, and `null` turns the archive off:
+`purgeFinished` then deletes, `archivedRuns` answers an empty list and
+`purgeArchive` deletes nothing. `deleteAll` empties the queue, the pauses and the
+archive.
 
 ## The Roll Call
 
@@ -373,7 +445,7 @@ Quartz's answer to N nodes waking together.
 
 ## The Schema
 
-Each of the three tables is declared **once**, as a `TomFrameworkTable`
+Each of the five tables is declared **once**, as a `TomFrameworkTable`
 descriptor in `sql_scheduling_sql.dart` — a name, an ordered column list with
 types and nullability, and its keys. The `CREATE TABLE` the store issues (in
 the connected database's words), the column list of every `SELECT`, and every
@@ -409,6 +481,8 @@ One row per scheduled run of a job, shared by every node.
 | `claim_token` | `BIGINT` | The fencing counter: which claim of the run is current. Rises on every claim, never repeats, never reset |
 | `started_at` | `DATETIME(6)` | When execution actually began, or `NULL` if it never did |
 | `last_error`, `completed_at`, `payload` | `TEXT`, `DATETIME(6)`, `LONGTEXT` | Outcome and carried data |
+| `priority` | `INT NOT NULL DEFAULT 0` | The claim order: higher first, `seq` among equals; copied from the job |
+| `checkpoint` | `LONGTEXT` | The JSON text of the progress the body last saved, or `NULL` |
 
 `started_at` is separate from `claimed_at` on purpose: the two answer different
 questions, and recovery needs both (see
@@ -437,6 +511,33 @@ two tenant-less runs of one window would both insert. `job_name` is
 600 + 128 bytes in utf8mb4 plus an 8-byte `DATETIME(6)` is 736, under the
 767-byte index limit of the older InnoDB row formats, so the table can be created
 on a server that has not been switched to `DYNAMIC`.
+
+### tom_job_pause
+
+One row per paused job, deleted when the job is resumed.
+
+| Column | Type | Role |
+| ------ | ---- | ---- |
+| `job_name` | `VARCHAR(150)` | Primary key; the job's name, as in `tom_job_run.job_name` |
+| `paused_at` | `DATETIME(6)` | When the job was first paused, in UTC |
+
+A pause belongs to the job, not to its runs, so it is a table of its own rather
+than a flag on `tom_job_run`: runs enqueued while the job is paused wait too, and
+a job with no runs yet can be paused.
+
+### tom_job_run_archive
+
+The runs `purgeFinished` moved out of the queue: every column of
+[`tom_job_run`](#tom_job_run), then `archived_at DATETIME(6)`, when the run was
+moved. Three things differ from the queue:
+
+- `seq` is a plain `BIGINT` — the queue's insertion order carried over, not a
+  counter of its own.
+- There is no unique window key: a window may be planned again after its run
+  was archived.
+- Its two keys serve its two reads: `ix_…_archived (archived_at)` for
+  `purgeArchive` and the newest-first listing, `ix_…_job (job_name,
+  scheduled_for)` for one job's history.
 
 ### tom_lease
 
@@ -485,7 +586,7 @@ Two supported routes, and the choice is about who is allowed to run DDL:
   `CREATE TABLE IF NOT EXISTS` once, lazily, on first use. Right for tests and
   for a single-service deployment.
 - **`createSchema: false`** — the schema is owned by the migration module. Copy
-  the three files from `example/scheduling/migrations/main/tomcore/` into the
+  the five files from `example/scheduling/migrations/main/tomcore/` into the
   application's own migration tree and let `TomDbMigrations.migrateDatabases()`
   apply them. Right when the application's database user may not run DDL, which
   is the usual production posture.
@@ -600,9 +701,13 @@ microsecond can still meet.
 
 - **The queue is a table, so it can be inspected.** `SELECT state, COUNT(*) FROM
   tom_job_run GROUP BY state` answers "is anything stuck" without a tool.
-- **Finished runs accumulate.** `purgeFinished(before:)` deletes terminal runs
-  older than a cutoff; the scheduler calls it, but a queue with a high window
-  rate wants that cutoff set deliberately.
+- **Finished runs move to the archive.** `purgeFinished(before)` moves terminal
+  runs older than a cutoff into `tom_job_run_archive`; the archive grows until
+  `purgeArchive(before)` trims it, so a deployment sets both cutoffs
+  deliberately — the first for the size of the queue, the second for how long it
+  keeps the history.
+- **A paused job is a row.** `SELECT job_name, paused_at FROM tom_job_pause`
+  answers "what is paused, and since when".
 - **`tom_lease` rows are not garbage.** A released row is retained on purpose
   (see [tom_lease](#tom_lease)); deleting rows to tidy up would reset fencing
   counters. `forget` exists for the per-run resource names that are genuinely
@@ -635,31 +740,18 @@ microsecond can still meet.
 
 ## Not Yet Implemented
 
-- **Runs are claimed in insertion order, and there is no priority.** `claimDue`
-  scans `WHERE state = pending AND run_at <= now ORDER BY seq`, so a run cannot
-  be marked urgent and cannot overtake a backlog. A deployment that needs one
-  class of work to go first gives it its own scheduler and its own queue table.
-  <!-- unpinned: absence — no priority exists -->
-- **A job cannot be paused.** The store has no pause or disable: a job runs
-  because it is registered, so stopping one means not registering it, which is a
-  configuration change and a restart. `deleteAll` and `purgeFinished` operate on
-  *runs*, not on the schedule.
-  <!-- unpinned: absence — no pause or disable exists -->
-- **`purgeFinished` deletes; it does not archive.** A purged run's outcome is
-  gone, and there is no history table beside the queue — so a deployment that
-  wants to answer "did the nightly export run last March" keeps its own record,
-  or sets the cutoff generously and accepts the table's growth.
-  <!-- unpinned: absence — no history table exists -->
 - **The roll call reads peers' clocks and does not compensate for skew.** It is
   the one place a node judges another by a timestamp the other wrote, so skew
   beyond a second or so makes nodes accuse each other or excuse each other — see
   [The Roll Call](#the-roll-call). Claiming and leasing are unaffected, because
   both are arbitrated by the database's own clock. Run NTP.
   <!-- unpinned: untestable — clock skew between nodes cannot be staged in a unit test -->
-- **A recovered run is re-run, not resumed.** Recovery re-queues an abandoned
-  run from the beginning; nothing checkpoints partial work, so a job that is not
-  idempotent has to make itself so — which is the same requirement the retry
-  path already imposes.
+- **A recovered run resumes only from its own checkpoint.** Recovery re-queues an
+  abandoned run, and the next attempt starts from the last checkpoint the body
+  saved — or from the beginning when it saved none. The stretch between the last
+  checkpoint and the node's death runs again, so a job that is not idempotent
+  has to make itself so — which is the same requirement the retry path already
+  imposes.
   <!-- pinned: test/scheduling_db_test.dart › an interrupted run whose job opts in is re-queued -->
 - **`TomEventInstants` keeps instants apart within one isolate only.** Two
   nodes, or two isolates, enqueueing runs of one job for one tenant in the same
@@ -694,7 +786,7 @@ instant are both kept` holds the same against `tom_job_run`'s unique key.
 
 Three suites always run. `test/scheduling_schema_test.dart` covers DDL drift,
 schema invariants and instant encoding.
-`test/framework_schema_test.dart` covers the wider guarantee that the three
+`test/framework_schema_test.dart` covers the wider guarantee that the five
 tables are declared once — descriptors against the shipped migrations, against
 the reflected row types, and against every statement the stores issue (see
 [Schema Convergence](db_migration.md#schema-convergence)). Those are all
@@ -754,7 +846,7 @@ of wall clock, so it is run deliberately, not by `testkit :test`.
 | `lib/src/tomserver/scheduling/sql_job_store.dart` | `TomSqlJobStore` and its row types |
 | `lib/src/tomserver/scheduling/sql_lease_lock.dart` | `TomSqlLeaseLock` and its row type |
 | `lib/src/tomserver/scheduling/sql_scheduler_nodes.dart` | `TomSqlSchedulerNodes`, `TomSchedulerNode` and the failure formula |
-| `lib/src/tomserver/scheduling/sql_scheduling_sql.dart` | The three table descriptors, their derived DDL, table-name defaults |
+| `lib/src/tomserver/scheduling/sql_scheduling_sql.dart` | The five table descriptors, their derived DDL, table-name defaults |
 | `lib/src/tomserver/scheduling/event_instants.dart` | `TomEventInstants` — unique window instants for runs enqueued outside a schedule |
 | `lib/src/tomserver/datasources/sql_failure_mode.dart` | `classifySqlFailure` — definite or ambiguous |
 | `example/scheduling/scheduling_example.dart` | The connection-free surface, runnable |
@@ -771,6 +863,7 @@ of wall clock, so it is run deliberately, not by `testkit :test`.
 | [datasources](datasources.md) | module | `sql_job_store.dart`, `sql_lease_lock.dart`, `sql_scheduler_nodes.dart`, `sql_scheduling_sql.dart` | `TomDataSource` / `TomDataSourceInfo` for connections and parameterised statements |
 | [little_things](little_things.md) | module | `sql_job_store.dart`, `sql_lease_lock.dart`, `sql_scheduler_nodes.dart` | `TomServerException` |
 | [object_persistence](object_persistence.md) | module | `sql_job_store.dart`, `sql_lease_lock.dart`, `sql_scheduler_nodes.dart` | `TomDbColumn`, `TomDbTable` |
+| [transactions](transactions.md) | module | `sql_job_store.dart` | `TomTransactionManager.runInTransaction`, so a purge moves runs into the archive in one transaction |
 
 - **`db_migration`** — optional; the route by which a deployment creates the
   schema instead of letting the stores create it.

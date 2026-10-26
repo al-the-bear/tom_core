@@ -843,6 +843,9 @@ surface documented here.
 | ---- | ---- | ----------- |
 | `TomSqlJobStore` | class | A `TomJobStore` whose queue is a table in a `TomDataSource`. |
 | `TomJobRunRow` | class | One row of the job queue table. |
+| `TomJobPauseRow` | class | One row of the paused-job table. |
+| `TomJobRunArchiveRow` | class | One row of the run archive. |
+| `TomArchivedJobRun` | class | A run read back from the archive, with when it was archived. |
 | `TomJobRunWindowRow` | class | The aggregate column `lastWindow` projects. |
 | `TomJobBacklogRow` | class | One job's aggregate row of `backlog`: due runs and the earliest `run_at`. |
 | `TomSqlLeaseLock` | class | A `TomLeaseLock` whose leases are rows in a `TomDataSource`. |
@@ -852,9 +855,9 @@ surface documented here.
 | `TomSchedulerNodeRow` | class | One row of the roll-call table. |
 | `schedulerNodeFailedAfter` / `isSchedulerNodeFailed` | top-level | When a peer counts as failed, and whether it does. |
 | `defaultNodeFailureSlack` | top-level | The grace period added to a peer's expected check-in. |
-| `defaultJobRunTable` / `defaultLeaseTable` / `defaultSchedulerNodeTable` | top-level | Default table names. |
-| `jobRunTable` / `leaseTable` / `schedulerNodeTable` | top-level | The table descriptors. |
-| `jobRunTableDdl` / `leaseTableDdl` / `schedulerNodeTableDdl` | top-level | The `CREATE TABLE` statements. |
+| `defaultJobRunTable` / `defaultJobPauseTable` / `defaultJobRunArchiveTable` / `defaultLeaseTable` / `defaultSchedulerNodeTable` | top-level | Default table names. |
+| `jobRunTable` / `jobPauseTable` / `jobRunArchiveTable` / `leaseTable` / `schedulerNodeTable` | top-level | The table descriptors. |
+| `jobRunTableDdl` / `jobPauseTableDdl` / `jobRunArchiveTableDdl` / `leaseTableDdl` / `schedulerNodeTableDdl` | top-level | The `CREATE TABLE` statements. |
 | `TomEventInstants` | abstract final class | Strictly increasing window instants for runs a component enqueues itself — the outbox, the saga orchestrator. |
 
 ### Server (`lib/src/tomserver/server/`)
@@ -972,6 +975,8 @@ surface documented here.
 | `defaultIdempotencyTable` | Endpoints |
 | `defaultInboxTable` | Messaging |
 | `defaultInvalidationTable` | Cache |
+| `defaultJobPauseTable` | Scheduling |
+| `defaultJobRunArchiveTable` | Scheduling |
 | `defaultJobRunTable` | Scheduling |
 | `defaultLeaseTable` | Scheduling |
 | `defaultNodeFailureSlack` | Scheduling |
@@ -1012,6 +1017,10 @@ surface documented here.
 | `IsNotNull` | Object Persistence |
 | `IsNull` | Object Persistence |
 | `isSchedulerNodeFailed` | Scheduling |
+| `jobPauseTable` | Scheduling |
+| `jobPauseTableDdl` | Scheduling |
+| `jobRunArchiveTable` | Scheduling |
+| `jobRunArchiveTableDdl` | Scheduling |
 | `jobRunTable` | Scheduling |
 | `jobRunTableDdl` | Scheduling |
 | `leaseTable` | Scheduling |
@@ -1126,6 +1135,7 @@ surface documented here.
 | `TomApnsProviderToken` | Messaging |
 | `TomApnsPushProtocol` | Messaging |
 | `tomAppId` | Configuration |
+| `TomArchivedJobRun` | Scheduling |
 | `TomArgs` | Command Line |
 | `TomAsyncDataScopeResolver` | Object Persistence |
 | `TomAttachment` | Messaging |
@@ -1421,6 +1431,8 @@ surface documented here.
 | `TomItemAuthorizationWebhookException` | Cache |
 | `TomItemShareRequest` | Item Authorization |
 | `TomJobBacklogRow` | Scheduling |
+| `TomJobPauseRow` | Scheduling |
+| `TomJobRunArchiveRow` | Scheduling |
 | `TomJobRunRow` | Scheduling |
 | `TomJobRunWindowRow` | Scheduling |
 | `TomJwksServer` | Authentication |

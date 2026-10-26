@@ -66,6 +66,27 @@ Directory _migrationDirectory() {
   return root;
 }
 
+/// Records its job and the checkpoint's offset, saves `offset + 10`, and fails
+/// the first attempt.
+class _SqlCheckpointing extends TomCommand {
+  _SqlCheckpointing(this.order, this.seen, this.job);
+
+  final List<String> order;
+  final List<Object?> seen;
+  final String job;
+
+  @override
+  Future<Object?> execute() async {
+    final context = TomJobRunContext.require();
+    final offset = context.checkpoint?['offset'] as int?;
+    order.add(job);
+    seen.add(offset);
+    await context.saveCheckpoint({'offset': (offset ?? 0) + 10});
+    if (offset == null) throw StateError('interrupted');
+    return null;
+  }
+}
+
 TomJobRun _run(String id, DateTime at) =>
     TomJobRun(id: id, jobName: 'job', scheduledFor: at, runAt: at);
 
@@ -594,6 +615,163 @@ void main() async {
       });
     });
 
+    group('priority, pausing, archiving and checkpoints', () {
+      final at = DateTime.utc(2026, 5, 1, 12);
+      late TomSqlJobStore store;
+
+      setUp(() async {
+        store = TomSqlJobStore(dsi.datasource);
+        await store.deleteAll();
+      });
+
+      test('a purge moves finished runs to the archive with every '
+          'field', () async {
+        await store.enqueue(
+          TomJobRun(
+            id: 'done',
+            jobName: 'report',
+            scheduledFor: at,
+            runAt: at,
+            payload: {'region': 'eu'},
+            tenant: 'acme',
+            priority: 3,
+          ),
+        );
+        await store.enqueue(_run('open', at.add(const Duration(hours: 1))));
+        final claim = (await store.claimDue(at, 'node-a')).single;
+        await store.saveCheckpoint(claim, {'offset': 9});
+        await store.complete(claim, at);
+
+        final archivedAt = at.add(const Duration(days: 2));
+        final moved = await store.purgeFinished(
+          at.add(const Duration(days: 1)),
+          now: archivedAt,
+        );
+
+        expect(moved, 1);
+        expect((await store.all()).map((r) => r.id), ['open']);
+        final archived = (await store.archivedRuns()).single;
+        expect(archived.archivedAt, archivedAt);
+        expect(archived.run.id, 'done');
+        expect(archived.run.state, TomJobRunState.succeeded);
+        expect(archived.run.completedAt, at);
+        expect(archived.run.payload, {'region': 'eu'});
+        expect(archived.run.tenant, 'acme');
+        expect(archived.run.priority, 3);
+        expect(archived.run.checkpoint, {'offset': 9});
+      });
+
+      test('the archive is read per job, newest first, and bounded by its '
+          'own purge', () async {
+        for (final (index, job) in ['a', 'b', 'a'].indexed) {
+          final window = at.add(Duration(minutes: index));
+          await store.enqueue(
+            TomJobRun(
+              id: 'r$index',
+              jobName: job,
+              scheduledFor: window,
+              runAt: at,
+            ),
+          );
+          final claim = (await store.claimDue(at, 'o')).single;
+          await store.complete(claim, at);
+          await store.purgeFinished(
+            at.add(const Duration(seconds: 1)),
+            now: at.add(Duration(days: index + 1)),
+          );
+        }
+
+        expect((await store.archivedRuns(jobName: 'a')).map((a) => a.run.id), [
+          'r2',
+          'r0',
+        ]);
+        expect(await store.archivedRuns(limit: 1), hasLength(1));
+
+        expect(await store.purgeArchive(at.add(const Duration(days: 2))), 1);
+        expect((await store.archivedRuns()).map((a) => a.run.id), ['r2', 'r1']);
+      });
+
+      test('without an archive table a purge deletes', () async {
+        final deleting = TomSqlJobStore(dsi.datasource, archiveTable: null);
+        await deleting.enqueue(_run('done', at));
+        await deleting.complete((await deleting.claimDue(at, 'o')).single, at);
+
+        expect(
+          await deleting.purgeFinished(at.add(const Duration(days: 1))),
+          1,
+        );
+        expect(await deleting.all(), isEmpty);
+        expect(await deleting.archivedRuns(), isEmpty);
+        expect(await store.archivedRuns(), isEmpty);
+      });
+
+      test('a pause made through one node holds on every node', () async {
+        final nodeA = TomSqlJobStore(dsi.datasource);
+        final nodeB = TomSqlJobStore(dsi.datasource);
+        await nodeA.enqueue(_run('waiting', at));
+
+        await nodeA.pauseJob('job', at);
+        expect(await nodeB.claimDue(at, 'node-b'), isEmpty);
+        expect(await nodeB.backlog(at), isEmpty);
+
+        await nodeB.resumeJob('job');
+        expect((await nodeA.claimDue(at, 'node-a')).single.id, 'waiting');
+      });
+
+      test('a scheduler over the SQL store claims by priority, honours a '
+          'pause, and retries from the checkpoint', () async {
+        final clock = FakeClock(DateTime.utc(2026, 5, 1, 12));
+        final order = <String>[];
+        final seen = <Object?>[];
+        final scheduler = TomScheduler(
+          store: store,
+          dispatcher: const TomInlineJobDispatcher(),
+          clock: clock.call,
+          ownerId: 'sql-node',
+          maxRunsPerTick: 1,
+          onAlert: (_) {},
+        );
+        addTearDown(scheduler.close);
+        TomJobDefinition daily(String name, int priority) => TomJobDefinition(
+          name: name,
+          schedule: TomCronSchedule('0 0 * * *'),
+          priority: priority,
+          retryPolicy: const TomRetryPolicy(
+            jitter: 0,
+            initialBackoff: Duration(minutes: 1),
+          ),
+          body: (run) => _SqlCheckpointing(order, seen, run.jobName),
+        );
+        scheduler.register(daily('routine', 0));
+        scheduler.register(daily('urgent', 5));
+        scheduler.register(daily('held', 9));
+        await scheduler.pauseJob('held');
+
+        await scheduler.tick(); // plans 2026-05-02T00:00Z for the two live jobs
+        clock.now = DateTime.utc(2026, 5, 2, 0, 1);
+        for (var pass = 0; pass < 4; pass++) {
+          await scheduler.tick();
+          await scheduler.drain();
+          clock.advance(const Duration(minutes: 2));
+        }
+
+        // Each first attempt fails after saving; its retry starts from there,
+        // and the urgent job's retry still outranks the routine first attempt.
+        expect(order, ['urgent', 'urgent', 'routine', 'routine']);
+        expect(seen, [null, 10, null, 10]);
+        final runs = await store.all();
+        expect(runs.where((r) => r.jobName == 'held'), isEmpty);
+        for (final name in ['urgent', 'routine']) {
+          final run = runs.firstWhere(
+            (r) =>
+                r.jobName == name && r.scheduledFor == DateTime.utc(2026, 5, 2),
+          );
+          expect(run.state, TomJobRunState.succeeded, reason: name);
+          expect(run.checkpoint, {'offset': 20}, reason: name);
+        }
+      });
+    });
+
     group('the shipped migration builds the schema', () {
       test('on a clean database, and the stores then work against it', () async {
         await TestDatabase.dropSchedulingTables(dsi);
@@ -625,6 +803,16 @@ void main() async {
         // assertion here.
         await store.markStarted(claimed, at);
         expect((await store.all()).single.startedAt, at);
+        // The columns and tables the later migrations added: a checkpoint, a
+        // pause, and a purge into the archive.
+        expect(await store.saveCheckpoint(claimed, {'offset': 3}), isTrue);
+        await store.pauseJob('job', at);
+        expect(await store.pausedJobs(), {'job': at});
+        await store.complete(claimed, at);
+        expect(await store.purgeFinished(at.add(const Duration(days: 1))), 1);
+        expect((await store.archivedRuns()).single.run.checkpoint, {
+          'offset': 3,
+        });
         expect(
           await lock.acquire('r', 'node-a', const Duration(minutes: 1)),
           isNotNull,

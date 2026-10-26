@@ -43,6 +43,26 @@ void main() {
       );
     });
 
+    test('the pause migration is the DDL the store creates', () {
+      expect(
+        normaliseSql(_migration('[4]-create_tom_job_pause.sql')),
+        normaliseSql(jobPauseTableDdl(defaultJobPauseTable)),
+      );
+    });
+
+    test('the archive migration is the DDL the store creates', () {
+      expect(
+        normaliseSql(_migration('[5]-create_tom_job_run_archive.sql')),
+        normaliseSql(jobRunArchiveTableDdl(defaultJobRunArchiveTable)),
+      );
+    });
+
+    test('the archive holds every column of the queue', () {
+      final queue = jobRunTable(defaultJobRunTable).columnNames;
+      final archive = jobRunArchiveTable(defaultJobRunArchiveTable).columnNames;
+      expect(archive, [...queue, 'archived_at']);
+    });
+
     test('the DDL follows the table name it is given', () {
       // The table name is a constructor argument, so index names have to move
       // with it — two stores over differently-named tables in one schema would

@@ -127,6 +127,8 @@ void main() {
         jobRunTable(defaultJobRunTable),
         leaseTable(defaultLeaseTable),
         schedulerNodeTable(defaultSchedulerNodeTable),
+        jobPauseTable(defaultJobPauseTable),
+        jobRunArchiveTable(defaultJobRunArchiveTable),
       ]);
     });
 
@@ -244,6 +246,13 @@ void main() {
 
     test('the lease table', () {
       maps(leaseTable(defaultLeaseTable), [TomLeaseRow]);
+    });
+
+    test('the pause table and the run archive', () {
+      maps(jobPauseTable(defaultJobPauseTable), [TomJobPauseRow]);
+      maps(jobRunArchiveTable(defaultJobRunArchiveTable), [
+        TomJobRunArchiveRow,
+      ]);
     });
 
     test('the delivery-report index', () {
@@ -386,24 +395,38 @@ void main() {
       // so `claimDue` cannot supply one, and this test only cares about which
       // columns the statements name.
       final claim = TomJobClaim(run, 'node-a', 1);
-      await audit(datasource, [jobRunTable(defaultJobRunTable)], () async {
-        await _issuing(() => store.enqueue(run));
-        await _issuing(() => store.findWindow('job', now));
-        await _issuing(() => store.lastWindow('job'));
-        await _issuing(() => store.claimDue(now, 'node-a'));
-        await _issuing(() => store.markStarted(claim, now));
-        await _issuing(() => store.renewClaim(claim, now));
-        await _issuing(() => store.release(claim));
-        await _issuing(() => store.complete(claim, now));
-        await _issuing(() => store.fail(claim, 'boom', now));
-        await _issuing(() => store.fail(claim, 'boom', now, retryAt: now));
-        await _issuing(
-          () => store.recoverAbandoned(now, const Duration(minutes: 5)),
-        );
-        await _issuing(() => store.all());
-        await _issuing(() => store.purgeFinished(now));
-        await _issuing(() => store.deleteAll());
-      });
+      await audit(
+        datasource,
+        [
+          jobRunTable(defaultJobRunTable),
+          jobPauseTable(defaultJobPauseTable),
+          jobRunArchiveTable(defaultJobRunArchiveTable),
+        ],
+        () async {
+          await _issuing(() => store.enqueue(run));
+          await _issuing(() => store.findWindow('job', now));
+          await _issuing(() => store.lastWindow('job'));
+          await _issuing(() => store.claimDue(now, 'node-a'));
+          await _issuing(() => store.markStarted(claim, now));
+          await _issuing(() => store.renewClaim(claim, now));
+          await _issuing(() => store.release(claim));
+          await _issuing(() => store.complete(claim, now));
+          await _issuing(() => store.fail(claim, 'boom', now));
+          await _issuing(() => store.fail(claim, 'boom', now, retryAt: now));
+          await _issuing(
+            () => store.recoverAbandoned(now, const Duration(minutes: 5)),
+          );
+          await _issuing(() => store.all());
+          await _issuing(() => store.purgeFinished(now));
+          await _issuing(() => store.saveCheckpoint(claim, {'offset': 1}));
+          await _issuing(() => store.pauseJob('job', now));
+          await _issuing(() => store.resumeJob('job'));
+          await _issuing(() => store.pausedJobs());
+          await _issuing(() => store.archivedRuns(jobName: 'job'));
+          await _issuing(() => store.purgeArchive(now));
+          await _issuing(() => store.deleteAll());
+        },
+      );
     });
 
     test('the lease lock', () async {

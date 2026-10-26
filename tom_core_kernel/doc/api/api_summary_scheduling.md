@@ -27,6 +27,9 @@ run, and a tick loop that plans, claims, dispatches and retries.
   - [TomJobBase](#tomjobbase)
   - [TomScheduledJob](#tomscheduledjob)
   - [TomScheduledJobs](#tomscheduledjobs)
+- [The run context](#the-run-context)
+  - [TomJobRunContext](#tomjobruncontext)
+  - [TomJobRunCommand](#tomjobruncommand)
 - [The store](#the-store)
   - [TomJobRun](#tomjobrun)
   - [TomJobClaim](#tomjobclaim)
@@ -54,7 +57,8 @@ run, and a tick loop that plans, claims, dispatches and retries.
 ## Overview
 
 Sources: `lib/src/tombase/scheduling/schedule.dart`,
-`lib/src/tombase/scheduling/job_definition.dart`, `lib/src/tombase/scheduling/scheduled_job.dart`, `lib/src/tombase/scheduling/job_store.dart`,
+`lib/src/tombase/scheduling/job_definition.dart`, `lib/src/tombase/scheduling/scheduled_job.dart`, `lib/src/tombase/scheduling/job_run_context.dart`,
+`lib/src/tombase/scheduling/job_store.dart`,
 `lib/src/tombase/scheduling/lease_lock.dart`, `lib/src/tombase/scheduling/scheduler.dart`.
 
 The module separates four concerns that are usually tangled together:
@@ -334,6 +338,7 @@ TomJobDefinition({
   int catchUpLimit = 10,
   bool allowOverlap = false,
   bool requestsRecovery = false,
+  int priority = 0,
 })
 ```
 
@@ -355,6 +360,7 @@ rather than at the constructor that built it — see `TomRetryPolicy.validate`.
 | `catchUpLimit` | `int` | Upper bound on windows enqueued in one catch-up. |
 | `allowOverlap` | `bool` | Whether a second run may start while one is still in flight. |
 | `requestsRecovery` | `bool` | Whether a run interrupted mid-execution may be re-queued — opt-in, because re-running could repeat work already done. |
+| `priority` | `int` | How urgent the job's runs are: among runs due at the same moment, a higher priority is claimed first. Copied onto each run when it is planned; it orders the claim only and never pre-empts a running run. |
 
 #### Methods
 
@@ -568,6 +574,7 @@ const TomScheduledJob({
   int catchUpLimit = 10,
   bool allowOverlap = false,
   bool requestsRecovery = false,
+  int priority = 0,
 })
 ```
 
@@ -580,7 +587,7 @@ const TomScheduledJob({
 | `interval` | `Duration?` | A fixed-interval trigger. |
 | `calendar` | `String?` | A calendar-rule trigger in textual form (e.g. last day of month, third Tuesday). |
 | `event` | `bool` | Declares a stream-driven trigger; the stream is supplied at discovery time. |
-| `retry`, `timeout`, `missedWindow`, `catchUpLimit`, `allowOverlap`, `requestsRecovery` | — | The `TomJobDefinition` policy fields, verbatim. |
+| `retry`, `timeout`, `missedWindow`, `catchUpLimit`, `allowOverlap`, `requestsRecovery`, `priority` | — | The `TomJobDefinition` policy fields, verbatim. |
 
 ### TomScheduledJobs
 
@@ -593,6 +600,71 @@ namespace; the constructor is private.
 | ------ | --------- | ----------- |
 | `discover` | `static List<TomJobDefinition> discover({Stream<Object?>? Function(String jobName)? eventSource, bool Function(ClassMirror candidate)? where})` | Scans the reflected classes and builds a definition per annotated job. `eventSource` supplies the stream for `event: true` jobs; `where` narrows the scan. Validation failures throw `TomScheduledJobException` at scan time. |
 | `registerAll` | `static List<TomJobDefinition> registerAll(TomScheduler scheduler, {Stream<Object?>? Function(String jobName)? eventSource, bool Function(ClassMirror candidate)? where})` | Discovers, validates the whole scan, then registers. Refuses to overwrite a name the scheduler already knows. Returns what it registered. |
+
+## The run context
+
+### TomJobRunContext
+
+What a running job body may ask of its run: the checkpoint it starts from, and
+a way to record a new one. The scheduler runs every body inside one, whichever
+dispatcher runs it; across a worker-isolate hop a save travels to the
+scheduler's isolate through a port and completes once it is stored.
+
+#### Static Members
+
+| Member | Signature | Description |
+| ------ | --------- | ----------- |
+| `current` | `static TomJobRunContext? get current` | The context of the run the calling code executes, or `null` outside a job body. |
+| `require` | `static TomJobRunContext require()` | The current context; throws a `schedule.run_context.missing` `TomScheduleException` outside a job body. |
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `runId` | `String` | The run's id. |
+| `jobName` | `String` | The run's job. |
+| `checkpoint` | `Map<String, Object?>?` | The checkpoint handed to this attempt, or the last one it saved; `null` when there is none. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `saveCheckpoint` | `Future<bool> saveCheckpoint(Map<String, Object?>? checkpoint)` | Stores the map as the run's progress (`null` clears it). `true` once stored; `false` when the run is no longer this attempt's (lease lost, attempt timed out) — the body should stop. Throws `schedule.job.checkpoint` for a map that is not JSON-encodable and `schedule.job.checkpoint_failed` when the store could not write it. |
+
+### TomJobRunCommand
+
+The command the scheduler dispatches around every body: runs `inner` inside a
+`TomJobRunContext` for one attempt.
+
+- **Extends:** `TomCommand`
+
+#### Constructors
+
+```dart
+TomJobRunCommand({
+  required TomCommand inner,
+  required String runId,
+  required String jobName,
+  required Map<String, Object?>? checkpoint,
+  required SendPort saves,
+})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `inner` | `TomCommand` | The body. |
+| `runId` | `String` | The run. |
+| `jobName` | `String` | The run's job. |
+| `checkpoint` | `Map<String, Object?>?` | The checkpoint the attempt starts from. |
+| `saves` | `SendPort` | Where saves are sent: each message is `(checkpoint, replyPort)`, answered `true`/`false`, or `(key, message)` when storing failed. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `execute` | `Future<Object?> execute()` | *(override)* Runs `inner` in a zone carrying the context. |
 
 ## The store
 
@@ -621,6 +693,8 @@ TomJobRun({
   DateTime? completedAt,
   Object? payload,
   String? tenant,
+  int priority = 0,
+  Map<String, Object?>? checkpoint,
 })
 
 factory TomJobRun.fromJson(Map<String, Object?> map)
@@ -644,6 +718,8 @@ factory TomJobRun.fromJson(Map<String, Object?> map)
 | `completedAt` | `DateTime?` | When the run reached a terminal state. |
 | `payload` | `Object?` | The trigger payload, for event-driven runs. Must be JSON-encodable — `enqueue` refuses anything else. |
 | `tenant` | `String?` | The tenant the run belongs to, or `null` for a run of no tenant. The scheduler runs the body inside it (`TomTenantContext`) and keeps each tenant's windows apart. Round-trips through `toJson` / `fromJson`. |
+| `priority` | `int` | Copied from `TomJobDefinition.priority` when planned; `claimDue` takes higher priorities first. |
+| `checkpoint` | `Map<String, Object?>?` | The progress the run last saved through `TomJobRunContext.saveCheckpoint`, kept across retries and recovery and handed to the next attempt. JSON-native values only. |
 | `isFinished` | `bool` | Whether `state` is terminal (getter). |
 
 #### Methods
@@ -718,6 +794,7 @@ re-reading the store.
 | Member | Signature | Description |
 | ------ | --------- | ----------- |
 | `encodePayload` | `static String? encodePayload(TomJobRun run)` | The JSON text a durable store writes for the run's payload, and the contract's definition of "JSON-encodable". Throws a `schedule.job.payload` `TomScheduleException` naming the job and the offending type. Every `enqueue` calls it — including the in-memory one, which has nothing to write, so that a payload fails on the developer's machine rather than on the first deployment with a database. |
+| `encodeCheckpoint` | `static String? encodeCheckpoint(TomJobRun run, Map<String, Object?>? checkpoint)` | The JSON text a store writes for a checkpoint; throws a `schedule.job.checkpoint` `TomScheduleException` for one that is not JSON-encodable. Every `saveCheckpoint` calls it before writing. |
 | `isRecoverable` | `static bool isRecoverable(TomJobRun run, bool Function(String jobName)? requestsRecovery)` | Whether an abandoned run may be re-queued: always, if it never started; otherwise only if its job opted in. |
 | `recoveryDeclinedError` | `static const String` | The operator-facing text recorded against a run that was interrupted and deliberately not re-queued — a constant so it reads identically whichever store wrote it. |
 
@@ -728,16 +805,20 @@ re-reading the store.
 | `enqueue` | `Future<void> enqueue(TomJobRun run)` | Adds a run. Idempotence is the caller's job, via `findWindow`. Throws `schedule.job.payload` — **before** changing the queue — when `payload` is not JSON-encodable. |
 | `findWindow` | `Future<TomJobRun?> findWindow(String jobName, DateTime scheduledFor, {String? tenant})` | The existing run for a window of `tenant` (`null` for runs of no tenant), if it was already planned. A window belongs to one tenant: the same instant for two tenants is two windows. |
 | `lastWindow` | `Future<DateTime?> lastWindow(String jobName)` | The most recent window planned for a job — where catch-up resumes from. |
-| `claimDue` | `Future<List<TomJobClaim>> claimDue(DateTime now, String owner, {int limit = 16, bool Function(TomJobRun run)? accept})` | Atomically claims up to `limit` due runs for `owner`, returning one ticket per run won. |
+| `claimDue` | `Future<List<TomJobClaim>> claimDue(DateTime now, String owner, {int limit = 16, bool Function(TomJobRun run)? accept})` | Atomically claims up to `limit` due runs for `owner`, returning one ticket per run won. Takes runs by descending `priority`, insertion order among equals, and skips the runs of paused jobs. |
 | `release` | `Future<void> release(TomJobClaim claim)` | Hands a claimed run back to `pending` **without** charging an attempt — the voluntary counterpart of `recoverAbandoned`, so lease contention cannot drain a retry budget. |
 | `markStarted` | `Future<void> markStarted(TomJobClaim claim, DateTime now)` | Records that execution began. |
 | `renewClaim` | `Future<void> renewClaim(TomJobClaim claim, DateTime now)` | Heartbeats a claim so it is not judged abandoned. The ticket is unchanged: a renewal extends the claim rather than starting a new one. |
+| `saveCheckpoint` | `Future<bool> saveCheckpoint(TomJobClaim claim, Map<String, Object?>? checkpoint)` | Stores the run's progress (`null` clears it). Fenced like the transitions: `false`, nothing written, unless the store still holds the run as `running` under the claim. |
 | `complete` | `Future<void> complete(TomJobClaim claim, DateTime now)` | Marks the run succeeded. Calling it twice records the first completion only, so a duplicate outcome cannot extend the run's retention. |
 | `fail` | `Future<void> fail(TomJobClaim claim, String error, DateTime now, {DateTime? retryAt})` | Records a failure; a `retryAt` schedules another attempt, its absence makes the failure terminal. Guarded like `complete`, and doubly so on the retrying branch: it charges an attempt. |
 | `recoverAbandoned` | `Future<List<TomJobRun>> recoverAbandoned(DateTime now, Duration leaseTimeout, {bool Function(String jobName)? requestsRecovery})` | Reclaims runs left `running` by a holder that vanished, without charging an attempt. Returns every run it changed, so the caller can alert on each. |
 | `all` | `Future<List<TomJobRun>> all()` | Every held run, in insertion order — diagnostics and tests. |
 | `purgeFinished` | `Future<int> purgeFinished(DateTime before)` | Deletes terminal runs completed before `before`; returns the count. |
-| `backlog` | `Future<List<TomJobBacklog>> backlog(DateTime now)` | The runs due at `now` that nobody has claimed — `pending` with `runAt` at or before `now` — grouped per job: how many, and since when the oldest has been due. A job with nothing due is absent. The scheduler reports it as the `tom_job_backlog` and `tom_job_backlog_age_seconds` gauges; a backlog that does not drain is the signal that no node is taking the job's work, which a start-lag histogram cannot give, because a run nobody starts records no lag. |
+| `pauseJob` | `Future<void> pauseJob(String jobName, DateTime now)` | Holds the job's runs out of `claimDue` on every node sharing the store, until `resumeJob`. A second pause keeps the first instant; a running run is untouched. |
+| `resumeJob` | `Future<void> resumeJob(String jobName)` | Ends the pause; a no-op for a job that is not paused. |
+| `pausedJobs` | `Future<Map<String, DateTime>> pausedJobs()` | The paused jobs and when each was paused. |
+| `backlog` | `Future<List<TomJobBacklog>> backlog(DateTime now)` | The runs due at `now` that nobody has claimed — `pending` with `runAt` at or before `now` — grouped per job: how many, and since when the oldest has been due. A job with nothing due is absent, and so is a paused job. The scheduler reports it as the `tom_job_backlog` and `tom_job_backlog_age_seconds` gauges; a backlog that does not drain is the signal that no node is taking the job's work, which a start-lag histogram cannot give, because a run nobody starts records no lag. |
 
 ### TomJobBacklog
 
@@ -770,15 +851,17 @@ An in-process store — the default for tests and single-process use.
 | ------ | --------- | ----------- |
 | `onMutated` | `void onMutated()` | Hook called after every mutation; the extension point `TomFileJobStore` uses to learn that an operation changed the queue and must be written back. |
 | `snapshotSync` | `List<TomJobRun> snapshotSync()` | A synchronous copy of the held runs. |
-| `replaceAll` | `void replaceAll(Iterable<TomJobRun> runs)` | Replaces the contents wholesale (used when loading). |
-| `backlog` | `Future<List<TomJobBacklog>> backlog(DateTime now)` | *(override)* One pass over the held runs, counting those `isDue(now)` per job and keeping the earliest `runAt`. |
+| `pausedSync` | `Map<String, DateTime> pausedSync()` | A synchronous copy of the paused jobs. |
+| `replaceAll` | `void replaceAll(Iterable<TomJobRun> runs, [Map<String, DateTime> paused = const {}])` | Replaces the runs and the paused jobs wholesale (used when loading). |
+| `backlog` | `Future<List<TomJobBacklog>> backlog(DateTime now)` | *(override)* One pass over the held runs, counting those `isDue(now)` per job — paused jobs left out — and keeping the earliest `runAt`. |
 
 ### TomFileJobStore
 
 Adds durability by writing the whole store to a JSON file on every mutation, so
-a restart resumes where it left off. The file is a single JSON array of run
-objects — not an append-per-record log — so it is always rewritten in full and
-is only ever wholly valid or wholly discarded.
+a restart resumes where it left off. The file is a single JSON object — `runs`,
+an array of run objects, and `paused`, the paused jobs with the instant each was
+paused — not an append-per-record log, so it is always rewritten in full and is
+only ever wholly valid or wholly discarded.
 
 The write is atomic: the new queue is staged in a sibling `<path>.<pid>.tmp` and
 renamed over the target. An interrupted write therefore leaves the previous
@@ -788,7 +871,7 @@ process id in the staging name keeps two nodes on a shared mount from publishing
 each other's partial writes; strays are ignored on load.
 
 Several stores over one file — processes on one host or a shared mount, isolates
-in one process — share one queue. Every operation (all thirteen `TomJobStore`
+in one process — share one queue. Every operation (all seventeen `TomJobStore`
 methods, `all()` and `backlog()` included) holds an exclusive mutex, a `TomFileLeaseLock` on
 the sibling directory `<path>.lock` with a 30-second lease, re-reads the file,
 applies itself and writes the file back if it changed anything. A claim is
@@ -1079,6 +1162,9 @@ the interval is defaulted from it.
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `register` | `void register(TomJobDefinition job)` | Adds a job; subscribes its stream for an event schedule. |
+| `pauseJob` | `Future<void> pauseJob(String name)` | Pauses the job across every node sharing the store. A paused clock-driven job is not planned, so on resume its missed windows follow its `TomMissedWindowPolicy`; a paused event job's events are enqueued and wait. |
+| `resumeJob` | `Future<void> resumeJob(String name)` | Ends the pause; its due runs are claimed from the next pass on. |
+| `pausedJobs` | `Future<Map<String, DateTime>> pausedJobs()` | The paused jobs and when each was paused. |
 | `deregister` | `void deregister(String name)` | Removes a job and cancels any subscription. |
 | `start` | `Future<void> start()` | Adds the scheduler to `started`, then runs one `tick` immediately — which is what recovers abandoned leases and catches up on restart — then repeats roughly every `tickInterval`. Registers the `tom_job_backlog` and `tom_job_backlog_age_seconds` observations on `TomMetrics.registry` (once per scheduler). |
 | `stop` | `void stop()` | Stops the timer; in-flight runs are left to finish. The scheduler stays in `started`. |

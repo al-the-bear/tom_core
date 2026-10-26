@@ -311,6 +311,8 @@ declarations are omitted.
 | `TomScheduler` | class | The tick loop: recover, plan, claim, lease, dispatch, retry (implements `TomClosable`). |
 | `TomScheduleException`, `TomScheduledJobException` | class | Misconfiguration, raised eagerly at construction / scan time. |
 | `TomJobClaim` | class | A ticket proving that one particular claim of `run` was won. |
+| `TomJobRunContext` | class | What a running job body may ask of its run: its checkpoint, and a way to save a new one. |
+| `TomJobRunCommand` | class | The command the scheduler dispatches around every body, carrying its run context. |
 | `TomOneShotResource` | extension type | A lease resource name that will never be acquired again once its work is done — the only kind `TomLeaseLock.forget` accepts. |
 | `TomJobBacklog` | class | The due, unclaimed runs of one job — what `TomJobStore.backlog` answers. |
 

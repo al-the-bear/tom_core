@@ -915,6 +915,202 @@ void runTomJobStoreContract(String variant, TomJobStoreFactory create) {
         expect(stored.claimedBy, 'node-b');
       },
     );
+
+    // -------------------------------------------------------------------------
+    // Priority
+    // -------------------------------------------------------------------------
+
+    TomJobRun prioritised(String id, String job, int priority, int minute) =>
+        TomJobRun(
+          id: id,
+          jobName: job,
+          scheduledFor: at.add(Duration(minutes: minute)),
+          runAt: at,
+          priority: priority,
+        );
+
+    test('a higher priority is claimed first, equal priorities in queue '
+        'order', () async {
+      await store.enqueue(prioritised('low', 'a', -1, 0));
+      await store.enqueue(prioritised('mid1', 'b', 0, 1));
+      await store.enqueue(prioritised('high', 'c', 5, 2));
+      await store.enqueue(prioritised('mid2', 'd', 0, 3));
+
+      final claimed = await store.claimDue(at, 'o');
+
+      expect(claimed.map((c) => c.id), ['high', 'mid1', 'mid2', 'low']);
+    });
+
+    test('the limit takes the most urgent runs', () async {
+      await store.enqueue(prioritised('low', 'a', 0, 0));
+      await store.enqueue(prioritised('high', 'b', 9, 1));
+
+      final claimed = await store.claimDue(at, 'o', limit: 1);
+
+      expect(claimed.single.id, 'high');
+      expect((await reload('low')).state, TomJobRunState.pending);
+    });
+
+    test('a run keeps its priority in the store', () async {
+      await store.enqueue(prioritised('p', 'a', 7, 0));
+      expect((await reload('p')).priority, 7);
+    });
+
+    // -------------------------------------------------------------------------
+    // Pausing a job
+    // -------------------------------------------------------------------------
+
+    TomJobRun ofJob(String id, String job, {int minute = 0}) => TomJobRun(
+      id: id,
+      jobName: job,
+      scheduledFor: at.add(Duration(minutes: minute)),
+      runAt: at,
+    );
+
+    test('a paused job\'s runs are not claimed; other jobs\' are', () async {
+      await store.enqueue(ofJob('a1', 'paused'));
+      await store.enqueue(ofJob('b1', 'live'));
+      await store.pauseJob('paused', at);
+
+      final claimed = await store.claimDue(at, 'o');
+
+      expect(claimed.map((c) => c.id), ['b1']);
+      expect((await reload('a1')).state, TomJobRunState.pending);
+    });
+
+    test('resuming makes the waiting runs claimable at once', () async {
+      await store.enqueue(ofJob('a1', 'job2'));
+      await store.pauseJob('job2', at);
+      expect(await store.claimDue(at, 'o'), isEmpty);
+
+      await store.resumeJob('job2');
+
+      expect((await store.claimDue(at, 'o')).single.id, 'a1');
+    });
+
+    test('pausedJobs names each paused job and when it was paused; a second '
+        'pause keeps the first instant', () async {
+      final later = at.add(const Duration(hours: 1));
+      await store.pauseJob('x', at);
+      await store.pauseJob('x', later);
+      await store.pauseJob('y', later);
+
+      expect(await store.pausedJobs(), {'x': at, 'y': later});
+
+      await store.resumeJob('x');
+      await store.resumeJob('never-paused');
+      expect(await store.pausedJobs(), {'y': later});
+    });
+
+    test('a paused job has no backlog', () async {
+      await store.enqueue(ofJob('a1', 'paused'));
+      await store.enqueue(ofJob('b1', 'live'));
+      await store.pauseJob('paused', at);
+
+      final backlog = await store.backlog(at);
+
+      expect(backlog.map((b) => b.jobName), ['live']);
+    });
+
+    test('pausing does not touch a run already claimed', () async {
+      await store.enqueue(ofJob('a1', 'job2'));
+      final claim = (await store.claimDue(at, 'o')).single;
+      await store.pauseJob('job2', at);
+
+      await store.complete(claim, at);
+
+      expect((await reload('a1')).state, TomJobRunState.succeeded);
+    });
+
+    // -------------------------------------------------------------------------
+    // Checkpoints
+    // -------------------------------------------------------------------------
+
+    test('a saved checkpoint is stored with the run', () async {
+      final claim = await seedClaimed();
+
+      final stored = await store.saveCheckpoint(claim, {
+        'offset': 500,
+        'files': ['a', 'b'],
+      });
+
+      expect(stored, isTrue);
+      expect((await reload('r1')).checkpoint, {
+        'offset': 500,
+        'files': ['a', 'b'],
+      });
+      expect(claim.run.checkpoint, {
+        'offset': 500,
+        'files': ['a', 'b'],
+      });
+    });
+
+    test('a later save replaces the checkpoint, null clears it', () async {
+      final claim = await seedClaimed();
+      await store.saveCheckpoint(claim, {'offset': 1});
+      await store.saveCheckpoint(claim, {'offset': 2});
+      expect((await reload('r1')).checkpoint, {'offset': 2});
+
+      await store.saveCheckpoint(claim, null);
+      expect((await reload('r1')).checkpoint, isNull);
+    });
+
+    test('a recovered run is claimed again with its checkpoint', () async {
+      await store.enqueue(makeRun('r1'));
+      final first = (await store.claimDue(at, 'dead')).single;
+      await store.markStarted(first, at);
+      await store.saveCheckpoint(first, {'offset': 300});
+
+      final later = at.add(const Duration(minutes: 20));
+      await store.recoverAbandoned(later, const Duration(minutes: 15));
+      final second = (await store.claimDue(later, 'survivor')).single;
+
+      expect(second.run.checkpoint, {'offset': 300});
+    });
+
+    test('a retried run keeps its checkpoint', () async {
+      final claim = await seedClaimed();
+      await store.saveCheckpoint(claim, {'offset': 40});
+      await store.fail(claim, 'boom', at, retryAt: at);
+
+      final retry = (await store.claimDue(at, 'node-a')).single;
+
+      expect(retry.run.checkpoint, {'offset': 40});
+    });
+
+    test('a save from a superseded claim is refused and changes '
+        'nothing', () async {
+      final stale = await seedSuperseded();
+
+      expect(await store.saveCheckpoint(stale, {'offset': 9}), isFalse);
+      expect((await reload('r1')).checkpoint, isNull);
+    });
+
+    test('a save for a finished run is refused', () async {
+      final claim = await seedClaimed();
+      await store.complete(claim, at);
+
+      expect(await store.saveCheckpoint(claim, {'offset': 9}), isFalse);
+      expect((await reload('r1')).checkpoint, isNull);
+    });
+
+    test('a checkpoint that is not JSON-encodable is refused before '
+        'anything is written', () async {
+      final claim = await seedClaimed();
+      await store.saveCheckpoint(claim, {'offset': 1});
+
+      await expectLater(
+        store.saveCheckpoint(claim, {'when': DateTime.utc(2026)}),
+        throwsA(
+          isA<TomScheduleException>().having(
+            (e) => e.key,
+            'key',
+            'schedule.job.checkpoint',
+          ),
+        ),
+      );
+      expect((await reload('r1')).checkpoint, {'offset': 1});
+    });
   });
 }
 

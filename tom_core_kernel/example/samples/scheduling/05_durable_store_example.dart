@@ -90,7 +90,7 @@ TomScheduler _scheduler(TomJobStore store, FakeClock clock, String ownerId) =>
 /// which executed is *the same row* the first process wrote is what makes this
 /// durability rather than coincidence.
 class QueueOutlivesProcessExample {
-  static bool fileIsJsonArray = false;
+  static bool fileIsJsonObject = false;
   static int rowsOnDisk = 0;
   static String? plannedId;
   static String? executedId;
@@ -127,11 +127,12 @@ class QueueOutlivesProcessExample {
       await first.close();
 
       // --- What is on disk, between the two processes ----------------------
-      // Readable without the kernel, which is the point of a JSON array: an
-      // operator with `cat` can answer "is the 10:00 rollup queued?".
+      // Readable without the kernel, which is the point of plain JSON: an
+      // operator with `cat` can answer "is the 10:00 rollup queued?". The
+      // file is one object — the queue's runs, and the jobs that are paused.
       final decoded = jsonDecode(File(path).readAsStringSync());
-      fileIsJsonArray = decoded is List;
-      rowsOnDisk = (decoded as List).length;
+      fileIsJsonObject = decoded is Map && decoded['runs'] is List;
+      rowsOnDisk = fileIsJsonObject ? (decoded['runs'] as List).length : -1;
 
       // --- Second process ---------------------------------------------------
       // A fresh store over the same path. Constructing it *is* the reload.
@@ -160,8 +161,8 @@ class QueueOutlivesProcessExample {
       await second.close();
 
       assert(
-        fileIsJsonArray && rowsOnDisk == 1,
-        'One array, one pending row — the queue is the file, not a log of '
+        fileIsJsonObject && rowsOnDisk == 1,
+        'One runs array, one pending row — the queue is the file, not a log of '
         'changes to it, so there is no journal to replay and nothing to compact',
       );
       assert(
@@ -473,7 +474,7 @@ Future<void> run() async {
 
   await QueueOutlivesProcessExample.example1AQueueOutlivesItsProcess();
   print('1. A planned window outlives the process that planned it:');
-  print('   json array   : ${QueueOutlivesProcessExample.fileIsJsonArray}');
+  print('   json object  : ${QueueOutlivesProcessExample.fileIsJsonObject}');
   print('   rows on disk : ${QueueOutlivesProcessExample.rowsOnDisk}');
   print('   planned id   : ${QueueOutlivesProcessExample.plannedId}');
   print('   executed id  : ${QueueOutlivesProcessExample.executedId}');
