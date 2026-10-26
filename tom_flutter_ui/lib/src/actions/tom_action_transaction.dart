@@ -1,4 +1,4 @@
-import 'package:tom_forge_core/tom_forge_undo.dart';
+import 'package:tom_undo/tom_undo.dart';
 
 import 'tom_action.dart';
 import 'tom_action_context.dart';
@@ -156,7 +156,7 @@ class TomActionTransaction {
     if (isRedoable) {
       // Every entry can be put back, so a step that throws leaves the
       // transaction exactly as it was, still applied and still undoable.
-      forgeApplyAll<_UndoEntry>(
+      tomApplyAll<_UndoEntry>(
         _entries.reversed,
         (e) => e.undo(),
         (e) => e.redo!(),
@@ -212,7 +212,7 @@ class TomActionTransaction {
     }
     // A step that throws puts back what the pass had re-applied, so the
     // transaction stays undone and can be redone again as a whole.
-    forgeApplyAll<_UndoEntry>(_entries, (e) => e.redo!(), (e) => e.undo());
+    tomApplyAll<_UndoEntry>(_entries, (e) => e.redo!(), (e) => e.undo());
     _undone = false;
   }
 

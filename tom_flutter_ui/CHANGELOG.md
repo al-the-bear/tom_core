@@ -2,9 +2,9 @@
 
 ### Undo
 
-- **`TomUndoHistory` runs on `tom_forge_core`'s `ForgeUndoStack`**, the one
-  undo/redo stack the workspace's editors share, through its platform-neutral
-  `tom_forge_undo.dart` entry point. The public behaviour is unchanged: a
+- **`TomUndoHistory` runs on `tom_undo`'s `TomUndoStack`**, the one undo/redo
+  stack the workspace's editors share; the package no longer depends on Tom
+  Forge. The public behaviour is unchanged: a
   transaction is undone or redone first and moved second, so one whose undo
   throws stays where it was.
 - **`TomActionTransaction.undoAll` and `redoAll` are atomic.** A step that

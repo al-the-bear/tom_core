@@ -11,15 +11,14 @@ environment:
   flutter: ">=1.17.0"
 
 dependencies:
+  # The undo/redo stack the action system's history runs on, and the atomic
+  # application of a transaction's steps.
+  tom_undo:
+    path: ../../basics/tom_undo
   flutter:
     sdk: flutter
   tom_core_kernel:
     path: ../tom_core_kernel
-  # The undo/redo stack the action system's history runs on, through its
-  # platform-neutral entry point (`tom_forge_undo.dart`), and the atomic
-  # application of a transaction's steps.
-  tom_forge_core:
-    path: ../../../tom_forge/tom_forge_core
   # Cupertino icon font — declared here so any consumer of
   # `tom_flutter_ui`'s Cupertino field widgets pulls the font in
   # transitively (the CupertinoIcons.ttf is what every CupertinoIcons.*

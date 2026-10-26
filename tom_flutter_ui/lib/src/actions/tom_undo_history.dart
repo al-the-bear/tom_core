@@ -1,4 +1,4 @@
-import 'package:tom_forge_core/tom_forge_undo.dart';
+import 'package:tom_undo/tom_undo.dart';
 
 import 'tom_action.dart';
 import 'tom_action_context.dart';
@@ -6,7 +6,7 @@ import 'tom_action_transaction.dart';
 
 /// Application-level undo/redo history.
 ///
-/// A [ForgeUndoStack] of [TomActionTransaction]s: a transaction is undone (or
+/// A [TomUndoStack] of [TomActionTransaction]s: a transaction is undone (or
 /// redone) first and moved between the stacks second, so a transaction whose
 /// undo throws stays where it was and the history is unchanged.
 ///
@@ -31,13 +31,13 @@ class TomUndoHistory {
   /// Maximum number of transactions to keep.
   final int maxSize;
 
-  final ForgeUndoStack<TomActionTransaction> _stack;
+  final TomUndoStack<TomActionTransaction> _stack;
 
   /// Optional callback invoked when the undo/redo state changes.
   void Function()? onChanged;
 
   TomUndoHistory({this.maxSize = 100, this.onChanged})
-    : _stack = ForgeUndoStack(maxEntries: maxSize);
+    : _stack = TomUndoStack(maxEntries: maxSize);
 
   /// Pushes a committed transaction onto the undo stack.
   ///

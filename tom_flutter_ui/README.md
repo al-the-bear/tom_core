@@ -48,9 +48,8 @@ flutter pub add tom_flutter_ui --path ../tom_flutter_ui
 This package is internal to the Tom workspace (`publish_to: none`) and is
 consumed by path. It targets **Dart SDK `^3.11.0`** / **Flutter `>=1.17.0`** and
 depends on the sibling [`tom_core_kernel`](../tom_core_kernel/README.md) (state,
-security, resources, reflection) and on Tom Forge's `tom_forge_core` for the
-undo/redo stack its action history runs on, through that package's
-platform-neutral `tom_forge_undo.dart` entry point. A single barrel re-exports
+security, resources, reflection) and on [`tom_undo`](../../basics/tom_undo/README.md)
+for the undo/redo stack its action history runs on. A single barrel re-exports
 every module:
 
 ```dart

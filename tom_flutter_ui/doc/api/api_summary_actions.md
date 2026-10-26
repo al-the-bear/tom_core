@@ -334,8 +334,8 @@ TomActionTrigger({
 
 ### TomUndoHistory
 
-A bounded undo/redo stack of committed transactions, on `tom_forge_core`'s
-`ForgeUndoStack`: a transaction whose undo or redo throws stays where it was.
+A bounded undo/redo stack of committed transactions, on `tom_undo`'s
+`TomUndoStack`: a transaction whose undo or redo throws stays where it was.
 
 **Kind:** `class`
 
