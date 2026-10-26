@@ -4,6 +4,7 @@ import 'package:shelf/shelf.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../endpoints/endpoint_annotation.dart';
+import '../little_things/server_exception.dart';
 
 /// Whether a deployment should be sent traffic.
 ///
@@ -79,8 +80,9 @@ class TomHealthStatus {
 /// ```dart
 /// class MyHealthAnalyzer extends TomHealthAnalyzer {
 ///   @override
-///   Future<TomHealthStatus> analyzeHealth() async {
+///   Future<TomHealthStatus> analyzeHealth(TomHealthCheck check) async {
 ///     final dbOk = await checkDatabaseConnection();
+///     check.throwIfCancelled(); // the probe has given up: stop here
 ///     final cacheOk = await checkCacheService();
 ///     if (dbOk && cacheOk) {
 ///       return const TomHealthStatus.healthy();
@@ -104,15 +106,73 @@ abstract class TomHealthAnalyzer {
   /// analyzer cannot stop a probe from answering. An analyzer that touches
   /// anything remote should still impose its own, shorter deadline: the
   /// framework's can only say *that* the check did not answer, while the
-  /// analyzer's own can say **which** dependency was slow, and it is the only
-  /// one that stops the work rather than the waiting.
-  Future<TomHealthStatus> analyzeHealth();
+  /// analyzer's own can say **which** dependency was slow.
+  ///
+  /// [check] says when the probe has given up: once its deadline passes it is
+  /// cancelled, and an analyzer stops cooperatively — between its steps with
+  /// [TomHealthCheck.throwIfCancelled], or by racing a long wait against
+  /// [TomHealthCheck.cancelled]. Dart cannot abort a future in flight, so a
+  /// timed-out analysis that does not look keeps running to its end.
+  Future<TomHealthStatus> analyzeHealth(TomHealthCheck check);
+}
+
+/// One health analysis in progress, as its analyzer sees it: which probe
+/// asked, under which deadline, and whether the probe has given up.
+///
+/// Cancelled when the deadline passes, so an analyzer can stop work nobody
+/// waits for any more — the query it was about to send, the next dependency
+/// it was about to ask.
+class TomHealthCheck {
+  /// A check for [probe] under [deadline].
+  TomHealthCheck(this.probe, this.deadline);
+
+  /// `liveness` or `readiness`.
+  final String probe;
+
+  /// How long the probe waits.
+  final Duration deadline;
+
+  final Completer<void> _cancelled = Completer<void>();
+
+  /// Whether the probe has given up on this analysis.
+  bool get isCancelled => _cancelled.isCompleted;
+
+  /// Completes when the probe gives up — to race a long wait against.
+  Future<void> get cancelled => _cancelled.future;
+
+  /// Throws [TomHealthCheckCancelled] once the probe has given up.
+  void throwIfCancelled() {
+    if (isCancelled) throw TomHealthCheckCancelled(probe, deadline);
+  }
+
+  /// Marks the analysis cancelled; a second call does nothing.
+  void cancel() {
+    if (!_cancelled.isCompleted) _cancelled.complete();
+  }
+}
+
+/// Thrown by [TomHealthCheck.throwIfCancelled] (`healthcheck.check.cancelled`):
+/// the probe stopped waiting, and the analysis is to stop.
+class TomHealthCheckCancelled extends TomServerException {
+  /// The [probe] check, cancelled at its [deadline].
+  TomHealthCheckCancelled(this.probe, this.deadline)
+    : super(
+        'healthcheck.check.cancelled',
+        'The $probe check was cancelled after $deadline.',
+        parameters: {'probe': probe, 'deadline': '$deadline'},
+      );
+
+  /// `liveness` or `readiness`.
+  final String probe;
+
+  /// The deadline that passed.
+  final Duration deadline;
 }
 
 /// Default health analyzer that always reports healthy.
 class TomDefaultHealthAnalyzer extends TomHealthAnalyzer {
   @override
-  Future<TomHealthStatus> analyzeHealth() async =>
+  Future<TomHealthStatus> analyzeHealth(TomHealthCheck check) async =>
       const TomHealthStatus.healthy();
 }
 
@@ -216,9 +276,47 @@ abstract class TomHealthService {
 /// [readinessAnalyzer] for `/ready` — and turns the verdict it gets back into
 /// the response. Install a custom [TomHealthAnalyzer] on either before server
 /// startup to add real checks.
+///
+/// Those are the process-wide analyzers. An instance may carry its own —
+/// `TomHealthServer(readiness: ..., timeout: ...)` — for a process serving
+/// two services whose health is not the same question; what an instance
+/// leaves out it takes from the process-wide setting.
 @tomReflector
 @tomComponent
 class TomHealthServer implements TomHealthService {
+  /// A health service with its own [liveness] and [readiness] analyzers and
+  /// [timeout]; each one left out is the process-wide one.
+  TomHealthServer({
+    TomHealthAnalyzer? liveness,
+    TomHealthAnalyzer? readiness,
+    Duration? timeout,
+  }) : _liveness = liveness,
+       _readiness = readiness,
+       _timeout = timeout {
+    if (timeout != null && timeout <= Duration.zero) {
+      // throws-outside-family: programmer error — the deadline is a
+      // construction-time argument.
+      throw ArgumentError.value(
+        timeout,
+        'timeout',
+        'the health deadline must be positive',
+      );
+    }
+  }
+
+  final TomHealthAnalyzer? _liveness;
+  final TomHealthAnalyzer? _readiness;
+  final Duration? _timeout;
+
+  /// The analyzer this instance answers `/health` with.
+  TomHealthAnalyzer get liveness => _liveness ?? _livenessAnalyzer;
+
+  /// The analyzer this instance answers `/ready` with.
+  TomHealthAnalyzer get readiness => _readiness ?? _readinessAnalyzer;
+
+  /// The deadline this instance's checks run under.
+  Duration get timeout => _timeout ?? _healthTimeout;
+
   /// The deadline a process starts with: five seconds.
   ///
   /// Long enough that a real dependency check — a `SELECT 1` over an
@@ -359,13 +457,13 @@ class TomHealthServer implements TomHealthService {
 
   @override
   Future<Response> health() async =>
-      responseFor(await verdictOf(_livenessAnalyzer, 'liveness'));
+      responseFor(await verdictOf(liveness, 'liveness', timeout: timeout));
 
   @override
   Future<Response> ready() async => responseFor(
     _shuttingDown
         ? const TomHealthStatus.unhealthy('shutting down')
-        : await verdictOf(_readinessAnalyzer, 'readiness'),
+        : await verdictOf(readiness, 'readiness', timeout: timeout),
   );
 
   static bool _shuttingDown = false;
@@ -418,48 +516,61 @@ class TomHealthServer implements TomHealthService {
   /// not `async` and raises before returning a future never reaches
   /// [Future.timeout], so the call itself is inside the guarded block.
   ///
-  /// A timed-out analyzer is **not** cancelled: `Future.timeout` stops the
-  /// waiting, not the work, and Dart has no way to abort a future in flight.
-  /// So an analysis is never started twice: a probe that arrives while the
-  /// analyzer's previous analysis is still pending waits on that one, under
-  /// its own deadline, and only a probe after it has answered asks afresh. An
-  /// analyzer that hangs on every probe therefore costs one pending future, not
-  /// one per probe — and an analyzer that touches anything remote should still
-  /// carry its own, shorter deadline, the only one that stops the work.
+  /// A timed-out analysis is **cancelled**: its [TomHealthCheck] is marked,
+  /// and an analyzer that looks stops its work. Dart cannot abort a future in
+  /// flight, so cancellation is cooperative — `Future.timeout` stops only the
+  /// waiting — and an analysis is never started twice: a probe that arrives
+  /// while the analyzer's previous analysis is still pending waits on that
+  /// one, under its own deadline, and only a probe after it has ended asks
+  /// afresh. An analyzer that ignores the cancellation and hangs therefore
+  /// costs one pending future, not one per probe.
+  ///
+  /// [timeout] defaults to the process-wide [healthTimeout].
   static Future<TomHealthStatus> verdictOf(
     TomHealthAnalyzer analyzer,
-    String probe,
-  ) async {
+    String probe, {
+    Duration? timeout,
+  }) async {
+    final deadline = timeout ?? _healthTimeout;
+    final (analysis, check) = _analysisOf(analyzer, probe, deadline);
     try {
-      return await _analysisOf(analyzer).timeout(_healthTimeout);
+      return await analysis.timeout(deadline);
     } on TimeoutException {
+      check.cancel();
       return TomHealthStatus.unhealthy(
-        'TIMEOUT: the $probe check did not answer within $_healthTimeout',
+        'TIMEOUT: the $probe check did not answer within $deadline',
       );
     } catch (error) {
       return TomHealthStatus.unhealthy('FAILED: the $probe check threw $error');
     }
   }
 
-  /// The analysis of [analyzer] still in flight, keyed weakly by the analyzer
-  /// so a replaced one is not kept alive by its last answer.
-  static final Expando<Future<TomHealthStatus>> _pending = Expando(
-    'pending health analysis',
-  );
+  /// The analysis of [analyzer] still in flight and its check, keyed weakly
+  /// by the analyzer so a replaced one is not kept alive by its last answer.
+  static final Expando<(Future<TomHealthStatus>, TomHealthCheck)> _pending =
+      Expando('pending health analysis');
 
   /// The analysis [analyzer] is already running, or a new one when none is.
   ///
   /// The entry is cleared when the analysis completes, whether it answered or
   /// threw, and only if it is still the current one.
-  static Future<TomHealthStatus> _analysisOf(TomHealthAnalyzer analyzer) {
+  static (Future<TomHealthStatus>, TomHealthCheck) _analysisOf(
+    TomHealthAnalyzer analyzer,
+    String probe,
+    Duration deadline,
+  ) {
     final running = _pending[analyzer];
     if (running != null) return running;
-    final analysis = analyzer.analyzeHealth();
-    _pending[analyzer] = analysis;
+    final check = TomHealthCheck(probe, deadline);
+    // Inside the async closure, so a synchronous throw arrives as a failed
+    // future and is answered like any other failure.
+    final analysis = Future(() => analyzer.analyzeHealth(check));
+    final entry = (analysis, check);
+    _pending[analyzer] = entry;
     analysis.whenComplete(() {
-      if (identical(_pending[analyzer], analysis)) _pending[analyzer] = null;
+      if (identical(_pending[analyzer], entry)) _pending[analyzer] = null;
     }).ignore();
-    return analysis;
+    return entry;
   }
 
   /// The HTTP response one [status] is served as.

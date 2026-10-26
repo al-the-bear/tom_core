@@ -34,14 +34,18 @@ void main() async {
       final checks = await TomFrameworkReadinessAnalyzer().checks();
       final check = checks.singleWhere((c) => c.subject == 'datasource $name');
       expect(check.passed, isTrue, reason: '$check');
-      final status = await TomFrameworkReadinessAnalyzer().analyzeHealth();
+      final status = await TomFrameworkReadinessAnalyzer().analyzeHealth(
+        TomHealthCheck('readiness', const Duration(seconds: 5)),
+      );
       expect(status.isHealthy, isTrue, reason: status.message);
       expect(status.message, contains('datasource $name: ok'));
     });
 
     test('a closed data source makes the server not ready', () async {
       await dsi.datasource.close();
-      final status = await TomFrameworkReadinessAnalyzer().analyzeHealth();
+      final status = await TomFrameworkReadinessAnalyzer().analyzeHealth(
+        TomHealthCheck('readiness', const Duration(seconds: 5)),
+      );
       expect(status.isHealthy, isFalse);
       expect(status.statusCode, 503);
       expect(status.message, contains('datasource $name: not operational'));

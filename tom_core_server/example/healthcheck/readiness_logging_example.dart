@@ -48,8 +48,8 @@ class _AppReadiness extends TomHealthAnalyzer {
   final _framework = TomFrameworkReadinessAnalyzer();
 
   @override
-  Future<TomHealthStatus> analyzeHealth() async {
-    final framework = await _framework.analyzeHealth();
+  Future<TomHealthStatus> analyzeHealth(TomHealthCheck check) async {
+    final framework = await _framework.analyzeHealth(check);
     if (!framework.isHealthy) return framework;
     return searchIndexAnswers
         ? framework
@@ -65,7 +65,9 @@ Future<void> run() async {
   //    migration never run passes, because a deployment whose schema is
   //    applied by a DBA or a job never runs one.
   final analyzer = TomFrameworkReadinessAnalyzer();
-  final ready = await analyzer.analyzeHealth();
+  final ready = await analyzer.analyzeHealth(
+    TomHealthCheck('readiness', const Duration(seconds: 5)),
+  );
   print('1. nothing registered        => ${ready.statusCode}');
   print(_indent(ready.message));
   check(ready.isHealthy, 'a process waiting for nothing is ready');
@@ -87,7 +89,9 @@ Future<void> run() async {
     } on TomDbMigrationException {
       // The boot step reports it; readiness keeps reporting it.
     }
-    final failed = await analyzer.analyzeHealth();
+    final failed = await analyzer.analyzeHealth(
+      TomHealthCheck('readiness', const Duration(seconds: 5)),
+    );
     print('2. after a failed migration  => ${failed.statusCode}');
     print(_indent(failed.message));
     check(
@@ -112,9 +116,13 @@ Future<void> run() async {
     router: TomMessageRouter()..register(TomMemoryMessageTransport()),
   )..start();
   try {
-    final delivering = await analyzer.analyzeHealth();
+    final delivering = await analyzer.analyzeHealth(
+      TomHealthCheck('readiness', const Duration(seconds: 5)),
+    );
     outbox.scheduler.stop();
-    final stopped = await analyzer.analyzeHealth();
+    final stopped = await analyzer.analyzeHealth(
+      TomHealthCheck('readiness', const Duration(seconds: 5)),
+    );
     print(
       '3. a started outbox          => ${delivering.statusCode}, '
       'stopped => ${stopped.statusCode}',

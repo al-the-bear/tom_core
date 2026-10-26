@@ -28,14 +28,14 @@ class _FixedAnalyzer extends TomHealthAnalyzer {
   _FixedAnalyzer(this.status);
 
   @override
-  Future<TomHealthStatus> analyzeHealth() async => status;
+  Future<TomHealthStatus> analyzeHealth(TomHealthCheck check) async => status;
 }
 
 /// An analyzer whose future never completes — the dependency that has dropped
 /// off the network rather than refused a connection.
 class _HangingAnalyzer extends TomHealthAnalyzer {
   @override
-  Future<TomHealthStatus> analyzeHealth() =>
+  Future<TomHealthStatus> analyzeHealth(TomHealthCheck check) =>
       Completer<TomHealthStatus>().future;
 }
 
@@ -43,7 +43,7 @@ class _HangingAnalyzer extends TomHealthAnalyzer {
 /// the future completes with an error.
 class _ThrowingAnalyzer extends TomHealthAnalyzer {
   @override
-  Future<TomHealthStatus> analyzeHealth() async =>
+  Future<TomHealthStatus> analyzeHealth(TomHealthCheck check) async =>
       throw StateError('the pool is closed');
 }
 
@@ -53,7 +53,7 @@ class _ThrowingAnalyzer extends TomHealthAnalyzer {
 /// is caught only because the call itself is inside the guarded block.
 class _SynchronouslyThrowingAnalyzer extends TomHealthAnalyzer {
   @override
-  Future<TomHealthStatus> analyzeHealth() =>
+  Future<TomHealthStatus> analyzeHealth(TomHealthCheck check) =>
       throw StateError('no datasource is registered');
 }
 
@@ -64,7 +64,7 @@ class _SynchronouslyThrowingAnalyzer extends TomHealthAnalyzer {
 /// has a caller.
 class _LateFailingAnalyzer extends TomHealthAnalyzer {
   @override
-  Future<TomHealthStatus> analyzeHealth() => Future.delayed(
+  Future<TomHealthStatus> analyzeHealth(TomHealthCheck check) => Future.delayed(
     const Duration(milliseconds: 300),
     () => throw StateError('the connection attempt gave up'),
   );
@@ -138,7 +138,9 @@ void main() {
 
   group('TomDefaultHealthAnalyzer', () {
     test('always reports healthy', () async {
-      final status = await TomDefaultHealthAnalyzer().analyzeHealth();
+      final status = await TomDefaultHealthAnalyzer().analyzeHealth(
+        TomHealthCheck('readiness', const Duration(seconds: 5)),
+      );
       expect(status.verdict, TomHealthVerdict.healthy);
       expect(status.message, 'OK');
     });
@@ -490,9 +492,10 @@ void main() {
 
     test('a hanging analyzer is not started again while it is still '
         'pending', () async {
-      // A timed-out analysis cannot be cancelled -- `Future.timeout` stops the
-      // waiting, not the work -- so starting a fresh one on every probe would
-      // leave one more pending future behind each time. A probe that arrives
+      // A timed-out analysis is cancelled, but cooperatively -- one that does
+      // not look keeps running, as this one does -- so starting a fresh one on
+      // every probe would leave one more pending future behind each time. A
+      // probe that arrives
       // while the previous analysis is still running waits on that one, under
       // its own deadline, so an analyzer that hangs on every probe costs one
       // pending future rather than one per probe.
@@ -512,6 +515,49 @@ void main() {
       final after = await TomHealthServer.verdictOf(analyzer, 'readiness');
       expect(after.isHealthy, isTrue);
       expect(analyzer.started, 2);
+    });
+
+    test('a timed-out analysis is cancelled, and an analyzer that looks '
+        'stops', () async {
+      final analyzer = _CooperativeAnalyzer();
+      final verdict = await TomHealthServer.verdictOf(
+        analyzer,
+        'readiness',
+        timeout: const Duration(milliseconds: 50),
+      );
+      expect(verdict.message, contains('TIMEOUT'));
+      await analyzer.stopped.future.timeout(const Duration(seconds: 2));
+      expect(analyzer.check!.isCancelled, isTrue);
+      expect(analyzer.steps, lessThan(100), reason: 'it stopped early');
+    });
+
+    test('an analysis that answers in time is not cancelled', () async {
+      late TomHealthCheck seen;
+      final verdict = await TomHealthServer.verdictOf(
+        _Answering((check) => seen = check),
+        'liveness',
+      );
+      expect(verdict.isHealthy, isTrue);
+      expect(seen.isCancelled, isFalse);
+      expect(seen.probe, 'liveness');
+      expect(seen.deadline, TomHealthServer.healthTimeout);
+    });
+
+    test('throwIfCancelled raises the cancellation once cancelled', () {
+      final check = TomHealthCheck('readiness', const Duration(seconds: 1));
+      check.throwIfCancelled();
+      check.cancel();
+      check.cancel();
+      expect(
+        check.throwIfCancelled,
+        throwsA(
+          isA<TomHealthCheckCancelled>().having(
+            (e) => e.key,
+            'key',
+            'healthcheck.check.cancelled',
+          ),
+        ),
+      );
     });
 
     test('verdictOf is the seam a third probe route reuses', () async {
@@ -619,6 +665,96 @@ void main() {
       expect(annotation, contains('logRequests: false'));
     });
   });
+
+  group('health services with analyzers of their own', () {
+    setUp(TomHealthServer.resetHealthChecks);
+    tearDown(TomHealthServer.resetHealthChecks);
+
+    test('two services answer with their own analyzers', () async {
+      final orders = TomHealthServer(
+        readiness: _Answering((_) {}, const TomHealthStatus.healthy('orders')),
+      );
+      final billing = TomHealthServer(
+        readiness: _Answering(
+          (_) {},
+          const TomHealthStatus.unhealthy('billing down'),
+        ),
+      );
+      final ordersReady = await orders.ready();
+      final billingReady = await billing.ready();
+      expect(ordersReady.statusCode, 200);
+      expect(await ordersReady.readAsString(), 'orders');
+      expect(billingReady.statusCode, 503);
+      expect(await billingReady.readAsString(), 'billing down');
+    });
+
+    test('what an instance leaves out is the process-wide setting', () async {
+      TomHealthServer.installLivenessAnalyzer(
+        _Answering((_) {}, const TomHealthStatus.healthy('process')),
+      );
+      final service = TomHealthServer(
+        readiness: _Answering((_) {}, const TomHealthStatus.healthy('own')),
+      );
+      expect(await (await service.health()).readAsString(), 'process');
+      expect(await (await service.ready()).readAsString(), 'own');
+      expect(service.timeout, TomHealthServer.healthTimeout);
+    });
+
+    test('an instance deadline applies to its own checks', () async {
+      final analyzer = _CooperativeAnalyzer();
+      final service = TomHealthServer(
+        readiness: analyzer,
+        timeout: const Duration(milliseconds: 50),
+      );
+      final response = await service.ready();
+      expect(response.statusCode, 503);
+      expect(await response.readAsString(), contains('0:00:00.050000'));
+      await analyzer.stopped.future.timeout(const Duration(seconds: 2));
+    });
+
+    test('a deadline that is not positive is refused', () {
+      expect(
+        () => TomHealthServer(timeout: Duration.zero),
+        throwsArgumentError,
+      );
+    });
+  });
+}
+
+/// An analyzer that works in small steps until its check is cancelled, then
+/// completes [stopped].
+class _CooperativeAnalyzer extends TomHealthAnalyzer {
+  final Completer<void> stopped = Completer();
+  TomHealthCheck? check;
+  int steps = 0;
+
+  @override
+  Future<TomHealthStatus> analyzeHealth(TomHealthCheck check) async {
+    this.check = check;
+    try {
+      while (true) {
+        check.throwIfCancelled();
+        steps++;
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+    } finally {
+      stopped.complete();
+    }
+  }
+}
+
+/// An analyzer answering [status] at once, telling [seen] its check.
+class _Answering extends TomHealthAnalyzer {
+  _Answering(this.seen, [this.status = const TomHealthStatus.healthy()]);
+
+  final void Function(TomHealthCheck) seen;
+  final TomHealthStatus status;
+
+  @override
+  Future<TomHealthStatus> analyzeHealth(TomHealthCheck check) async {
+    seen(check);
+    return status;
+  }
 }
 
 /// An analyzer whose first analysis stays pending until [release] is called,
@@ -635,7 +771,7 @@ class _GatedAnalyzer extends TomHealthAnalyzer {
   void release(TomHealthStatus status) => _gate.complete(status);
 
   @override
-  Future<TomHealthStatus> analyzeHealth() {
+  Future<TomHealthStatus> analyzeHealth(TomHealthCheck check) {
     started++;
     return answerNow
         ? Future.value(const TomHealthStatus.healthy())

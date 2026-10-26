@@ -176,8 +176,19 @@ void main() {
   });
 
   group('framework readiness', () {
+    test('a cancelled check stops between the stages', () async {
+      final check = TomHealthCheck('readiness', const Duration(seconds: 1))
+        ..cancel();
+      await expectLater(
+        TomFrameworkReadinessAnalyzer().checks(check),
+        throwsA(isA<TomHealthCheckCancelled>()),
+      );
+    });
+
     test('with nothing registered the server is ready', () async {
-      final status = await TomFrameworkReadinessAnalyzer().analyzeHealth();
+      final status = await TomFrameworkReadinessAnalyzer().analyzeHealth(
+        TomHealthCheck('readiness', const Duration(seconds: 5)),
+      );
       expect(status.isHealthy, isTrue);
       expect(status.message.split('\n').first, 'ready');
       expect(status.message, contains('migrations: not run in this process'));
@@ -189,7 +200,9 @@ void main() {
         throwsA(isA<TomDbMigrationException>()),
       );
       expect(TomDbMigrations.lastRun.state, TomMigrationRunState.failed);
-      final status = await TomFrameworkReadinessAnalyzer().analyzeHealth();
+      final status = await TomFrameworkReadinessAnalyzer().analyzeHealth(
+        TomHealthCheck('readiness', const Duration(seconds: 5)),
+      );
       expect(status.isHealthy, isFalse);
       expect(status.statusCode, 503);
       expect(status.message.split('\n').first, 'not ready');
@@ -201,12 +214,16 @@ void main() {
       addTearDown(outbox.close);
       expect(TomMessageOutbox.started, contains(outbox));
 
-      var status = await TomFrameworkReadinessAnalyzer().analyzeHealth();
+      var status = await TomFrameworkReadinessAnalyzer().analyzeHealth(
+        TomHealthCheck('readiness', const Duration(seconds: 5)),
+      );
       expect(status.isHealthy, isTrue);
       expect(status.message, contains('outbox messaging.outbox: ok'));
 
       outbox.scheduler.stop();
-      status = await TomFrameworkReadinessAnalyzer().analyzeHealth();
+      status = await TomFrameworkReadinessAnalyzer().analyzeHealth(
+        TomHealthCheck('readiness', const Duration(seconds: 5)),
+      );
       expect(status.isHealthy, isFalse);
       expect(
         status.message,
@@ -239,9 +256,16 @@ void main() {
           maxOutboxWait: const Duration(minutes: 10),
           clock: () => now,
         );
-        expect((await analyzer.analyzeHealth()).isHealthy, isTrue);
+        expect(
+          (await analyzer.analyzeHealth(
+            TomHealthCheck('readiness', const Duration(seconds: 5)),
+          )).isHealthy,
+          isTrue,
+        );
         now = now.add(const Duration(minutes: 11));
-        final status = await analyzer.analyzeHealth();
+        final status = await analyzer.analyzeHealth(
+          TomHealthCheck('readiness', const Duration(seconds: 5)),
+        );
         expect(status.isHealthy, isFalse);
         expect(status.message, contains('the oldest message has waited'));
       },
@@ -322,6 +346,6 @@ void main() {
 
 class _Own extends TomHealthAnalyzer {
   @override
-  Future<TomHealthStatus> analyzeHealth() async =>
+  Future<TomHealthStatus> analyzeHealth(TomHealthCheck check) async =>
       const TomHealthStatus.healthy('mine');
 }

@@ -1029,9 +1029,34 @@
   `TomServer.start` sets `TomOpenApiServer.globalSettingDocumentPath` from it.
 - `doc/endpoints.md` § The OpenAPI Document and `doc/configuration.md`
   § Publishing the OpenAPI Document.
+- **Per-instance health analyzers** (`healthcheck` module).
+  `TomHealthServer({liveness, readiness, timeout})` carries its own analyzers
+  and deadline, read through the getters `liveness`, `readiness` and
+  `timeout`; each one left out is the process-wide setting
+  (`livenessAnalyzer`, `readinessAnalyzer`, `healthTimeout`), read when the
+  probe arrives. A non-positive `timeout` is refused with an `ArgumentError`.
+  The mounted bean is built with no arguments and answers with the
+  process-wide settings. `TomHealthServer.verdictOf` takes the deadline per
+  call (`timeout`, default `healthTimeout`). `doc/healthcheck.md`
+  § Per-Instance Analyzers.
+- **Cooperative cancellation of a timed-out health analysis** (`healthcheck`
+  module). `TomHealthCheck` (`probe`, `deadline`, `isCancelled`, `cancelled`,
+  `throwIfCancelled`, `cancel`) is handed to every analysis; when the
+  deadline passes `verdictOf` answers `TIMEOUT` and cancels it, and
+  `throwIfCancelled` throws `TomHealthCheckCancelled`. Probes share one
+  analysis per analyzer, and the first deadline to pass cancels it.
+  `TomFrameworkReadinessAnalyzer.checks([check])` stops between its stages
+  once the check is cancelled. `doc/healthcheck.md` § Cancelling a Timed-Out
+  Analysis; `example/healthcheck/healthcheck_example.dart` steps 7 and 8.
 
 ### Changed
 
+- **Breaking: `TomHealthAnalyzer.analyzeHealth` takes the check.** The
+  contract is `Future<TomHealthStatus> analyzeHealth(TomHealthCheck check)`;
+  an analyzer overriding `analyzeHealth()` adds the parameter, and one
+  composing `TomFrameworkReadinessAnalyzer` passes its check through. A
+  synchronous throw from `analyzeHealth` is answered as `FAILED`, like an
+  asynchronous one.
 - **The request id is minted before authentication.**
   `tomDefaultAuthenticationMiddleware` carries the `TomRequestId` it finds in the
   zone — the one `tomRequestContextMiddleware` minted — into the request's zone

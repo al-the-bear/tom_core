@@ -12,6 +12,8 @@ and the framework's own readiness checks that answer `GET /ready` by default.
 - [Classes](#classes)
   - [TomHealthStatus](#tomhealthstatus)
   - [TomHealthAnalyzer](#tomhealthanalyzer)
+  - [TomHealthCheck](#tomhealthcheck)
+  - [TomHealthCheckCancelled](#tomhealthcheckcancelled)
   - [TomDefaultHealthAnalyzer](#tomdefaulthealthanalyzer)
   - [TomHealthService](#tomhealthservice)
   - [TomHealthServer](#tomhealthserver)
@@ -35,7 +37,18 @@ logic by extending `TomHealthAnalyzer` (overriding `analyzeHealth`) and
 installing an instance on either before startup, through
 `installLivenessAnalyzer` / `installReadinessAnalyzer`, which log the
 replacement; both default to the shipped
-`TomDefaultHealthAnalyzer`, which always reports healthy.
+`TomDefaultHealthAnalyzer`, which always reports healthy. Those are the
+process-wide analyzers; an instance may carry its own —
+`TomHealthServer(liveness: ..., readiness: ..., timeout: ...)` — for a process
+serving two services whose health is not the same question, and takes what it
+leaves out from the process-wide setting.
+
+Each analysis receives a `TomHealthCheck`: the probe that asked, the deadline,
+and whether the probe has given up. When the deadline passes the probe answers
+`TIMEOUT` and the check is cancelled; an analyzer that looks — between its
+steps with `throwIfCancelled`, or by racing a wait against `cancelled` — stops
+its work. Cancellation is cooperative, because Dart cannot abort a future in
+flight.
 
 Two routes because the questions have **opposite consequences**: a failing
 liveness probe restarts the process, a failing readiness probe takes it out of
@@ -74,6 +87,10 @@ TomHealthVerdict  (enum) (healthy 200 / unhealthy 503)
 TomHealthAnalyzer  (abstract)
     ├── TomDefaultHealthAnalyzer
     └── TomFrameworkReadinessAnalyzer
+
+TomHealthCheck           (one analysis in progress, cancellable)
+TomServerException
+└── TomHealthCheckCancelled
 
 TomReadinessCheck        (one check of the framework analyzer)
 
@@ -132,7 +149,63 @@ service availability, or resource usage.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `analyzeHealth` | `Future<TomHealthStatus> analyzeHealth()` | Analyzes server health, returning the verdict a probe acts on and the message a person reads. An analyzer that touches anything remote should impose its own timeout and answer unhealthy rather than hang: `/health` is the request an orchestrator uses to decide whether the process is alive, so a slow dependency that hangs it reads as a dead process. |
+| `analyzeHealth` | `Future<TomHealthStatus> analyzeHealth(TomHealthCheck check)` | Analyzes server health, returning the verdict a probe acts on and the message a person reads. `check` names the probe and its deadline, and is cancelled once the deadline passes: an analyzer stops cooperatively — between its steps with `check.throwIfCancelled()`, or by racing a long wait against `check.cancelled`. One that does not look keeps running to its end, because Dart cannot abort a future in flight. An analyzer that touches anything remote should still impose its own, shorter timeout: the framework's deadline can only say *that* the check did not answer, the analyzer's own can say **which** dependency was slow. |
+
+### TomHealthCheck
+
+One health analysis in progress, as its analyzer sees it: which probe asked,
+under which deadline, and whether the probe has given up. Cancelled when the
+deadline passes, so an analyzer can stop work nobody waits for any more — the
+query it was about to send, the next dependency it was about to ask.
+
+- **Extends:** none
+
+#### Constructors
+
+```dart
+TomHealthCheck(String probe, Duration deadline)
+```
+
+`TomHealthServer.verdictOf` creates the check for every analysis it starts; an
+application constructs one only to call an analyzer directly — composing the
+framework's into its own passes its own check through instead.
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `probe` | `String` | `liveness` or `readiness` (final). |
+| `deadline` | `Duration` | How long the probe waits (final). |
+| `isCancelled` | `bool` | *(getter)* Whether the probe has given up on this analysis. |
+| `cancelled` | `Future<void>` | *(getter)* Completes when the probe gives up — to race a long wait against, e.g. `Future.any([query, check.cancelled])`. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `throwIfCancelled` | `void throwIfCancelled()` | Throws `TomHealthCheckCancelled` once the probe has given up; does nothing before. Called between an analyzer's steps. |
+| `cancel` | `void cancel()` | Marks the analysis cancelled; a second call does nothing. `verdictOf` calls it when the deadline passes. |
+
+### TomHealthCheckCancelled
+
+Thrown by `TomHealthCheck.throwIfCancelled`: the probe stopped waiting. Nobody
+reads the analysis it ends — the probe has already answered `TIMEOUT` — so an
+analyzer lets it propagate rather than catching it.
+
+- **Extends:** `TomServerException`, key `healthcheck.check.cancelled`
+
+#### Constructors
+
+```dart
+TomHealthCheckCancelled(String probe, Duration deadline)
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `probe` | `String` | `liveness` or `readiness` (final). |
+| `deadline` | `Duration` | The deadline that passed (final). |
 
 ### TomDefaultHealthAnalyzer
 
@@ -150,7 +223,7 @@ TomDefaultHealthAnalyzer()
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `analyzeHealth` | `Future<TomHealthStatus> analyzeHealth()` | *(override)* Always returns `TomHealthStatus.healthy()`. |
+| `analyzeHealth` | `Future<TomHealthStatus> analyzeHealth(TomHealthCheck check)` | *(override)* Always returns `TomHealthStatus.healthy()`. |
 
 ### TomHealthService
 
@@ -176,13 +249,26 @@ Default implementation of `TomHealthService`. Delegates each route to its own
 analyzer; set either to a custom `TomHealthAnalyzer` before server startup for
 advanced logic. Annotated `@tomReflector` / `@tomComponent`.
 
+The static analyzers and deadline are the process-wide settings. An instance
+may carry its own analyzers and deadline; each one it leaves out is the
+process-wide one, read when a probe arrives, so a later installation still
+reaches it. The bean the endpoints pipeline mounts is built with no arguments
+and answers with the process-wide settings.
+
 - **Implements:** `TomHealthService`
 
 #### Constructors
 
 ```dart
-TomHealthServer()
+TomHealthServer({
+  TomHealthAnalyzer? liveness,
+  TomHealthAnalyzer? readiness,
+  Duration? timeout,
+})
 ```
+
+Throws `ArgumentError` on a zero or negative `timeout`, as
+`installHealthTimeout` does.
 
 #### Properties
 
@@ -192,6 +278,9 @@ TomHealthServer()
 | `livenessAnalyzer` | `static TomHealthAnalyzer get` | The analyzer every `GET /health` request is answered by (defaults to `TomDefaultHealthAnalyzer`). Read-only: install with `installLivenessAnalyzer`. Named for the question rather than for the module, now that there are two: a `healthAnalyzer` beside a `readinessAnalyzer` would read as though it covered both. |
 | `healthTimeout` | `static Duration get` | How long a probe waits for its analyzer before answering unhealthy. Read-only: install with `installHealthTimeout`. |
 | `readinessAnalyzer` | `static TomHealthAnalyzer get` | The analyzer every `GET /ready` request is answered by — a separate instance, so installing one does not silently change the other. Defaults to always-ready: "not ready until told" would leave a deployment that never configures readiness with an empty load balancer, a healthy process and a passing liveness probe — a failure with no visible cause. |
+| `liveness` | `TomHealthAnalyzer get` | The analyzer this instance answers `/health` with: its own, else `livenessAnalyzer`. |
+| `readiness` | `TomHealthAnalyzer get` | The analyzer this instance answers `/ready` with: its own, else `readinessAnalyzer`. |
+| `timeout` | `Duration get` | The deadline this instance's checks run under: its own, else `healthTimeout`. |
 | `isShuttingDown` | `static bool get` | Whether `markShuttingDown` has been called: `GET /ready` then answers `503 shutting down`. Cleared by `resetHealthChecks`. |
 
 #### Methods
@@ -202,10 +291,10 @@ TomHealthServer()
 | `installReadinessAnalyzer` | `static void installReadinessAnalyzer(TomHealthAnalyzer analyzer)` | The same for the readiness analyzer. |
 | `installHealthTimeout` | `static void installHealthTimeout(Duration timeout)` | Installs the process-wide deadline both probes answer under, logging the replacement. Throws `ArgumentError` on a zero or negative duration, which would make every probe answer `TIMEOUT` before its analyzer ran — wrong in the direction that looks safe, since `503` on liveness is a restart. |
 | `resetHealthChecks` | `static void resetHealthChecks()` | Puts the module's process-wide state back the way a fresh process starts it: a fresh `TomDefaultHealthAnalyzer` on each probe, one instance each, the deadline at `defaultHealthTimeout`, and the shutting-down mark cleared. The supported way back for a test or an example; it logs like any other installation, because it is one. |
-| `health` | `Future<Response> health()` | *(override)* Runs `livenessAnalyzer` through `verdictOf` and hands the result to `responseFor`. |
-| `ready` | `Future<Response> ready()` | *(override)* Runs `readinessAnalyzer` through `verdictOf` and hands the result to `responseFor` — or, once `markShuttingDown` has been called, answers `503 shutting down` without asking the analyzer. |
+| `health` | `Future<Response> health()` | *(override)* Runs `liveness` through `verdictOf` under `timeout` and hands the result to `responseFor`. |
+| `ready` | `Future<Response> ready()` | *(override)* Runs `readiness` through `verdictOf` under `timeout` and hands the result to `responseFor` — or, once `markShuttingDown` has been called, answers `503 shutting down` without asking the analyzer. |
 | `markShuttingDown` | `static void markShuttingDown()` | Answers every later `GET /ready` with `503 shutting down`, without asking the readiness analyzer, and leaves liveness alone. The first step of a graceful shutdown (`TomServer.shutdown`): the load balancer stops sending new traffic while the requests already accepted finish, and liveness keeps answering because a draining process is alive. Logs once at info; a second call does nothing. |
-| `verdictOf` | `static Future<TomHealthStatus> verdictOf(TomHealthAnalyzer analyzer, String probe)` | Runs `analyzer` under `healthTimeout` and turns every way it can fail to produce a verdict into one: a timeout becomes `TIMEOUT: the <probe> check did not answer within …`, a thrown exception — synchronous or asynchronous — becomes `FAILED: the <probe> check threw …`. The throw is the likelier failure and the one that changes the response *shape*: an exception leaving the handler is answered by the endpoints pipeline's error envelope, a `500` carrying JSON rather than the plain text a probe was configured to read, and on liveness a `500` is a restart. Public so a deployment adding a probe route of its own gets the deadline and the failure handling rather than a second, thinner spelling. A timed-out analyzer is not cancelled — `Future.timeout` stops the waiting, not the work — so an analysis is never started twice: a probe arriving while the analyzer's previous analysis is still pending waits on that one under its own deadline, and a hanging analyzer costs one pending future rather than one per probe. |
+| `verdictOf` | `static Future<TomHealthStatus> verdictOf(TomHealthAnalyzer analyzer, String probe, {Duration? timeout})` | Runs `analyzer` under `timeout` (default `healthTimeout`) and turns every way it can fail to produce a verdict into one: a timeout becomes `TIMEOUT: the <probe> check did not answer within …`, a thrown exception — synchronous or asynchronous — becomes `FAILED: the <probe> check threw …`. The throw is the likelier failure and the one that changes the response *shape*: an exception leaving the handler is answered by the endpoints pipeline's error envelope, a `500` carrying JSON rather than the plain text a probe was configured to read, and on liveness a `500` is a restart. Public so a deployment adding a probe route of its own gets the deadline and the failure handling rather than a second, thinner spelling. A timed-out analysis is cancelled: its `TomHealthCheck` is marked, and an analyzer that looks stops. Cancellation is cooperative — `Future.timeout` stops only the waiting — so an analysis is never started twice: a probe arriving while the analyzer's previous analysis is still pending waits on that one under its own deadline, the first deadline to pass cancels it, and an analyzer that ignores the cancellation and hangs costs one pending future rather than one per probe. |
 | `responseFor` | `static Response responseFor(TomHealthStatus status)` | The HTTP response one status is served as: `status.statusCode`, the message as the body, and `text/plain` — set here because a handler returning a `Response` bypasses the endpoint's `produces`. Public and static so a deployment writing its own health route answers with the same shape rather than a second spelling of it. |
 
 ### TomReadinessCheck
@@ -274,8 +363,8 @@ TomFrameworkReadinessAnalyzer({
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `analyzeHealth` | `Future<TomHealthStatus> analyzeHealth()` | *(override)* Runs `checks()`; healthy when every check passed. The message is `ready` or `not ready`, then one line per check. |
-| `checks` | `Future<List<TomReadinessCheck>> checks()` | Every check, in the order the body lists them: the data sources, then migrations, then the started outboxes. |
+| `analyzeHealth` | `Future<TomHealthStatus> analyzeHealth(TomHealthCheck check)` | *(override)* Runs `checks(check)`; healthy when every check passed. The message is `ready` or `not ready`, then one line per check. |
+| `checks` | `Future<List<TomReadinessCheck>> checks([TomHealthCheck? check])` | Every check, in the order the body lists them: the data sources, then migrations, then the started outboxes. Given a `check`, stops between the stages once it is cancelled: after the data sources it throws `TomHealthCheckCancelled` instead of asking the outboxes. |
 
 ## Enums
 

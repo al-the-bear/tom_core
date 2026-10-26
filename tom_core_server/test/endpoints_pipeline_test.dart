@@ -3021,7 +3021,7 @@ void main() {
 /// the verdict reaches the status code.
 class _DegradedAnalyzer extends TomHealthAnalyzer {
   @override
-  Future<TomHealthStatus> analyzeHealth() async =>
+  Future<TomHealthStatus> analyzeHealth(TomHealthCheck check) async =>
       const TomHealthStatus.unhealthy('DEGRADED');
 }
 
@@ -3029,7 +3029,7 @@ class _DegradedAnalyzer extends TomHealthAnalyzer {
 /// slow, which is the likelier way a real analyzer fails.
 class _BrokenAnalyzer extends TomHealthAnalyzer {
   @override
-  Future<TomHealthStatus> analyzeHealth() async =>
+  Future<TomHealthStatus> analyzeHealth(TomHealthCheck check) async =>
       throw StateError('the pool is closed');
 }
 

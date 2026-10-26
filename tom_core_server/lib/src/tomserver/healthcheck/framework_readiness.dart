@@ -11,8 +11,8 @@
 /// class MyReadiness extends TomHealthAnalyzer {
 ///   final _framework = TomFrameworkReadinessAnalyzer();
 ///   @override
-///   Future<TomHealthStatus> analyzeHealth() async {
-///     final framework = await _framework.analyzeHealth();
+///   Future<TomHealthStatus> analyzeHealth(TomHealthCheck check) async {
+///     final framework = await _framework.analyzeHealth(check);
 ///     if (!framework.isHealthy) return framework;
 ///     return await searchIndexAnswers()
 ///         ? framework
@@ -91,8 +91,8 @@ class TomFrameworkReadinessAnalyzer extends TomHealthAnalyzer {
   final DateTime Function() _clock;
 
   @override
-  Future<TomHealthStatus> analyzeHealth() async {
-    final checks = await this.checks();
+  Future<TomHealthStatus> analyzeHealth(TomHealthCheck check) async {
+    final checks = await this.checks(check);
     final passed = checks.every((c) => c.passed);
     final body = [passed ? 'ready' : 'not ready', ...checks].join('\n');
     return passed
@@ -101,11 +101,19 @@ class TomFrameworkReadinessAnalyzer extends TomHealthAnalyzer {
   }
 
   /// Every check, in the order the body lists them.
-  Future<List<TomReadinessCheck>> checks() async => [
-    ...await Future.wait(_dataSources().map(_checkDataSource)),
-    _checkMigrations(),
-    ...await Future.wait(TomMessageOutbox.started.map(_checkOutbox)),
-  ];
+  ///
+  /// Given a [check], stops between its stages once the probe has given up:
+  /// a cancelled check throws [TomHealthCheckCancelled] instead of asking the
+  /// outboxes after the data sources.
+  Future<List<TomReadinessCheck>> checks([TomHealthCheck? check]) async {
+    final dataSources = await Future.wait(_dataSources().map(_checkDataSource));
+    check?.throwIfCancelled();
+    final migrations = _checkMigrations();
+    final outboxes = await Future.wait(
+      TomMessageOutbox.started.map(_checkOutbox),
+    );
+    return [...dataSources, migrations, ...outboxes];
+  }
 
   /// The registered data sources, each once: a `delegateTo` alias shares its
   /// target's entry.

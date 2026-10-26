@@ -14,7 +14,15 @@ probe restarts the process, a failing readiness probe takes it out of the load
 balancer and leaves it running. A dependency being down belongs on readiness.
 `TomHealthServer` is the default implementation, delegating each route to its
 own `TomHealthAnalyzer` (both default to the always-healthy
-`TomDefaultHealthAnalyzer`).
+`TomDefaultHealthAnalyzer`). The analyzers installed on the class are the
+process-wide ones; `TomHealthServer(liveness: ..., readiness: ..., timeout: ...)`
+gives one instance analyzers of its own, for a process serving two services,
+and falls back to the process-wide setting for what it leaves out.
+
+An analyzer receives a `TomHealthCheck` — the probe, its deadline, and whether
+the probe has given up. When the deadline passes the check is cancelled, and an
+analyzer that calls `throwIfCancelled()` between its steps, or races a wait
+against `cancelled`, stops its work.
 
 `TomServer.start` answers `/ready` with `TomFrameworkReadinessAnalyzer` unless
 the application installed a readiness analyzer of its own (configuration key
@@ -34,11 +42,12 @@ alive.
 | Type | Responsibility |
 | ---- | -------------- |
 | `TomHealthService` | Abstract contract: `Future<Response> health()` and `ready()` — a `Response` because the status code is part of the answer. |
-| `TomHealthServer` | Default service; runs `livenessAnalyzer` for `/health` and `readinessAnalyzer` for `/ready`, turning each verdict into the response. Both are read-only; install through `installLivenessAnalyzer` / `installReadinessAnalyzer`, which log the replacement, and `resetHealthChecks()` to go back to the defaults. `markShuttingDown()` turns readiness to `503 shutting down` for a graceful shutdown; `isShuttingDown` reads it. Each analyzer runs under `healthTimeout` (five seconds by default, `installHealthTimeout` to change it), so one that hangs or throws still yields an unhealthy verdict rather than stopping the probe from answering — a throw would otherwise reach the pipeline's error envelope, a 500 carrying JSON where the probe expects plain text. |
-| `TomHealthAnalyzer` | Abstract probe that decides the health verdict. |
+| `TomHealthServer` | Default service; runs `livenessAnalyzer` for `/health` and `readinessAnalyzer` for `/ready` — or the instance's own `liveness` / `readiness` and `timeout` when constructed with them — turning each verdict into the response. Both are read-only; install through `installLivenessAnalyzer` / `installReadinessAnalyzer`, which log the replacement, and `resetHealthChecks()` to go back to the defaults. `markShuttingDown()` turns readiness to `503 shutting down` for a graceful shutdown; `isShuttingDown` reads it. Each analyzer runs under `healthTimeout` (five seconds by default, `installHealthTimeout` to change it), so one that hangs or throws still yields an unhealthy verdict rather than stopping the probe from answering — a throw would otherwise reach the pipeline's error envelope, a 500 carrying JSON where the probe expects plain text. |
+| `TomHealthAnalyzer` | Abstract probe that decides the health verdict: `analyzeHealth(TomHealthCheck check)`. |
+| `TomHealthCheck` · `TomHealthCheckCancelled` | One analysis in progress — `probe`, `deadline`, `isCancelled`, `cancelled`, `throwIfCancelled()` — cancelled when the deadline passes; the exception `throwIfCancelled()` raises. Cancellation is cooperative: an analyzer that does not look keeps running, one pending analysis per analyzer. |
 | `TomHealthStatus` · `TomHealthVerdict` | What an analyzer concludes: the verdict a probe acts on, and the message a person reads. Two verdicts, because HTTP offers a probe two answers. |
 | `TomDefaultHealthAnalyzer` | Always-healthy analyzer used when no custom probe is supplied. |
-| `TomFrameworkReadinessAnalyzer` | The framework's readiness checks — data sources, migrations, started outboxes — with `dataSourceTimeout` (two seconds) and the optional `maxOutboxWait` (off by default: a shared backlog would take every node out of the load balancer at once). Compose it into an application analyzer by asking it first. |
+| `TomFrameworkReadinessAnalyzer` | The framework's readiness checks — data sources, migrations, started outboxes, stopping between the stages once its check is cancelled — with `dataSourceTimeout` (two seconds) and the optional `maxOutboxWait` (off by default: a shared backlog would take every node out of the load balancer at once). Compose it into an application analyzer by asking it first. |
 | `TomReadinessCheck` | One check of that analyzer: `subject`, `passed`, `detail`; `checks()` returns them. |
 
 ## Quick start

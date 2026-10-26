@@ -3,7 +3,9 @@
 /// This example shows the surface you can drive directly: the two pluggable
 /// [TomHealthAnalyzer]s, the way each turns its verdict into the status code a
 /// probe reads and its message into the body, and why there are two of them —
-/// an unready process is still alive.
+/// an unready process is still alive — then two instances answering with
+/// analyzers of their own, and a timed-out analysis that stops because its
+/// analyzer looks at the cancelled check.
 /// The `GET /health` route that publishes it is mounted by the reflection-based
 /// endpoints pipeline, so showing it here would mean initializing generated
 /// reflection and building a router — machinery that would bury the one thing
@@ -32,7 +34,8 @@ class _DemoAnalyzer extends TomHealthAnalyzer {
   _DemoAnalyzer({required this.dbOk, required this.cacheOk});
 
   @override
-  Future<TomHealthStatus> analyzeHealth() async => dbOk && cacheOk
+  Future<TomHealthStatus> analyzeHealth(TomHealthCheck check) async =>
+      dbOk && cacheOk
       ? const TomHealthStatus.healthy()
       : TomHealthStatus.unhealthy('db=$dbOk, cache=$cacheOk');
 }
@@ -41,7 +44,7 @@ class _DemoAnalyzer extends TomHealthAnalyzer {
 /// off the network rather than refusing a connection.
 class _HangingAnalyzer extends TomHealthAnalyzer {
   @override
-  Future<TomHealthStatus> analyzeHealth() =>
+  Future<TomHealthStatus> analyzeHealth(TomHealthCheck check) =>
       Completer<TomHealthStatus>().future;
 }
 
@@ -49,8 +52,43 @@ class _HangingAnalyzer extends TomHealthAnalyzer {
 /// which is the likelier way a real analyzer fails.
 class _BrokenAnalyzer extends TomHealthAnalyzer {
   @override
-  Future<TomHealthStatus> analyzeHealth() async =>
+  Future<TomHealthStatus> analyzeHealth(TomHealthCheck check) async =>
       throw StateError('the pool is closed');
+}
+
+/// An analyzer answering a fixed [status] — one service's own readiness.
+class _FixedAnalyzer extends TomHealthAnalyzer {
+  final TomHealthStatus status;
+  _FixedAnalyzer(this.status);
+
+  @override
+  Future<TomHealthStatus> analyzeHealth(TomHealthCheck check) async => status;
+}
+
+/// An analyzer that asks one slow dependency after another, and looks at its
+/// check between them — so it stops once the probe has given up.
+class _StepwiseAnalyzer extends TomHealthAnalyzer {
+  /// How many dependencies it asked.
+  int asked = 0;
+
+  /// Completes with how the analysis ended.
+  final Completer<Object> ended = Completer();
+
+  @override
+  Future<TomHealthStatus> analyzeHealth(TomHealthCheck check) async {
+    try {
+      for (var i = 0; i < 20; i++) {
+        check.throwIfCancelled();
+        asked++;
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+      }
+      ended.complete('answered');
+      return const TomHealthStatus.healthy();
+    } catch (error) {
+      ended.complete(error);
+      rethrow;
+    }
+  }
 }
 
 Future<void> run() async {
@@ -59,7 +97,9 @@ Future<void> run() async {
   // 1. The default analyzer always reports healthy. The verdict and the message
   //    are two facts: the verdict is what a probe acts on, the message is what a
   //    person reads.
-  final defaultStatus = await TomDefaultHealthAnalyzer().analyzeHealth();
+  final defaultStatus = await TomDefaultHealthAnalyzer().analyzeHealth(
+    TomHealthCheck('readiness', const Duration(seconds: 5)),
+  );
   print(
     '1. default analyzer          => ${defaultStatus.verdict.name} '
     '(${defaultStatus.message})',
@@ -166,6 +206,62 @@ Future<void> run() async {
   } finally {
     TomHealthServer.resetHealthChecks();
   }
+
+  // 7. Two services in one process, each with its own readiness analyzer: an
+  //    instance carries its own analyzers, and what it leaves out — liveness
+  //    here — is the process-wide setting. The mounted routes keep answering
+  //    with the process-wide analyzers; an application calls these instances
+  //    from routes of its own.
+  final orders = TomHealthServer(
+    readiness: _FixedAnalyzer(const TomHealthStatus.healthy('orders: ok')),
+  );
+  final billing = TomHealthServer(
+    readiness: _FixedAnalyzer(
+      const TomHealthStatus.unhealthy('billing: ledger unreachable'),
+    ),
+  );
+  final ordersReady = await orders.ready();
+  final billingReady = await billing.ready();
+  final billingLive = await billing.health();
+  print(
+    '7. two services              => orders ${ordersReady.statusCode} '
+    '${await ordersReady.readAsString()}, billing ${billingReady.statusCode} '
+    '${await billingReady.readAsString()}',
+  );
+  check(
+    ordersReady.statusCode == 200 && billingReady.statusCode == 503,
+    'each instance answers readiness with its own analyzer',
+  );
+  check(
+    billingLive.statusCode == 200 &&
+        identical(billing.liveness, TomHealthServer.livenessAnalyzer),
+    'and what it leaves out is the process-wide analyzer',
+  );
+
+  // 8. An instance deadline cancels the analysis it gave up on. The probe
+  //    answers TIMEOUT at 120 ms; the analyzer looks at its check between its
+  //    dependencies and stops there, rather than asking the remaining ones for
+  //    an answer nobody waits for.
+  final stepwise = _StepwiseAnalyzer();
+  final hurried = TomHealthServer(
+    readiness: stepwise,
+    timeout: const Duration(milliseconds: 120),
+  );
+  final timedOut = await hurried.ready();
+  final timedOutBody = await timedOut.readAsString();
+  final ended = await stepwise.ended.future.timeout(const Duration(seconds: 2));
+  print(
+    '8. cancelled at the deadline => ${timedOut.statusCode} $timedOutBody; '
+    'stopped after ${stepwise.asked} of 20',
+  );
+  check(
+    timedOut.statusCode == 503 && timedOutBody.startsWith('TIMEOUT:'),
+    'the probe answers at the instance deadline',
+  );
+  check(
+    ended is TomHealthCheckCancelled && stepwise.asked < 20,
+    'and the analyzer stops at its next step instead of finishing',
+  );
 
   print('\nHealth-check example completed.');
 }

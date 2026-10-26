@@ -20,7 +20,7 @@ surface documented here.
 | Endpoints | [api_summary_endpoints.md](api_summary_endpoints.md) | Service/endpoint annotations, routing, handler pipeline, error handling, and the three transports over it: HTML form bodies, redirects and WebSockets — plus the HTTP surface of file columns, and idempotency keys that answer a retried request with the first one's response. |
 | Export | [api_summary_export.md](api_summary_export.md) | Tabular results rendered to CSV, XLSX or PDF, and stored for later retrieval. |
 | File Storage | [api_summary_file_storage.md](api_summary_file_storage.md) | Streaming blob storage: one put/get contract over memory, directory, database and S3 backends. |
-| Health Check | [api_summary_healthcheck.md](api_summary_healthcheck.md) | Health analyzer and health-check service/server, and the framework readiness checks `/ready` answers with by default — or `503 shutting down` once a graceful shutdown has begun. |
+| Health Check | [api_summary_healthcheck.md](api_summary_healthcheck.md) | Health analyzer and health-check service/server — process-wide or per instance, with cooperative cancellation of a timed-out analysis — and the framework readiness checks `/ready` answers with by default — or `503 shutting down` once a graceful shutdown has begun. |
 | Item Authorization | [api_summary_item_authorization.md](api_summary_item_authorization.md) | Item authorizations kept by an external authority: the port to it, a caching client for checks, accessible items and the user's sharing acts, and the row scope it feeds. |
 | Little Things | [api_summary_little_things.md](api_summary_little_things.md) | The server-side base exception `TomServerException`, the `TomLoginFailure` reason its login subclass carries, the per-request correlation id `TomRequestId` it reads, and `tomErrorEnvelope`, the wire shape every error response uses. |
 | Messaging | [api_summary_messaging.md](api_summary_messaging.md) | Channel-neutral messages, delivery transports (SMTP, HTTP SMS gateway and stand-ins), MIME encoding, the durable outbox, resource-keyed email and SMS, and the idempotent receiver (inbox) for consuming a broker's messages once. |
@@ -559,6 +559,8 @@ surface documented here.
 | Type | Kind | Description |
 | ---- | ---- | ----------- |
 | `TomHealthAnalyzer` | abstract class | Health-analysis contract. |
+| `TomHealthCheck` | class | One analysis in progress: its probe, its deadline, and whether the probe has given up. |
+| `TomHealthCheckCancelled` | class | Thrown by `TomHealthCheck.throwIfCancelled` once the probe has given up. |
 | `TomHealthStatus` | class | A verdict a probe acts on, and a message a human reads. |
 | `TomHealthVerdict` | enum | `healthy` (200) or `unhealthy` (503). |
 | `TomDefaultHealthAnalyzer` | class | Default analyzer. |
@@ -1374,6 +1376,8 @@ surface documented here.
 | `TomGroupedRow` | Object Persistence |
 | `TomGroupedSelect` | Object Persistence |
 | `TomHealthAnalyzer` | Health Check |
+| `TomHealthCheck` | Health Check |
+| `TomHealthCheckCancelled` | Health Check |
 | `TomHealthServer` | Health Check |
 | `TomHealthService` | Health Check |
 | `TomHealthStatus` | Health Check |
