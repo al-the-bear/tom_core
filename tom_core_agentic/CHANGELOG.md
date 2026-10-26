@@ -1,5 +1,22 @@
 ## Unreleased
 
+### Removed
+
+- **Breaking: the cancellation token and the YAML config writer.**
+  `CancellationToken`, `CancellationTokenSource`, `OperationCancelled` and
+  `YamlConfigWriter` are gone from the barrel, with no re-export. Use
+  `tom_basics`' `TomCancellationToken`, `TomCancellationSource`,
+  `TomOperationCancelled` and `TomYamlConfigWriter`
+  (`package:tom_basics/utilities.dart`, tom_basics 3.3.0). The shared token
+  also carries a reason: `cancel([reason])`, and `whenCancelled` completes
+  with it. `AgentSend.send`'s `cancelToken` is a `TomCancellationToken`.
+
+### Changed
+
+- **`promptSha256`** is `'sha256:'` + `tom_basics`' `tomSha256OfText`; the
+  digest is unchanged. `crypto` moves to `dev_dependencies` (the test checks
+  the digest against it independently), and the `tom_basics` floor is 3.3.0.
+
 ### Tests
 
 - **`test/ai_citation_test.dart`** fails the suite when an artefact of the

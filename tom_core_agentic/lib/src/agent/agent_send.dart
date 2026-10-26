@@ -27,9 +27,9 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
+import 'package:tom_basics/utilities.dart' show TomCancellationToken;
 import 'package:tom_vscode_scripting_api/tom_vscode_scripting_api.dart';
 
-import '../cancellation.dart';
 import 'agent_profile.dart' show AgentProfile, ToolApprovalMode;
 import 'agent_settings.dart' show AgentSettings;
 import 'agent_sidecar.dart';
@@ -351,7 +351,7 @@ final class AgentSendEngine {
   /// stream eagerly.
   Stream<AgentSendEvent> send(
     String prompt, {
-    CancellationToken cancelToken = CancellationToken.none,
+    TomCancellationToken cancelToken = TomCancellationToken.none,
   }) async* {
     yield const AgentSendStarted();
 

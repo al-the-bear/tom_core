@@ -272,7 +272,8 @@ An error that fails any of the four conditions ends the stream with
 On success the returned session id is persisted so the next send resumes the
 same conversation.
 
-**Cancellation ends the stream silently.** Pass a `CancellationToken`; when it
+**Cancellation ends the stream silently.** Pass a `TomCancellationToken`
+(`package:tom_basics/utilities.dart`); when it
 signals, the active query is interrupted, which closes its stream so the loop
 unwinds — and `send` then returns **without a terminal event**. No
 `AgentSendCompleted`, no `AgentSendFailed`, because a user-driven stop is
@@ -308,10 +309,10 @@ eagerly.
 | `dart:async` | dart | `agent_send.dart` | `unawaited`, so the cancellation future can be wired to the query's interrupt without the send awaiting it |
 | `dart:io` | dart | 12 of 25 files | The sidecars are files: every store reads and writes one, and `Platform.environment` is where their path overrides come from |
 | `path` | package | 11 of 25 files | Composing a sidecar's path from its root and file name |
+| `tom_basics` | package | `agent_send.dart` | `TomCancellationToken`, the cooperative signal that interrupts an in-flight send |
 | `tom_vscode_scripting_api` | package | `agent_send.dart`, `bridge_connection.dart` | The VS Code bridge client and its port scan, and the Agent SDK client the send engine streams through |
 | `yaml` | package | `agent_yaml.dart` | Reading a sidecar document |
 | `yaml_edit` | package | `agent_yaml.dart` | Writing one back with its formatting and comments intact |
-| `cancellation.dart` | module | `agent_send.dart` | `CancellationToken`, the cooperative signal that interrupts an in-flight send |
 | [placeholders](placeholders.md) | module | `editor_placeholder_bindings.dart` | The resolver the editor bindings register their placeholders into |
 
 The module names no UI type and imports no Flutter. Everything in

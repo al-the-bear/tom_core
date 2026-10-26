@@ -61,10 +61,10 @@ worker stops answering.
 ## Cancellation
 
 A *protocol* family, not a behavioural one. The cooperative
-`CancellationToken` in `cancellation.dart` is awaited and polled by the code
+`TomCancellationToken` from `tom_basics` is awaited and polled by the code
 doing the work; these name a cancellable request crossing a boundary, and the
-state lives in a registry rather than in the token. The two co-exist in this
-package, which is why this family carries the `Isolate` prefix.
+state lives in a registry rather than in the token. An adapter holds both,
+which is why this family carries the `Isolate` prefix.
 
 ### IsolateCancellationToken
 

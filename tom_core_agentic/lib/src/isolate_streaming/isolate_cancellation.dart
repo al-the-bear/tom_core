@@ -9,16 +9,18 @@
 // the per-request handle, and the typed cancellation exception.
 //
 // Why an `Isolate`-prefixed family (and not the cooperative
-// `CancellationToken` in `cancellation.dart`):
+// `TomCancellationToken` from `tom_basics`):
 //
-//   The cooperative `CancellationToken` is a *behavioural* token —
+//   The cooperative `TomCancellationToken` is a *behavioural* token —
 //   consumers `await whenCancelled` and check `isCancelled` to abort
 //   in-process work. This family is a *protocol* token: an opaque,
 //   sendable integer id that names a cancellable request crossing an
 //   isolate boundary. The state lives in an in-isolate
 //   `IsolateCancellationRegistry`; the token itself carries no state.
-//   The two abstractions co-exist in this package, so the protocol
-//   family is named distinctly to keep call sites unambiguous.
+//   An adapter holds both: it takes the caller's `TomCancellationToken`
+//   and, when that fires, sends a cancel envelope for its own
+//   `IsolateCancellationToken`. The protocol family is named distinctly
+//   to keep call sites unambiguous.
 //
 // Sendability:
 //

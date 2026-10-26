@@ -1,6 +1,4 @@
-import 'dart:convert';
-
-import 'package:crypto/crypto.dart';
+import 'package:tom_basics/utilities.dart';
 
 /// Hashes [body] and returns it in the `sha256:<lowercase-hex>`
 /// convention used as a content fingerprint across agentic trails.
@@ -13,9 +11,8 @@ import 'package:crypto/crypto.dart';
 /// the same string, but the divergent expression is exactly the drift a
 /// single helper removes.
 ///
-/// The input is encoded as UTF-8 bytes before hashing, so multi-byte
-/// text fingerprints consistently regardless of platform string
-/// representation. The prefix lets a trail reader tell the hash
-/// algorithm from the digest without an out-of-band agreement.
-String promptSha256(String body) =>
-    'sha256:${sha256.convert(utf8.encode(body))}';
+/// The digest is `tom_basics`' `tomSha256OfText` (UTF-8 bytes, lowercase
+/// hex), the same hash every Tom package uses to name content. The prefix
+/// lets a trail reader tell the hash algorithm from the digest without an
+/// out-of-band agreement.
+String promptSha256(String body) => 'sha256:${tomSha256OfText(body)}';

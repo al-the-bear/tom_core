@@ -3,7 +3,7 @@
 // Walks the five reusable building blocks exported from the public barrel that
 // have no other example: the `requireNonEmpty` argument guard, the
 // `AsyncShutdownCoordinator` signal->drain->terminate wiring, the
-// `CancellationTokenSource` / `CancellationToken` cooperative-cancellation
+// `TomCancellationSource` / `TomCancellationToken` cooperative-cancellation
 // channel, the `CloseGuard` use-after-close mixin, and the `Deadline`
 // wall-clock budget. Every seam that would otherwise be non-deterministic — the
 // shutdown signal stream and process terminator, and the deadline clock — is
@@ -15,6 +15,7 @@
 
 import 'dart:async';
 
+import 'package:tom_basics/utilities.dart';
 import 'package:tom_core_agentic/tom_core_agentic.dart';
 
 import '../require_asserts.dart';
@@ -116,19 +117,19 @@ Future<void> _demoAsyncShutdown() async {
 }
 
 // ---------------------------------------------------------------------------
-// CancellationTokenSource / CancellationToken: the owner cancels; downstream
+// TomCancellationSource / TomCancellationToken: the owner cancels; downstream
 // work either polls isCancelled or races whenCancelled against its operation.
 // ---------------------------------------------------------------------------
 Future<void> _demoCancellation() async {
   print('== cancellation ==');
 
-  final source = CancellationTokenSource();
+  final source = TomCancellationSource();
   final token = source.token;
   assert(!token.isCancelled);
 
   // A long operation that loses the race to cancellation. We start a slow piece
   // of work and cancel before it can finish; racing whenCancelled lets the
-  // caller abandon the result and surface OperationCancelled.
+  // caller abandon the result and surface TomOperationCancelled.
   final slowWork = Future<String>.delayed(
     const Duration(seconds: 10),
     () => 'work result',
@@ -139,11 +140,11 @@ Future<void> _demoCancellation() async {
   String outcome;
   try {
     outcome = await _runCancellable(slowWork, token, 'slowWork');
-  } on OperationCancelled catch (e) {
+  } on TomOperationCancelled catch (e) {
     outcome = e.toString();
   }
   print('  $outcome');
-  assert(outcome == 'OperationCancelled(slowWork)');
+  assert(outcome == 'TomOperationCancelled(slowWork)');
   assert(token.isCancelled);
   assert(source.isCancelled);
 
@@ -152,7 +153,7 @@ Future<void> _demoCancellation() async {
   assert(source.isCancelled);
 
   // The fast-check path: poll isCancelled at the top of a critical section.
-  final fresh = CancellationTokenSource();
+  final fresh = TomCancellationSource();
   var ran = 0;
   for (var i = 0; i < 3; i++) {
     if (fresh.token.isCancelled) break;
@@ -162,22 +163,22 @@ Future<void> _demoCancellation() async {
   print('  fast-check ran $ran of 3 iterations');
   assert(ran == 2);
 
-  // CancellationToken.none is a permanent no-cancel default.
-  assert(!CancellationToken.none.isCancelled);
+  // TomCancellationToken.none is a permanent no-cancel default.
+  assert(!TomCancellationToken.none.isCancelled);
 }
 
-/// Awaits [work], but abandons it and throws [OperationCancelled] if [token]
+/// Awaits [work], but abandons it and throws [TomOperationCancelled] if [token]
 /// signals first. The underlying future keeps running — this models the
 /// "no per-request abort handle" reality and just stops *awaiting* the result.
 Future<T> _runCancellable<T>(
   Future<T> work,
-  CancellationToken token,
+  TomCancellationToken token,
   String operation,
 ) async {
   final cancelled = token.whenCancelled.then((_) => null);
   final winner = await Future.any<Object?>([work, cancelled]);
   if (token.isCancelled) {
-    throw OperationCancelled(operation);
+    throw TomOperationCancelled(operation);
   }
   return winner as T;
 }

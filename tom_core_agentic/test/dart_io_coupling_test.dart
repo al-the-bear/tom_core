@@ -159,7 +159,7 @@ void main() {
             'that only uses the clean subset relies on this; update README.md.',
       );
       // The README states both halves of the split, so pin both.
-      expect(exports.length - coupled.length, equals(31));
+      expect(exports.length - coupled.length, equals(29));
     });
 
     test('the README states the measured figures', () {

@@ -10,6 +10,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:test/test.dart';
+import 'package:tom_basics/utilities.dart' show TomCancellationSource;
 import 'package:tom_core_agentic/tom_core_agentic.dart';
 import 'package:tom_vscode_scripting_api/tom_vscode_scripting_api.dart';
 
@@ -65,7 +66,7 @@ class _ScriptedTransport implements AgentSdkTransport {
 
 /// A transport double that streams one assistant chunk and then *stalls* — it
 /// never emits the terminal `done`, so the send stays in flight until a
-/// [CancellationToken] interrupts it. Records the stream ids passed to
+/// [TomCancellationToken] interrupts it. Records the stream ids passed to
 /// [cancelQuery] so a test can assert the remote query was aborted.
 class _StallingTransport implements AgentSdkTransport {
   final _chunks = StreamController<Map<String, dynamic>>.broadcast();
@@ -432,7 +433,7 @@ void main() {
           config: const AgentSendConfig(),
         );
 
-        final source = CancellationTokenSource();
+        final source = TomCancellationSource();
         final events = <AgentSendEvent>[];
         // Drive the cold stream; cancel once the first chunk has streamed (the
         // transport then stalls forever, so without the cancel this never ends).

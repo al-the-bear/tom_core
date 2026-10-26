@@ -2,15 +2,20 @@
 
 Generic, domain-free building blocks for agentic systems in the TOM
 framework. Everything here depends only on `tom_basics` (plus `yaml` /
-`yaml_edit` for the config read/write path, `crypto` for the
-content-hash convention, and `path` for the `PathScope` sandbox) and is
-safe to reuse across the brain, the
+`yaml_edit` for the config read path and the agent YAML, and `path` for
+the `PathScope` sandbox) and is safe to reuse across the brain, the
 assistant, and any future agent runtime.
+
+Cooperative cancellation (`TomCancellationToken`, `TomCancellationSource`,
+`TomOperationCancelled`), the AST-preserving YAML config writer
+(`TomYamlConfigWriter`) and the SHA-256 behind `promptSha256`
+(`tomSha256OfText`) are `tom_basics`' (`package:tom_basics/utilities.dart`).
+This package uses them and declares none of them; import them from there.
 
 ## `dart:io` coupling
 
 The package as a whole is **not** `dart:io`-free and does not claim to
-be. 15 files under `lib/` import `dart:io`, and 5 of the 36 barrel
+be. 15 files under `lib/` import `dart:io`, and 5 of the 34 barrel
 exports reach one of them — directly or transitively:
 
 | Coupled barrel export | Reaches | Through |
@@ -26,7 +31,7 @@ reads this section and fails when a number here stops matching the import
 graph. The counts were prose once and went stale the first time a module
 gained an import.
 
-The remaining **31 exports are `dart:io`-free**, and that subset is what
+The remaining **29 exports are `dart:io`-free**, and that subset is what
 makes the package usable from `dart:io`-forbidding consumers. The one in
 the tree today, `tom_brain_shared`, uses seven symbols
 (`requireNonEmpty`, `textPreview`, and the five `collection_equality`
@@ -54,8 +59,6 @@ looks and is still not urgent.
 
 | Building block | Purpose |
 |----------------|---------|
-| `CancellationToken` / `CancellationTokenSource` | Cooperative cancellation for long-running async work. |
-| `OperationCancelled` | Public exception thrown when a cancelled token is observed. |
 | `CloseGuard` | Mixin that tracks a `isClosed` flag and throws on use-after-close. |
 | `buildUniqueById` | Build an id-keyed map from a list, rejecting duplicate ids. |
 | `textPreview` | Single-line, length-bounded preview of arbitrary text. |
@@ -65,7 +68,6 @@ looks and is still not urgent.
 | `AsyncShutdownCoordinator<S>` | Signal → awaited async teardown → terminate; `dart:io`-free, generic over the trigger type. |
 | `loadYamlAsMap` / `expandEnvVars` | YAML → plain `Map<String, Object?>` parse boundary, plus `${ENV}` expansion. |
 | `YamlConfigReader` / `MapFieldReader` | Typed, dotted-path reads over **plain** config maps (no `YamlMap` in the read path). |
-| `YamlConfigWriter` | The sanctioned AST-preserving config writer (surgical `set`/`remove` over `yaml_edit`; keeps comments, order, formatting). |
 | `percentileDuration` / `LatencySummary` | Nearest-rank percentile maths and a count/min/max/p50/p95 summary over `Duration` samples. |
 
 ## Integration with `tom_basics` / `tom_core_*` (reuse vs own)
@@ -82,15 +84,19 @@ analogue exists, why it is not reused.
 | **Logging** | **Reuse** `tom_basics` | `CategoryLog` and `AsyncShutdownCoordinator` forward to the global `tomLog` (`TomLogger` / `TomLogLevel`). No second logger is implemented. `CategoryLog` is a forwarding facade, not a re-implementation. |
 | **Clock** | **Own** (no equivalent) | Neither `tom_basics` nor `tom_core_kernel` ships a clock. `systemClock` is the one-line `DateTime.now` tear-off used as the default for injectable clock seams. |
 | **Shutdown** | **Own by tier-design** | `tom_core_kernel` ships `TomShutdownCleanup`, but it imports `dart:io` (`ProcessSignal`) and `tom_reflection/mirrors`, so it lives in the heavy kernel tier. `AsyncShutdownCoordinator` is the `dart:io`-free, async-await-correct, trigger-generic coordinator the lightweight tier needs. Depending on the kernel to share it would drag `dart:io` + reflection into `tom_brain_shared`; the bounded duplication is intentional. |
-| **Config read/write** | **Own** (no equivalent) | No YAML config loader/reader/writer exists in `tom_basics` or `tom_core_kernel`. `loadYamlAsMap` + `YamlConfigReader`/`MapFieldReader` own the read path (plain maps, no `YamlMap` leak); `YamlConfigWriter` owns the AST-preserving write path. |
+| **Cancellation** | **Reuse** `tom_basics` | `TomCancellationToken` / `TomCancellationSource` / `TomOperationCancelled` from `package:tom_basics/utilities.dart`; `agent_send.dart` takes the token. |
+| **Content hash** | **Reuse** `tom_basics` | `promptSha256` is `'sha256:'` + `tomSha256OfText`. |
+| **Config read** | **Own** (no equivalent) | No YAML config loader/reader exists in `tom_basics` or `tom_core_kernel`. `loadYamlAsMap` + `YamlConfigReader`/`MapFieldReader` own the read path (plain maps, no `YamlMap` leak). |
+| **Config write** | **Reuse** `tom_basics` | `TomYamlConfigWriter` is the AST-preserving writer (surgical `set`/`remove` over `yaml_edit`). |
 
 **Audit result:** no divergent re-implementation
-of a `tom_core_kernel`-owned primitive was found. Logging is reused;
-clock and config helpers have no `tom_core_*` equivalent; the shutdown
+of a `tom_core_kernel`-owned primitive was found. Logging, cancellation,
+the content hash and the config writer are reused from `tom_basics`;
+the clock and the config reader have no `tom_core_*` equivalent; the shutdown
 coordinator is a deliberate lightweight-tier alternative to the kernel's
 `dart:io`-coupled `TomShutdownCleanup`. The audited helpers
 (`CategoryLog`, `systemClock`, `AsyncShutdownCoordinator`,
-`YamlConfigReader`/`MapFieldReader`/`YamlConfigWriter`) keep their
+`YamlConfigReader`/`MapFieldReader`) keep their
 existing unit tests.
 
 ## Module documentation
