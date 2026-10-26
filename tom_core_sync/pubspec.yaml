@@ -14,8 +14,7 @@ environment:
 dependencies:
   meta: ^1.15.0
   # The structured diagnostics port each sync cycle is recorded through.
-  tom_basics:
-    path: ../../basics/tom_basics
+  tom_basics: ">=3.3.0"
   # The storage port, keyed file media, the commit journal and the rate-limit
   # vocabulary the engine and the file-medium history store are written over.
   tom_core_storage:

@@ -21,8 +21,7 @@ dependencies:
   # AES-256-GCM for the optional cache cipher (cipher.dart).
   pointycastle: ^4.0.0
   # The structured diagnostics port, the YAML emitter and the content hash.
-  tom_basics:
-    path: ../../basics/tom_basics
+  tom_basics: ">=3.3.0"
   # The HTTP client the git backend's transport is given (git.dart).
   http: ^1.2.0
   # Git in pure Dart, for the git backend (git.dart): no git binary needed.

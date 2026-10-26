@@ -14,8 +14,7 @@ environment:
 dependencies:
   meta: ^1.15.0
   # The diagnostics level, the YAML emitter and reader.
-  tom_basics:
-    path: ../../basics/tom_basics
+  tom_basics: ">=3.3.0"
   # The storage port the device file is read and committed through, the cache
   # and journal a forgotten location is scrubbed from.
   tom_core_storage:

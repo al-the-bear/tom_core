@@ -16,8 +16,7 @@ environment:
 dependencies:
   meta: ^1.15.0
   # The structured diagnostics port the session manager logs through.
-  tom_basics:
-    path: ../../basics/tom_basics
+  tom_basics: ">=3.3.0"
   # The provider contract this package implements and the run events it
   # streams.
   tom_core_llm:
