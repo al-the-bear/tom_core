@@ -17,12 +17,15 @@ client and a server both bind to.
   - [TomUserPreferenceKeys](#tomuserpreferencekeys)
   - [TomUserPreferenceDto](#tomuserpreferencedto)
   - [TomUserPreferenceWriteRequest](#tomuserpreferencewriterequest)
+  - [TomUserPreferenceBulkWriteRequest](#tomuserpreferencebulkwriterequest)
   - [TomUserPreferenceKeyRequest](#tomuserpreferencekeyrequest)
   - [TomUserPreferenceCodec](#tomuserpreferencecodec)
     - [What a preference value may be](#what-a-preference-value-may-be)
     - [Which name a value is stored under](#which-name-a-value-is-stored-under)
     - [A reflected value is rebuilt member by member](#a-reflected-value-is-rebuilt-member-by-member)
   - [tomUserPreferencesApi](#tomuserpreferencesapi)
+    - [Defaults beneath the caller's own values](#defaults-beneath-the-callers-own-values)
+    - [Writing several preferences at once](#writing-several-preferences-at-once)
     - [What "not set" looks like on the wire](#what-not-set-looks-like-on-the-wire)
     - [How big the account store can get](#how-big-the-account-store-can-get)
     - [Where the key is stated](#where-the-key-is-stated)
@@ -50,8 +53,9 @@ client and a server both bind to.
 | Type | Kind | Purpose |
 | ---- | ---- | ------- |
 | `TomUserPreferenceKeys` | class | Namespace of the preference keys the framework itself reads (`tom.timezone`, `tom.language`, `tom.country`, `tom.theme`). |
-| `TomUserPreferenceDto` | class | One stored preference on the wire: key, stored type name, JSON text, UTC write timestamp. |
+| `TomUserPreferenceDto` | class | One stored preference on the wire: key, stored type name, JSON text, UTC write timestamp, origin. |
 | `TomUserPreferenceWriteRequest` | class | Write request — the DTO's value fields without the timestamp. |
+| `TomUserPreferenceBulkWriteRequest` | class | Bulk write request — key → `{valueType, value}`, written all or none. |
 | `TomUserPreferenceKeyRequest` | class | Read/delete request addressing one preference by key. |
 | `TomUserPreferencesApiService` | abstract class | The contract's Dart face, implemented by the server and by client callers. |
 | `TomUserPreferenceCodec` | class | Encodes/decodes preference values; refuses a type mismatch rather than coercing. |
@@ -65,7 +69,8 @@ client. What lives here is the part both halves must agree on:
 
 - **`TomUserPreferenceKeys`** — the keys the framework itself reads.
 - **`TomUserPreferenceDto`**, **`TomUserPreferenceWriteRequest`**,
-  **`TomUserPreferenceKeyRequest`** — the shapes a preference takes on the wire.
+  **`TomUserPreferenceBulkWriteRequest`**, **`TomUserPreferenceKeyRequest`** —
+  the shapes a preference takes on the wire.
 - **`TomUserPreferenceCodec`** — how a value becomes JSON text and comes back.
 - **`tomUserPreferencesApi`** — the URI, method, request type, result type and
   access policy of every preference endpoint.
@@ -217,6 +222,8 @@ One stored preference as it travels the wire.
 | `valueType` | `String` | The name the value's type is stored under — see [Which name a value is stored under](#which-name-a-value-is-stored-under) |
 | `value` | `String` | The value's JSON text |
 | `updatedAt` | `DateTime?` | When the server last wrote it, in UTC |
+| `origin` | `String` | Where the value comes from: `user` (`tomUserPreferenceOriginUser`) for the caller's own value, `role` (`tomUserPreferenceOriginRole`) or `deployment` (`tomUserPreferenceOriginDeployment`) for a default — see [Defaults beneath the caller's own values](#defaults-beneath-the-callers-own-values) |
+| `isDefault` | `bool` | Getter: whether `origin` names a default rather than the caller's own value |
 
 `value` is text rather than a decoded `Object?` so the DTO stays flat: a
 `Map<String, Object?>` field would have to survive the reflection serializer
@@ -234,6 +241,11 @@ what keeps the stored instant the same instant everywhere. Assigning the field
 directly afterwards is not intercepted: a reflected DTO's fields are plain and
 public, so there is no setter to hook.
 
+`origin` defaults to `user`, so a DTO built for the caller's own value — every
+one a client builds — needs no argument for it. A client that offers "reset to
+default" reads it: deleting a `user` preference brings back the default beneath
+it, while deleting under a key whose value is a default changes nothing.
+
 ### TomUserPreferenceWriteRequest
 
 The same three fields minus the timestamp. *When* a preference was written is
@@ -243,6 +255,31 @@ on the request to disagree about.
 Its `key` is the write's only statement of which preference it means: the write
 endpoint is a `PUT` at `/preferences`, with no `{key}` in the path — see
 [Where the key is stated](#where-the-key-is-stated).
+
+### TomUserPreferenceBulkWriteRequest
+
+Several writes in one request, all of them or none. `preferences` maps each key
+to `{"valueType": …, "value": …}` — the two value fields of a
+`TomUserPreferenceWriteRequest`:
+
+```text
+POST /preferences
+{"preferences": {
+  "tom.language": {"valueType": "String", "value": "\"de\""},
+  "tom.theme":    {"valueType": "String", "value": "\"dark\""}
+}}
+```
+
+A map rather than a list of write requests, for two reasons: a plain map is what
+the reflection serializer round-trips without a nested type, and a map cannot
+name one key twice, so a batch can never say two different things about one
+preference.
+
+| Member | Description |
+|--------|-------------|
+| `TomUserPreferenceBulkWriteRequest({preferences})` | The request over its wire map (empty when omitted) |
+| `TomUserPreferenceBulkWriteRequest.of(writes)` | Built from `TomUserPreferenceWriteRequest`s; a key written twice keeps the last entry |
+| `writes` | The entries as write requests, in key order. Throws a `TomException` keyed `preferences.bulk.malformed` (`tomUserPreferencesBulkMalformedErrorKey`) for an entry that is not a map holding a `valueType` and a `value` string |
 
 ### TomUserPreferenceKeyRequest
 
@@ -622,8 +659,9 @@ The API declaration, mounted at `/preferences`.
 | Endpoint id | Method | URI | Request | Result | When the preference is not there |
 |-------------|--------|-----|---------|--------|----------------------------------|
 | `listPreferences` | GET | `` | — | `List<TomUserPreferenceDto>` | not in the list |
-| `readPreference` | GET | `/{key}` | `TomUserPreferenceKeyRequest` | `TomUserPreferenceDto` | `404` + envelope, `errorKey` = `tomUserPreferencesNotFoundErrorKey` |
+| `readPreference` | GET | `/{key}` | `TomUserPreferenceKeyRequest` | `TomUserPreferenceDto` | the default when there is one; else `404` + envelope, `errorKey` = `tomUserPreferencesNotFoundErrorKey` |
 | `writePreference` | PUT | `` | `TomUserPreferenceWriteRequest` | `TomUserPreferenceDto` | created |
+| `writePreferences` | POST | `` | `TomUserPreferenceBulkWriteRequest` | `List<TomUserPreferenceDto>` | created |
 | `deletePreference` | DELETE | `/{key}` | `TomUserPreferenceKeyRequest` | `void` | `200` — deleting nothing succeeds |
 | `clearPreferences` | DELETE | `` | — | `void` | `200` — clearing nothing succeeds |
 
@@ -654,6 +692,42 @@ delete each — it can stop half way, and what it leaves is a set of preferences
 nobody chose. On this store that half-reset state is shared by every device the
 user owns, so the operation is the server's to do atomically or not at all.
 
+#### Defaults beneath the caller's own values
+
+The list and the read answer more than what the caller wrote. Under a key the
+caller has not written, the server answers the **default** it holds for that
+key, and `TomUserPreferenceDto.origin` says where it came from:
+
+| Origin | Constant | The value is |
+|--------|----------|--------------|
+| `user` | `tomUserPreferenceOriginUser` | the caller's own |
+| `role` | `tomUserPreferenceOriginRole` | the default of a role the caller holds |
+| `deployment` | `tomUserPreferenceOriginDeployment` | the deployment's default |
+
+A caller's own value wins over every default, and a role default over the
+deployment's. A default is never copied into the caller's preferences: deleting
+the caller's own value brings the default back, deleting under a key whose value
+is a default changes nothing, and clearing the account leaves the defaults
+answering. A store that holds no defaults answers the caller's own values only.
+
+Which defaults exist, and for which roles, is the server's administration
+(`tom_core_server`'s `TomPreferenceDefaults`); the contract declares no endpoint
+that writes them.
+
+#### Writing several preferences at once
+
+`writePreferences` is a `POST` at the collection — the one method no other
+endpoint uses there, so it cannot be mistaken for the single write (a `PUT`) or
+reach the by-key routes. Its request is a `TomUserPreferenceBulkWriteRequest`,
+its answer the written preferences ordered by key.
+
+The batch is **all or none**. Every entry is checked before anything is written,
+as the single write checks one, and the server writes the batch in one
+transaction. A settings screen saving several changes at once therefore never
+leaves the account half saved — the same reason `clearPreferences` is one
+endpoint rather than a loop. An empty batch writes nothing and answers an empty
+list.
+
 #### What "not set" looks like on the wire
 
 The read's result type is `TomUserPreferenceDto`, not `TomUserPreferenceDto?`,
@@ -677,10 +751,11 @@ rule is therefore:
 
 | Answer | Meaning |
 |--------|---------|
-| `200` with a DTO | The preference as stored. |
-| `404` whose envelope's `errorKey` is `tomUserPreferencesNotFoundErrorKey` | Never written by this caller — an ordinary state, answered with a default. |
+| `200` with a DTO | The preference as stored, or the default beneath it (`origin` says which). |
+| `404` whose envelope's `errorKey` is `tomUserPreferencesNotFoundErrorKey` | Never written by this caller and no default — an ordinary state, answered with the caller's own fallback. |
 | `404` without that envelope | Refused, or no such route — a failure. |
 | `400` with `errorKey` `preferences.key.invalid` | The key is not a legal key — the caller's own mistake. |
+| `400` with `errorKey` `preferences.bulk.malformed` | A bulk write entry is not `{valueType, value}` — the caller's own mistake. |
 | anything else | A failure. |
 
 The constant is declared here, beside the endpoints, because both halves use it:
@@ -708,15 +783,18 @@ declares:
 
 So the largest list the endpoint can ever answer is about four megabytes, and a
 real one — a timezone, a language, a theme and a handful of application
-settings — is a few hundred bytes. The list endpoint and the write endpoint both
-state their ceilings in their own `description`, so a reader of the declaration
-finds them where the endpoint is declared.
+settings — is a few hundred bytes. Defaults add entries only under keys the
+caller has not written, and how many a deployment holds is its own
+administration. The list endpoint and both write endpoints state their ceilings
+in their own `description`, so a reader of the declaration finds them where the
+endpoint is declared.
 
 **Replacing a preference is never refused for the count.** A principal at the
-ceiling can still change every setting it has; deleting one frees a place. The
-count is read before an insert, so two inserts racing for the last place can both
-succeed and leave the caller one or two over — the ceiling exists to keep the
-list small, not to be exact.
+ceiling can still change every setting it has; deleting one frees a place. A
+bulk write is counted whole: the keys it would add, beside the ones the caller
+holds, must fit, or nothing is written. The count is read before the write, so
+two writes racing for the last place can both succeed and leave the caller one
+or two over — the ceiling exists to keep the list small, not to be exact.
 
 **The ceilings say what a preference is for.** 256 is far beyond what settings
 need, and 16 KiB holds a reflected settings object with dozens of members. An
@@ -732,7 +810,7 @@ which is what lets a preference move between them.
 
 #### Where the key is stated
 
-Three endpoints name a preference, and each names it exactly once.
+Four endpoints name a preference, and each names it exactly once.
 
 Read and delete take a `TomUserPreferenceKeyRequest`, whose only field is bound
 from the `{key}` path capture: the URL is the whole request, and the body is
@@ -753,6 +831,10 @@ makes a body field that is read on some endpoints and ignored on this one;
 rejecting the pair spends a status code on a state the contract could simply
 not have. Dropping the capture removes the question: there is no second place
 for the key to be stated, so there is nothing to disagree with.
+
+The bulk write follows the same rule: it is a `POST` at the collection, and its
+request keys its map by preference key, so each key it writes is stated once,
+in the body.
 
 Every endpoint is `TomAuthenticatedAccess`, and that is the only policy the
 contract can state: there is no anonymous preference, because a preference is
@@ -1014,6 +1096,6 @@ its registry.
 | `dart:convert` | dart | `user_preference_codec.dart` | `jsonEncode` / `jsonDecode` in `user_preference_codec.dart`, which is how a preference value crosses the store boundary as text |
 | `tom_reflection` | package | `user_preference_codec.dart` | `tomReflector`, `ClassMirror` and `TomReflectionInfo` — a preference object crosses the wire as reflected JSON |
 | [http_connection](../http_connection/http_connection.md) | module | `user_preferences_contract.dart` | `TomApi`, `TomApiEndpoint`, the API registry |
-| [little_things](../little_things/little_things.md) | module | `user_preference_codec.dart`, `user_preference_keys.dart` | `TomException`, the base of the codec's exception |
+| [little_things](../little_things/little_things.md) | module | `user_preference_codec.dart`, `user_preference_keys.dart`, `user_preferences_contract.dart` | `TomException`, the base of the codec's exception and the bulk write's `preferences.bulk.malformed` refusal |
 | [reflection](../reflection/reflection.md) | module | `user_preference_codec.dart`, `user_preferences_contract.dart` | `@tomReflector` and the JSON conversion path |
 | [security](../security/security.md) | module | `user_preferences_contract.dart` | `TomAuthenticatedAccess` for the endpoint access policy |

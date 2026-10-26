@@ -221,7 +221,10 @@ class PreferencesApiExample {
     );
 
     assert(baseUri == '/preferences', 'The API is mounted at /preferences');
-    assert(endpointCount == 5, 'List, read, write, delete and clear');
+    assert(
+      endpointCount == 6,
+      'List, read, write, bulk write, delete and clear',
+    );
     assert(readUri == '/{key}', 'A preference is addressed by its key');
     assert(writeUri == '', 'A write states its key in the body only');
     assert(everyEndpointAuthenticated, 'Every endpoint requires a principal');

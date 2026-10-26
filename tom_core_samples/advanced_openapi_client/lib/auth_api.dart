@@ -720,6 +720,25 @@ class TomOAuthProviderDto {
   };
 }
 
+/// The `TomUserPreferenceBulkWriteRequest` schema.
+class TomUserPreferenceBulkWriteRequest {
+  /// The `preferences` member.
+  Map<String, Object?> preferences;
+
+  /// A `TomUserPreferenceBulkWriteRequest` with the given members.
+  TomUserPreferenceBulkWriteRequest({required this.preferences});
+
+  /// Decodes a `TomUserPreferenceBulkWriteRequest` from its JSON object.
+  factory TomUserPreferenceBulkWriteRequest.fromJson(
+    Map<String, Object?> json,
+  ) => TomUserPreferenceBulkWriteRequest(
+    preferences: (json['preferences'] as Map).cast<String, Object?>(),
+  );
+
+  /// This value as its JSON object.
+  Map<String, Object?> toJson() => {'preferences': preferences};
+}
+
 /// The `TomUserPreferenceDto` schema.
 class TomUserPreferenceDto {
   /// The `key` member.
@@ -734,12 +753,16 @@ class TomUserPreferenceDto {
   /// The `updatedAt` member.
   DateTime? updatedAt;
 
+  /// The `origin` member.
+  String origin;
+
   /// A `TomUserPreferenceDto` with the given members.
   TomUserPreferenceDto({
     required this.key,
     required this.valueType,
     required this.value,
     this.updatedAt,
+    required this.origin,
   });
 
   /// Decodes a `TomUserPreferenceDto` from its JSON object.
@@ -751,6 +774,7 @@ class TomUserPreferenceDto {
         updatedAt: json['updatedAt'] == null
             ? null
             : DateTime.parse(json['updatedAt'] as String),
+        origin: json['origin'] as String,
       );
 
   /// This value as its JSON object.
@@ -759,6 +783,7 @@ class TomUserPreferenceDto {
     'valueType': valueType,
     'value': value,
     if (updatedAt != null) 'updatedAt': updatedAt!.toUtc().toIso8601String(),
+    'origin': origin,
   };
 }
 
@@ -1372,7 +1397,7 @@ class AuthApi {
 
   /// `GET /preferences`
   ///
-  /// Every preference of the caller, ordered by key. Unpaged by design and bounded by construction: at most 256 entries, each value at most 16384 bytes of JSON.
+  /// Every preference of the caller, ordered by key: the values it wrote, and under every other key the server has a default for, that default (origin role or deployment). Unpaged by design and bounded by construction: at most 256 entries of the caller's own beside the deployment's defaults, each value at most 16384 bytes of JSON.
   Future<List<TomUserPreferenceDto>> listPreferences() async {
     final response = await _send('GET', '/preferences', authenticated: true);
     final Object? decoded = jsonDecode(utf8.decode(response.bodyBytes));
@@ -1397,6 +1422,26 @@ class AuthApi {
     );
     final Object? decoded = jsonDecode(utf8.decode(response.bodyBytes));
     return TomUserPreferenceDto.fromJson(decoded as Map<String, Object?>);
+  }
+
+  /// `POST /preferences`
+  ///
+  /// Writes several preferences of the caller in one transaction, all or none, and answers the written ones ordered by key. Each entry is checked as the single write checks it (400); malformed entries are refused (400, preferences.bulk.malformed); a batch that would leave the caller holding more than 256 preferences is refused whole (409, preferences.limit.exceeded).
+  Future<List<TomUserPreferenceDto>> writePreferences({
+    required TomUserPreferenceBulkWriteRequest body,
+  }) async {
+    final response = await _send(
+      'POST',
+      '/preferences',
+      body: jsonEncode(body.toJson()),
+      contentType: 'application/json',
+      authenticated: true,
+    );
+    final Object? decoded = jsonDecode(utf8.decode(response.bodyBytes));
+    return [
+      for (final e in decoded as List)
+        TomUserPreferenceDto.fromJson(e as Map<String, Object?>),
+    ];
   }
 
   /// `DELETE /preferences`

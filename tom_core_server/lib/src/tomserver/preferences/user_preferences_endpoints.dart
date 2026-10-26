@@ -38,6 +38,7 @@ import 'user_preferences_service.dart';
 /// | [tomUserPreferencesNotFoundErrorKey] | `404` | a preference never written is a miss |
 /// | `preferences.key.invalid` | `400` | the key is the caller's input |
 /// | `preferences.encoded.*` | `400` | so is the encoded value in a write's body |
+/// | [tomUserPreferencesBulkMalformedErrorKey] | `400` | a bulk entry is not `{valueType, value}` |
 /// | [tomUserPreferencesLimitExceededErrorKey] | `409` | the write is sound, the caller is full |
 ///
 /// The default handler turns every failure into an opaque `500`, which is right
@@ -90,6 +91,7 @@ class TomUserPreferencesErrorHandler extends TomStatusMappingErrorHandler {
   Map<String, int> get statusByErrorKey => const {
     tomUserPreferencesNotFoundErrorKey: 404,
     invalidKeyKey: 400,
+    tomUserPreferencesBulkMalformedErrorKey: 400,
     tomUserPreferencesLimitExceededErrorKey: 409,
   };
 
@@ -172,6 +174,22 @@ class TomUserPreferencesServer implements TomUserPreferencesApiService {
       valueType: request.valueType,
       valueJson: request.value,
     );
+  }
+
+  @TomApiEndpointImplementation(
+    apiId: tomUserPreferencesApiId,
+    endpointId: tomUserPreferencesBulkWriteEndpointId,
+    errorHandler: TomUserPreferencesErrorHandler(),
+  )
+  @override
+  Future<List<TomUserPreferenceDto>> writePreferences(
+    TomUserPreferenceBulkWriteRequest request,
+  ) async {
+    // `writes` refuses a malformed entry before the store sees any of them, and
+    // the store validates every key and value before it writes one: the batch
+    // is all or none from the first check on.
+    final writes = request.writes;
+    return _store().setAllEncoded(writes);
   }
 
   @TomApiEndpointImplementation(

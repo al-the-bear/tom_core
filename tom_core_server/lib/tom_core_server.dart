@@ -180,6 +180,8 @@ export 'src/tomserver/object_persistence/persistence_annotations.dart';
 export 'src/tomserver/object_persistence/query_builder.dart';
 export 'src/tomserver/object_persistence/query_sentence_compiler.dart';
 export 'src/tomserver/object_persistence/subquery.dart';
+export 'src/tomserver/preferences/preference_default.dart';
+export 'src/tomserver/preferences/preference_defaults.dart';
 export 'src/tomserver/preferences/user_preference.dart';
 export 'src/tomserver/preferences/user_preferences_endpoints.dart';
 export 'src/tomserver/preferences/user_preferences_service.dart';

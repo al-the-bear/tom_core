@@ -497,16 +497,18 @@ call for a reason that has nothing to do with the call.
 #### Methods — the store face
 
 The seven the device store carries, so a call site reads identically whichever
-store it addresses, plus `close()` — which has no device counterpart because
-there is no connection to release.
+store it addresses, plus `setAll()` — the account store's all-or-none bulk
+write — and `close()`, which has no device counterpart because there is no
+connection to release.
 
 | Method | Returns | Description |
 | ------ | ------- | ----------- |
-| `all()` | `Future<List<TomUserPreferenceDto>>` | Every preference stored for the calling principal, **ordered by key**, ascending. Forwarded as received — the client does not re-sort. **Unmodifiable**, as `TomDevicePreferences.all` is: both are snapshots of a store rather than handles on it. |
-| `read(String key)` | `Future<TomUserPreferenceDto?>` | One preference as stored, or `null` when the server has never been given one. |
+| `all()` | `Future<List<TomUserPreferenceDto>>` | Every preference stored for the calling principal, and the defaults the server answers under keys it has not written (`origin` `role` or `deployment`), **ordered by key**, ascending. Forwarded as received — the client does not re-sort. **Unmodifiable**, as `TomDevicePreferences.all` is: both are snapshots of a store rather than handles on it. |
+| `read(String key)` | `Future<TomUserPreferenceDto?>` | One preference as stored, else the default the server holds for it (`isDefault`), or `null` when there is neither. |
 | `get<T extends Object>(String key)` | `Future<T?>` | `read`, decoded as a `T`. Throws `TomUserPreferenceCodecException` on a stored-type mismatch. |
-| `getOr<T extends Object>(String key, T fallback)` | `Future<T>` | `get`, with `fallback` for a preference that has never been written. A type mismatch still throws. |
+| `getOr<T extends Object>(String key, T fallback)` | `Future<T>` | `get`, with `fallback` for a preference that has never been written and has no default. A type mismatch still throws. |
 | `set<T extends Object>(String key, T value)` | `Future<TomUserPreferenceDto>` | Encodes and writes, returning the stored DTO. A value over the codec's `maxValueBytes` (16 KiB) is refused with `preferences.encode.too_large` before a request is made; a new key beyond the account's 256 preferences is refused by the server with a `409`, surfaced as `preferences.client.rejected` carrying `errorKey` `preferences.limit.exceeded`. |
+| `setAll(Map<String, Object> values)` | `Future<List<TomUserPreferenceDto>>` | Writes every entry of `values` — key → value, each encoded as `set` encodes one — in one request through `writePreferences`, **all or none**, and returns the stored DTOs ordered by key. The server writes the batch in one transaction, so a refusal of one entry leaves every preference as it was; a batch whose new keys would pass the account's 256 is refused whole (`409`, `preferences.limit.exceeded`). |
 | `remove(String key)` | `Future<void>` | Deletes. Returns nothing where the device store answers a `bool` — the delete endpoint is idempotent by design, so the server does not report whether a row existed, and a `bool` invented here could only be a second round trip pretending to be an answer. |
 | `clear()` | `Future<void>` | Deletes **every** preference of the calling principal, in one request. The entry that makes the two faces carry one method set: a reset written as a loop over `all()` and `remove` can stop half way, and what it leaves is a set of preferences nobody chose on a store every device the user owns reads. Takes nothing and answers nothing; idempotent, so a `404` from it is a refusal and never "nothing to clear". |
 | `close()` | `void` | Releases the HTTP client, when this client created it. |
@@ -518,6 +520,7 @@ there is no connection to release.
 | `listPreferences()` | `Future<List<TomUserPreferenceDto>>` | The list endpoint; decodes the bare JSON array the pipeline produces. Unmodifiable — `all()` is this method, so the two cannot differ. |
 | `readPreference(TomUserPreferenceKeyRequest request)` | `Future<TomUserPreferenceDto>` | Throws `preferences.client.not_found` on a miss, because the contract's result type is not nullable. `read` is the same call with the miss expressed as `null`, and is what an application should use. |
 | `writePreference(TomUserPreferenceWriteRequest request)` | `Future<TomUserPreferenceDto>` | The write endpoint; passes no path parameters, because the write URI carries no `{key}` and `request.key` is the whole of what is addressed. |
+| `writePreferences(TomUserPreferenceBulkWriteRequest request)` | `Future<List<TomUserPreferenceDto>>` | The bulk write endpoint — `POST /preferences`, all or none; answers the stored preferences ordered by key. Validates every key of `request.preferences` (`TomUserPreferenceKeys.validate`) before sending, so a batch the server would refuse for a malformed key is refused here; a refusal from the server throws as `writePreference`'s does. |
 | `deletePreference(TomUserPreferenceKeyRequest request)` | `Future<void>` | The delete endpoint. Throws `preferences.client.rejected` for every non-2xx answer, a `404` included: the server's delete answers `200` for a preference that is not there, so a `404` from it is a refusal, never "already gone". |
 | `clearPreferences()` | `Future<void>` | The bulk-delete endpoint — `DELETE /preferences`. Sends no body and no query, which is what lets the server clear in one statement. Same `404` rule as the delete above, for the same reason. |
 
@@ -530,11 +533,13 @@ the route the server serves are two readings of one declaration.
 
 **A write states its key once, in the body.** `read` and `deletePreference` are
 addressed at `/{key}`; `writePreference` is a `PUT` at the collection whose
-request already carries the key, so it passes no path parameters and a URL and
-a body naming different preferences is not expressible.
+request already carries the key, and `writePreferences` a `POST` there whose
+request keys its map by preference key, so neither passes path parameters and a
+URL and a body naming different preferences is not expressible.
 
 **A key that could not be a path segment never reaches a request.** `read`,
-`writePreference` and `deletePreference` all validate against
+`writePreference`, `writePreferences` (every key of the batch) and
+`deletePreference` all validate against
 `TomUserPreferenceKeys` before building one — the write included, since the
 rule is the store's vocabulary and not the URL's — and throw
 `TomUserPreferenceKeyException` instead, so the socket sees nothing. Escaping
@@ -546,7 +551,8 @@ of `''` would silently become a read of everything.
 
 #### What a miss looks like
 
-The server answers a key the caller has never written with a `404` carrying the
+The server answers a key with neither a value the caller wrote nor a default
+with a `404` carrying the
 error envelope whose `errorKey` is the kernel's
 `tomUserPreferencesNotFoundErrorKey` (`TomUserPreferencesErrorHandler`,
 `tom_core_server`), and that is the **only** answer this client reads as
@@ -569,7 +575,8 @@ can send an HTTP request.
 `response`, and — when the server answered with its error envelope — the
 server's own `errorKey`. That is how a caller tells an account at its ceiling
 (`409`, `preferences.limit.exceeded`) from a value the server would not store
-(`400`, `preferences.encoded.*`) without parsing the body. A bare `404` carries
+(`400`, `preferences.encoded.*`) or a malformed bulk entry (`400`,
+`preferences.bulk.malformed`) without parsing the body. A bare `404` carries
 no `errorKey`, because it has no envelope to carry one.
 
 #### Credentials

@@ -2113,6 +2113,163 @@ SELECT * FROM ${dbTable.table}
   @override
   Future<T> save(T toSave) => _observed(() => _save(toSave));
 
+  /// Why [upsert] cannot write this entity type, or `null` when it can.
+  ///
+  /// An upsert is one statement with no read before it, so it is offered only
+  /// where nothing about the write needs the stored row: no column grades
+  /// (C-4), no file references, no encrypted or blind-indexed columns, no
+  /// version, no soft delete or history, no entity or change listeners, and no
+  /// audit of a create or an update — each of those compares against, records
+  /// or replaces the row as it was. A caller with such an entity [save]s.
+  String? get upsertBlocker {
+    final type = queryTypes[0];
+    if (_authColumns.isNotEmpty) return 'column access rights';
+    if (_fileColumns.isNotEmpty) return 'file-reference columns';
+    if (persistenceInfo.columnInfo.any(
+      (c) => c.encrypted != null || c.blindIndex != null,
+    )) {
+      return 'encrypted columns';
+    }
+    if (_versionColumn != null) return 'a version column';
+    if (TomSoftDelete.of(type) != null) return 'soft delete';
+    if (TomEntityLifecycle.isObserved(type)) {
+      return 'entity listeners, change listeners or history';
+    }
+    if (_audits(TomAuditAction.create) || _audits(TomAuditAction.update)) {
+      return 'an audit policy';
+    }
+    return null;
+  }
+
+  /// Writes [entity] in one statement: inserted, or — when a row holds the
+  /// same values in the [conflictFields] — written over that row, which must
+  /// be a unique key of the table. Returns [entity] carrying the key of the
+  /// row written.
+  ///
+  /// The insert-or-update [save] performs as a read followed by a write, done
+  /// by the database ([TomStandardSqlDialect.upsert]), so two writers racing
+  /// for one key cannot both insert and neither has to retry on the duplicate.
+  ///
+  /// Refused (`crud_repository.upsert.unsupported`) for an entity whose write
+  /// needs the stored row — see [upsertBlocker] — and
+  /// (`crud_repository.upsert.unscoped_conflict_key`) when [conflictFields]
+  /// leaves out the entity's `@TomDbScope` or tenant field: the update half
+  /// could then overwrite a row of another owner or tenant that the scope
+  /// would never have let this caller touch. With them in the key, the row the
+  /// update reaches has the scope value the insert check below admits.
+  Future<T> upsert(T entity, {required List<String> conflictFields}) async {
+    final blocker = upsertBlocker;
+    if (blocker != null) {
+      throw TomRepositoryException(
+        'crud_repository.upsert.unsupported',
+        'An upsert of $T is a single statement, and $T has $blocker, which '
+            'needs the stored row; save it instead.',
+        parameters: {'type': '$T', 'reason': blocker},
+      );
+    }
+    String columnOf(String field) => TomAnnotationAnalyzer.determineColumn(
+      field,
+      [persistenceInfo],
+    ).getQueryFieldName();
+    final conflictColumns = [for (final f in conflictFields) columnOf(f)];
+    final type = queryTypes[0];
+    final guarded = [
+      ?TomAnnotationAnalyzer.findDataScope(type)?.field,
+      ?TomAnnotationAnalyzer.findTenantOwnership(type)?.field,
+    ];
+    for (final field in guarded) {
+      if (!conflictColumns.contains(columnOf(field))) {
+        throw TomRepositoryException(
+          'crud_repository.upsert.unscoped_conflict_key',
+          "An upsert of $T must name its scope field '$field' in its conflict "
+              'key, or the update could reach a row of another owner.',
+          parameters: {'type': '$T', 'field': field},
+        );
+      }
+    }
+
+    _assertEntityTenant(entity);
+    await _assertInsertWritable(entity);
+
+    final writable = [
+      for (final col in persistenceInfo.columnInfo)
+        if (!(col.column?.isReadOnly ?? false)) col,
+    ];
+    final keyColumn = hasCompositeKey
+        ? null
+        : primaryKeyColumns.single.getQueryFieldName();
+    final datasource = datasourceInfo.datasource;
+    final sql = datasource.sqlDialect.upsert(
+      dbTable.table,
+      {
+        for (final col in writable)
+          col.getQueryFieldName(): ':${col.declaredName}',
+      },
+      conflictKey: conflictColumns,
+      updateColumns: [
+        for (final col in writable)
+          if (!conflictColumns.contains(col.getQueryFieldName()))
+            col.getQueryFieldName(),
+      ],
+      keyColumn: keyColumn,
+    );
+    final statement = await datasource.prepareStatement<T>(
+      TomLiteralSelect(
+        [T],
+        query: sql,
+        parameters: [for (final col in writable) col.declaredName],
+      ),
+    );
+    final outcome = await statement.run({
+      for (final col in writable)
+        col.declaredName: switch (col.column?.toDbConverter) {
+          final convert? => convert(col.getVariableValue(entity)),
+          null => col.getVariableValue(entity),
+        },
+    });
+    if (keyColumn != null) {
+      primaryKeyColumns.single.setVariableValue(
+        entity,
+        outcome.generatedId ?? _noGeneratedKey(dbTable.table),
+      );
+    }
+    return entity;
+  }
+
+  /// Writes [entity] as the row identified by its [conflictFields] — inserted,
+  /// or written over the row holding the same values there — and returns the
+  /// stored entity.
+  ///
+  /// [upsert] when this entity type allows it ([upsertBlocker] is `null`): one
+  /// statement, no read before it. Otherwise the row is looked up by
+  /// [conflictFields] and [save]d with its key, so listeners, audit, history
+  /// and every other write feature see the stored row they need; two writers
+  /// racing for a new key can then both reach the insert, and the table's
+  /// unique key refuses the second.
+  Future<T> saveByKey(T entity, {required List<String> conflictFields}) async {
+    if (upsertBlocker == null) {
+      return upsert(entity, conflictFields: conflictFields);
+    }
+    final columns = {
+      for (final field in conflictFields)
+        field: TomAnnotationAnalyzer.determineColumn(field, [persistenceInfo]),
+    };
+    final existing = await findByQuerySentence(
+      'FIND BY ${[for (final MapEntry(:key, :value) in columns.entries) '${value.getQueryFieldName()} = :$key'].join(' AND ')}',
+      {
+        for (final MapEntry(:key, :value) in columns.entries)
+          key: value.getVariableValue(entity),
+      },
+    );
+    if (existing.isNotEmpty && !hasCompositeKey) {
+      primaryKeyColumns.single.setVariableValue(
+        entity,
+        primaryKeyColumns.single.getVariableValue(existing.first),
+      );
+    }
+    return save(entity);
+  }
+
   /// The row [row] stands for, as stored and unmasked — [row] itself when the
   /// entity masks no column.
   Future<T> _unmasked(K key, T row) async =>

@@ -12,6 +12,7 @@ and device-side preference stores.
   - [TomUserPreferenceKeyException](#tomuserpreferencekeyexception)
   - [TomUserPreferenceDto](#tomuserpreferencedto)
   - [TomUserPreferenceWriteRequest](#tomuserpreferencewriterequest)
+  - [TomUserPreferenceBulkWriteRequest](#tomuserpreferencebulkwriterequest)
   - [TomUserPreferenceKeyRequest](#tomuserpreferencekeyrequest)
   - [TomUserPreferencesApiService](#tomuserpreferencesapiservice)
   - [TomUserPreferenceCodec](#tomuserpreferencecodec)
@@ -29,7 +30,7 @@ This module holds the contract half of user preferences. The store itself is
 elsewhere — server-stored preferences live in `tom_core_server`, device-stored
 ones on the client — but both bind to the declarations here: the well-known
 keys, the wire DTOs, the codec that decides how a value becomes JSON text and
-comes back, and the `TomApi` describing the four `/preferences` endpoints.
+comes back, and the `TomApi` describing the six `/preferences` endpoints.
 
 A stored preference is JSON text plus the name of the type it was written as.
 The name travels with the value because JSON forgets types, and it is what lets
@@ -45,6 +46,7 @@ TomUserPreferenceKeys              (constants + the key rule)
 
 TomUserPreferenceDto               (@tomReflector)
 TomUserPreferenceWriteRequest      (@tomReflector)
+TomUserPreferenceBulkWriteRequest  (@tomReflector)
 TomUserPreferenceKeyRequest        (@tomReflector)
 
 TomUserPreferencesApiService       (abstract)
@@ -148,6 +150,7 @@ TomUserPreferenceDto({
   String valueType = '',
   String value = '',
   DateTime? updatedAt,
+  String origin = tomUserPreferenceOriginUser,
 })
 ```
 
@@ -163,6 +166,8 @@ in, so the UTC guarantee below is enforced rather than assumed.
 | `valueType` | `String` | The name of the type `value` was written as — a scalar's Dart type name or the simple name of a `@tomReflector` class. |
 | `value` | `String` | The value's JSON text; text rather than a decoded `Object?` so the DTO stays flat. |
 | `updatedAt` | `DateTime?` | When the preference was last written, in UTC; `null` for one that has never been stored. The constructor normalises a local input, so a writer that passes `DateTime.now()` still stores the instant unambiguously. Assigning the field directly afterwards is not intercepted — the field is plain and public, as a reflected DTO's must be. |
+| `origin` | `String` | Where the value comes from: `tomUserPreferenceOriginUser` (`user`) for a value the caller wrote, `tomUserPreferenceOriginRole` (`role`) or `tomUserPreferenceOriginDeployment` (`deployment`) for a default the server answers under a key the caller has not written. A client offering "reset to default" reads it: deleting a `user` preference brings back the default beneath it, while deleting under a key whose value is a default changes nothing. |
+| `isDefault` | `bool` | Getter: whether the value is a default rather than the caller's own (`origin != tomUserPreferenceOriginUser`). |
 
 #### Methods
 
@@ -203,6 +208,41 @@ TomUserPreferenceWriteRequest({
 | ------ | ------- | ----------- |
 | `toString()` | `String` | `TomUserPreferenceWriteRequest(<key>: <valueType>)`. |
 
+### TomUserPreferenceBulkWriteRequest
+
+The request for writing several preferences at once — all of them, or none.
+`preferences` maps each key to `{"valueType": …, "value": …}`, the two value
+fields of a `TomUserPreferenceWriteRequest`, rather than holding a list of
+requests: a plain map is what the reflection serializer round-trips without a
+nested type, and a map cannot name one key twice, so a batch can never say two
+different things about one preference.
+
+#### Constructors
+
+```dart
+TomUserPreferenceBulkWriteRequest({Map<String, Object?>? preferences})
+
+factory TomUserPreferenceBulkWriteRequest.of(
+  Iterable<TomUserPreferenceWriteRequest> writes,
+)
+```
+
+The default constructor takes the wire map (empty when omitted). `.of` builds
+it from write requests; a key written twice keeps the last entry.
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `preferences` | `Map<String, Object?>` | key → `{"valueType": <type name>, "value": <JSON text>}`. |
+| `writes` | `List<TomUserPreferenceWriteRequest>` | Getter: the entries as write requests, in key order. Throws a `TomException` keyed `preferences.bulk.malformed` (`tomUserPreferencesBulkMalformedErrorKey`, parameter `key`) for an entry that is not a map holding a `valueType` and a `value` string — the shape `.of` writes. |
+
+#### Methods
+
+| Method | Returns | Description |
+| ------ | ------- | ----------- |
+| `toString()` | `String` | `TomUserPreferenceBulkWriteRequest(<n> preferences)`. |
+
 ### TomUserPreferenceKeyRequest
 
 The request for reading or deleting one preference by key. A DTO rather than a
@@ -238,9 +278,10 @@ annotation because the server-side annotations live in `tom_core_server`.
 
 | Method | Returns | Description |
 | ------ | ------- | ----------- |
-| `listPreferences()` | `Future<List<TomUserPreferenceDto>>` | Every preference of the calling principal. Unpaged and bounded: at most `tomUserPreferencesMaxPerPrincipal` entries, each at most `TomUserPreferenceCodec.maxValueBytes` of value. |
-| `readPreference(TomUserPreferenceKeyRequest request)` | `Future<TomUserPreferenceDto>` | The caller's preference under `request.key`. A preference never written is a failure keyed `tomUserPreferencesNotFoundErrorKey` — on the wire a `404` carrying the error envelope with that `errorKey`; a bare `404` is a refusal, not absence. |
+| `listPreferences()` | `Future<List<TomUserPreferenceDto>>` | Every preference of the calling principal, ordered by key. Under a key the caller has not written, the default the server holds for it — a default of a role the caller holds before the deployment's — with `TomUserPreferenceDto.origin` saying which; a store that holds no defaults answers the caller's own values only. Unpaged and bounded: at most `tomUserPreferencesMaxPerPrincipal` entries, each at most `TomUserPreferenceCodec.maxValueBytes` of value. |
+| `readPreference(TomUserPreferenceKeyRequest request)` | `Future<TomUserPreferenceDto>` | The caller's preference under `request.key`; under a key the caller has not written, the default the server holds for it, chosen as `listPreferences` chooses it. A key with neither is a failure keyed `tomUserPreferencesNotFoundErrorKey` — on the wire a `404` carrying the error envelope with that `errorKey`; a bare `404` is a refusal, not absence. |
 | `writePreference(TomUserPreferenceWriteRequest request)` | `Future<TomUserPreferenceDto>` | Writes one preference of the caller, replacing any previous value. The written key is `request.key` and only that — the endpoint is a `PUT` at the collection, so the URL names no key. Refuses a value over `TomUserPreferenceCodec.maxValueBytes` (`preferences.encoded.too_large`, `400`) and a write that would add a key beyond `tomUserPreferencesMaxPerPrincipal` (`preferences.limit.exceeded`, `409`). |
+| `writePreferences(TomUserPreferenceBulkWriteRequest request)` | `Future<List<TomUserPreferenceDto>>` | Writes every entry of `request.preferences`, replacing previous values, **all or none**, and answers the written preferences ordered by key. Every entry is validated before anything is written, as `writePreference` validates one; an entry that is not `{valueType, value}` is refused (`preferences.bulk.malformed`, `400`). The ceiling counts the batch whole: a batch whose new keys would take the caller past `tomUserPreferencesMaxPerPrincipal` is refused (`preferences.limit.exceeded`, `409`) and writes nothing. An empty batch writes nothing and answers an empty list. |
 | `deletePreference(TomUserPreferenceKeyRequest request)` | `Future<void>` | Deletes the caller's preference under `request.key`. Idempotent: deleting a preference that is not there succeeds, so a `404` from it is always a refusal. |
 | `clearPreferences()` | `Future<void>` | Deletes **every** preference of the caller — the operation an account reset performs. One endpoint rather than a loop over the two above, because only the server can make it one statement: a loop that stops half way leaves a state nobody chose, on a store every device the user owns reads. Idempotent, unconditional, and answers nothing. |
 
@@ -345,11 +386,16 @@ raised while *naming* a value, so they belong to both the write and the read.
 | `tomUserPreferencesListEndpointId` | `String` | `listPreferences`. |
 | `tomUserPreferencesReadEndpointId` | `String` | `readPreference`. |
 | `tomUserPreferencesWriteEndpointId` | `String` | `writePreference`. |
+| `tomUserPreferencesBulkWriteEndpointId` | `String` | `writePreferences`. |
 | `tomUserPreferencesDeleteEndpointId` | `String` | `deletePreference`. |
 | `tomUserPreferencesClearEndpointId` | `String` | `clearPreferences`. |
+| `tomUserPreferenceOriginUser` | `String` | `user` — `TomUserPreferenceDto.origin` of a value the caller wrote. |
+| `tomUserPreferenceOriginRole` | `String` | `role` — `TomUserPreferenceDto.origin` of a default set for a role the caller holds. |
+| `tomUserPreferenceOriginDeployment` | `String` | `deployment` — `TomUserPreferenceDto.origin` of a default set for the whole deployment. |
+| `tomUserPreferencesBulkMalformedErrorKey` | `String` | `preferences.bulk.malformed` — the error key a bulk write answers when an entry is not `{"valueType": …, "value": …}`; on the wire a `400`. |
 | `tomUserPreferencesMaxPerPrincipal` | `int` | `256` — the most preferences one principal may hold. What makes the unpaged list safe to answer in full: at most this many entries, each at most `TomUserPreferenceCodec.maxValueBytes` of value. The server enforces it on a write that would **add** a key; replacing one is never refused for the count. |
 | `tomUserPreferencesLimitExceededErrorKey` | `String` | `preferences.limit.exceeded` — the error key of a write refused for that ceiling; on the wire a `409` carrying the error envelope. |
-| `tomUserPreferencesNotFoundErrorKey` | `String` | `preferences.not_found` — the error key the read answers a never-written preference with, and the contract's only statement of absence. Declared here because the server raises it and the client recognises it. |
+| `tomUserPreferencesNotFoundErrorKey` | `String` | `preferences.not_found` — the error key the read answers a key with neither a value of the caller's nor a default, and the contract's only statement of absence. Declared here because the server raises it and the client recognises it. |
 | `tomUserPreferencesApi` | `TomApi` | The `/preferences` API — see below. |
 | `registerTomUserPreferencesApi()` | `void` | Registers `tomUserPreferencesApi` with the global `tomRemoteApis` registry. Idempotent, and called by both halves. Explicit rather than implicit so a deployment that stores no preferences does not carry the API. |
 
@@ -361,10 +407,27 @@ anonymous preference, because a preference is per principal.
 | Endpoint id | Method | URI | Request type | Result type | When the preference is not there |
 | ----------- | ------ | --- | ------------ | ----------- | -------------------------------- |
 | `listPreferences` | GET | `` | — | `List<TomUserPreferenceDto>` | not in the list |
-| `readPreference` | GET | `/{key}` | `TomUserPreferenceKeyRequest` | `TomUserPreferenceDto` | `404` + envelope, `errorKey` = `tomUserPreferencesNotFoundErrorKey` |
+| `readPreference` | GET | `/{key}` | `TomUserPreferenceKeyRequest` | `TomUserPreferenceDto` | the default when there is one; else `404` + envelope, `errorKey` = `tomUserPreferencesNotFoundErrorKey` |
 | `writePreference` | PUT | `` | `TomUserPreferenceWriteRequest` | `TomUserPreferenceDto` | created |
+| `writePreferences` | POST | `` | `TomUserPreferenceBulkWriteRequest` | `List<TomUserPreferenceDto>` | created |
 | `deletePreference` | DELETE | `/{key}` | `TomUserPreferenceKeyRequest` | `void` | `200` — deleting nothing succeeds |
 | `clearPreferences` | DELETE | `` | — | `void` | `200` — clearing nothing succeeds |
+
+**Defaults sit beneath the caller's own values.** Under a key the caller has
+not written, the list and the read answer the default the server holds for it —
+a default of a role the caller holds before the deployment's — and
+`TomUserPreferenceDto.origin` says which (`user`, `role`, `deployment`). A
+default is never copied into the caller's preferences: deleting the caller's
+own value brings the default back, and deleting under a key whose value is a
+default changes nothing. Which defaults exist is the server's administration;
+the contract declares no endpoint that writes them.
+
+**The bulk write is a `POST` at the collection.** It is the one method no other
+endpoint uses there, so it cannot be mistaken for the single write (a `PUT`) or
+reach the by-key routes. The server writes the batch in one transaction — every
+entry is checked before anything is written, and a batch whose new keys would
+pass the ceiling is refused whole — so a refusal leaves every preference as it
+was.
 
 **The two deletes are one path segment apart.** They share `DELETE` and differ
 only in whether a segment follows the collection — the same collection/item pair
@@ -383,10 +446,12 @@ idempotence makes uninteresting.
 the caller holds, because every caller of it wants all of them — and that is
 safe only because the store is bounded: `tomUserPreferencesMaxPerPrincipal`
 (256) preferences, each at most `TomUserPreferenceCodec.maxValueBytes` (16 KiB)
-of value, a worst case of about four megabytes. The list and write endpoints
-state both ceilings in their `description`. A write that would add a key beyond
-the count answers `409` with `errorKey` `preferences.limit.exceeded`; one whose
-value is too large, `400` with `preferences.encoded.too_large`.
+of value, a worst case of about four megabytes. The list and both write
+endpoints state the ceilings in their `description`. A write that would add a
+key beyond the count answers `409` with `errorKey` `preferences.limit.exceeded`
+— a bulk write counts its new keys together and is refused whole; one whose
+value is too large, `400` with `preferences.encoded.too_large`; a bulk entry
+that is not `{valueType, value}`, `400` with `preferences.bulk.malformed`.
 
 **Absence is a key, not a status.** The read's result type is not nullable,
 because the endpoint pipeline answers a `null` result as it answers a `void`
@@ -404,10 +469,11 @@ The two kinds of nothing in that table are different. `listPreferences` and
 `TomUserPreferencesApiService` spells the same thing `Future<void>`.
 
 Read and delete map the `{key}` path segment onto the request DTO's `key`
-field. The write does not: its request carries a `key` field of its own, so the
-endpoint is a `PUT` at the collection with no capture and no
-`urlParameterMapping` — the key is stated once, in the body, and a URL and a
-body naming different preferences is not expressible.
+field. The writes do not: the single write's request carries a `key` field of
+its own and the bulk write's request keys its map by preference key, so both
+endpoints sit at the collection with no capture and no `urlParameterMapping` —
+each key is stated once, in the body, and a URL and a body naming different
+preferences is not expressible.
 
 **Which** rows a caller reaches is not an endpoint-level question and is
 not decided by this API: the server's entity declares

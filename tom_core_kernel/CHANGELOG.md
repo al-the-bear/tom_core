@@ -2,6 +2,23 @@
 
 ### Added
 
+- **Preference defaults and the bulk write** (`preferences/`).
+  `TomUserPreferenceDto.origin` (`tomUserPreferenceOriginUser` `'user'`,
+  `tomUserPreferenceOriginRole` `'role'`, `tomUserPreferenceOriginDeployment`
+  `'deployment'`; default `user`) and its getter `isDefault` say whether a value
+  is the caller's own or a default the server answers under a key the caller
+  has not written; `listPreferences` and `readPreference` include those
+  defaults, and the read answers `preferences.not_found` only for a key with
+  neither. `TomUserPreferenceBulkWriteRequest` (`preferences`: key →
+  `{valueType, value}`; `.of(writes)`; `writes` in key order, refusing a
+  malformed entry as `preferences.bulk.malformed` =
+  `tomUserPreferencesBulkMalformedErrorKey`) is the request of the endpoint
+  `tomUserPreferencesBulkWriteEndpointId` (`writePreferences`,
+  `POST /preferences`), which writes the batch all or none and counts its new
+  keys against `tomUserPreferencesMaxPerPrincipal` together;
+  `TomUserPreferencesApiService.writePreferences`. `doc/preferences/preferences.md`
+  § Defaults beneath the caller's own values, § Writing several preferences at
+  once; tests in `test/preferences_test.dart`.
 - **Job priority, pausing and checkpoints** (`scheduling/`).
   `TomJobDefinition.priority` and `TomScheduledJob.priority` (default 0) are
   copied onto every run the scheduler plans (`TomJobRun.priority`), and

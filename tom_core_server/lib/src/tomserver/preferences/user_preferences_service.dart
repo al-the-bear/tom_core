@@ -44,12 +44,15 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 import '../little_things/server_exception.dart';
 import '../object_persistence/crud_repository.dart';
 import '../object_persistence/paging.dart';
+import '../transactions/transaction_manager.dart';
+import 'preference_defaults.dart';
 import 'user_preference.dart';
 
 /// Raised when a preference operation cannot identify the caller
-/// (`preferences.no_principal`), or when a write would add a preference beyond
+/// (`preferences.no_principal`), when a write would add a preference beyond
 /// [tomUserPreferencesMaxPerPrincipal]
-/// ([tomUserPreferencesLimitExceededErrorKey]).
+/// ([tomUserPreferencesLimitExceededErrorKey]), or when a role default names
+/// no usable role (`preferences.default.invalid_role`).
 class TomUserPreferenceException extends TomServerException {
   /// Creates the exception; parameters mirror [TomServerException].
   TomUserPreferenceException(
@@ -93,8 +96,15 @@ class TomUserPreferences {
   /// The repository preference rows are read and written through.
   final TomSqlDatasourceRepository<TomUserPreference, int> repository;
 
-  /// Creates the service over [repository].
-  const TomUserPreferences(this.repository);
+  /// The defaults beneath the caller's own values; when `null`, the installed
+  /// [TomPreferenceDefaults] bean, and when there is none either, no defaults.
+  final TomPreferenceDefaults? defaults;
+
+  /// Creates the service over [repository], reading defaults from [defaults].
+  const TomUserPreferences(this.repository, {this.defaults});
+
+  TomPreferenceDefaults? get _defaults =>
+      defaults ?? TomPreferenceDefaults.resolve();
 
   /// The installed [TomUserPreferences] bean, or `null` when none is
   /// registered.
@@ -138,22 +148,42 @@ class TomUserPreferences {
   /// A window is only meaningful over a defined order, and this one has it
   /// already — the `ORDER BY` above is the contract's, so page 2 is the rows
   /// after page 1 rather than whatever the engine returned second.
+  ///
+  /// Under every key the caller has not written, the list carries the default
+  /// [TomPreferenceDefaults] chooses for the caller's roles, with
+  /// [TomUserPreferenceDto.origin] naming its source. The window is then cut
+  /// from the merged list, in memory — both halves are bounded, so the merge is
+  /// cheaper than teaching SQL to page across two tables. The window is always
+  /// cut from the key order; [TomPageRequest.sort] is not applied.
   Future<List<TomUserPreferenceDto>> all([TomPageRequest? page]) async {
+    final principal = _requirePrincipal();
     final rows = await repository.findByQuerySentence(
       'FIND BY principal_id = :principalId ORDER BY preference_key',
-      {'principalId': _requirePrincipal().qualifiedId},
-      null,
-      page,
+      {'principalId': principal.qualifiedId},
     );
-    return List.unmodifiable(rows.map((row) => row.toDto()));
+    final merged = <String, TomUserPreferenceDto>{
+      ...?await _defaults?.effectiveFor(principal.aci.roles),
+      for (final row in rows) row.preferenceKey: row.toDto(),
+    };
+    final keys = merged.keys.toList()..sort();
+    final ordered = [for (final key in keys) merged[key]!];
+    if (page == null) return List.unmodifiable(ordered);
+    final start = page.offset.clamp(0, ordered.length);
+    final end = page.limit <= 0
+        ? ordered.length
+        : (start + page.limit).clamp(start, ordered.length);
+    return List.unmodifiable(ordered.sublist(start, end));
   }
 
-  /// The calling principal's preference stored under [key], or `null` when it
-  /// has never been written.
+  /// The calling principal's preference stored under [key] — or, when it has
+  /// never written one, the default [TomPreferenceDefaults] chooses for its
+  /// roles — or `null` when there is neither.
   Future<TomUserPreferenceDto?> read(String key) async {
     TomUserPreferenceKeys.validate(key);
-    final row = await _rowFor(_requirePrincipal(), key);
-    return row?.toDto();
+    final principal = _requirePrincipal();
+    final row = await _rowFor(principal, key);
+    if (row != null) return row.toDto();
+    return _defaults?.effectiveValue(key, principal.aci.roles);
   }
 
   /// The calling principal's preference stored under [key], decoded as a [T].
@@ -214,14 +244,82 @@ class TomUserPreferences {
     return _write(key, valueType, valueJson);
   }
 
-  /// Upserts the calling principal's row under [key].
+  /// [writes] — each already validated — as the calling principal's
+  /// preferences, all or none, ordered by key.
+  ///
+  /// The endpoint's bulk write path. Every key and every encoded pair is
+  /// checked before anything is written, and the ceiling counts the batch
+  /// whole: the keys it would add, beside the ones the caller holds, must fit
+  /// [tomUserPreferencesMaxPerPrincipal], or nothing is written. The writes run
+  /// in one transaction, so a failure part way leaves the caller's preferences
+  /// as they were.
+  ///
+  /// The held keys are read before the transaction, not inside it: a read
+  /// inside would open a snapshot that a concurrent batch's committed write
+  /// then contradicts, and MariaDB refuses the later update of such a row
+  /// (error 1020) where it could simply have waited for its lock. Inside, the
+  /// transaction holds only single-statement writes taken in key order, so
+  /// two batches over the same keys queue on the row locks rather than
+  /// failing or deadlocking. The cost is the single write's: two batches
+  /// racing for the last places can both pass the ceiling.
+  Future<List<TomUserPreferenceDto>> setAllEncoded(
+    Iterable<TomUserPreferenceWriteRequest> writes,
+  ) async {
+    final batch = writes.toList()..sort((a, b) => a.key.compareTo(b.key));
+    for (final write in batch) {
+      TomUserPreferenceKeys.validate(write.key);
+      TomUserPreferenceCodec.validateEncoded(
+        write.valueType,
+        write.value,
+        key: write.key,
+      );
+    }
+    if (batch.isEmpty) return const [];
+    final principal = _requirePrincipal();
+    final held = {
+      for (final row in await repository.findByQuerySentence(
+        'FIND BY principal_id = :principalId',
+        {'principalId': principal.qualifiedId},
+      ))
+        row.preferenceKey,
+    };
+    final added = {
+      for (final write in batch)
+        if (!held.contains(write.key)) write.key,
+    };
+    if (held.length + added.length > tomUserPreferencesMaxPerPrincipal) {
+      throw TomUserPreferenceException(
+        tomUserPreferencesLimitExceededErrorKey,
+        'The batch would add ${added.length} preferences to the '
+        '${held.length} the caller holds, beyond the '
+        '$tomUserPreferencesMaxPerPrincipal allowed. Nothing was written.',
+        parameters: {
+          'added': added.length,
+          'held': held.length,
+          'limit': tomUserPreferencesMaxPerPrincipal,
+        },
+      );
+    }
+    return TomTransactionManager.runInTransaction(
+      (_) async => List<TomUserPreferenceDto>.unmodifiable([
+        for (final write in batch)
+          await _store(principal, write.key, write.valueType, write.value),
+      ]),
+    );
+  }
+
+  /// Writes the calling principal's row under [key] — inserted, or written over
+  /// the stored one — in one statement where the repository allows it
+  /// ([TomSqlDatasourceRepository.saveByKey]), so two writers racing for a new
+  /// key cannot both insert.
   ///
   /// A write that would **add** a key is refused once the principal holds
   /// [tomUserPreferencesMaxPerPrincipal] preferences; a write that replaces one
-  /// is never refused for the count. The count is read before the insert, so
-  /// two inserts racing for the last place can both pass and leave the caller
-  /// one or two over. That is accepted: the ceiling exists to keep the list
-  /// small, not to be exact, and an insert that overshoots it leaves the
+  /// is never refused for the count. The count is read before the write, and
+  /// whether the key is already held is asked only when the count is at the
+  /// ceiling. Two writes racing for the last place can both pass and leave the
+  /// caller one or two over. That is accepted: the ceiling exists to keep the
+  /// list small, not to be exact, and a write that overshoots it leaves the
   /// principal able only to replace and delete until it is back under.
   Future<TomUserPreferenceDto> _write(
     String key,
@@ -229,23 +327,29 @@ class TomUserPreferences {
     String valueJson,
   ) async {
     final principal = _requirePrincipal();
-    final existing = await _rowFor(principal, key);
-    if (existing == null) await _requireRoomFor(principal, key);
+    await _requireRoomFor(principal, key);
+    return _store(principal, key, valueType, valueJson);
+  }
 
-    // Reuse the found row rather than inserting a second: the repository takes
-    // its UPDATE path exactly when the surrogate key is set, so carrying the id
-    // over is what makes this an upsert — and the table's unique key on
-    // (principal_id, preference_key) would reject the alternative anyway.
-    final row = existing ?? TomUserPreference();
-    row.principalId = principal.qualifiedId;
-    row.preferenceKey = key;
-    row.valueType = valueType;
-    row.valueJson = valueJson;
-    // The server's clock, not the caller's: when a preference was written is
-    // the server's answer (which is why the write DTO carries no timestamp).
-    row.updatedAt = DateTime.now().toUtc();
-
-    final saved = await repository.save(row);
+  Future<TomUserPreferenceDto> _store(
+    TomPrincipal principal,
+    String key,
+    String valueType,
+    String valueJson,
+  ) async {
+    final row = TomUserPreference(
+      principalId: principal.qualifiedId,
+      preferenceKey: key,
+      valueType: valueType,
+      valueJson: valueJson,
+      // The server's clock, not the caller's: when a preference was written is
+      // the server's answer (which is why the write DTO carries no timestamp).
+      updatedAt: DateTime.now().toUtc(),
+    );
+    final saved = await repository.saveByKey(
+      row,
+      conflictFields: const ['principalId', 'preferenceKey'],
+    );
     return saved.toDto();
   }
 
@@ -298,9 +402,9 @@ class TomUserPreferences {
     );
   }
 
-  /// Throws unless [principal] holds fewer than
-  /// [tomUserPreferencesMaxPerPrincipal] preferences, so that one more may be
-  /// added under [key].
+  /// Throws unless [principal] may write under [key]: it holds fewer than
+  /// [tomUserPreferencesMaxPerPrincipal] preferences, or already holds [key]
+  /// (a replacement is never refused for the count).
   ///
   /// Counted with the principal named, for the reason [_rowFor] names it: under
   /// [TomDataScope.runUnscoped] the scope filters nothing, and a count that
@@ -311,6 +415,7 @@ class TomUserPreferences {
       {'principalId': principal.qualifiedId},
     );
     if ((held.get() ?? 0) < tomUserPreferencesMaxPerPrincipal) return;
+    if (await _rowFor(principal, key) != null) return;
     throw TomUserPreferenceException(
       tomUserPreferencesLimitExceededErrorKey,
       "Preference '$key' cannot be added: the caller already holds "

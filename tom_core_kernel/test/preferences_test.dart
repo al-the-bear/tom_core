@@ -2290,6 +2290,63 @@ void main() {
     });
   });
 
+  group('the bulk write request and the origin of a value', () {
+    TomUserPreferenceWriteRequest write(String key, String value) =>
+        TomUserPreferenceWriteRequest(key: key, valueType: 'int', value: value);
+
+    test('of() keys the entries, and writes reads them back in key order', () {
+      final request = TomUserPreferenceBulkWriteRequest.of([
+        write('b', '2'),
+        write('a', '1'),
+        write('b', '3'),
+      ]);
+      expect(request.preferences, {
+        'b': {'valueType': 'int', 'value': '3'},
+        'a': {'valueType': 'int', 'value': '1'},
+      });
+      expect(request.writes.map((w) => '${w.key}=${w.value}'), ['a=1', 'b=3']);
+    });
+
+    test('an entry that is not {valueType, value} is refused', () {
+      for (final entry in <Object?>[
+        'dark',
+        {'valueType': 'String'},
+        {'valueType': 1, 'value': '1'},
+      ]) {
+        expect(
+          () => TomUserPreferenceBulkWriteRequest(
+            preferences: {'theme': entry},
+          ).writes,
+          throwsA(
+            isA<TomException>().having(
+              (e) => e.key,
+              'key',
+              tomUserPreferencesBulkMalformedErrorKey,
+            ),
+          ),
+          reason: '$entry',
+        );
+      }
+    });
+
+    test('a DTO is the caller\'s own unless it says otherwise', () {
+      expect(TomUserPreferenceDto().origin, tomUserPreferenceOriginUser);
+      expect(TomUserPreferenceDto().isDefault, isFalse);
+      expect(
+        TomUserPreferenceDto(origin: tomUserPreferenceOriginRole).isDefault,
+        isTrue,
+      );
+      expect(
+        [
+          tomUserPreferenceOriginUser,
+          tomUserPreferenceOriginRole,
+          tomUserPreferenceOriginDeployment,
+        ],
+        ['user', 'role', 'deployment'],
+      );
+    });
+  });
+
   group('tomUserPreferencesApi — the contract both halves bind to', () {
     test('the API is mounted at /preferences under its own id', () {
       expect(tomUserPreferencesApi.id, tomUserPreferencesApiId);
@@ -2297,13 +2354,14 @@ void main() {
       expect(tomUserPreferencesApi.uri, '/preferences');
     });
 
-    test('it declares exactly the five endpoints its ids name', () {
+    test('it declares exactly the six endpoints its ids name', () {
       expect(
         tomUserPreferencesApi.endpoints.keys,
         unorderedEquals(<String>[
           tomUserPreferencesListEndpointId,
           tomUserPreferencesReadEndpointId,
           tomUserPreferencesWriteEndpointId,
+          tomUserPreferencesBulkWriteEndpointId,
           tomUserPreferencesDeleteEndpointId,
           tomUserPreferencesClearEndpointId,
         ]),
@@ -2317,6 +2375,7 @@ void main() {
       expect(tomUserPreferencesListEndpointId, 'listPreferences');
       expect(tomUserPreferencesReadEndpointId, 'readPreference');
       expect(tomUserPreferencesWriteEndpointId, 'writePreference');
+      expect(tomUserPreferencesBulkWriteEndpointId, 'writePreferences');
       expect(tomUserPreferencesDeleteEndpointId, 'deletePreference');
       expect(tomUserPreferencesClearEndpointId, 'clearPreferences');
     });
@@ -2329,6 +2388,11 @@ void main() {
       expect(api[tomUserPreferencesReadEndpointId].method, TomHttpMethod.get);
       expect(api[tomUserPreferencesReadEndpointId].uri, '/{key}');
       expect(api[tomUserPreferencesWriteEndpointId].method, TomHttpMethod.put);
+      expect(
+        api[tomUserPreferencesBulkWriteEndpointId].method,
+        TomHttpMethod.post,
+      );
+      expect(api[tomUserPreferencesBulkWriteEndpointId].uri, '');
       expect(
         api[tomUserPreferencesDeleteEndpointId].method,
         TomHttpMethod.delete,
@@ -2569,7 +2633,7 @@ void main() {
 ///
 /// Executes the contract, rather than only constructing it.
 ///
-/// The module declares five endpoints and a service interface, and until this
+/// The module declares six endpoints and a service interface, and until this
 /// group nothing sent over any of them: the suite built the DTOs and checked
 /// the declarations. That is the condition under which a wrong transport
 /// survives — an invented API is caught by reading, an executed one by

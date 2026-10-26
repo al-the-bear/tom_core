@@ -185,6 +185,59 @@ CREATE TABLE IF NOT EXISTS `tom_grant` (
     });
   });
 
+  group('upsert', () {
+    final values = {'a': ':a', 'b': ':b', 'c': ':c'};
+
+    test('PostgreSQL names the conflict key and returns the row key', () {
+      expect(
+        dialect.upsert(
+          't',
+          values,
+          conflictKey: const ['a'],
+          updateColumns: const ['b', 'c'],
+          keyColumn: 'id',
+        ),
+        'INSERT INTO t (a, b, c) VALUES (:a, :b, :c) ON CONFLICT (a) '
+        'DO UPDATE SET b = EXCLUDED.b, c = EXCLUDED.c RETURNING id',
+      );
+      expect(
+        dialect.upsert(
+          't',
+          values,
+          conflictKey: const ['a', 'b', 'c'],
+          updateColumns: const [],
+        ),
+        'INSERT INTO t (a, b, c) VALUES (:a, :b, :c) '
+        'ON CONFLICT (a, b, c) DO NOTHING',
+      );
+    });
+
+    test('MariaDB updates on the duplicate key and reports the row key', () {
+      expect(
+        MariadbSqlDialect().upsert(
+          't',
+          values,
+          conflictKey: const ['a'],
+          updateColumns: const ['b', 'c'],
+          keyColumn: 'id',
+        ),
+        'INSERT INTO t (a, b, c) VALUES (:a, :b, :c) ON DUPLICATE KEY UPDATE '
+        'b = VALUES(b), c = VALUES(c), id = LAST_INSERT_ID(id)',
+      );
+      expect(
+        MariadbSqlDialect().upsert(
+          't',
+          values,
+          conflictKey: const ['a', 'b', 'c'],
+          updateColumns: const [],
+        ),
+        'INSERT INTO t (a, b, c) VALUES (:a, :b, :c) '
+        'ON DUPLICATE KEY UPDATE a = a',
+        reason: 'nothing to overwrite keeps the row as it is',
+      );
+    });
+  });
+
   group('literals and predicates', () {
     test('a backslash in a string literal is kept single', () {
       expect(dialect.text(r"it's a \ path"), r"'it''s a \ path'");

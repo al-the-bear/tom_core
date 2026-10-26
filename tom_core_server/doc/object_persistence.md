@@ -14,6 +14,7 @@ be expressed three ways — a parsed *query sentence*, a programmatically built
 - [The Repository Contract](#the-repository-contract)
   - [What a delete returns](#what-a-delete-returns)
   - [How a repository fails](#how-a-repository-fails)
+  - [Upserting by a unique key](#upserting-by-a-unique-key)
   - [Paging and Sorting](#paging-and-sorting)
   - [Lifecycle work](#lifecycle-work)
   - [Reads a replica may serve](#reads-a-replica-may-serve)
@@ -453,9 +454,11 @@ Every repository rejection is a keyed `TomServerException`, never a bare
 | `crud_repository.count.illegal_count_result` | `count()`'s `COUNT(*)` returned other than exactly one row. |
 | `crud_repository.count_by_query.illegal_count_result` | Ditto for `countByQuery`. |
 | `crud_repository.count_by_query_sentence.illegal_count_result` | Ditto for `countByQuerySentence`. |
-| `crud_repository.save.no_generated_key` | An `INSERT` whose primary key was left for the database to assign reported no generated key — the table assigns none, or the driver does not report one from the insert's result. |
+| `crud_repository.save.no_generated_key` | An `INSERT` (or an `upsert`) whose primary key was left for the database to assign reported no generated key — the table assigns none, or the driver does not report one from the insert's result. |
 | `crud_repository.save.insert_not_readable` | An `INSERT` reported success but the new row could not be read back. |
 | `crud_repository.save.update_not_readable` | An `UPDATE` ran but the row could not be re-read. |
+| `crud_repository.upsert.unsupported` | `upsert` was called for an entity whose write needs the stored row — `upsertBlocker` names why (parameters `type`, `reason`). See [Upserting by a unique key](#upserting-by-a-unique-key). |
+| `crud_repository.upsert.unscoped_conflict_key` | `upsert`'s `conflictFields` leave out the entity's `@TomDbScope` or tenant field (parameters `type`, `field`). |
 | `crud_repository.delete.unsaved_entity` | `delete(entity)` was handed an entity that was never persisted. |
 | `crud_repository.save.incomplete_key` | `save` was handed a composite-key entity with a key field still `null`. |
 | `crud_repository.key.shape_mismatch` | A composite-key method was handed a key that is not a `TomCompositeKey` of exactly the entity's key fields. |
@@ -464,8 +467,9 @@ Every repository rejection is a keyed `TomServerException`, never a bare
 | `crud_repository.save.version_conflict` | A versioned update changed no row: the stored version is no longer the one the entity carries, or the row is gone. Raised as `TomOptimisticLockException`. |
 | `crud_repository.delete.version_conflict` | A versioned `delete(entity)` changed no row, for the same reasons. Raised as `TomOptimisticLockException`. |
 
-The first nine are *server* faults — a broken deployment, a table contradicting
-its own key, a driver that reported a write it then could not read — so
+The first eleven are *server* faults — a broken deployment, a table contradicting
+its own key, a driver that reported a write it then could not read, code that
+asks `upsert` for a write it cannot do — so
 `clientThrow` defaults to `false`: the key travels to the caller, the message
 (which names internals) does not.
 
@@ -510,6 +514,63 @@ under `storage.migration.*` keys:
 | `storage.migration.no_file_columns` | The entity declares no `@TomFileReference` column. Named rather than swept, because a migration reporting "0 blobs" for an entity that stores none looks exactly like one that worked. |
 | `storage.migration.unknown_field` | `fields` names a column that is not a file column of the entity. |
 | `storage.migration.verification_failed` | A copy did not match what was read. The one failure a later pass cannot detect — the next run finds the key present and moves on — so it stops the migration rather than being reported. |
+
+### Upserting by a unique key
+
+`save` decides between `INSERT` and `UPDATE` by the entity's primary key, so a
+caller that knows a row only by a *business* key — `(principal, key)`,
+`(tenant, code)` — reads it first and saves it with the key it found. Two writers
+doing that for one new business key can both read nothing and both insert, and
+the table's unique key refuses the second with a driver error. `upsert` and
+`saveByKey` write by the business key instead:
+
+```dart
+await repo.upsert(preference, conflictFields: ['principalId', 'preferenceKey']);
+await repo.saveByKey(preference, conflictFields: ['principalId', 'preferenceKey']);
+```
+
+| Member | Returns | Description |
+| ------ | ------- | ----------- |
+| `upsertBlocker` | `String?` | Why `upsert` cannot write this entity type, or `null` when it can |
+| `upsert(entity, {conflictFields})` | `Future<T>` | One statement: inserts the row, or — when a row holds the same values in `conflictFields`, which must be a unique key of the table — writes over it. Returns `entity` carrying the key of the row written |
+| `saveByKey(entity, {conflictFields})` | `Future<T>` | `upsert` when `upsertBlocker` is `null`; otherwise finds the row by `conflictFields` and `save`s with its key |
+
+**`upsert` is one statement with no read before it**, rendered by the dialect's
+`upsert` fragment ([datasources.md](datasources.md#upserting-in-one-statement)):
+MariaDB `INSERT … ON DUPLICATE KEY UPDATE`, PostgreSQL `INSERT … ON CONFLICT
+(…) DO UPDATE`. Every writable column outside the conflict key is overwritten;
+the row's key comes back through `LAST_INSERT_ID(<key>)` or `RETURNING`, so the
+entity carries it whether the row was inserted or updated. Two writers racing
+for one key cannot both insert, and neither has to retry on the duplicate.
+
+**It is offered only where nothing about the write needs the stored row.**
+`upsertBlocker` answers, in this order, `column access rights` (a
+[graded column](#column-authorization)), `file-reference columns`, `encrypted
+columns` (an encrypted or blind-indexed column), `a version column`,
+`soft delete`, `entity listeners, change listeners or history`, and `an audit
+policy` auditing a create or an update — each of those compares against,
+records or replaces the row as it was. `upsert` refuses such an entity with
+`crud_repository.upsert.unsupported`.
+
+**The conflict key must hold the owner.** When the entity declares a
+`@TomDbScope` or a tenant field, `conflictFields` must name it, or the call is
+refused with `crud_repository.upsert.unscoped_conflict_key`: the update half
+could otherwise overwrite a row of another owner or tenant that the scope would
+never have let this caller touch. With it in the key, the row the update reaches
+has the scope value the insert check admits. The tenant and the
+[insert-side scope check](#reads-filter-writes-reject) run before the statement,
+as they do for `save`.
+
+**`saveByKey` is the call to reach for.** Where `upsert` is allowed it is
+`upsert`; elsewhere it looks the row up by `conflictFields` and `save`s with the
+key it found, so listeners, audit, history and every other write feature see the
+stored row they need. On that path two writers racing for a new key can both
+reach the insert, and the table's unique key refuses the second.
+
+`MariaDB`'s `ON DUPLICATE KEY UPDATE` reacts to a collision on *any* unique key
+of the table, where PostgreSQL's `ON CONFLICT` names the conflict key; a table
+whose only unique keys are its primary key and `conflictFields` — the shape a
+surrogate-keyed entity with one business key has — behaves the same on both.
 
 ### Paging and Sorting
 
@@ -2954,7 +3015,9 @@ table, in each tenant's schema or in each tenant's database.
   moved. See [Optimistic Locking](#optimistic-locking).
 - **`TomColumnInformation`** — resolved per-field metadata + reflection accessors.
 - **`TomRepository` / `TomSqlDatasourceRepository` / `MariadbRepository`** — the
-  CRUD/query contract and its SQL/MariaDB implementations.
+  CRUD/query contract and its SQL/MariaDB implementations;
+  `TomSqlDatasourceRepository.upsert` / `saveByKey` / `upsertBlocker` write by a
+  unique business key (see [Upserting by a unique key](#upserting-by-a-unique-key)).
 - **`TomQuerySentenceCompiler`** — query-sentence parser, including the
   association terms it compiles to a correlated `EXISTS`.
 - **`TomSubquery` + `TomExists` + `TomInSubquery`** — a subquery over entity
@@ -3058,7 +3121,7 @@ is a string and `>` and `%` are directly writable in one. See
 | `uuid` | package | `field_encryption.dart`, `file_reference.dart` | `Uuid.v4`, for the file name in a blob key; `UuidV4`, for a data key's id |
 | [audit](audit.md) | module | `crud_repository.dart` | `TomAuditAction`, `TomAuditTrail` |
 | [configuration](configuration.md) | module | `field_encryption.dart` | `TomSecrets.resolve` and `TomSecretReference.isReference`, which resolve a `secret:` reference to a key-encryption key in `configure` |
-| [datasources](datasources.md) | module | 12 of 18 files | `TomDbType`/`TomOperator`/`SqlString`, `TomStandardSqlDialect` / `MariadbSqlDialect` (including the `aggregate`, `aliased`, `groupByClause` and `havingClause` fragments, and the `exists`, `inSubquery` and `subquery` fragments), `TomQuery` family (`TomSelect` / `TomCount` / `TomDelete` / `TomUpdate` / `TomLiteralSelect`), `TomAggregateFunction`, `TomTypedPersistenceBase`, `TomTypePersistenceInfo`, `TomDataSourceInfo`, `TomPreparedStatement`; `TomFrameworkTable`, `TomSchemaProvisioning` and `sqlInstant` / `parseSqlInstant` for the data-key table |
+| [datasources](datasources.md) | module | 12 of 18 files | `TomDbType`/`TomOperator`/`SqlString`, `TomStandardSqlDialect` / `MariadbSqlDialect` (including the `aggregate`, `aliased`, `groupByClause` and `havingClause` fragments, the `exists`, `inSubquery` and `subquery` fragments, and the `upsert` fragment), `TomQuery` family (`TomSelect` / `TomCount` / `TomDelete` / `TomUpdate` / `TomLiteralSelect`), `TomAggregateFunction`, `TomTypedPersistenceBase`, `TomTypePersistenceInfo`, `TomDataSourceInfo`, `TomPreparedStatement`; `TomFrameworkTable`, `TomSchemaProvisioning` and `sqlInstant` / `parseSqlInstant` for the data-key table |
 | [file_storage](file_storage.md) | module | `blob_migration.dart`, `crud_repository.dart`, `file_reference.dart` | `TomBlobStore`, `TomBlobStoreInfo`, `TomStorageException`, `TomStoredBlob` |
 | [little_things](little_things.md) | module | 8 of 18 files | `TomServerException` (base of the module's exceptions) |
 | [privacy](privacy.md) | module | `crud_repository.dart` | `TomPersonalDataModel.sealingSubjects`, which names the data subject each `@TomPersonal` value of an audit record is sealed for |

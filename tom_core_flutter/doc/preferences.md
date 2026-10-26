@@ -561,7 +561,8 @@ G-DI-3 failure the device store removes, one layer up.
 
 It carries the device store's method set — `all` / `read` / `get` / `getOr` /
 `set` / `remove` — over the same DTO and the same codec, so a call site reads
-identically whichever store it addresses:
+identically whichever store it addresses, plus `setAll`, the account store's
+bulk write:
 
 ```dart
 final account = TomUserPreferencesClient(
@@ -570,6 +571,11 @@ final account = TomUserPreferencesClient(
 
 await account.set(TomUserPreferenceKeys.theme, 'dark');
 final theme = await account.getOr(TomUserPreferenceKeys.theme, 'system');
+
+await account.setAll({
+  TomUserPreferenceKeys.language: 'de',
+  TomUserPreferenceKeys.country: 'DE',
+});
 ```
 
 **No URI is written by the caller, or by the client.** Every request is built by
@@ -581,8 +587,28 @@ spellings that agree by inspection.
 **A write states its key once, in the body.** `read` and `deletePreference`
 address a preference by path — the contract mounts them at `/{key}` — while
 `writePreference` is a `PUT` at `/preferences` whose request already carries the
-key, so it passes no path parameters at all. A URL and a body naming different
-preferences is not something this client can build.
+key, so it passes no path parameters at all. `writePreferences`, the bulk write,
+is a `POST` at `/preferences` whose request keys its map by preference key, so
+it too passes none. A URL and a body naming different preferences is not
+something this client can build.
+
+**Several preferences in one request, all or none.** `setAll(values)` encodes
+every entry of a key → value map as `set` encodes one, builds a
+`TomUserPreferenceBulkWriteRequest` and sends it through `writePreferences`; the
+answer is the stored DTOs ordered by key. The server writes the batch in one
+transaction, so a refusal of one entry — a value it cannot store, a batch whose
+new keys would take the account past its ceiling — leaves every preference as it
+was. A settings screen saving several changes therefore never leaves the
+account half saved, which a loop of `set`s could, on the store every device the
+user owns reads.
+
+**Defaults arrive with an origin.** Under a key the user has not written, the
+server answers the default it holds — a role's or the deployment's — so `all`,
+`read`, `get` and `getOr` return it like a stored value, and
+`TomUserPreferenceDto.origin` (`user`, `role`, `deployment`; `isDefault`) says
+which it is. A settings screen that offers "reset to default" reads it: `remove`
+on a `user` value brings the default back, and `remove` under a key whose value
+is a default changes nothing.
 
 **Two deletes share a method and differ by one path segment.**
 `deletePreference` is a `DELETE` at `/preferences/{key}` and `clearPreferences`
@@ -591,7 +617,8 @@ except that here the two answers are "one preference gone" and "all of them
 gone".
 
 **A key that could not be a path segment never reaches a request.** `read`,
-`writePreference` and `deletePreference` all validate the key against
+`writePreference`, `writePreferences` (every key of the batch) and
+`deletePreference` all validate the key against
 `TomUserPreferenceKeys` before building one, and refuse it with
 `TomUserPreferenceKeyException` — the write included, because the rule is the
 store's vocabulary rather than the URL's. Escaping is not a usable alternative:
@@ -612,8 +639,8 @@ delete endpoint is idempotent by design and the server does not report whether a
 row existed — a `bool` invented here could only be a second round trip
 pretending to be an answer.
 
-**A miss is a `404` that says so.** The server answers a never-written key with
-a `404` whose error envelope names the kernel's
+**A miss is a `404` that says so.** The server answers a key with neither a
+value of the user's nor a default with a `404` whose error envelope names the kernel's
 `tomUserPreferencesNotFoundErrorKey`; for that answer `read` and `get` answer
 `null` and `getOr` answers its fallback. Only `readPreference`, the
 service-interface call whose result is not nullable, turns the miss into
@@ -629,7 +656,8 @@ an application that could not tell them apart would paper the outage over with a
 default and never learn. A rejection's `parameters` carry the `statusCode` and,
 when the server answered with its error envelope, the server's `errorKey` — so an
 account at its ceiling of 256 preferences (`409`, `preferences.limit.exceeded`)
-is told apart from any other refusal without parsing the body. A *value* failure
+is told apart from any other refusal without parsing the body — and so is a
+malformed bulk entry (`400`, `preferences.bulk.malformed`). A *value* failure
 — a preference stored as the wrong type, or one whose encoding exceeds the
 codec's 16 KiB — arrives as the kernel's `TomUserPreferenceCodecException`
 instead, since it means the same thing in both stores.
@@ -844,8 +872,8 @@ between devices, so an `updatedAt` that names no time zone throws
 - **`TomPlatformDevicePreferenceStore`** — the compile-time selected backend.
 - **`TomMemoryDevicePreferenceStore`** — for tests, examples, and clients that
   deliberately keep no machine-local state.
-- **`TomUserPreferencesClient`** — the account store. Not a bean and not
-  resolved: it needs a `baseUri`, which only the application knows, and unlike
+- **`TomUserPreferencesClient`** — the account store, with `setAll` for an
+  all-or-none bulk write. Not a bean and not resolved: it needs a `baseUri`, which only the application knows, and unlike
   the device store there is nothing to select between. Holds no cache, for the
   device store's reason and one more — the account store is shared with the
   user's other devices, so a cached value is stale the moment one of them writes.

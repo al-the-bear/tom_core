@@ -867,6 +867,14 @@ CREATE TABLE IF NOT EXISTS fixture_nullable (
     await execute(dsi.datasource, 'TRUNCATE TABLE tom_user_preference');
   }
 
+  /// Creates the `tom_preference_default` table from the entity's own DDL.
+  static Future<void> ensurePreferenceDefaultTable(TomDataSourceInfo dsi) =>
+      _ensureEntityTable(dsi, TomPreferenceDefault.createTableSql);
+
+  /// Empties `tom_preference_default` between tests.
+  static Future<void> truncatePreferenceDefault(TomDataSourceInfo dsi) =>
+      execute(dsi.datasource, 'TRUNCATE TABLE tom_preference_default');
+
   /// Creates the `tom_external_identity` link table from the entity's own DDL.
   static Future<void> ensureExternalIdentityTable(
     TomDataSourceInfo dsi,

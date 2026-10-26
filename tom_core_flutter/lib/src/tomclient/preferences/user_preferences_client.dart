@@ -223,16 +223,33 @@ class TomUserPreferencesClient implements TomUserPreferencesApiService {
   /// Scalars and `DateTime`s are encoded by [TomUserPreferenceCodec]; anything
   /// else must be a `@tomReflector` class, which is what makes a preference a
   /// typed object rather than a stringly-typed blob.
-  Future<TomUserPreferenceDto> set<T extends Object>(String key, T value) {
+  Future<TomUserPreferenceDto> set<T extends Object>(String key, T value) =>
+      writePreference(_writeOf(key, value));
+
+  /// The write request for [value] under [key], encoded by
+  /// [TomUserPreferenceCodec].
+  static TomUserPreferenceWriteRequest _writeOf(String key, Object value) {
     final encoded = TomUserPreferenceCodec.encode(key, value);
-    return writePreference(
-      TomUserPreferenceWriteRequest(
-        key: encoded.key,
-        valueType: encoded.valueType,
-        value: encoded.value,
-      ),
+    return TomUserPreferenceWriteRequest(
+      key: encoded.key,
+      valueType: encoded.valueType,
+      value: encoded.value,
     );
   }
+
+  /// Writes every entry of [values] — key → value, encoded as [set] encodes
+  /// one — in one request, all or none, and returns the stored DTOs ordered by
+  /// key.
+  ///
+  /// The server writes the batch in one transaction, so a refusal of one entry
+  /// leaves every preference as it was; see [writePreferences].
+  Future<List<TomUserPreferenceDto>> setAll(Map<String, Object> values) =>
+      writePreferences(
+        TomUserPreferenceBulkWriteRequest.of([
+          for (final MapEntry(:key, :value) in values.entries)
+            _writeOf(key, value),
+        ]),
+      );
 
   /// Deletes the preference stored under [key].
   ///
@@ -320,6 +337,25 @@ class TomUserPreferencesClient implements TomUserPreferencesApiService {
     );
     _requireSuccess(response, key: request.key);
     return _decodeDto(response, key: request.key);
+  }
+
+  /// Writes every preference [request] carries, all or none, and answers the
+  /// stored ones ordered by key.
+  ///
+  /// Every key is checked here first ([TomUserPreferenceKeys.validate]), so a
+  /// batch the server would refuse for a malformed key is refused before it is
+  /// sent. A refusal from the server throws like [writePreference]'s.
+  @override
+  Future<List<TomUserPreferenceDto>> writePreferences(
+    TomUserPreferenceBulkWriteRequest request,
+  ) async {
+    request.preferences.keys.forEach(TomUserPreferenceKeys.validate);
+    final response = await _call(
+      tomUserPreferencesApi[tomUserPreferencesBulkWriteEndpointId],
+      body: _encodeRequest(request),
+    );
+    _requireSuccess(response);
+    return _decodeDtoList(response);
   }
 
   /// Deletes the preference named by [request].

@@ -634,6 +634,40 @@ class TomStandardSqlDialect {
         'VALUES (${values.values.join(', ')})',
   ];
 
+  /// One statement that inserts a row into [table] or, when a row with the same
+  /// [conflictKey] values exists, overwrites that row's [updateColumns] with
+  /// the values [values] supplies — an insert-or-update with no read before it,
+  /// so two writers racing for the same key cannot both insert.
+  ///
+  /// With [keyColumn] the statement reports that column of the row it wrote —
+  /// inserted or updated — as its generated id: MariaDB through
+  /// `<key> = LAST_INSERT_ID(<key>)` in the update, PostgreSQL through
+  /// `RETURNING`.
+  ///
+  /// MariaDB's `ON DUPLICATE KEY UPDATE` reacts to a collision on *any* unique
+  /// key of the table, where PostgreSQL's `ON CONFLICT` names [conflictKey]; a
+  /// table whose only unique keys are its primary key and [conflictKey] —
+  /// which is what a caller passes a surrogate-keyed row for — behaves the same
+  /// on both.
+  SqlString upsert(
+    String table,
+    Map<String, String> values, {
+    required List<String> conflictKey,
+    required List<String> updateColumns,
+    String? keyColumn,
+  }) => [
+    'INSERT INTO $table (${values.keys.join(', ')}) '
+        'VALUES (${values.values.join(', ')}) ON DUPLICATE KEY UPDATE ',
+    [
+      for (final column in updateColumns) '$column = VALUES($column)',
+      if (keyColumn != null) '$keyColumn = LAST_INSERT_ID($keyColumn)',
+      // Nothing to overwrite: MariaDB has no `DO NOTHING`, so the row keeps
+      // itself by assigning a conflict column its own value.
+      if (updateColumns.isEmpty && keyColumn == null)
+        '${conflictKey.first} = ${conflictKey.first}',
+    ].join(', '),
+  ].join();
+
   /// One statement that counts one more in [table]'s row whose [conflictKey]
   /// columns hold the values [values] supplies, creating the row with a count
   /// of `1` when there is none — and reports the count it left in [counter] as

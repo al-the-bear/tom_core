@@ -2038,7 +2038,7 @@
           "tomUserPreferences"
         ],
         "operationId": "listPreferences",
-        "description": "Every preference of the caller, ordered by key. Unpaged by design and bounded by construction: at most 256 entries, each value at most 16384 bytes of JSON.",
+        "description": "Every preference of the caller, ordered by key: the values it wrote, and under every other key the server has a default for, that default (origin role or deployment). Unpaged by design and bounded by construction: at most 256 entries of the caller's own beside the deployment's defaults, each value at most 16384 bytes of JSON.",
         "responses": {
           "200": {
             "description": "The result.",
@@ -2139,6 +2139,99 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/TomUserPreferenceDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "apiKeyAuth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "tomUserPreferences"
+        ],
+        "operationId": "writePreferences",
+        "description": "Writes several preferences of the caller in one transaction, all or none, and answers the written ones ordered by key. Each entry is checked as the single write checks it (400); malformed entries are refused (400, preferences.bulk.malformed); a batch that would leave the caller holding more than 256 preferences is refused whole (409, preferences.limit.exceeded).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TomUserPreferenceBulkWriteRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TomUserPreferenceDto"
+                  }
                 }
               }
             }
@@ -5557,6 +5650,18 @@
           "iconKey"
         ]
       },
+      "TomUserPreferenceBulkWriteRequest": {
+        "type": "object",
+        "properties": {
+          "preferences": {
+            "type": "object",
+            "additionalProperties": {}
+          }
+        },
+        "required": [
+          "preferences"
+        ]
+      },
       "TomUserPreferenceDto": {
         "type": "object",
         "properties": {
@@ -5575,12 +5680,16 @@
               "null"
             ],
             "format": "date-time"
+          },
+          "origin": {
+            "type": "string"
           }
         },
         "required": [
           "key",
           "valueType",
-          "value"
+          "value",
+          "origin"
         ]
       },
       "TomUserPreferenceKeyRequest": {

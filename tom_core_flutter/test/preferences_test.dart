@@ -1784,6 +1784,33 @@ void main() {
         expect(sent['value'], '"dark"');
       });
 
+      test('setAll() issues the bulk write with every encoded entry', () async {
+        transport.answer(
+          body: '[${_dtoBody('a.count', '3')},${_dtoBody('b.theme', 'dark')}]',
+        );
+        final written = await build().setAll({'b.theme': 'dark', 'a.count': 3});
+
+        expect(transport.lastMethod, 'POST');
+        expect(
+          transport.lastUrl.toString(),
+          'https://api.example.com/preferences',
+        );
+        final sent = jsonDecode(transport.lastBody!) as Map<String, Object?>;
+        expect(sent['preferences'], {
+          'b.theme': {'valueType': 'String', 'value': '"dark"'},
+          'a.count': {'valueType': 'int', 'value': '3'},
+        });
+        expect(written.map((d) => d.key), ['a.count', 'b.theme']);
+      });
+
+      test('a bulk write refuses an illegal key before sending', () {
+        expect(
+          () => build().setAll({'bad key': 1}),
+          throwsA(isA<TomUserPreferenceKeyException>()),
+        );
+        expect(transport.lastBody, isNull);
+      });
+
       test('a write states its key once, in the body', () async {
         // The write URI carries no `{key}` capture, so there is no second
         // place for the key to be stated and nothing for the body to disagree

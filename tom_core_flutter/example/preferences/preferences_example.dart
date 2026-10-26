@@ -119,6 +119,16 @@ Future<void> run() async {
     print(
       'account keys=${(await userPreferences.all()).map((p) => p.key).toList()}',
     );
+    // Several at once: one request, written all or none, answered by key.
+    final batch = await userPreferences.setAll({
+      'account.pageSize': 25,
+      'account.compact': true,
+    });
+    print('batch=${batch.map((p) => p.key).toList()}');
+    assert(
+      batch.map((p) => p.key).join(',') == 'account.compact,account.pageSize',
+    );
+    assert(await userPreferences.get<int>('account.pageSize') == 25);
 
     // Example 6: precedence. The device value wins while it exists; the account
     // store answers only a key this device has never written. The callback is
@@ -168,7 +178,7 @@ Future<void> run() async {
 
 Future<void> main() => run();
 
-/// A loopback HTTP server that answers the five routes `tomUserPreferencesApi`
+/// A loopback HTTP server that answers the six routes `tomUserPreferencesApi`
 /// declares, backed by a map instead of a database.
 ///
 /// It exists so the example can exercise a *real* request/response cycle without
@@ -252,6 +262,26 @@ class _ExamplePreferencesServer {
         );
         _stored[written.key] = stored;
         _writeJson(response, tomReflectionInfo.convertToJsonString(stored));
+      case ('POST', null):
+        // The bulk write, at the collection: every entry of the batch is
+        // stored, and the answer is the stored list ordered by key.
+        final batch = tomReflectionInfo.convertFromJsonString(
+          TomUserPreferenceBulkWriteRequest(),
+          await utf8.decoder.bind(request).join(),
+        );
+        final written = [
+          for (final write in batch.writes)
+            _stored[write.key] = TomUserPreferenceDto(
+              key: write.key,
+              valueType: write.valueType,
+              value: write.value,
+              updatedAt: DateTime.now().toUtc(),
+            ),
+        ];
+        _writeJson(
+          response,
+          '[${written.map(tomReflectionInfo.convertToJsonString).join(',')}]',
+        );
       case ('DELETE', final String k):
         // Idempotent: removing what was never there has already achieved its
         // purpose, so this is a 200 and not a 404.

@@ -64,7 +64,7 @@ erasure can make them unreadable (see
 | `TomDbTable` · `TomDbColumn` · `TomEntityId` · `TomReference` | Mapping annotations placed on a reflected entity. |
 | `TomAnnotationAnalyzer` | Mixin that reads the mapping annotations off an entity. |
 | `TomRepository<T, K>` | CRUD contract: `save`, `findById`, `findAll`, `delete`/`deleteById`, `count`, `existsById`, and `*ByQuery` / `*ByQuerySentence`. |
-| `TomSqlDatasourceRepository<T, K>` | SQL implementation over a `TomDataSource`; subclass and override `sqlDialect`. |
+| `TomSqlDatasourceRepository<T, K>` | SQL implementation over a `TomDataSource`; subclass and override `sqlDialect`. `upsert(entity, conflictFields:)` writes by a unique business key in one statement (refused with `crud_repository.upsert.unsupported` where `upsertBlocker` names a feature that needs the stored row, and with `crud_repository.upsert.unscoped_conflict_key` when the key omits the scope or tenant field); `saveByKey` upserts where it may and otherwise finds the row by the key and saves it. |
 | `TomVersion` · `TomOptimisticLockException` | The `int` field holding a row's version, which the repository writes and checks on every update and `delete(entity)`; and the refusal of a write whose version moved, carrying the version held and the one stored. |
 | `TomCompositeKey` | The `K` of an entity whose `primaryKeyFields` lists several fields — a join table keyed by its two foreign keys — keyed by field name. |
 | `TomPageRequest` · `TomSortField` · `TomSortDirection` | The optional row window (`offset` + `limit`) and per-field sort the finders accept; an unsorted window gets every primary-key field appended so consecutive pages partition the result. |

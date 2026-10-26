@@ -8,17 +8,21 @@
 /// program puts them together in the order a deployment does, so the sequence
 /// is something to run rather than something to reconstruct from prose.
 ///
-/// **The table is a map here, and that is the one substitution.** The service
-/// reaches storage through a `TomSqlDatasourceRepository<TomUserPreference,
-/// int>`, so [_InMemoryPreferenceTable] stands in for it — everything else is
-/// the shipped code: the real [TomUserPreferences], the real key rule, the real
+/// **The tables are maps here, and that is the one substitution.** The services
+/// reach storage through a `TomSqlDatasourceRepository<TomUserPreference, int>`
+/// and a `TomSqlDatasourceRepository<TomPreferenceDefault, int>`, so
+/// [_InMemoryPreferenceTable] and [_InMemoryDefaultTable] stand in for them —
+/// everything else is the shipped code: the real [TomUserPreferences] and
+/// [TomPreferenceDefaults], the real key rule, the real
 /// [TomUserPreferenceCodec], the real zone lookup. What the substitution cannot
 /// show is named where it matters (step 9) rather than quietly implied: the
 /// entity's `@TomDbScope(field: 'principal_id', scope: 'owner')` is enforced by
-/// the *repository*, and only a real one can demonstrate it. That, the upsert's
-/// unique key and the migration applied to a live schema are the subjects of
-/// `test/preferences_db_test.dart` and `test/preferences_roundtrip_db_test.dart`
-/// (`@Tags(['db'])`, started with `tool/run_db_tests.sh`).
+/// the *repository*, and only a real one can demonstrate it. That, the
+/// single-statement upsert on the unique key, the bulk write's transaction and
+/// the migrations applied to a live schema are the subjects of
+/// `test/preferences_db_test.dart`, `test/preferences_roundtrip_db_test.dart`
+/// and `test/preferences_defaults_db_test.dart` (`@Tags(['db'])`, started with
+/// `tool/run_db_tests.sh`).
 ///
 /// Run with `dart run example/preferences/preferences_example.dart`. Every step
 /// checks its own result and the run fails when one does not hold, so a green
@@ -187,25 +191,27 @@ Future<void> run() async {
   });
 
   // 11. `all` answers every preference of the caller and none of anyone
-  //     else's. It also answers them *ordered by key* — the contract's order,
-  //     so `tom_core_flutter`'s device store answers the same sequence and an
-  //     application holding either reads one list — but that ordering is an
-  //     `ORDER BY` clause, which is the database's work and not this map's.
-  //     Asserting it here would assert the stand-in; it is asserted against a
-  //     real table in `test/preferences_db_test.dart`.
+  //     else's, *ordered by key* — the contract's order, so
+  //     `tom_core_flutter`'s device store answers the same sequence and an
+  //     application holding either reads one list. The service orders the
+  //     list itself, because it merges the caller's rows with the defaults
+  //     beneath them (step 13); the table below hands its rows back in
+  //     insertion order, so the order asserted here is the service's.
   await _asPrincipal(7, () async {
     await store.set<String>(TomUserPreferenceKeys.language, 'en');
     await store.set<String>(TomUserPreferenceKeys.country, 'US');
-    final keys = (await store.all()).map((dto) => dto.key).toSet();
-    print('11. all() for the caller    : ${keys.length} keys');
+    final keys = [for (final dto in await store.all()) dto.key];
+    print('11. all() for the caller    : ${keys.join(', ')}');
     check(
       keys.length == 3 &&
-          keys.containsAll([
-            TomUserPreferenceKeys.theme,
-            TomUserPreferenceKeys.language,
-            TomUserPreferenceKeys.country,
-          ]),
-      'every preference the caller wrote comes back, and nothing else',
+          keys.join(',') ==
+              [
+                TomUserPreferenceKeys.country,
+                TomUserPreferenceKeys.language,
+                TomUserPreferenceKeys.theme,
+              ].join(','),
+      'every preference the caller wrote comes back ordered by key, and '
+      'nothing else',
     );
   });
 
@@ -234,23 +240,123 @@ Future<void> run() async {
     );
   });
 
-  // 13. The fifth piece: the table itself. The entity declares the DDL it
-  //     expects, and the shipped migration reproduces it verbatim so the two
-  //     cannot drift — which is what lets a deployment apply the migration and
-  //     know the entity will map onto what it created.
-  final migration = File(
-    'example/preferences/migrations/main/tomcore/'
-    '[1]-create_tom_user_preference.sql',
-  );
-  final onDisk = migration.readAsStringSync();
-  print('13. migration on disk       : ${migration.path.split('/').last}');
-  check(
-    onDisk.contains('CREATE TABLE IF NOT EXISTS tom_user_preference') &&
-        onDisk.contains(
-          'uq_tom_user_preference (principal_id, preference_key)',
+  // 13. Defaults beneath the caller's own values, and the bulk write. A
+  //     deployment installs `TomPreferenceDefaults` as a bean and the store
+  //     finds it; a principal then reads, under a key it has not written, the
+  //     default of a role it holds before the deployment's, with `origin`
+  //     saying which. The bulk write is all or none: one entry the codec
+  //     refuses and nothing of the batch is stored.
+  final defaults = TomPreferenceDefaults(_InMemoryDefaultTable());
+  TomBean.withType<TomPreferenceDefaults>(defaults);
+  await defaults.setForDeployment<String>('acme.density', 'comfortable');
+  await defaults.setForRole<String>('user', 'acme.density', 'compact');
+  await defaults.setForDeployment<String>(TomUserPreferenceKeys.theme, 'light');
+  await _asPrincipal(7, () async {
+    final density = await store.read('acme.density');
+    final theme = await store.read(TomUserPreferenceKeys.theme);
+    print(
+      '13. defaults               : acme.density ${density?.origin} '
+      '${density?.value}, tom.theme ${theme?.origin} ${theme?.value}',
+    );
+    check(
+      density != null &&
+          density.origin == tomUserPreferenceOriginRole &&
+          density.isDefault &&
+          await store.get<String>('acme.density') == 'compact' &&
+          theme?.origin == tomUserPreferenceOriginUser &&
+          await store.get<String>(TomUserPreferenceKeys.theme) == 'dark',
+      'a role default answers beneath an unwritten key, and the caller\'s own '
+      'value wins over the deployment default',
+    );
+
+    final refused = await _keyOfRefusal(
+      () => store.setAllEncoded(
+        TomUserPreferenceBulkWriteRequest.of([
+          TomUserPreferenceWriteRequest(
+            key: 'acme.density',
+            valueType: 'String',
+            value: '"spacious"',
+          ),
+          TomUserPreferenceWriteRequest(
+            key: 'acme.rows',
+            valueType: 'int',
+            value: '"many"',
+          ),
+        ]).writes,
+      ),
+    );
+    final untouched = await store.read('acme.density');
+    final written = await store.setAllEncoded(
+      TomUserPreferenceBulkWriteRequest.of([
+        TomUserPreferenceWriteRequest(
+          key: 'acme.rows',
+          valueType: 'int',
+          value: '30',
         ),
-    'the migration creates the table the entity maps to, with the unique key '
-    'that makes (principal, key) the preference\'s identity',
+        TomUserPreferenceWriteRequest(
+          key: 'acme.density',
+          valueType: 'String',
+          value: '"spacious"',
+        ),
+      ]).writes,
+    );
+    final keys = [for (final dto in written) dto.key];
+    print(
+      '13. bulk write             : refused $refused, then wrote '
+      '${keys.join(', ')}',
+    );
+    check(
+      refused.startsWith('preferences.encoded.') &&
+          untouched?.origin == tomUserPreferenceOriginRole &&
+          keys.join(',') == 'acme.density,acme.rows' &&
+          await store.get<int>('acme.rows') == 30 &&
+          (await store.read('acme.density'))?.origin ==
+              tomUserPreferenceOriginUser,
+      'a batch with one refused entry writes nothing, and an accepted one is '
+      'written whole and answered ordered by key',
+    );
+
+    await store.remove('acme.density');
+    final restored = await store.read('acme.density');
+    final listed = {for (final dto in await store.all()) dto.key: dto.origin};
+    print(
+      '13. after remove           : acme.density ${restored?.origin} '
+      '${restored?.value}',
+    );
+    check(
+      restored?.origin == tomUserPreferenceOriginRole &&
+          restored?.value == '"compact"' &&
+          listed['acme.density'] == tomUserPreferenceOriginRole &&
+          listed[TomUserPreferenceKeys.theme] == tomUserPreferenceOriginUser,
+      'removing the caller\'s own value brings the default back, in the read '
+      'and in the list',
+    );
+  });
+
+  // 14. The fifth piece: the tables themselves. Each entity declares the DDL
+  //     it expects, and the shipped migrations reproduce it verbatim so the
+  //     two cannot drift — which is what lets a deployment apply them and know
+  //     the entities will map onto what they created.
+  const folder = 'example/preferences/migrations/main/tomcore/';
+  final preferencesDdl = File(
+    '$folder[1]-create_tom_user_preference.sql',
+  ).readAsStringSync();
+  final defaultsDdl = File(
+    '$folder[2]-create_tom_preference_default.sql',
+  ).readAsStringSync();
+  print(
+    '14. migrations on disk      : [1] tom_user_preference, '
+    '[2] tom_preference_default',
+  );
+  check(
+    preferencesDdl.contains('CREATE TABLE IF NOT EXISTS tom_user_preference') &&
+        preferencesDdl.contains(
+          'uq_tom_user_preference (principal_id, preference_key)',
+        ) &&
+        defaultsDdl.contains(TomPreferenceDefault.createTableSql),
+    'the migrations create the tables the entities map to, with the unique '
+    'keys that make (principal, key) a preference\'s identity and '
+    '(scope, name, key) a default\'s',
   );
 
   print('\nPreferences example completed.');
@@ -317,13 +423,11 @@ TomPrincipal _principal(int userId) => TomPrincipal(
 /// have. Reading `principalId` and `key` off the bindings is exactly what the
 /// service put there.
 ///
-/// **And it does not sort.** [TomUserPreferences.all] orders by key through an
-/// `ORDER BY` clause, which is the database's work; a map that sorted on its
-/// way out would make the example's ordering step pass whether the clause was
-/// there or not — an assertion about this class rather than about the service.
-/// Rows therefore come back in insertion order, as a storage engine is free to
-/// do, and the ordering is asserted where it can be: against a real table in
-/// `test/preferences_db_test.dart`.
+/// **And it does not sort.** [TomUserPreferences.all] orders the merged list of
+/// rows and defaults by key itself; a map that sorted on its way out would make
+/// the example's ordering step pass whether the service sorted or not — an
+/// assertion about this class rather than about the service. Rows therefore
+/// come back in insertion order, as a storage engine is free to do.
 class _InMemoryPreferenceTable
     implements TomSqlDatasourceRepository<TomUserPreference, int> {
   final Map<int, TomUserPreference> _rows = {};
@@ -370,6 +474,22 @@ class _InMemoryPreferenceTable
     return toSave;
   }
 
+  /// The row identified by `(principalId, preferenceKey)` — the conflict key
+  /// the service names — written over, or inserted.
+  @override
+  Future<TomUserPreference> saveByKey(
+    TomUserPreference entity, {
+    required List<String> conflictFields,
+  }) async {
+    for (final row in _rows.values) {
+      if (row.principalId == entity.principalId &&
+          row.preferenceKey == entity.preferenceKey) {
+        entity.id = row.id;
+      }
+    }
+    return save(entity);
+  }
+
   @override
   Future<int> deleteById(int id) async {
     statements++;
@@ -380,6 +500,66 @@ class _InMemoryPreferenceTable
   dynamic noSuchMethod(Invocation invocation) => throw UnimplementedError(
     'the example table was asked for ${invocation.memberName}, which the '
     'preferences service does not call. Implement it here if that changes.',
+  );
+}
+
+/// The default rows the example's [TomPreferenceDefaults] reads and writes, in
+/// a list — the same substitution as [_InMemoryPreferenceTable], for the same
+/// reason, and with the same loud `noSuchMethod`.
+class _InMemoryDefaultTable
+    implements TomSqlDatasourceRepository<TomPreferenceDefault, int> {
+  final List<TomPreferenceDefault> _rows = [];
+  int _nextId = 1;
+
+  @override
+  Future<List<TomPreferenceDefault>> findAll([TomPageRequest? page]) async =>
+      List.of(_rows);
+
+  @override
+  Future<Iterable<TomPreferenceDefault>> findByQuerySentence(
+    String querySentence,
+    Map<String, Object?> parameters, [
+    Type? resultType,
+    TomPageRequest? page,
+  ]) async => _rows.where((row) => row.preferenceKey == parameters['key']);
+
+  /// The row identified by `(scopeKind, scopeName, preferenceKey)` — the
+  /// conflict key the service names — written over, or inserted.
+  @override
+  Future<TomPreferenceDefault> saveByKey(
+    TomPreferenceDefault entity, {
+    required List<String> conflictFields,
+  }) async {
+    _rows.removeWhere(
+      (row) =>
+          row.scopeKind == entity.scopeKind &&
+          row.scopeName == entity.scopeName &&
+          row.preferenceKey == entity.preferenceKey,
+    );
+    if (entity.id < 0) entity.id = _nextId++;
+    _rows.add(entity);
+    return entity;
+  }
+
+  @override
+  Future<int> deleteByQuerySentence(
+    String querySentence,
+    Map<String, Object?> params,
+  ) async {
+    final before = _rows.length;
+    _rows.removeWhere(
+      (row) =>
+          row.scopeKind == params['kind'] &&
+          row.scopeName == params['name'] &&
+          row.preferenceKey == params['key'],
+    );
+    return before - _rows.length;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => throw UnimplementedError(
+    'the example default table was asked for ${invocation.memberName}, which '
+    'the defaults service does not call. Implement it here if that changes.',
   );
 }
 

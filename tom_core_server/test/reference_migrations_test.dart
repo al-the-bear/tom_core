@@ -109,6 +109,12 @@ final List<_EntityPin> _entityPins = [
     description: 'create_tom_user_preference',
     ddl: TomUserPreference.createTableSql,
   ),
+  (
+    path: _migration('preferences', '[2]-create_tom_preference_default.sql'),
+    version: '2',
+    description: 'create_tom_preference_default',
+    ddl: TomPreferenceDefault.createTableSql,
+  ),
 ];
 
 /// The shipped migrations that carry no entity constant, and what guards each.

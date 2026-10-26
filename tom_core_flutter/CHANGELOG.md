@@ -2,6 +2,15 @@
 
 ### Added
 
+- **Bulk preference write: `TomUserPreferencesClient.setAll` and
+  `writePreferences`.** `setAll(values)` encodes a key → value map as `set`
+  encodes one and sends it through `writePreferences`
+  (`POST /preferences`, the kernel's `TomUserPreferenceBulkWriteRequest`),
+  which the server writes all or none and answers ordered by key;
+  `writePreferences` validates every key before sending. `all`, `read`, `get`
+  and `getOr` return the defaults the server answers under keys the user has
+  not written, `TomUserPreferenceDto.origin` saying which. `doc/preferences.md`
+  § Reaching the Account Store; tests in `test/preferences_test.dart`.
 - **Passkeys: `TomWebAuthn2FAClientMechanism`.** The second shipped client
   mechanism, registered under `'webauthn'` by the flow wherever
   `TomWebAuthnPlatform.instance` reports a platform authenticator. Its panels

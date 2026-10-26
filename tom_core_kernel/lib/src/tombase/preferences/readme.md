@@ -15,14 +15,16 @@ agree on, in the one package they both already depend on.
 | ---- | -------------- |
 | `TomUserPreferenceKeys` | The keys the framework itself reads (`tom.timezone`, `tom.language`, …), and the rule every other key satisfies: 1–191 characters, starting with an ASCII letter, thereafter letters, digits, `.`, `_`, `-` |
 | `TomUserPreferenceKeyException` | Raised by `TomUserPreferenceKeys.validate` for a key that breaks the rule; the endpoints answer it with a `400` |
-| `TomUserPreferenceDto` | One preference on the wire: key, value type, JSON value, `updatedAt` |
+| `TomUserPreferenceDto` | One preference on the wire: key, value type, JSON value, `updatedAt`, and `origin` — `user` for the caller's own value, `role` or `deployment` for a default the server answers beneath it (`isDefault`) |
 | `TomUserPreferenceWriteRequest` / `TomUserPreferenceKeyRequest` | The typed request DTOs |
+| `TomUserPreferenceBulkWriteRequest` | Several writes in one request, all or none: `preferences` maps key → `{valueType, value}`; `.of(writes)` builds it, `writes` reads it back in key order and refuses a malformed entry (`preferences.bulk.malformed`, `tomUserPreferencesBulkMalformedErrorKey`) |
 | `TomUserPreferenceCodec` | Encodes/decodes scalars and reflected objects; refuses a type-mismatched read, and a value over `maxValueBytes` (16 KiB of encoded JSON) |
 | `TomUserPreferenceCodecException` | What that refusal raises — e.g. `preferences.encode.not_json` for a value with no JSON form, where a substitute would be a different value read back as if it were the one stored |
 | `TomUserPreferencesApiService` | The typed service interface behind the API. It carries no server annotations, because `@tomComponent` and `@TomApiEndpointImplementation` live in `tom_core_server` and cannot be named here — the same split every framework contract follows |
-| `tomUserPreferencesApi` | The `TomApi`: `GET`/`PUT`/`DELETE` under `/preferences`, all `TomAuthenticatedAccess`. Five endpoints — the four by-key and collection reads and writes, plus a bulk `DELETE /preferences` that clears the account |
+| `tomUserPreferencesApi` | The `TomApi`: `GET`/`PUT`/`POST`/`DELETE` under `/preferences`, all `TomAuthenticatedAccess`. Six endpoints — the by-key and collection reads, the single write (`PUT /preferences`), the bulk write (`POST /preferences`, all or none), the by-key delete, and a `DELETE /preferences` that clears the account |
 | `tomUserPreferencesMaxPerPrincipal` / `tomUserPreferencesLimitExceededErrorKey` | The store's ceiling — 256 preferences per principal — and the key of the `409` a write answers when it would add one more. With the codec's 16 KiB `maxValueBytes` it bounds the unpaged list |
-| `tomUserPreferencesNotFoundErrorKey` | `preferences.not_found` — how the read says "never written": a `404` carrying the error envelope with this `errorKey`. A bare `404` is a refusal, so the key, not the status, is what a caller branches on |
+| `tomUserPreferenceOriginUser` / `…OriginRole` / `…OriginDeployment` | The values of `TomUserPreferenceDto.origin` |
+| `tomUserPreferencesNotFoundErrorKey` | `preferences.not_found` — how the read says "neither written nor defaulted": a `404` carrying the error envelope with this `errorKey`. A bare `404` is a refusal, so the key, not the status, is what a caller branches on |
 
 ## Quick start
 
@@ -45,6 +47,13 @@ Only `TomAuthenticatedAccess` is declared on the endpoints: *which* rows a
 caller reaches is not an endpoint-level question. The server's entity carries
 `@TomDbScope(field: 'principal_id')`, so the repository confines every read and
 write to the caller's own preferences.
+
+The list and the read include **defaults**: under a key the caller has not
+written, the server answers the default it holds for a role the caller holds,
+else the deployment's, with `origin` naming which. A default is never copied
+into the caller's rows, so deleting the caller's own value brings it back.
+Writing defaults is the server's administration; the contract declares no
+endpoint for it.
 
 The two `DELETE`s differ only in whether a path segment follows the collection:
 `/preferences/{key}` removes one preference and `/preferences` removes every

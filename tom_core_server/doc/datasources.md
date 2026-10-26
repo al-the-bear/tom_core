@@ -28,6 +28,7 @@ declared.
 - [The SQL Dialect](#the-sql-dialect)
   - [A `LIKE` pattern is a language, not a value](#a-like-pattern-is-a-language-not-a-value)
   - [Subqueries](#subqueries)
+  - [Upserting in one statement](#upserting-in-one-statement)
 - [Classifying Column Types](#classifying-column-types)
 - [Aggregate Fragments](#aggregate-fragments)
 - [Query Objects](#query-objects)
@@ -412,6 +413,41 @@ standard SQL, and `MariadbSqlDialect` and `PostgresSqlDialect` inherit them
 unchanged. The nodes that call them, `TomSubquery`, `TomExists` and
 `TomInSubquery`, are object persistence's: see
 [object_persistence.md](object_persistence.md#subqueries).
+
+### Upserting in one statement
+
+`upsert(table, values, {conflictKey, updateColumns, keyColumn})` renders one
+statement that inserts a row into `table` or, when a row with the same
+`conflictKey` values exists, overwrites that row's `updateColumns` with the
+values `values` supplies — an insert-or-update with no read before it, so two
+writers racing for the same key cannot both insert. `values` maps each column to
+its rendered value, usually a placeholder:
+
+```dart
+dialect.upsert(
+  'tom_user_preference',
+  {'principal_id': ':principalId', 'preference_key': ':key', 'value_json': ':value'},
+  conflictKey: ['principal_id', 'preference_key'],
+  updateColumns: ['value_json'],
+  keyColumn: 'id',
+);
+```
+
+| Dialect | Renders |
+| ------- | ------- |
+| `TomStandardSqlDialect` (MariaDB) | `INSERT INTO t (…) VALUES (…) ON DUPLICATE KEY UPDATE c = VALUES(c), …, id = LAST_INSERT_ID(id)` |
+| `PostgresSqlDialect` | `INSERT INTO t (…) VALUES (…) ON CONFLICT (<conflictKey>) DO UPDATE SET c = EXCLUDED.c, … RETURNING id` — `DO NOTHING` when `updateColumns` is empty |
+
+With `keyColumn` the statement reports that column of the row it wrote —
+inserted or updated — as its generated id: MariaDB through
+`<key> = LAST_INSERT_ID(<key>)` in the update, PostgreSQL through `RETURNING`.
+
+MariaDB's `ON DUPLICATE KEY UPDATE` reacts to a collision on *any* unique key of
+the table, where PostgreSQL's `ON CONFLICT` names `conflictKey`; a table whose
+only unique keys are its primary key and `conflictKey` — the shape a
+surrogate-keyed row with one business key has — behaves the same on both. The
+repository's `upsert` and `saveByKey` are built on it
+([object_persistence.md](object_persistence.md#upserting-by-a-unique-key)).
 
 ## Classifying Column Types
 
@@ -1683,7 +1719,7 @@ difference is settled in the driver so that nothing above it has to know:
 | Parameters are typed | Every bind value is sent as text of **unspecified** type, so the server infers each parameter's type from where it is used — which is what lets the one marshalled `1` or instant text read into a `SMALLINT`, a `BOOLEAN` or a `TIMESTAMP` alike. A typed bind would have to know the column's type before the server does. |
 | Results are typed values | Each value is rendered into the [text convention](#reading-rows): a timestamp through `sqlInstant`, a `date` through `sqlDate`, a `time` as `HH:MM:SS` (with a fraction only when there is one), a `bool` as `1`/`0`, `json`/`jsonb` as its JSON text, `bytea` as its UTF-8 text. |
 | Unquoted identifiers fold to lower case | Result columns are matched without regard to case (`TomSqlResultValues.caseInsensitiveColumns`), so `SELECT due_at AS dueAt` answers the `dueAt` the mapper asks for. |
-| No last-insert id | An `INSERT … RETURNING` answering one row of one integer column reports that integer as the generated id; the dialect asks for it (`returningKey`, `incrementCounter`). |
+| No last-insert id | An `INSERT … RETURNING` answering one row of one integer column reports that integer as the generated id; the dialect asks for it (`returningKey`, `incrementCounter`, `upsert`). |
 | A prepared statement whose table changed shape is refused — `cached plan must not change result type`, SQLSTATE `0A000` | The statement is dropped and prepared again, once, on that connection. MariaDB re-prepares such a statement on its own; without this, a migration that adds a column under a long-lived repository's `SELECT *` would need every pooled connection replaced. |
 | A rejected statement is a `ServerException` | `classifySqlFailure` reads it as `definite`, exactly as it reads MariaDB's `MySQLServerException`. |
 
@@ -2001,6 +2037,7 @@ The framework's conflicting writes are rendered the same way:
 | ----- | -------------- | ------- | ---------- |
 | Insert, keeping a stored row on a key conflict | `insertInto(…, ignoreConflict: true)` | `INSERT IGNORE` | `INSERT … ON CONFLICT DO NOTHING` |
 | Write a row over every row it supersedes | `replaceInto` | `REPLACE INTO` | `DELETE` of the superseded rows, then `INSERT … ON CONFLICT (<pk>) DO UPDATE` |
+| Insert, or overwrite the row holding the same conflict key, in one statement | `upsert` | `ON DUPLICATE KEY UPDATE c = VALUES(c), id = LAST_INSERT_ID(id)` | `ON CONFLICT (…) DO UPDATE SET c = EXCLUDED.c RETURNING id` |
 | Count one more and read the count, in one statement | `incrementCounter` | `ON DUPLICATE KEY UPDATE c = LAST_INSERT_ID(c + 1)` | `ON CONFLICT (…) DO UPDATE SET c = t.c + 1 RETURNING c` |
 | Report a generated surrogate key | `returningKey` | unchanged — the last-insert id reports it | `… RETURNING <key>` |
 
@@ -2149,7 +2186,10 @@ the convergence guard reads; `translateCanonical` over a hand-written
 `CREATE TABLE`, an added column, a `TRUNCATE`, a comment header, a refusing
 trigger and a statement it leaves as written (and the identity on the standard
 dialect); a backslash kept single in a literal, a truth value as `1`/`0`, a
-generated key asked for with `RETURNING`; the driver's `$n` rewrite — every
+generated key asked for with `RETURNING`; `upsert` on both dialects — the
+conflict key named and the row key returned on PostgreSQL, `DO NOTHING` with no
+column to update, `ON DUPLICATE KEY UPDATE` with `LAST_INSERT_ID` on MariaDB;
+the driver's `$n` rewrite — every
 occurrence numbered, a cast left alone, a backslash read as PostgreSQL reads
 it; and the settings — an `sslMode` that is none of the three refused with
 `error.initialize.invalid_ssl_mode`, the default port and the encrypted default.
@@ -2350,7 +2390,8 @@ and `test/examples_test.dart` runs it.
   through to them.
 - **`TomOperator<R>`** — the typed SQL expression node (`generate`, `getFields`,
   `getParameters`).
-- **`TomStandardSqlDialect`** — SQL-fragment generation; `SqlString`. Also the
+- **`TomStandardSqlDialect`** — SQL-fragment generation, including the
+  single-statement `upsert`; `SqlString`. Also the
   reading side: `typeFamily` / `baseTypeName` / `typeArguments` reduce a DDL
   type name to a **`TomSqlTypeFamily`**, which is how a declared Dart type and
   a stored SQL type are compared at all.

@@ -1,8 +1,9 @@
 # Preferences Module
 
 Server-stored per-principal preferences: a `tom_user_preference` table, a typed
-service over it, and the four `/preferences/*` endpoints a device reaches it
-through.
+service over it, the six `/preferences/*` endpoints a device reaches it through,
+and a `tom_preference_default` table of deployment and role defaults beneath
+every principal's own values.
 
 ## Table of Contents
 
@@ -14,6 +15,9 @@ through.
 - [Authorization Is the Row Scope](#authorization-is-the-row-scope)
   - [Why the lookups name the principal anyway](#why-the-lookups-name-the-principal-anyway)
 - [The Table and Its Migration](#the-table-and-its-migration)
+- [Defaults Beneath a Principal's Own Values](#defaults-beneath-a-principals-own-values)
+  - [The defaults table](#the-defaults-table)
+- [Writing Several Preferences at Once](#writing-several-preferences-at-once)
 - [The Store Is Bounded](#the-store-is-bounded)
 - [When a Preference Was Written](#when-a-preference-was-written)
 - [The Endpoints](#the-endpoints)
@@ -34,9 +38,13 @@ through.
 | `TomUserPreference` | class | The `tom_user_preference` row; carries the row scope, and declares its principal the data subject and its value personal for the privacy module |
 | `TomUserPreferenceRepository` | class | Persists that entity |
 | `TomUserPreferences` | class | Typed reads and writes of the caller's preferences |
-| `TomUserPreferenceException` | class | Raised when an operation cannot identify the caller |
+| `TomUserPreferenceException` | class | Raised when an operation cannot identify the caller, or when a write would pass the principal's ceiling |
+| `TomPreferenceDefault` | class | The `tom_preference_default` row: one default for the deployment or for one role |
+| `TomPreferenceDefaultScope` | enum | `deployment` or `role` — whom a default applies to |
+| `TomPreferenceDefaultRepository` | class | Persists that entity |
+| `TomPreferenceDefaults` | class | Writes defaults (administrative, no endpoint) and chooses the one a principal reads |
 | `TomUserPreferencesServer` | class | The `/preferences/*` handlers |
-| `TomUserPreferencesErrorHandler` | class | Maps `preferences.not_found` to a `404`, `preferences.key.invalid` and every `preferences.encoded.*` refusal to a `400`, and `preferences.limit.exceeded` to a `409` — and no other key to anything |
+| `TomUserPreferencesErrorHandler` | class | Maps `preferences.not_found` to a `404`, `preferences.key.invalid`, every `preferences.encoded.*` refusal and `preferences.bulk.malformed` to a `400`, and `preferences.limit.exceeded` to a `409` — and no other key to anything |
 
 The *contract* is not here. The keys (`TomUserPreferenceKeys`), the wire DTOs
 (`TomUserPreferenceDto` and friends), the value codec
@@ -81,35 +89,36 @@ scope would reject on the next read anyway, having already been stored.
 
 | Method | Returns | Description |
 |--------|---------|-------------|
-| `all()` | `Future<List<TomUserPreferenceDto>>` | Every preference of the caller, ordered by key |
-| `read(key)` | `Future<TomUserPreferenceDto?>` | One preference as stored, or `null` |
-| `get<T>(key)` | `Future<T?>` | Decoded as a `T`; `null` when never written |
-| `getOr<T>(key, fallback)` | `Future<T>` | `get`, with a default for the unwritten case |
+| `all()` | `Future<List<TomUserPreferenceDto>>` | Every preference of the caller, and the default under every key it has not written, ordered by key |
+| `read(key)` | `Future<TomUserPreferenceDto?>` | One preference as stored, else the default beneath it, else `null` |
+| `get<T>(key)` | `Future<T?>` | Decoded as a `T`; `null` when neither written nor defaulted |
+| `getOr<T>(key, fallback)` | `Future<T>` | `get`, with a fallback for the case it answers `null` |
 | `set<T>(key, value)` | `Future<TomUserPreferenceDto>` | Encodes and upserts |
 | `setEncoded(key, valueType:, valueJson:)` | `Future<TomUserPreferenceDto>` | Upserts a value that arrives already encoded |
+| `setAllEncoded(writes)` | `Future<List<TomUserPreferenceDto>>` | Upserts several encoded values all or none, in one transaction; answers them ordered by key — see [Writing Several Preferences at Once](#writing-several-preferences-at-once) |
 | `remove(key)` | `Future<bool>` | Deletes; answers whether a row was removed |
 | `getFor<T>(principal, key)` | `Future<T?>` | `get` for a principal that is not the zone's |
 
 `getOr` answers its fallback only for a preference that has **never been
-written**. A type *mismatch* still throws: an unwritten preference is an ordinary
+written** and has no default. A type *mismatch* still throws: an unwritten preference is an ordinary
 state that a default answers, while a preference stored as the wrong type is a
 bug, and silently answering the fallback would hide it.
 
-`all()` orders by key, and the query says so. An unordered `SELECT` returns rows
-in whatever order the engine finds convenient, which shifts as the table is
-rewritten, as rows are deleted and reinserted, or as the planner picks a
-different index — so a list a caller renders would reshuffle for reasons that
-have nothing to do with the data, and two devices could show the same
-preferences in two orders. The key is the ordering column because it is the one
-column unique per caller that never changes while the preference exists:
-rewriting a value must not move it in the list. It also costs nothing —
-`uq_tom_user_preference (principal_id, preference_key)` already covers
-`WHERE principal_id = ? ORDER BY preference_key`, so the rows arrive in order
-off the index rather than through a sort.
+`all()` orders by key. An unordered list reshuffles for reasons that have
+nothing to do with the data — an engine returns rows in whatever order it finds
+convenient, which shifts as the table is rewritten or the planner picks a
+different index — and two devices could show the same preferences in two
+orders. The key is the ordering because it is the one value unique per caller
+that never changes while the preference exists: rewriting a value must not move
+it in the list. The caller's rows are read `ORDER BY preference_key`, which
+`uq_tom_user_preference (principal_id, preference_key)` serves off the index,
+and the service then merges the defaults in under the keys the caller has not
+written and orders the merged list by key in code-unit order — the order the
+binary collation gives the column, and the order the device store answers.
 
 ### Every key is checked on the way in
 
-`read`, `get`, `set`, `setEncoded` and `remove` reject a key that does not
+`read`, `get`, `set`, `setEncoded`, `setAllEncoded` and `remove` reject a key that does not
 satisfy the kernel's `TomUserPreferenceKeys` rule — 1–191 characters, starting
 with an ASCII letter, thereafter letters, digits, `.`, `_` and `-` — with
 `TomUserPreferenceKeyException` (`preferences.key.invalid`).
@@ -185,10 +194,16 @@ CREATE TABLE IF NOT EXISTS tom_user_preference (
 
 `(principal_id, preference_key)` is unique because that pair *is* the
 preference's identity: writing a key twice must replace the value, and a
-duplicate would make which value a user gets depend on row order. `set` reuses
-the row it finds rather than inserting a second — the repository takes its
-`UPDATE` path exactly when the surrogate key is set, so carrying the id over is
-what makes the write an upsert.
+duplicate would make which value a user gets depend on row order. It is also the
+conflict key every write names: `set`, `setEncoded` and `setAllEncoded` store
+through `TomSqlDatasourceRepository.saveByKey(conflictFields: ['principalId',
+'preferenceKey'])`, which for this entity is one `INSERT … ON DUPLICATE KEY
+UPDATE` (PostgreSQL `INSERT … ON CONFLICT … DO UPDATE`) with no read before it —
+so two writers racing for a new key cannot both insert, and neither sees a
+duplicate-key error (see
+[object_persistence.md](object_persistence.md#upserting-by-a-unique-key)). The
+owner's `principal_id` is in the conflict key, so the update half can only reach
+the caller's own row.
 
 **`preference_key` and `value_type` name their collation, `utf8mb4_bin`.** Left
 to the server default — on MariaDB and MySQL commonly a case-insensitive one —
@@ -224,6 +239,123 @@ server's edge the flag is load-bearing, because the DTO is serialized to
 ISO-8601 for a client that may be in another zone and a local-flagged instant
 renders without an offset.
 
+## Defaults Beneath a Principal's Own Values
+
+A deployment can ship a value for a key no principal has written: for every
+principal (a **deployment** default) or for the holders of one role (a **role**
+default). For a key, a principal reads, in this order:
+
+1. its own value;
+2. a default of a role it holds — of several, the one with the highest
+   `precedence`, then the role name first in code-unit order, so the answer
+   never depends on the order the principal's roles are listed in;
+3. the deployment's default;
+
+and nothing when none of the three exists. `read`, `get`, `getOr` and `all`
+apply that order, and `TomUserPreferenceDto.origin` says which applied: `user`,
+`role` or `deployment` (the kernel's `tomUserPreferenceOrigin*` constants). A
+default is never copied into the principal's rows: deleting its own value brings
+the default back, `clear` leaves the defaults answering, and a default changed
+later reaches every principal who has not overridden it.
+
+Defaults are written by `TomPreferenceDefaults`, installed as a bean beside the
+store:
+
+```dart
+final defaults = TomPreferenceDefaults(TomPreferenceDefaultRepository());
+TomBean.withType<TomPreferenceDefaults>(defaults);
+
+await defaults.setForDeployment(TomUserPreferenceKeys.theme, 'light');
+await defaults.setForRole('support', TomUserPreferenceKeys.theme, 'dark');
+await defaults.setForRole('admin', 'acme.density', 'compact', precedence: 10);
+```
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `resolve()` | `TomPreferenceDefaults?` | The installed bean, or `null` — then no principal reads a default |
+| `setForDeployment<T>(key, value)` | `Future<TomUserPreferenceDto>` | Sets the deployment's default |
+| `setForRole<T>(role, key, value, {precedence})` | `Future<TomUserPreferenceDto>` | Sets a role's default; `precedence` (default `0`) decides between the defaults of several roles a principal holds |
+| `removeForDeployment(key)` / `removeForRole(role, key)` | `Future<bool>` | Removes one; answers whether it was there |
+| `all()` | `Future<List<TomPreferenceDefault>>` | Every default — deployment defaults first, then by role and key |
+| `effectiveFor(roles)` | `Future<Map<String, TomUserPreferenceDto>>` | The default a holder of `roles` reads under each key that has one |
+| `effectiveValue(key, roles)` | `Future<TomUserPreferenceDto?>` | The default a holder of `roles` reads under `key`, or `null` |
+
+Values are encoded by `TomUserPreferenceCodec`, exactly as `set` encodes them,
+and keys checked against the kernel's key rule. A role name must be 1 to
+`maxRoleLength` (191) characters, or the write is refused with
+`preferences.default.invalid_role`. Each default is stored by `saveByKey` on
+`(scopeKind, scopeName, preferenceKey)`, so writing one twice replaces it.
+
+**Writing defaults is administrative, and no endpoint ships for it.** Which
+roles get which defaults is a deployment's policy; an application that lets an
+administrator edit them puts this service behind its own administrative gate.
+The store finds the service through `TomUserPreferences(repository,
+{defaults})` — the argument when given, else the `TomPreferenceDefaults` bean —
+and with neither, every principal reads only its own values.
+
+The roles are the caller's `TomPrincipal.aci.roles`, the same set authorization
+reads.
+
+### The defaults table
+
+```sql
+CREATE TABLE IF NOT EXISTS tom_preference_default (
+  id BIGINT NOT NULL AUTO_INCREMENT,
+  scope_kind VARCHAR(16) NOT NULL,
+  scope_name VARCHAR(191) COLLATE utf8mb4_bin NOT NULL,
+  preference_key VARCHAR(191) COLLATE utf8mb4_bin NOT NULL,
+  value_type VARCHAR(191) COLLATE utf8mb4_bin NOT NULL,
+  value_json TEXT NULL,
+  precedence INT NOT NULL DEFAULT 0,
+  updated_at DATETIME(6) NULL,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_tom_preference_default (scope_kind, scope_name, preference_key)
+);
+```
+
+One row per default: `scope_kind` `deployment` with `scope_name` `''`, or `role`
+with the role's name. `(scope_kind, scope_name, preference_key)` is unique
+because that triple is the default's identity and the conflict key it is
+replaced on. The name, key and type columns are `utf8mb4_bin` for the reason
+`tom_user_preference`'s are. The table has no owner column and the entity no
+row scope: a default is nobody's own row.
+
+The DDL ships as `migrations/main/tomcore/[2]-create_tom_preference_default.sql`
+(PostgreSQL form under `migrations_postgresql/`), reproduced verbatim from
+`TomPreferenceDefault.createTableSql` — `test/reference_migrations_test.dart`
+fails if they drift — and untagged like `[1]`.
+
+## Writing Several Preferences at Once
+
+`setAllEncoded(writes)` — behind the `writePreferences` endpoint, `POST
+/preferences` — writes several encoded values for the caller **all or none**:
+
+- every key and every encoded pair is checked before anything is written, as
+  `setEncoded` checks one;
+- the ceiling counts the batch whole: the keys it would add, beside the ones the
+  caller holds, must fit `tomUserPreferencesMaxPerPrincipal`, or nothing is
+  written (`preferences.limit.exceeded`);
+- the writes run in one transaction (`TomTransactionManager.runInTransaction`),
+  so a failure part way leaves the caller's preferences as they were.
+
+It answers the stored DTOs ordered by key; an empty batch writes nothing and
+answers an empty list. A settings screen saving several changes at once therefore
+never leaves the account half saved, on the store every device the user owns
+reads.
+
+The held keys are read **before** the transaction, not inside it. A read inside
+would open a snapshot that a concurrent batch's committed write then
+contradicts, and MariaDB refuses the later update of such a row (error 1020)
+where it could simply have waited for its lock. Inside, the transaction holds
+only single-statement upserts taken in key order, so two batches over the same
+keys queue on the row locks rather than failing or deadlocking. The cost is the
+single write's: two batches racing for the last places can both pass the
+ceiling.
+
+The endpoint's request is the kernel's `TomUserPreferenceBulkWriteRequest`; its
+`writes` getter refuses an entry that is not `{valueType, value}` with
+`preferences.bulk.malformed` before the store sees any entry.
+
 ## The Store Is Bounded
 
 `all()` — and so the list endpoint — answers every preference the caller holds,
@@ -232,7 +364,7 @@ two ceilings the kernel contract declares:
 
 | Ceiling | Value | Where it is enforced | Refusal |
 |---------|-------|----------------------|---------|
-| `tomUserPreferencesMaxPerPrincipal` | 256 preferences | `set` / `setEncoded`, when the write would **add** a key | `TomUserPreferenceException`, `preferences.limit.exceeded` |
+| `tomUserPreferencesMaxPerPrincipal` | 256 preferences | `set` / `setEncoded`, when the write would **add** a key; `setAllEncoded`, for the keys the batch would add together | `TomUserPreferenceException`, `preferences.limit.exceeded` |
 | `TomUserPreferenceCodec.maxValueBytes` | 16 KiB of encoded value | the codec, which `set` encodes with and `setEncoded` validates with | `TomUserPreferenceCodecException`, `preferences.encode.too_large` / `preferences.encoded.too_large` |
 
 The count is checked only for a key the caller does not hold yet: replacing a
@@ -240,9 +372,10 @@ preference is never refused for the count, so a principal at the ceiling can
 still change every setting it has, and removing one frees a place. It is
 counted with the principal named, for the same reason the lookups name it —
 inside `TomDataScope.runUnscoped` the scope filters nothing, and a count that
-relied on it would be everyone's. It is read before the insert, so two inserts
-racing for the last place can both pass and leave the caller one or two over;
-the ceiling exists to keep the list small, not to be exact.
+relied on it would be everyone's. Whether the key is already held is asked only
+when the count is at the ceiling. The count is read before the write, so two
+writes racing for the last place can both pass and leave the caller one or two
+over; the ceiling exists to keep the list small, not to be exact.
 
 The value ceiling sits well inside the column: `value_json` is `TEXT`, 64 KiB in
 MariaDB and unbounded in PostgreSQL. So an oversized value is refused as the caller's mistake, by the codec,
@@ -250,8 +383,9 @@ before the statement is built — rather than failing inside the database as a
 fault of the server's, or, under a lax SQL mode, being truncated into text that
 is no longer JSON.
 
-Together they cap the largest list at about four megabytes; a real one is a few
-hundred bytes.
+Together they cap a principal's own values at about four megabytes; a real list
+is a few hundred bytes. Defaults add entries only under keys the principal has
+not written, and how many a deployment holds is its own administration.
 
 **So the wire is unpaged on purpose, and `all()` takes a window anyway.** The
 list endpoint returns the whole set because the set is bounded above — that is
@@ -267,9 +401,11 @@ collection data in a settings store, and the answer there is a table of its own.
 because a caller on *this* side of the wire is not bound by that argument: a
 migration walking one principal's settings, or a job reading in batches, has a
 use for a window that no client does, and the repository's finders already
-accept one. The window applies to the same ordered sentence — page 2 is the
-rows after page 1, not whatever the engine returned second — which is what
-makes it a window rather than a sample.
+accept one. The window is cut from the merged, key-ordered list, in memory —
+both halves are bounded, so the merge is cheaper than teaching SQL to page
+across two tables — so page 2 is the entries after page 1, which is what makes
+it a window rather than a sample. `TomPageRequest.offset` and `limit` apply;
+`TomPageRequest.sort` does not, the order is always the key's.
 
 This paragraph and the two ceilings above it are pinned against the kernel's
 constants by `test/preferences_service_test.dart`: a ceiling raised without the
@@ -323,19 +459,22 @@ pipeline binds each method to the contract's declaration:
 
 | Endpoint | Method | URI | Behaviour |
 |----------|--------|-----|-----------|
-| `listPreferences` | GET | `/preferences` | Every preference of the caller — unpaged, and bounded by [the store's ceilings](#the-store-is-bounded) |
-| `readPreference` | GET | `/preferences/{key}` | One preference; `preferences.not_found` when absent |
+| `listPreferences` | GET | `/preferences` | Every preference of the caller and the defaults beneath them — unpaged, and bounded by [the store's ceilings](#the-store-is-bounded) |
+| `readPreference` | GET | `/preferences/{key}` | One preference, else its default; `preferences.not_found` when neither |
 | `writePreference` | PUT | `/preferences` | Validates the encoded pair, then upserts the key named in the body; refuses a value over 16 KiB (`400`) and a new key beyond the principal's 256 (`409`) |
+| `writePreferences` | POST | `/preferences` | `setAllEncoded`: validates every entry, then upserts them all or none in one transaction; refuses a malformed entry (`400`, `preferences.bulk.malformed`), a value over 16 KiB (`400`) and a batch whose new keys pass the principal's 256 (`409`) |
 | `deletePreference` | DELETE | `/preferences/{key}` | Deletes one; absent is not an error |
 | `clearPreferences` | DELETE | `/preferences` | Deletes every preference of the caller in one statement; an account holding none is cleared, not refused |
 
 Access is `TomAuthenticatedAccess`, declared **on the contract** and extracted by
 the pipeline — the handlers carry no inline access annotation.
 
-The write is the one key-taking endpoint with no `{key}` in its URI, and that
-too is the contract's decision. Its request already carries a `key` field, so a
-path capture would let one request name two preferences; `writePreference`
-therefore reads `request.key` and there is no path key it could contradict.
+The writes are the key-taking endpoints with no `{key}` in their URI, and that
+too is the contract's decision. The single write's request already carries a
+`key` field and the bulk write's keys its map by preference key, so a path
+capture would let one request name two preferences; `writePreference` reads
+`request.key`, `writePreferences` the map's keys, and there is no path key
+either could contradict.
 
 Reporting a missing key distinctly is safe precisely because the scope makes
 "not yours" indistinguishable from "not there": the answer leaks nothing about
@@ -357,7 +496,8 @@ repeated, and a caller that wants one already has it.
 ### A miss is a 404, a bad request a 400, a full account a 409
 
 None of `preferences.not_found`, `preferences.key.invalid`, the write
-boundary's `preferences.encoded.*` refusals or `preferences.limit.exceeded`
+boundary's `preferences.encoded.*` refusals, `preferences.bulk.malformed` or
+`preferences.limit.exceeded`
 helps a client unless it *arrives* as something a client can branch on, and by
 default every handler failure leaves as a `500`. So each key-taking endpoint is
 served under `TomUserPreferencesErrorHandler`:
@@ -375,6 +515,7 @@ served under `TomUserPreferencesErrorHandler`:
 | `preferences.not_found` (the kernel's `tomUserPreferencesNotFoundErrorKey`) | `404` | A preference that was never written is a miss, not a break |
 | `preferences.key.invalid` | `400` | The key is the caller's input — the URL for a read or a delete, the body for a write — so a bad one is a bad *request* |
 | `preferences.encoded.*` — `too_large`, `invalid_json`, `type_mismatch`, `not_an_instant` | `400` | The encoded value is the caller's input too, arriving in the write's body |
+| `preferences.bulk.malformed` (the kernel's `tomUserPreferencesBulkMalformedErrorKey`) | `400` | A bulk entry that is not `{valueType, value}` is the caller's malformed body |
 | `preferences.limit.exceeded` (the kernel's `tomUserPreferencesLimitExceededErrorKey`) | `409` | The write is sound — it succeeds for a principal holding fewer preferences, and for this one once it deletes one — so it conflicts with the state rather than being wrong |
 
 Everything else goes to `handleErrorDefault` and stays a `500`. The narrowness
@@ -405,16 +546,16 @@ stack that decides whether to parse by media type has nothing to decide on if
 the response declares none. The opaque `500` keeps `text/plain`, because it has
 no envelope to parse.
 
-**Read, write and delete all carry the handler**; the list endpoint carries none
-and needs none. The key sits in the path of all three, so a `400` only the read
-could produce would leave two thirds of the surface answering `500` for the same
-mistake — while the list endpoint takes no key and cannot miss, since an empty
-list is an answer.
+**Read, both writes and delete carry the handler**; the list endpoint carries
+none and needs none. Each of the four takes a key, in the path or the body, so a
+`400` only the read could produce would leave the rest of the surface answering
+`500` for the same mistake — while the list endpoint takes no key and cannot
+miss, since an empty list is an answer.
 
 **For the `404` the envelope is the meaning, not a courtesy.** The pipeline
 answers a denied or unauthenticated call with a `404` as well — a bare one,
 plain text with no envelope, so that a refusal cannot be told from a route that
-does not exist. A never-written preference and a refused caller therefore share
+does not exist. A preference neither written nor defaulted and a refused caller therefore share
 a status and differ only in the body, which is why the absence key is declared
 in the kernel contract (`tomUserPreferencesNotFoundErrorKey`) rather than here:
 the client has to recognise it.
@@ -447,6 +588,10 @@ once at bootstrap:
 ```dart
 TomBean.withType<TomUserPreferences>(
   TomUserPreferences(TomUserPreferenceRepository()),
+);
+// Only where the deployment ships defaults:
+TomBean.withType<TomPreferenceDefaults>(
+  TomPreferenceDefaults(TomPreferenceDefaultRepository()),
 );
 ```
 
@@ -486,7 +631,15 @@ block every login.
   one empty line.
 - **`TomUserPreferences`** — the typed service; installed as a bean so an
   application can substitute a caching or read-only implementation without any
-  consumer changing.
+  consumer changing. `TomUserPreferences(repository, {defaults})` takes the
+  defaults service to read from, falling back to the `TomPreferenceDefaults`
+  bean.
+- **`TomPreferenceDefault`** / **`TomPreferenceDefaultScope`** /
+  **`TomPreferenceDefaultRepository`** — the default row, whom it applies to,
+  and its repository; `toDto()` renders a default with its `origin`, and
+  `createTableSql` is the DDL the `[2]` migration reproduces.
+- **`TomPreferenceDefaults`** — writes defaults and chooses the one a principal
+  reads; see [Defaults Beneath a Principal's Own Values](#defaults-beneath-a-principals-own-values).
 - **`TomUserPreferenceException`** — raised when an operation cannot identify
   the caller. It throws rather than returning `null` because there is no useful
   answer to give: with no principal there is no row to read and no owner to
@@ -504,13 +657,6 @@ block every login.
 
 ## Not Yet Implemented
 
-- **The upsert is read-then-write, not one statement.** `set` reads the row for
-  `(principal, key)` and saves it back, so two concurrent writes of the same key
-  can both read nothing and both insert; the table's unique key rejects the
-  loser, and the caller sees a driver error rather than a retry. Preferences are
-  written by a person at a keyboard, so the race is rare — but it is not
-  prevented, and a client that writes on every keystroke will find it.
-  <!-- unpinned: untestable — a race between two writers is not reproducible deterministically -->
 - **A rewrite may change a key's type, and every other reader then fails.**
   `setEncoded` validates that the `valueType` and `valueJson` it was handed
   agree with each other, not that they agree with what is already stored. So a
@@ -519,19 +665,6 @@ block every login.
   `TomUserPreferenceCodecException` from then on. A key's type is a convention
   between the clients that share it.
   <!-- pinned: test/preferences_db_test.dart › a rewrite may change a key's type, and a typed reader then fails -->
-- **There is no bulk write.** `set` takes one key, and there is no transaction
-  around a group of writes, so a partial application is a reachable state. The
-  delete side has both shapes — `remove` for one key and `clear` for all of
-  them — because deleting everything is the operation an account reset performs
-  and the one where a half-completed loop does the most damage; there is no
-  equivalent single-statement write.
-  <!-- unpinned: absence — no bulk write exists -->
-- **There are no deployment-wide or role-wide defaults.** `getOr(key, fallback)`
-  takes the default at the call site, so two call sites reading one key can
-  disagree about what it means when unset, and a deployment cannot ship a
-  default without editing code. The framework stores only what a principal
-  actually wrote.
-  <!-- unpinned: absence — no stored defaults exist -->
 - **A preference is per principal and nothing else.** The row is keyed on
   `(principal_id, preference_key)`, so there is no per-device, per-application
   or per-organization dimension: a user who wants one theme on their phone and
@@ -540,7 +673,7 @@ block every login.
 
 ## Verification
 
-Six suites, split by what each needs. Four run everywhere; two are
+Seven suites, split by what each needs. Four run everywhere; three are
 `@Tags(['db'])` and skip themselves when no database is reachable, so the
 default `testkit :test` run stays green — bring a server up with
 `tool/run_db_tests.sh` (MariaDB) or `tool/run_db_tests_postgres.sh`
@@ -576,9 +709,10 @@ call, and building one needs nothing.
 `test/preferences_endpoints_test.dart` covers the HTTP surface from the outside:
 which status a client gets, and what happens with nothing wired behind the
 endpoints. Every failure a caller can cause gets a status of its own — a
-never-written preference is a miss (`404`), an illegal key or a value the write
-boundary refuses is the caller's own malformed request (`400`), and a write
-beyond the principal's ceiling conflicts with its state (`409`) — while a
+never-written preference is a miss (`404`), an illegal key, a value the write
+boundary refuses or a malformed bulk entry is the caller's own malformed request
+(`400`), and a write beyond the principal's ceiling conflicts with its state
+(`409`) — while a
 deployment that shipped the endpoints without installing a store is a genuine
 server fault and stays an opaque `500`.
 
@@ -614,6 +748,16 @@ And it carries both ceilings to the wire: a write beyond the count answers `409`
 naming `preferences.limit.exceeded` while a replacement still answers `200`, and
 an oversized value answers `400` naming `preferences.encoded.too_large`.
 
+`test/preferences_defaults_db_test.dart` covers defaults and the bulk write
+against a live server: the precedence order — own value, then the role default
+with the highest precedence and the first role name, then the deployment's —
+in the read and the list, a default replaced in its one row, a role name
+required; a batch written whole and answered by key, one refused entry writing
+nothing, the ceiling counting the batch whole; and the single-statement write:
+concurrent writes of one key leaving one row and no failure, a conflict key
+required to hold the owner, and an entity the upsert cannot write falling back
+to `saveByKey`'s read-then-save.
+
 ```bash
 dart run example/preferences/preferences_example.dart
 ```
@@ -625,19 +769,21 @@ datasource under the name the entity declares, the bean, a request zone carrying
 a principal, and the table — and four of them fail at the *bootstrap* line
 rather than at the call you were making, with a message that does not obviously
 name the missing step. The example puts them in the order a deployment does, in
-thirteen checked steps: `resolve`'s deliberate `null` before the bean is
+fourteen checked steps: `resolve`'s deliberate `null` before the bean is
 installed, the refusals outside a zone and the key check that runs ahead of them,
 a scalar and a `@tomReflector` object written and read back, a type mismatch
 against `getOr`'s fallback, a second principal seeing none of the first's, the
-per-caller list, `remove`'s answer, the endpoint's encoded write path, and the
-migration on disk.
+per-caller list ordered by key, `remove`'s answer, the endpoint's encoded write
+path, a deployment and a role default beneath the caller's own values with a
+bulk write refused whole and then written whole, and the migrations on disk.
 
-**The table is the one substitution**, by a map behind the repository interface,
-which is what lets the program run with no database. Where that changes what can
-be claimed, the example says so instead of quietly claiming it: the row scope is
-enforced by the *repository*, and the contract's key ordering is an `ORDER BY`
-clause, so neither is demonstrated there and neither is asserted. Both are the
-subject of `preferences_db_test.dart` above.
+**The tables are the one substitution**, by in-memory stand-ins behind the
+repository interface, which is what lets the program run with no database.
+Where that changes what can be claimed, the example says so instead of quietly
+claiming it: the row scope, the single-statement upsert and the bulk write's
+transaction are the *repository's* and the datasource's work, so none of them
+is demonstrated there and none is asserted. They are the subject of
+`preferences_db_test.dart` and `preferences_defaults_db_test.dart` above.
 
 ## Dependencies
 
@@ -647,8 +793,9 @@ subject of `preferences_db_test.dart` above.
 | `tom_core_kernel` | package | every file | `TomUserPreferenceKeys`, the wire DTOs, `TomUserPreferenceCodec`, `tomUserPreferencesApi`, `TomBean`, `TomPrincipal` |
 | [endpoints](endpoints.md) | module | `user_preferences_endpoints.dart` | `@TomApiImplementation`, `@TomApiEndpointImplementation`, the routing pipeline (see `doc/endpoints.md`) |
 | [little_things](little_things.md) | module | `user_preferences_service.dart` | `TomServerException` |
-| [object_persistence](object_persistence.md) | module | `user_preference.dart`, `user_preferences_service.dart` | `@TomDbTable`, `@TomDbColumn`, `@TomDbScope`, `TomSqlDatasourceRepository` (see `doc/object_persistence.md`) |
+| [object_persistence](object_persistence.md) | module | `user_preference.dart`, `preference_default.dart`, `preference_defaults.dart`, `user_preferences_service.dart` | `@TomDbTable`, `@TomDbColumn`, `@TomDbScope`, `TomSqlDatasourceRepository` and its `saveByKey` (see `doc/object_persistence.md`) |
 | [privacy](privacy.md) | module | `user_preference.dart` | `TomDataSubject` and `TomPersonal`, which declare `TomUserPreference`'s principal and its value to erasure, export and audit sealing |
+| [transactions](transactions.md) | module | `user_preferences_service.dart` | `TomTransactionManager.runInTransaction`, which makes the bulk write all or none |
 
-- The database-migration module — the untagged framework migration (see
+- The database-migration module — the untagged framework migrations (see
   `doc/db_migration.md`).

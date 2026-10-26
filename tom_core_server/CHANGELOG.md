@@ -2,6 +2,50 @@
 
 ### Added
 
+- **Preference defaults and the bulk preference write** (`preferences`
+  module). `TomPreferenceDefault` (table `tom_preference_default`,
+  `createTableSql`), `TomPreferenceDefaultScope` (`deployment`, `role`),
+  `TomPreferenceDefaultRepository` and the administrative service
+  `TomPreferenceDefaults` (`resolve`, `maxRoleLength`, `setForDeployment`,
+  `setForRole(role, key, value, {precedence})`, `removeForDeployment`,
+  `removeForRole`, `all`, `effectiveFor(roles)`, `effectiveValue(key, roles)`;
+  error key `preferences.default.invalid_role`; no endpoint). A principal reads
+  its own value, else the default of a role it holds (highest precedence, then
+  role name in code-unit order), else the deployment's: `TomUserPreferences(
+  repository, {defaults})` — falling back to the `TomPreferenceDefaults` bean —
+  merges them into `all()` (ordered by key, the page window cut in memory,
+  `TomPageRequest.sort` not applied) and `read()`, with
+  `TomUserPreferenceDto.origin` naming the source. `setAllEncoded(writes)` writes
+  a batch all or none in one transaction, the ceiling counting the batch whole;
+  the endpoint `writePreferences` (`POST /preferences`) serves it, and
+  `TomUserPreferencesErrorHandler` answers `preferences.bulk.malformed` with a
+  `400`. Every preference write goes through `saveByKey` on `(principalId,
+  preferenceKey)`. Reference migration
+  `example/preferences/migrations/main/tomcore/[2]-create_tom_preference_default.sql`
+  and its PostgreSQL form; `doc/preferences.md` § Defaults Beneath a Principal's
+  Own Values, § Writing Several Preferences at Once; step 13 of
+  `example/preferences/preferences_example.dart`; tests in
+  `test/preferences_defaults_db_test.dart`,
+  `test/preferences_endpoints_test.dart` and
+  `test/reference_migrations_test.dart`.
+- **Single-statement upsert** (`object_persistence`, `datasources` modules).
+  `TomSqlDatasourceRepository.upsert(entity, {conflictFields})` inserts or
+  overwrites the row holding the same unique-key values in one statement, with
+  no read before it, and returns the entity carrying the written row's key;
+  `upsertBlocker` names why an entity cannot be upserted (column access rights,
+  file-reference columns, encrypted columns, a version column, soft delete,
+  entity or change listeners or history, an audit policy), refused as
+  `crud_repository.upsert.unsupported`, and a conflict key omitting the
+  `@TomDbScope` or tenant field is refused as
+  `crud_repository.upsert.unscoped_conflict_key`. `saveByKey(entity,
+  {conflictFields})` upserts where allowed and otherwise finds the row by the
+  key and saves it. The dialect fragment `TomStandardSqlDialect.upsert(table,
+  values, {conflictKey, updateColumns, keyColumn})` renders MariaDB's `INSERT …
+  ON DUPLICATE KEY UPDATE c = VALUES(c), key = LAST_INSERT_ID(key)`;
+  `PostgresSqlDialect.upsert` renders `INSERT … ON CONFLICT (k) DO UPDATE SET
+  c = EXCLUDED.c RETURNING key`. `doc/object_persistence.md` § Upserting by a
+  unique key, `doc/datasources.md` § Upserting in one statement; tests in
+  `test/postgres_dialect_test.dart` and `test/preferences_defaults_db_test.dart`.
 - **Job priority, pauses, checkpoints and the run archive** (`scheduling`,
   `db_migration` modules). `TomSqlJobStore` implements the kernel's priority,
   pause and checkpoint contract: `tom_job_run` carries `priority INT NOT NULL

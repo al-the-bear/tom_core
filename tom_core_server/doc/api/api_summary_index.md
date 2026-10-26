@@ -26,7 +26,7 @@ surface documented here.
 | Messaging | [api_summary_messaging.md](api_summary_messaging.md) | Channel-neutral messages, delivery transports (SMTP, HTTP SMS gateway and stand-ins), MIME encoding, the durable outbox, resource-keyed email and SMS, and the idempotent receiver (inbox) for consuming a broker's messages once. |
 | Metrics | [api_summary_metrics.md](api_summary_metrics.md) | The request series, the Prometheus scrape endpoint answered ahead of authentication, and the OTLP/HTTP transport and metrics exporter. |
 | Object Persistence | [api_summary_object_persistence.md](api_summary_object_persistence.md) | Persistence annotations, repositories, query builder, operators/expressions, subqueries and association filters, grouped queries and their aggregates, paging and sorting, file-reference columns, data scoping, column authorization, field-level encryption with its keys, rotation and re-encryption, and the entity lifecycle: soft delete, history tables, lifecycle hooks and change events. |
-| Preferences | [api_summary_preferences.md](api_summary_preferences.md) | Server-stored per-principal preferences: the scoped `tom_user_preference` entity, the typed service over it, and the `/preferences/*` endpoints. |
+| Preferences | [api_summary_preferences.md](api_summary_preferences.md) | Server-stored per-principal preferences: the scoped `tom_user_preference` entity, the typed service over it, the `/preferences/*` endpoints, and the deployment and role defaults beneath them. |
 | Privacy | [api_summary_privacy.md](api_summary_privacy.md) | Data-protection operations: personal-data declarations on entities, erasure, subject-access export, retention, and crypto-shredding of personal values in the audit trail with per-subject keys. |
 | Rate Limiting | [api_summary_ratelimit.md](api_summary_ratelimit.md) | Request rate limits per principal, API key or client address: the rules, the sliding-window arithmetic, the per-process and shared limiters, and the middleware answering `429` with `Retry-After`. |
 | Resources | [api_summary_resources.md](api_summary_resources.md) | Locale-aware text resolution: one bundle per locale, chosen by the recipient's language. |
@@ -707,7 +707,7 @@ surface documented here.
 | `TomDartType` | class | Dart-type descriptor for persistence. |
 | `TomColumnInformation` | class | Column metadata. |
 | `TomRepository<T, K>` | abstract class | Repository contract. |
-| `TomSqlDatasourceRepository<T, K>` | abstract class | SQL-datasource repository base. |
+| `TomSqlDatasourceRepository<T, K>` | abstract class | SQL-datasource repository base; `upsert` / `saveByKey` write by a unique business key in one statement. |
 | `MariadbRepository<T, K>` | class | MariaDB repository. |
 | `TomCompositeKey` | final class | The key value of an entity whose primary key spans several fields. |
 | `TomCountResult` | class | Count query result. |
@@ -781,10 +781,14 @@ surface documented here.
 | ---- | ---- | ----------- |
 | `TomUserPreference` | class | The `tom_user_preference` row; `@TomDbScope(field: 'principal_id', scope: 'owner')` is the whole ownership rule. |
 | `TomUserPreferenceRepository` | class | The CRUD repository for that entity. |
-| `TomUserPreferences` | class | Typed `get`/`set`/`getOr`/`read`/`all`/`remove` for the caller in the request zone, plus `getFor` for the login path. Installed as a bean. |
-| `TomUserPreferenceException` | class | An operation that cannot identify the caller (extends `TomServerException`). |
+| `TomUserPreferences` | class | Typed `get`/`set`/`getOr`/`read`/`all`/`remove`/`clear` for the caller in the request zone, `setAllEncoded` for the all-or-none bulk write, plus `getFor` for the login path; reads and lists include the defaults beneath the caller's own values. Installed as a bean. |
+| `TomUserPreferenceException` | class | An operation that cannot identify the caller, or a write past the principal's ceiling (extends `TomServerException`). |
+| `TomPreferenceDefaultScope` | enum | `deployment` or `role` — whom a default applies to. |
+| `TomPreferenceDefault` | class | The `tom_preference_default` row: one default for the deployment or for one role, with a `precedence` between roles. |
+| `TomPreferenceDefaultRepository` | class | The CRUD repository for that entity. |
+| `TomPreferenceDefaults` | class | Writes deployment and role defaults (administrative, no endpoint) and chooses the one a principal reads. Installed as a bean. |
 | `TomUserPreferencesServer` | class | The `@TomApiImplementation` behind the kernel's `tomUserPreferencesApi`. |
-| `TomUserPreferencesErrorHandler` | class | Maps `preferences.not_found` — and only that key — to a `404`, so a client can tell a miss from an outage. |
+| `TomUserPreferencesErrorHandler` | class | Maps `preferences.not_found` to a `404`, `preferences.key.invalid`, `preferences.encoded.*` and `preferences.bulk.malformed` to a `400`, and `preferences.limit.exceeded` to a `409`, so a client can tell a miss or its own mistake from an outage. |
 
 ### Privacy (`lib/src/tomserver/privacy/`)
 
@@ -1528,6 +1532,10 @@ surface documented here.
 | `TomPersonal` | Privacy |
 | `TomPersonalDataModel` | Privacy |
 | `TomPersonalField` | Privacy |
+| `TomPreferenceDefault` | Preferences |
+| `TomPreferenceDefaultRepository` | Preferences |
+| `TomPreferenceDefaults` | Preferences |
+| `TomPreferenceDefaultScope` | Preferences |
 | `TomPreparedBranchHolder` | Transactions |
 | `TomPreparedStatement` | Datasources |
 | `TomPrimaryReads` | Datasources |

@@ -189,6 +189,26 @@ class PostgresSqlDialect extends TomStandardSqlDialect {
     ];
   }
 
+  /// `INSERT … ON CONFLICT (<key>) DO UPDATE SET <column> = EXCLUDED.<column>`,
+  /// with `RETURNING <key column>` when one is asked for.
+  @override
+  SqlString upsert(
+    String table,
+    Map<String, String> values, {
+    required List<String> conflictKey,
+    required List<String> updateColumns,
+    String? keyColumn,
+  }) {
+    final update = updateColumns.isEmpty
+        ? 'DO NOTHING'
+        : 'DO UPDATE SET '
+              '${updateColumns.map((c) => '$c = EXCLUDED.$c').join(', ')}';
+    return 'INSERT INTO $table (${values.keys.join(', ')}) '
+        'VALUES (${values.values.join(', ')}) '
+        'ON CONFLICT (${conflictKey.join(', ')}) $update'
+        '${keyColumn == null ? '' : ' RETURNING $keyColumn'}';
+  }
+
   @override
   SqlString incrementCounter(
     String table,

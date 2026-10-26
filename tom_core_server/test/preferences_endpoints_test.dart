@@ -56,6 +56,19 @@ class _NoopConfig extends TomBaseServerConfiguration {
 /// Caught from the validator rather than constructed here: the handler selects
 /// a status by matching the error *key*, so an exception hand-written with the
 /// expected string would let the two drift apart and the test would still pass.
+/// The refusal [TomUserPreferenceBulkWriteRequest.writes] raises for an entry
+/// that is not `{valueType, value}`.
+TomException _malformedBulk() {
+  try {
+    TomUserPreferenceBulkWriteRequest(
+      preferences: {'tom.theme': 'dark'},
+    ).writes;
+  } on TomException catch (error) {
+    return error;
+  }
+  throw StateError('a malformed bulk entry was accepted');
+}
+
 TomException _keyRefusal(String key) {
   try {
     TomUserPreferenceKeys.validate(key);
@@ -302,6 +315,18 @@ void main() {
       expect(body['errorKey'], tomUserPreferencesLimitExceededErrorKey);
     });
 
+    test('answers 400 for a malformed bulk entry', () async {
+      final response = handler.handleInvocationError(
+        _malformedBulk(),
+        StackTrace.current,
+        _request(),
+      );
+
+      expect(response.statusCode, 400);
+      final body = jsonDecode(await response.readAsString()) as Map;
+      expect(body['errorKey'], tomUserPreferencesBulkMalformedErrorKey);
+    });
+
     test('answers 400 for every refusal of the write boundary', () async {
       // The encoded pair arrives in the request body, so it is the caller's
       // input exactly as the key is: an oversized value, text that is not
@@ -445,6 +470,22 @@ void main() {
       expect(error.key, 'preferences.not_configured');
     });
 
+    test('bulk write', () async {
+      final error = await _missingStoreFailure(
+        (server) => server.writePreferences(
+          TomUserPreferenceBulkWriteRequest.of([
+            TomUserPreferenceWriteRequest(
+              key: 'tom.theme',
+              valueType: 'String',
+              value: '"dark"',
+            ),
+          ]),
+        ),
+      );
+
+      expect(error.key, 'preferences.not_configured');
+    });
+
     test('delete', () async {
       final error = await _missingStoreFailure(
         (server) => server.deletePreference(
@@ -496,6 +537,7 @@ void main() {
       for (final endpointId in <String>[
         tomUserPreferencesReadEndpointId,
         tomUserPreferencesWriteEndpointId,
+        tomUserPreferencesBulkWriteEndpointId,
         tomUserPreferencesDeleteEndpointId,
       ]) {
         expect(

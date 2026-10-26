@@ -247,15 +247,18 @@ declarations are omitted.
 | Type | Kind | Description |
 | ---- | ---- | ----------- |
 | `TomUserPreferenceKeys` | class | Namespace of the preference keys the framework itself reads (`tom.timezone`, `tom.language`, `tom.country`, `tom.theme`). |
-| `TomUserPreferenceDto` | class | One stored preference on the wire: key, stored type name, JSON text, UTC write timestamp. |
+| `TomUserPreferenceDto` | class | One stored preference on the wire: key, stored type name, JSON text, UTC write timestamp, origin (`user`, `role`, `deployment`). |
 | `TomUserPreferenceWriteRequest` | class | Write request — the DTO's value fields without the timestamp. |
+| `TomUserPreferenceBulkWriteRequest` | class | Bulk write request — key → `{valueType, value}`, written all or none. |
 | `TomUserPreferenceKeyRequest` | class | Read/delete request addressing one preference by key. |
 | `TomUserPreferencesApiService` | abstract class | The contract's Dart face, implemented by the server and by client callers. |
 | `TomUserPreferenceCodec` | class | Encodes/decodes preference values; refuses a type mismatch rather than coercing. |
 | `TomUserPreferenceCodecException` | class | Encode/decode failure (extends `TomException`). |
-| `tomUserPreferencesApi` | final | The `/preferences` API: list, read, write, delete — all `TomAuthenticatedAccess`. |
+| `tomUserPreferencesApi` | final | The `/preferences` API: list, read, write, bulk write, delete, clear — all `TomAuthenticatedAccess`. |
 | `tomUserPreferencesApiId` | const | The API id (`tomUserPreferences`) the server implementation binds to. |
-| `tomUserPreferencesListEndpointId`, `…ReadEndpointId`, `…WriteEndpointId`, `…DeleteEndpointId` | const | The four endpoint ids. |
+| `tomUserPreferencesListEndpointId`, `…ReadEndpointId`, `…WriteEndpointId`, `…BulkWriteEndpointId`, `…DeleteEndpointId`, `…ClearEndpointId` | const | The six endpoint ids. |
+| `tomUserPreferenceOriginUser`, `…OriginRole`, `…OriginDeployment` | const | The values of `TomUserPreferenceDto.origin`. |
+| `tomUserPreferencesBulkMalformedErrorKey` | const | `preferences.bulk.malformed` — a bulk entry is not `{valueType, value}` (`400`). |
 | `registerTomUserPreferencesApi()` | function | Registers the API with `tomRemoteApis`; idempotent. |
 | `TomUserPreferenceKeyException` | class | Raised when a preference key does not satisfy `TomUserPreferenceKeys`. |
 | `registerTomUserPreferencesApi` | function | Registers `tomUserPreferencesApi` with the global `tomRemoteApis` registry. |

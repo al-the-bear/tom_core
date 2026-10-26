@@ -169,10 +169,10 @@ void main() {
     // "Unpaged, and bounded").
     //
     // The optional window is for a caller on *this* side of the wire — a
-    // migration walking one principal's settings, a job reading in batches —
-    // and is asserted here as forwarding, because whether it narrows is the
-    // repository's answer and needs a table: `preferences_db_test.dart` takes
-    // that half.
+    // migration walking one principal's settings, a job reading in batches.
+    // It is cut from the caller's own values merged with the defaults beneath
+    // them, so it is applied in memory, after the repository answered the
+    // caller's rows whole.
 
     test('no window is forwarded when none is given', () async {
       final repository = _RecordingRepository();
@@ -181,13 +181,29 @@ void main() {
       expect(repository.pages, [null]);
     });
 
-    test('the window is forwarded to the repository', () async {
-      final repository = _RecordingRepository();
-      final page = TomPageRequest(limit: 10, offset: 20);
-      await _asPrincipal(() => TomUserPreferences(repository).all(page));
+    test(
+      'the window is cut from the ordered list, not by the repository',
+      () async {
+        final repository = _RecordingRepository(
+          rows: [
+            for (final key in ['e', 'a', 'c', 'b', 'd'])
+              TomUserPreference(
+                preferenceKey: key,
+                valueType: 'int',
+                valueJson: '1',
+              ),
+          ],
+        );
+        final window = await _asPrincipal(
+          () => TomUserPreferences(
+            repository,
+          ).all(TomPageRequest(limit: 2, offset: 1)),
+        );
 
-      expect(repository.pages, [same(page)]);
-    });
+        expect(window.map((dto) => dto.key), ['b', 'c']);
+        expect(repository.pages, [null]);
+      },
+    );
 
     test('the ordered sentence is the one the window is applied to', () async {
       // A window over an undefined order is a different set of rows each time
@@ -314,6 +330,11 @@ TomPrincipal _principal() => TomPrincipal(
 /// would hide.
 class _RecordingRepository
     implements TomSqlDatasourceRepository<TomUserPreference, int> {
+  _RecordingRepository({this.rows = const []});
+
+  /// What every `findByQuerySentence` answers.
+  final List<TomUserPreference> rows;
+
   /// The window of every `findByQuerySentence`, in order.
   final List<TomPageRequest?> pages = [];
 
@@ -329,7 +350,7 @@ class _RecordingRepository
   ]) async {
     sentences.add(querySentence);
     pages.add(page);
-    return const [];
+    return rows;
   }
 
   @override
