@@ -282,7 +282,12 @@ class TomTabularRow {
 /// One titled table: typed columns over a stream of rows.
 class TomTabularSection {
   /// Creates a section.
-  TomTabularSection({required this.columns, required this.rows, this.title}) {
+  TomTabularSection({
+    required this.columns,
+    required this.rows,
+    this.title,
+    List<TomTabularChart> charts = const [],
+  }) : charts = List.unmodifiable(charts) {
     if (columns.isEmpty) {
       throw TomExportException(
         'export.section.no_columns',
@@ -299,6 +304,9 @@ class TomTabularSection {
         );
       }
     }
+    for (final chart in this.charts) {
+      chart.validateAgainst(columns);
+    }
   }
 
   /// Creates a section over rows already in memory.
@@ -310,10 +318,12 @@ class TomTabularSection {
     List<TomTabularColumn> columns,
     Iterable<TomTabularRow> rows, {
     String? title,
+    List<TomTabularChart> charts = const [],
   }) => TomTabularSection(
     columns: columns,
     rows: Stream<TomTabularRow>.fromIterable(rows),
     title: title,
+    charts: charts,
   );
 
   /// Creates a section over keyed maps, ordering each by [columns].
@@ -338,10 +348,12 @@ class TomTabularSection {
     List<TomTabularColumn> columns,
     Stream<Map<String, Object?>> rows, {
     String? title,
+    List<TomTabularChart> charts = const [],
   }) => TomTabularSection(
     columns: columns,
     rows: rows.map((values) => TomTabularRow.fromMap(columns, values)),
     title: title,
+    charts: charts,
   );
 
   /// Creates a section whose columns are **derived from the reflected entity**
@@ -396,6 +408,7 @@ class TomTabularSection {
     Set<String> exclude = const {},
     Map<String, String> titles = const {},
     bool includeFileReferences = false,
+    List<TomTabularChart> charts = const [],
   }) {
     final projection = _TomEntityProjection.of(
       T,
@@ -420,6 +433,7 @@ class TomTabularSection {
         ),
       ),
       title: title,
+      charts: charts,
     );
   }
 
@@ -432,9 +446,99 @@ class TomTabularSection {
   /// The section's rows — pulled once, in order, by whichever renderer runs.
   final Stream<TomTabularRow> rows;
 
+  /// The charts drawn from this section's rows, in output order.
+  final List<TomTabularChart> charts;
+
   @override
   String toString() =>
       'TomTabularSection(${title ?? 'untitled'}, ${columns.length} columns)';
+}
+
+/// The kinds of chart a [TomTabularChart] draws.
+enum TomChartType {
+  /// Vertical bars, one group per category, one bar per series.
+  bar,
+
+  /// One line per series across the categories.
+  line,
+
+  /// One slice per category, of exactly one series.
+  pie,
+}
+
+/// A chart of a section's own rows, drawn beside its table.
+///
+/// The chart names columns of its section rather than carrying data, so it
+/// plots exactly the rows the table shows and cannot disagree with them:
+/// [categoryColumn] labels the points, each of [valueColumns] is one series.
+/// Every row is a point.
+///
+/// Each format draws it where it can: **PDF** as vector graphics below the
+/// section's table; **XLSX** as a native chart on the section's sheet, bound to
+/// the exported cells, so a recipient can restyle it; **CSV** has nowhere to
+/// put one and leaves it out.
+class TomTabularChart {
+  /// A [type] chart of [valueColumns] against [categoryColumn].
+  const TomTabularChart({
+    required this.type,
+    required this.categoryColumn,
+    required this.valueColumns,
+    this.title,
+  });
+
+  /// What kind of chart.
+  final TomChartType type;
+
+  /// The [TomTabularColumn.name] labelling each point.
+  final String categoryColumn;
+
+  /// The [TomTabularColumn.name]s of the series — numeric columns, exactly one
+  /// for a [TomChartType.pie].
+  final List<String> valueColumns;
+
+  /// The chart's caption, or `null` for none.
+  final String? title;
+
+  /// Throws unless this chart can be drawn from [columns]: every column it
+  /// names exists, every series is numeric, at least one series is named, and
+  /// a pie names exactly one.
+  void validateAgainst(List<TomTabularColumn> columns) {
+    TomTabularColumn columnNamed(String name) =>
+        columns.where((column) => column.name == name).firstOrNull ??
+        (throw TomExportException(
+          'export.chart.unknown_column',
+          'A chart names a column its section does not have.',
+          parameters: {'column': name},
+        ));
+    columnNamed(categoryColumn);
+    if (valueColumns.isEmpty) {
+      throw TomExportException(
+        'export.chart.no_series',
+        'A chart needs at least one value column.',
+      );
+    }
+    if (type == TomChartType.pie && valueColumns.length != 1) {
+      throw TomExportException(
+        'export.chart.pie_series',
+        'A pie chart draws exactly one value column.',
+        parameters: {'series': valueColumns.length},
+      );
+    }
+    for (final name in valueColumns) {
+      final type = columnNamed(name).type;
+      if (type != TomColumnType.integer && type != TomColumnType.decimal) {
+        throw TomExportException(
+          'export.chart.not_numeric',
+          'A chart series must be a numeric column.',
+          parameters: {'column': name, 'type': type.name},
+        );
+      }
+    }
+  }
+
+  @override
+  String toString() =>
+      'TomTabularChart(${type.name}, $categoryColumn -> $valueColumns)';
 }
 
 /// A complete tabular result: a title and one or more sections.

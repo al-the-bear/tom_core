@@ -46,6 +46,7 @@ import '../datasources/datasource_initialization.dart';
 import '../datasources/framework_table.dart';
 import '../datasources/mariadb_sql_dialect.dart';
 import '../datasources/sql_dialects.dart';
+import '../export/export_register_sql.dart';
 import '../file_storage/database_blob_sql.dart';
 import '../messaging/delivery_report_sql.dart';
 import '../endpoints/idempotency_sql.dart';
@@ -94,6 +95,7 @@ List<TomFrameworkTable> frameworkOwnedTables({
   String encryptionKey = defaultEncryptionKeyTable,
   String subjectKey = defaultSubjectKeyTable,
   String decision = defaultDecisionTable,
+  String exportRegister = defaultExportRegisterTable,
 }) => [
   jobRunTable(jobRun),
   leaseTable(lease),
@@ -113,6 +115,7 @@ List<TomFrameworkTable> frameworkOwnedTables({
   encryptionKeyTable(encryptionKey),
   subjectKeyTable(subjectKey),
   decisionTable(decision),
+  exportRegisterTable(exportRegister),
 ];
 
 /// Compares framework-owned table descriptors against everything else that

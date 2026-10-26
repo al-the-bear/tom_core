@@ -28,6 +28,7 @@ import 'package:shelf/shelf.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../file_storage/blob_store.dart';
+import 'export_register.dart';
 import 'export_store.dart';
 import 'tabular_renderer.dart';
 import 'tabular_result.dart';
@@ -40,14 +41,34 @@ class TomExportService {
   /// through its API never needs one, and requiring it would force a
   /// filesystem decision on a deployment that has no use for it. Calling
   /// [storeAs] without one is a configuration error and says so.
-  TomExportService({TomExportFormats? formats, this.store})
-    : formats = formats ?? TomExportFormats.standard();
+  ///
+  /// [register], when given, records every export [storeAs] stores — who it
+  /// belongs to, how large, when — which is what [quota] counts against and
+  /// what [TomExportRetention] purges from. A quota needs a register.
+  TomExportService({
+    TomExportFormats? formats,
+    this.store,
+    this.register,
+    this.quota,
+  }) : formats = formats ?? TomExportFormats.standard() {
+    if (quota != null && register == null) {
+      // throws-outside-family: programmer error — a quota counts what a
+      // register records, and there is none.
+      throw ArgumentError('An export quota needs an export register.');
+    }
+  }
 
   /// The formats this service can produce.
   final TomExportFormats formats;
 
   /// Where [storeAs] writes, when the application has somewhere to write.
   final TomExportStore? store;
+
+  /// The record of stored exports, or `null` when nothing is recorded.
+  final TomExportRegister? register;
+
+  /// How much one owner may store, or `null` for no limit.
+  final TomExportQuota? quota;
 
   /// Renders [result] as [format], as a byte stream.
   ///
@@ -113,11 +134,20 @@ class TomExportService {
   /// renderer produced (`renderer.fileNameFor(...)`) or a partitioned key like
   /// `2026/07/sales.xlsx`. Returns the descriptor the caller keeps: the key to
   /// read it back with, and the size it turned out to be.
+  ///
+  /// With a [register], the export is recorded under [owner] (default `''`,
+  /// no one) with [result]'s title. With a [quota] and an [owner], the owner's
+  /// usage is checked before rendering and the stored size after it; a store
+  /// that does not fit is deleted again and refused
+  /// (`export.quota.count_exceeded`, `export.quota.bytes_exceeded`). A store
+  /// over a key the owner already holds replaces that export, and a refused
+  /// replacement leaves the key empty: the store had already written over it.
   Future<TomStoredExport> storeAs(
     TomTabularResult result,
     String format, {
     required String key,
-  }) {
+    String owner = '',
+  }) async {
     final target = store;
     if (target == null) {
       throw TomExportException(
@@ -126,38 +156,65 @@ class TomExportService {
         parameters: {'key': key},
       );
     }
-    return target.store(
+    final records = register;
+    final limit = owner.isEmpty ? null : quota;
+    TomExportUsage? usage;
+    if (records != null && limit != null) {
+      final held = await records.usageOf(owner);
+      final previous = await records.find(key);
+      final replacing = previous != null && previous.owner == owner;
+      usage = replacing
+          ? TomExportUsage(
+              count: held.count - 1,
+              bytes: held.bytes - previous.byteCount,
+            )
+          : held;
+      limit.check(owner, usage);
+    }
+    final stored = await target.store(
       key: key,
       bytes: render(result, format),
       mediaType: formats.rendererFor(format).mediaType,
     );
+    if (records == null) return stored;
+    if (limit != null) {
+      try {
+        limit.check(owner, usage!, addedBytes: stored.byteCount);
+      } on TomExportException {
+        await target.delete(stored.key);
+        await records.remove(stored.key);
+        rethrow;
+      }
+    }
+    await records.record(
+      TomExportRecord(
+        key: stored.key,
+        owner: owner,
+        mediaType: stored.mediaType,
+        byteCount: stored.byteCount,
+        storedAt: stored.storedAt,
+        title: result.title,
+      ),
+    );
+    return stored;
   }
 
-  /// A storage key for [baseName] in [format], optionally date-partitioned.
-  ///
-  /// Exports accumulate, and a flat directory of them becomes unlistable long
-  /// before it becomes large. Partitioning by day is the cheap fix that also
-  /// makes expiry a matter of deleting a prefix.
-  ///
-  /// [baseName] is the **same report name [respondWith] takes**, and this
-  /// method sanitises it for the same reason that one does — a report name
-  /// comes from a user, and neither channel should refuse a name the other
-  /// accepts. The two grammars genuinely differ, so the *spelling* differs:
-  /// `Q3 sales` downloads as `Q3 sales.csv` and stores as `Q3_sales.csv`,
-  /// because a `Content-Disposition` filename is a Latin-1 quoted string and a
-  /// storage key is a relative path of unreserved characters. What is the same
-  /// is which names are accepted, which is what a caller can act on.
-  ///
-  /// The only path structure in the result is the partition, which this method
-  /// owns: a `/` in the name is replaced, not honoured. So `Sales / Returns` is
-  /// one file rather than a directory, and `../etc/passwd` is defused by having
-  /// nothing left to traverse with rather than by being refused — refusing it
-  /// here while [respondWith] served it happily was the asymmetry itself.
-  ///
-  /// Throws [TomExportException] (`export.store.invalid_key`) for a name too
-  /// long to be a key. That fault is deliberately not sanitised away:
-  /// truncating would give two different reports one key, and the second export
-  /// would overwrite the first in silence.
+  /// Deletes the stored export under [key] and its record; answers whether
+  /// the store held it.
+  Future<bool> deleteStored(String key) async {
+    final target = store;
+    if (target == null) {
+      throw TomExportException(
+        'export.service.no_store',
+        'This server is not configured to store exports.',
+        parameters: {'key': key},
+      );
+    }
+    final deleted = await target.delete(key);
+    await register?.remove(key);
+    return deleted;
+  }
+
   String keyFor(String baseName, String format, {DateTime? partitionOn}) {
     final fileName = formats
         .rendererFor(format)

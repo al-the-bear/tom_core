@@ -139,6 +139,12 @@ void main() {
       ]);
     });
 
+    test('the export chain builds the register descriptor', () {
+      converges('example/export/migrations/main/tomcore', [
+        exportRegisterTable(defaultExportRegisterTable),
+      ]);
+    });
+
     test('the audit chain builds the trail descriptor', () {
       // The chain's other two artifacts are the write-once triggers, which
       // create no table and so contribute nothing to the replayed schema.

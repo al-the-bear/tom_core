@@ -3381,6 +3381,174 @@ void main() {
     });
   });
 
+  group('charts', () {
+    final columns = [
+      TomTabularColumn('region', label: 'Region'),
+      TomTabularColumn('north', label: 'Plan', type: TomColumnType.decimal),
+      TomTabularColumn('actual', label: 'Actual', type: TomColumnType.integer),
+    ];
+    TomTabularResult charted(List<TomTabularChart> charts, {String? title}) =>
+        TomTabularResult.single(
+          title: 'Revenue',
+          section: TomTabularSection.ofRows(
+            columns,
+            [
+              const TomTabularRow(['Alpha', 10.5, 12]),
+              const TomTabularRow(['Beta', 7.25, 6]),
+              const TomTabularRow(['Gamma', null, 9]),
+            ],
+            title: title ?? 'Regions',
+            charts: charts,
+          ),
+        );
+    const bar = TomTabularChart(
+      type: TomChartType.bar,
+      categoryColumn: 'region',
+      valueColumns: ['north', 'actual'],
+      title: 'Quarterly',
+    );
+    const pie = TomTabularChart(
+      type: TomChartType.pie,
+      categoryColumn: 'region',
+      valueColumns: ['actual'],
+    );
+    const line = TomTabularChart(
+      type: TomChartType.line,
+      categoryColumn: 'region',
+      valueColumns: ['actual'],
+    );
+
+    Matcher throwsKey(String key) =>
+        throwsA(isA<TomExportException>().having((e) => e.key, 'key', key));
+
+    test('a chart is checked against its section', () {
+      TomTabularSection with_(TomTabularChart chart) =>
+          TomTabularSection.ofRows(columns, const [], charts: [chart]);
+      expect(
+        () => with_(
+          const TomTabularChart(
+            type: TomChartType.bar,
+            categoryColumn: 'nowhere',
+            valueColumns: ['actual'],
+          ),
+        ),
+        throwsKey('export.chart.unknown_column'),
+      );
+      expect(
+        () => with_(
+          const TomTabularChart(
+            type: TomChartType.bar,
+            categoryColumn: 'region',
+            valueColumns: [],
+          ),
+        ),
+        throwsKey('export.chart.no_series'),
+      );
+      expect(
+        () => with_(
+          const TomTabularChart(
+            type: TomChartType.pie,
+            categoryColumn: 'region',
+            valueColumns: ['north', 'actual'],
+          ),
+        ),
+        throwsKey('export.chart.pie_series'),
+      );
+      expect(
+        () => with_(
+          const TomTabularChart(
+            type: TomChartType.line,
+            categoryColumn: 'region',
+            valueColumns: ['region'],
+          ),
+        ),
+        throwsKey('export.chart.not_numeric'),
+      );
+    });
+
+    test('XLSX carries native charts bound to the exported cells', () async {
+      final parts = _ZipReader(
+        await _render(charted([bar, pie, line]), 'xlsx'),
+      ).read();
+      expect(
+        parts.keys,
+        containsAll([
+          'xl/worksheets/_rels/sheet1.xml.rels',
+          'xl/drawings/drawing1.xml',
+          'xl/drawings/_rels/drawing1.xml.rels',
+          'xl/charts/chart1.xml',
+          'xl/charts/chart2.xml',
+          'xl/charts/chart3.xml',
+        ]),
+      );
+      expect(parts['[Content_Types].xml'], contains('/xl/charts/chart3.xml'));
+      expect(
+        parts['[Content_Types].xml'],
+        contains('/xl/drawings/drawing1.xml'),
+      );
+      expect(
+        parts['xl/worksheets/sheet1.xml'],
+        contains('<drawing r:id="rId1"/>'),
+      );
+      expect(
+        RegExp(
+          '<xdr:twoCellAnchor>',
+        ).allMatches(parts['xl/drawings/drawing1.xml']!),
+        hasLength(3),
+      );
+
+      final barXml = parts['xl/charts/chart1.xml']!;
+      expect(barXml, contains('<c:barChart>'));
+      expect(barXml, contains("'Regions'!\$A\$2:\$A\$4"));
+      expect(barXml, contains("'Regions'!\$B\$2:\$B\$4"));
+      expect(barXml, contains("'Regions'!\$C\$2:\$C\$4"));
+      expect(barXml, contains("'Regions'!\$B\$1"));
+      expect(barXml, contains('<a:t>Quarterly</a:t>'));
+      expect(parts['xl/charts/chart2.xml'], contains('<c:pieChart>'));
+      expect(parts['xl/charts/chart2.xml'], isNot(contains('<c:valAx>')));
+      expect(parts['xl/charts/chart3.xml'], contains('<c:lineChart>'));
+    });
+
+    test('a sheet name with a quote is escaped in the chart range', () async {
+      final parts = _ZipReader(
+        await _render(charted([line], title: "Bob's"), 'xlsx'),
+      ).read();
+      expect(parts['xl/charts/chart1.xml'], contains("'Bob''s'!\$C\$2:\$C\$4"));
+    });
+
+    test('a workbook without charts has no drawing parts', () async {
+      final parts = _ZipReader(await _render(charted(const []), 'xlsx')).read();
+      expect(parts.keys.where((k) => k.contains('chart')), isEmpty);
+      expect(parts['xl/worksheets/sheet1.xml'], isNot(contains('<drawing')));
+    });
+
+    test('PDF draws each chart below its table', () async {
+      Future<String> text(List<TomTabularChart> charts) async => latin1.decode(
+        await _collect(
+          const TomPdfRenderer(compress: false).render(charted(charts)),
+        ),
+        allowInvalid: true,
+      );
+      final plain = await text(const []);
+      final drawn = await text([bar, pie, line]);
+      expect(drawn, contains('(Quarterly)'));
+      expect(plain, isNot(contains('(Quarterly)')));
+      // The pie's legend names every category again, beside the table's cells.
+      expect(
+        RegExp(r'\(Alpha\)').allMatches(drawn).length,
+        greaterThan(RegExp(r'\(Alpha\)').allMatches(plain).length),
+      );
+      expect(drawn.length, greaterThan(plain.length));
+    });
+
+    test('CSV leaves charts out', () async {
+      expect(
+        await _renderCsv(charted([bar])),
+        await _renderCsv(charted(const [])),
+      );
+    });
+  });
+
   group('The example runs green', () {
     test('under exactly the command its header documents', () async {
       // The example is the module's worked demonstration, so it drifts

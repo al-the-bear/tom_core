@@ -140,11 +140,24 @@ class TomXlsxRenderer extends TomTabularRenderer {
     final sheetNames = _sheetNames(result);
     final properties = _customPropertyEntries(result.metadata);
 
+    // Which sheets carry charts, and each chart's global number: the content
+    // types are written first, so every chart part is named before any row
+    // has been read.
+    final chartedSheets = [
+      for (var i = 0; i < result.sections.length; i++)
+        if (result.sections[i].charts.isNotEmpty) i + 1,
+    ];
+    final chartCount = result.sections.fold<int>(
+      0,
+      (sum, section) => sum + section.charts.length,
+    );
     yield* zip.addText(
       '[Content_Types].xml',
       _contentTypes(
         sheetNames.length,
         withCustomProperties: properties.isNotEmpty,
+        drawings: chartedSheets,
+        chartCount: chartCount,
       ),
     );
     yield* zip.addText(
@@ -162,17 +175,142 @@ class TomXlsxRenderer extends TomTabularRenderer {
     );
     yield* zip.addText('xl/styles.xml', _styles);
 
+    var nextChart = 1;
     for (var i = 0; i < result.sections.length; i++) {
+      final section = result.sections[i];
+      final rows = _RowCount();
       yield* zip.addStream(
         'xl/worksheets/sheet${i + 1}.xml',
-        _sheetXml(result.sections[i]),
+        _sheetXml(section, rows),
       );
+      if (section.charts.isEmpty) continue;
+      final first = nextChart;
+      nextChart += section.charts.length;
+      yield* zip.addText(
+        'xl/worksheets/_rels/sheet${i + 1}.xml.rels',
+        '$_xmlDeclaration<Relationships xmlns="$_nsPackageRelationships">'
+            '<Relationship Id="rId1" Type="$_nsRel/drawing" '
+            'Target="../drawings/drawing${i + 1}.xml"/></Relationships>',
+      );
+      yield* zip.addText('xl/drawings/drawing${i + 1}.xml', _drawing(section));
+      yield* zip.addText(
+        'xl/drawings/_rels/drawing${i + 1}.xml.rels',
+        '$_xmlDeclaration<Relationships xmlns="$_nsPackageRelationships">'
+            '${[for (var k = 0; k < section.charts.length; k++) '<Relationship Id="rId${k + 1}" Type="$_nsRel/chart" Target="../charts/chart${first + k}.xml"/>'].join()}'
+            '</Relationships>',
+      );
+      for (var k = 0; k < section.charts.length; k++) {
+        yield* zip.addText(
+          'xl/charts/chart${first + k}.xml',
+          _chartXml(section, section.charts[k], sheetNames[i], rows.last),
+        );
+      }
     }
     yield* zip.finish();
   }
 
+  static const String _nsPackageRelationships =
+      'http://schemas.openxmlformats.org/package/2006/relationships';
+  static const String _nsChart =
+      'http://schemas.openxmlformats.org/drawingml/2006/chart';
+  static const String _nsDrawingMain =
+      'http://schemas.openxmlformats.org/drawingml/2006/main';
+  static const String _nsSpreadsheetDrawing =
+      'http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing';
+
+  /// How many columns a chart spans, and how many rows.
+  static const int _chartColumns = 8;
+  static const int _chartRows = 18;
+
+  /// The drawing part placing [section]'s charts: one anchor each, beside the
+  /// table and stacked downwards, so no chart covers a cell of the data.
+  static String _drawing(TomTabularSection section) {
+    final left = section.columns.length + 1;
+    final anchors = [
+      for (var k = 0; k < section.charts.length; k++)
+        '<xdr:twoCellAnchor>'
+            '<xdr:from><xdr:col>$left</xdr:col><xdr:colOff>0</xdr:colOff>'
+            '<xdr:row>${1 + k * (_chartRows + 2)}</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:from>'
+            '<xdr:to><xdr:col>${left + _chartColumns}</xdr:col><xdr:colOff>0</xdr:colOff>'
+            '<xdr:row>${1 + k * (_chartRows + 2) + _chartRows}</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:to>'
+            '<xdr:graphicFrame macro="">'
+            '<xdr:nvGraphicFramePr><xdr:cNvPr id="${k + 2}" name="Chart ${k + 1}"/>'
+            '<xdr:cNvGraphicFramePr/></xdr:nvGraphicFramePr>'
+            '<xdr:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/></xdr:xfrm>'
+            '<a:graphic><a:graphicData uri="$_nsChart">'
+            '<c:chart xmlns:c="$_nsChart" r:id="rId${k + 1}"/>'
+            '</a:graphicData></a:graphic></xdr:graphicFrame>'
+            '<xdr:clientData/></xdr:twoCellAnchor>',
+    ].join();
+    return '$_xmlDeclaration'
+        '<xdr:wsDr xmlns:xdr="$_nsSpreadsheetDrawing" xmlns:a="$_nsDrawingMain" '
+        'xmlns:r="$_nsRel">$anchors</xdr:wsDr>';
+  }
+
+  /// The chart part for [chart], its series bound to the cells of [sheetName]
+  /// from row 2 to [lastRow] — the exported data itself, so the chart follows
+  /// any edit a recipient makes to it.
+  static String _chartXml(
+    TomTabularSection section,
+    TomTabularChart chart,
+    String sheetName,
+    int lastRow,
+  ) {
+    final sheet = "'${sheetName.replaceAll("'", "''")}'";
+    final last = lastRow < 2 ? 2 : lastRow;
+    int columnOf(String name) =>
+        section.columns.indexWhere((column) => column.name == name);
+    String absolute(String ref) => ref.replaceFirstMapped(
+      RegExp(r'([A-Z]+)(\d+)'),
+      (m) => '\$${m[1]}\$${m[2]}',
+    );
+    String range(int column) =>
+        '$sheet!${absolute(_ref(column, 2))}:${absolute(_ref(column, last))}';
+    final categories = range(columnOf(chart.categoryColumn));
+    final series = [
+      for (var k = 0; k < chart.valueColumns.length; k++)
+        '<c:ser><c:idx val="$k"/><c:order val="$k"/>'
+            '<c:tx><c:strRef><c:f>${_escapeXml('$sheet!${absolute(_ref(columnOf(chart.valueColumns[k]), 1))}')}</c:f></c:strRef></c:tx>'
+            '<c:cat><c:strRef><c:f>${_escapeXml(categories)}</c:f></c:strRef></c:cat>'
+            '<c:val><c:numRef><c:f>${_escapeXml(range(columnOf(chart.valueColumns[k])))}</c:f></c:numRef></c:val>'
+            '${chart.type == TomChartType.line ? '<c:smooth val="0"/>' : ''}'
+            '</c:ser>',
+    ].join();
+    const axes = '<c:axId val="1"/><c:axId val="2"/>';
+    const axisElements =
+        '<c:catAx><c:axId val="1"/><c:scaling><c:orientation val="minMax"/></c:scaling>'
+        '<c:delete val="0"/><c:axPos val="b"/><c:crossAx val="2"/></c:catAx>'
+        '<c:valAx><c:axId val="2"/><c:scaling><c:orientation val="minMax"/></c:scaling>'
+        '<c:delete val="0"/><c:axPos val="l"/><c:majorGridlines/><c:crossAx val="1"/></c:valAx>';
+    final plot = switch (chart.type) {
+      TomChartType.bar =>
+        '<c:barChart><c:barDir val="col"/><c:grouping val="clustered"/>'
+            '<c:varyColors val="0"/>$series$axes</c:barChart>$axisElements',
+      TomChartType.line =>
+        '<c:lineChart><c:grouping val="standard"/><c:varyColors val="0"/>'
+            '$series<c:marker val="1"/>$axes</c:lineChart>$axisElements',
+      TomChartType.pie =>
+        '<c:pieChart><c:varyColors val="1"/>$series'
+            '<c:firstSliceAng val="0"/></c:pieChart>',
+    };
+    final title = chart.title == null
+        ? '<c:autoTitleDeleted val="1"/>'
+        : '<c:title><c:tx><c:rich><a:bodyPr/><a:p><a:r><a:t>'
+              '${_escapeXml(chart.title!)}</a:t></a:r></a:p></c:rich></c:tx>'
+              '<c:overlay val="0"/></c:title><c:autoTitleDeleted val="0"/>';
+    return '$_xmlDeclaration'
+        '<c:chartSpace xmlns:c="$_nsChart" xmlns:a="$_nsDrawingMain" '
+        'xmlns:r="$_nsRel"><c:chart>$title'
+        '<c:plotArea><c:layout/>$plot</c:plotArea>'
+        '<c:legend><c:legendPos val="r"/><c:overlay val="0"/></c:legend>'
+        '<c:plotVisOnly val="1"/></c:chart></c:chartSpace>';
+  }
+
   /// Emits one worksheet part as a stream of XML fragments, one per row.
-  Stream<String> _sheetXml(TomTabularSection section) async* {
+  ///
+  /// [rows] is told the number of the last row written, which a chart of the
+  /// section binds its ranges to.
+  Stream<String> _sheetXml(TomTabularSection section, _RowCount rows) async* {
     if (section.columns.length > maxColumnsPerSheet) {
       throw TomExportException(
         'export.xlsx.too_many_columns',
@@ -186,7 +324,7 @@ class TomXlsxRenderer extends TomTabularRenderer {
       );
     }
     yield '$_xmlDeclaration'
-        '<worksheet xmlns="$_nsMain">';
+        '<worksheet xmlns="$_nsMain" xmlns:r="$_nsRel">';
     // Every column, not only the hinted ones. OOXML's width unit is already a
     // character count, so a hint is written out as it stands; a column without
     // one would otherwise be left at Excel's default of 8.43, which shows an
@@ -237,7 +375,11 @@ class TomXlsxRenderer extends TomTabularRenderer {
       line.write('</row>');
       yield line.toString();
     }
-    yield '</sheetData></worksheet>';
+    rows.last = rowNumber;
+    // A drawing is referenced after the cells, where SpreadsheetML orders it.
+    yield '</sheetData>'
+        '${section.charts.isEmpty ? '' : '<drawing r:id="rId1"/>'}'
+        '</worksheet>';
   }
 
   /// The `<c>` element for one cell, or `null` when the cell is empty.
@@ -347,7 +489,17 @@ class TomXlsxRenderer extends TomTabularRenderer {
   static String _contentTypes(
     int sheetCount, {
     required bool withCustomProperties,
+    List<int> drawings = const [],
+    int chartCount = 0,
   }) {
+    final charts = [
+      for (final i in drawings)
+        '<Override PartName="/xl/drawings/drawing$i.xml" ContentType='
+            '"application/vnd.openxmlformats-officedocument.drawing+xml"/>',
+      for (var n = 1; n <= chartCount; n++)
+        '<Override PartName="/xl/charts/chart$n.xml" ContentType='
+            '"application/vnd.openxmlformats-officedocument.drawingml.chart+xml"/>',
+    ].join();
     final sheets = [
       for (var i = 1; i <= sheetCount; i++)
         '<Override PartName="/xl/worksheets/sheet$i.xml" ContentType='
@@ -369,7 +521,7 @@ class TomXlsxRenderer extends TomTabularRenderer {
         '"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
         '<Override PartName="/xl/styles.xml" ContentType='
         '"application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'
-        '$sheets</Types>';
+        '$sheets$charts</Types>';
   }
 
   static String _rootRels({required bool withCustomProperties}) {
@@ -519,6 +671,12 @@ String _escapeXml(String text) {
     }
   }
   return buffer.toString();
+}
+
+/// The number of the last row a worksheet part wrote, read once the part has
+/// been streamed.
+class _RowCount {
+  int last = 1;
 }
 
 /// Writes a ZIP archive incrementally, one entry at a time.
