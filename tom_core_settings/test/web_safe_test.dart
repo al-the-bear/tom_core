@@ -64,6 +64,7 @@ void main() {
       'package:web/',
       'package:flutter/',
       'package:kdbx/',
+      'package:tom_kdbx/',
       'package:tom_github_api/',
       'package:http/',
       'package:tom_core_storage/io.dart',
