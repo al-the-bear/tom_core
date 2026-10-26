@@ -28,5 +28,5 @@ dev_dependencies:
   test: ^1.25.0
   # The in-memory GitHub, for forgetting a location on the GitHub backend.
   tom_github_api:
-    path: ../../devops/tom_github_api
+    path: ../../basics/tom_github_api
   http: ^1.2.0

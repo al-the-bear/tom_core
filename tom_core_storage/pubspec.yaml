@@ -26,10 +26,10 @@ dependencies:
   http: ^1.2.0
   # Git in pure Dart, for the git backend (git.dart): no git binary needed.
   tom_git:
-    path: ../../devops/tom_git
+    path: ../../basics/tom_git
   # The GitHub REST and git-data API, for the GitHub backend (github.dart).
   tom_github_api:
-    path: ../../devops/tom_github_api
+    path: ../../basics/tom_github_api
   # IndexedDB, for the browser medium (web.dart).
   web: ^1.1.0
   # Reading the commit journal's entries back.
