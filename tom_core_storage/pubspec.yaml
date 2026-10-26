@@ -40,4 +40,4 @@ dev_dependencies:
   test: ^1.25.0
   # The live contract and the Gitea fixture, for the gated live suites.
   tom_test_support:
-    path: ../../devops/tom_test_support
+    path: ../../basics/tom_test_support
