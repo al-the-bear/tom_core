@@ -110,7 +110,7 @@ Future<List<AgentSdkWorkspaceCandidate>> discoverHostedAiWorkspaces({
 }
 
 /// What one discovery scan concluded for a transport's configuration.
-class HostedServerResolution {
+final class HostedServerResolution {
   /// The port to connect to, or null when nothing matched.
   final int? port;
 
@@ -127,7 +127,7 @@ class HostedServerResolution {
 }
 
 /// Reaches Anthropic through the CLI server of a running VS Code.
-class HostedCliServerAiTransport implements AgentSdkServerTransport {
+final class HostedCliServerAiTransport implements AgentSdkServerTransport {
   /// The loopback host the CLI server is expected on.
   final String host;
 

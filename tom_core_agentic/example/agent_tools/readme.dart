@@ -1,11 +1,12 @@
-// The compiled form of the `## Example` section in `../README.md`: the fence
+// The compiled form of the agent tools' `### Example` section in
+// `../../README.md`: the fence
 // there appears here verbatim.
 
 // ignore_for_file: avoid_print
 
 import 'dart:convert';
 
-import 'package:tom_core_agent_tools/tom_core_agent_tools.dart';
+import 'package:tom_core_agentic/agent_tools.dart';
 
 /// What the tools reach: notes by id, one kept out of the agent's view.
 final notes = {'n1': 'Buy milk', 'n2': 'Call Ada', 'vault': 'pin 1234'};

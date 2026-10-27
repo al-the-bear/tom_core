@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * The standalone Agent SDK server — the no-VS-Code half of
- * `tom_core_agent_sdk`'s transports.
+ * `tom_core_agentic`'s Agent SDK transports.
  *
  * It speaks the **CLI server's existing wire**, unchanged: JSON-RPC 2.0
  * messages in 4-byte-big-endian-length-prefixed frames over a loopback TCP

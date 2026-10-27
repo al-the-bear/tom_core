@@ -7,7 +7,7 @@
 /// build has no reason to link it.
 library;
 
-export 'src/testing/fake_ai_server.dart' hide main;
-export 'src/testing/fixture_scripts.dart';
-export 'src/testing/node_runtime.dart';
-export 'src/testing/spawn_timings.dart';
+export 'src/agent_sdk/testing/fake_ai_server.dart' hide main;
+export 'src/agent_sdk/testing/fixture_scripts.dart';
+export 'src/agent_sdk/testing/node_runtime.dart';
+export 'src/agent_sdk/testing/spawn_timings.dart';

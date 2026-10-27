@@ -6,7 +6,10 @@
 Storage for Tom applications — a compare-and-swap storage port, keyed file
 media, a device-local cache and a durable offline commit journal — with the
 local filesystem, a GitHub repository, any git server over smart HTTP, the
-browser and the cache cipher behind entry points of their own.
+browser and the cache cipher behind entry points of their own; and, in
+`settings.dart`, the settings and secrets an application keeps beside its
+documents: device settings, the key port, the secret-store port, identity and
+storage locations.
 
 ## Overview
 
@@ -83,6 +86,7 @@ Dart SDK `^3.10.0`. No Flutter dependency.
 | `package:tom_core_storage/git.dart` | `TomGitStorage`, `TomGitLocator`, `tomGitMemoryClones` | all, the web included (over `tom_git` and `http`) |
 | `package:tom_core_storage/web.dart` | `tomOpenBrowserMedium`, `TomBrowserStorageException` | browser (a VM test gets an in-memory stand-in) |
 | `package:tom_core_storage/cipher.dart` | `TomAesGcmCacheCipher` | all |
+| `package:tom_core_storage/settings.dart` | device settings, the settings-key bootstrap, the key port, the secret-store port, identity, storage locations and forgetting one | all, the web included (no `dart:io`, no container format, no platform plugin) |
 | `package:tom_core_storage/testing.dart` | `TomMemoryRemote`, `TomMemoryStorage`, `TomStaleHead` — a test double; only a test imports it | all |
 
 ## Quick start
@@ -118,6 +122,82 @@ Future<void> main() async {
 }
 ```
 
+## Settings and secrets
+
+`package:tom_core_storage/settings.dart`.
+
+An application with encrypted documents holds two kinds of settings:
+
+- **What follows the person** — tokens, document keys, identity, registered
+  locations — kept in an encrypted settings container whose format the
+  application chooses.
+- **What describes the machine** — the window layout, the log's location, the
+  cache quota — kept in a plain YAML **device settings** file
+  (`TomDeviceSettings`) that is readable when nothing else works, never synced
+  and never a secret.
+
+The settings container needs a key, and its key cannot live inside it. So a
+device holds **one** secret outside both, in the platform secret store
+(`TomSecretStore`), with only its *handle* in device settings.
+`TomSettingsKeyBootstrap` mints that secret on first launch and finds it again
+afterwards; a wiped keychain re-mints the secret under the same handle, and a
+keychain that cannot be asked at all is raised as `TomSecretStoreException`
+naming the call that failed.
+
+The **key port** states a container key as material (`TomKeyMaterial`: a
+passphrase, a key file's bytes, or a pointer to a key file), registers keys per
+container with a default behind them (`TomKeyRegistry`), and persists them
+between sessions (`TomKeyStore`). A container library's binding turns material
+into its own credentials; nothing above it names that library.
+
+**Locations** (`TomStorageLocation`, `TomLocationRegistry`) are a convenience
+list of places to offer, never an access-control list. `TomLocationForgetting`
+removes one together with every trace this device keeps for it — per-file key
+overrides, cache blobs and records, unpushed journal entries — after `survey`
+has said what that would remove.
+
+| Type | What it does |
+| ---- | ------------ |
+| `TomDeviceSettings` | The device settings file: an open registry of keys written back whole, typed accessors for the settings-key handle, the log's path and level and the cache's quota and sealing, and one serialized write queue. |
+| `TomSettingsKeyBootstrap` | Mints the device's settings key into the secret store and records its handle; answers a `TomSettingsKey`. |
+| `TomSecretStore` | The platform secret-store port (implements the cache's `TomCacheKeyStore`); `TomInMemorySecretStore` for tests. |
+| `TomSecretStoreException` | A secret store that could not answer, naming the step (`TomSecretStoreStep`) and keeping the cause. |
+| `TomKeyMaterial` | A container key: passphrase, key-file bytes, key-file locator; `isResolvable` and `isEmpty` kept apart. |
+| `TomKeyRegistry` | The keys a session tries, by container, with a default; `TomMemoryKeyRegistry` opens nothing. |
+| `TomKeyStore` | Keys persisted between sessions: two defaults and per-file overrides; `TomInMemoryKeyStore`. |
+| `TomIdentity` | The display name and stable author id content is attributed to, with the `unknown` sentinel. |
+| `TomStorageLocation`, `TomLocationRegistry` | Registered locations, keyed by locator; `TomInMemoryLocationRegistry` remembers for the session. |
+| `TomLocationForgetting` | `survey` and `forget` a location and its traces (`TomLocationTraces`, `TomForgottenLocation`). |
+
+```dart
+import 'package:tom_core_storage/settings.dart';
+import 'package:tom_core_storage/io.dart';
+
+Future<void> main() async {
+  final device = TomDeviceSettings(
+    locator: 'device.yaml',
+    storage: const TomLocalFileSystemStorage(),
+  );
+  // A platform keychain in an application; in memory here.
+  final secrets = TomInMemorySecretStore();
+
+  final key = await TomSettingsKeyBootstrap(
+    device: device,
+    secrets: secrets,
+  ).ensure();
+  // key.secret opens the settings container; key.handle is in device.yaml.
+
+  device.cacheQuotaBytes = 256 << 20;
+  await device.save();
+}
+```
+
+- **No container format.** The encrypted settings container, and turning key
+  material into its credentials, belong to a container binding the application
+  supplies.
+- **No platform secret store.** The keychain implementation is the host's —
+  a Flutter host binds the platform keychain behind `TomSecretStore`.
+
 ## Limits
 
 - **Two remote backends.** GitHub, reached through its REST and git-data API,
@@ -139,6 +219,7 @@ Future<void> main() async {
 | `archive` | runtime | a medium's ZIP form |
 | `yaml` | runtime | reading the journal back |
 | `meta` | runtime | `@visibleForTesting` |
+| `uuid` | runtime | the handle a minted settings key is stored under (`settings.dart`) |
 | `path` | runtime | paths on the local filesystem (`io.dart`) |
 | `tom_github_api` | runtime | the GitHub REST and git-data API (`github.dart`) |
 | `tom_git` | runtime | git objects, packs and smart HTTP in pure Dart (`git.dart`) |
@@ -150,11 +231,13 @@ Future<void> main() async {
 
 ## Status
 
-Version **0.1.0**. `dart test` runs the unit suite, the local-filesystem
-atomicity suite, the GitHub backend against an in-memory GitHub, the storage
+Version **0.1.0**. `dart test` runs the unit suite, the settings suite in
+`test/settings/` (the device file and its write queue, the bootstrap against a
+failing and a wiped keychain, the key port, forgetting a location), the
+local-filesystem atomicity suite, the GitHub backend against an in-memory GitHub, the storage
 contract (`test/support/storage_contract.dart`) against the local filesystem
 and the git backend over an in-memory git server, a dart2js compile of the
-default, GitHub, git and web entry points, and —
+default, settings, GitHub, git and web entry points, and —
 through `test/browser_suite_test.dart` — the IndexedDB suite on Chrome
 (`TOM_SKIP_BROWSER_TESTS=1` skips it, saying so).
 

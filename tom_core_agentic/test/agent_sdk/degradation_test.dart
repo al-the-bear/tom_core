@@ -16,11 +16,11 @@ library;
 import 'dart:async';
 
 import 'package:test/test.dart';
-import 'package:tom_core_agent_sdk/tom_core_agent_sdk.dart';
+import 'package:tom_core_agentic/agent_sdk.dart';
 import 'package:tom_llm/tom_llm.dart';
 
 import 'support/requests.dart';
-import 'package:tom_core_agent_sdk/testing.dart';
+import 'package:tom_core_agentic/agent_sdk_testing.dart';
 import 'support/sessions.dart';
 
 /// A transport that is never reachable, and counts how often it was asked.

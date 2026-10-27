@@ -13,10 +13,10 @@ import 'dart:isolate';
 /// reaches the same fixture this package's own suites run.
 String agentSdkFixtureScript(String name) {
   final uri = Isolate.resolvePackageUriSync(
-    Uri.parse('package:tom_core_agent_sdk/src/testing/$name.dart'),
+    Uri.parse('package:tom_core_agentic/src/agent_sdk/testing/$name.dart'),
   );
   if (uri == null) {
-    throw StateError('no package configuration resolves tom_core_agent_sdk');
+    throw StateError('no package configuration resolves tom_core_agentic');
   }
   final path = File.fromUri(uri).path;
   if (!File(path).existsSync()) {

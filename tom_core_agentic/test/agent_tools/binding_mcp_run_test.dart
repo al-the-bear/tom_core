@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:test/test.dart';
-import 'package:tom_core_agent_tools/tom_core_agent_tools.dart';
+import 'package:tom_core_agentic/agent_tools.dart';
 
 import 'support/notes.dart';
 

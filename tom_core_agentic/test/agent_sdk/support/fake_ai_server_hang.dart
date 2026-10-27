@@ -20,7 +20,7 @@ library;
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:tom_core_agent_sdk/testing.dart';
+import 'package:tom_core_agentic/agent_sdk_testing.dart';
 
 Future<void> main(List<String> args) async {
   final server = await FakeAiServer.start(

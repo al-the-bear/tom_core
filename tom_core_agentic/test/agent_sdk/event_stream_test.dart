@@ -2,7 +2,7 @@
 /// the app as its trail event, offline.
 ///
 /// The SDK messages are **recorded**, not invented: a live run through each
-/// transport wrote `test/fixtures/sdk_messages/<transport>_agent_run.json`
+/// transport wrote `test/agent_sdk/fixtures/sdk_messages/<transport>_agent_run.json`
 /// (`event_stream_live_test.dart`, `AGENT_SDK_RECORD=1`).
 /// Each recording is replayed three ways: straight into the translator, over
 /// the hosted transport's socket to a fake CLI server, and through the
@@ -18,20 +18,20 @@ import 'dart:io';
 import 'package:test/test.dart';
 import 'package:tom_basics/diagnostics.dart';
 import 'package:tom_vscode_scripting_api/tom_vscode_scripting_api.dart';
-import 'package:tom_core_agent_sdk/src/transport/sdk_trail_translator.dart';
-import 'package:tom_core_agent_sdk/tom_core_agent_sdk.dart';
+import 'package:tom_core_agentic/src/agent_sdk/transport/sdk_trail_translator.dart';
+import 'package:tom_core_agentic/agent_sdk.dart';
 import 'package:tom_llm/tom_llm.dart';
 
 import 'support/tool_binding.dart';
 import 'support/requests.dart';
-import 'package:tom_core_agent_sdk/testing.dart';
+import 'package:tom_core_agentic/agent_sdk_testing.dart';
 import 'support/stand_in.dart';
 
 List<Map<String, dynamic>> _recording(String transport) => [
   for (final message
       in jsonDecode(
             File(
-              'test/fixtures/sdk_messages/${transport}_agent_run.json',
+              'test/agent_sdk/fixtures/sdk_messages/${transport}_agent_run.json',
             ).readAsStringSync(),
           )
           as List)
@@ -502,7 +502,7 @@ void main() {
         'server, delivers the recorded run', () async {
       final transport = StandaloneNodeAiTransport(
         node: llmNodeAt(standInExecutable),
-        serverScript: 'test/support/replay_ai_server.dart',
+        serverScript: 'test/agent_sdk/support/replay_ai_server.dart',
         startupTimeout: spawnStartupTimeout,
       );
       addTearDown(transport.close);

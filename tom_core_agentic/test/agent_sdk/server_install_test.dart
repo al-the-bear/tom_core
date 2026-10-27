@@ -31,7 +31,7 @@ import 'dart:io';
 
 import 'package:test/test.dart';
 
-import 'package:tom_core_agent_sdk/tom_core_agent_sdk.dart';
+import 'package:tom_core_agentic/agent_sdk.dart';
 import 'package:tom_llm/tom_llm.dart';
 
 import 'support/stand_in.dart';
@@ -346,7 +346,7 @@ void main() {
       expect(
         File('node$_sep$agentSdkServerLockfileName').existsSync(),
         isTrue,
-        reason: 'run from tom_core_agent_sdk; the tracked source is the input',
+        reason: 'run from tom_core_agentic; the tracked source is the input',
       );
       final dest = '${_tempDir('agent_sdk_build').path}${_sep}ai';
       stageAgentSdkServer(nodeSourceDir: source.path, destination: dest);

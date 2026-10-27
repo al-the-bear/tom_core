@@ -19,12 +19,12 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:test/test.dart';
-import 'package:tom_core_agent_sdk/tom_core_agent_sdk.dart';
+import 'package:tom_core_agentic/agent_sdk.dart';
 
 import 'package:tom_llm/tom_llm.dart';
 
 import 'support/credential_ai_server.dart' show credentialReportPrefix;
-import 'package:tom_core_agent_sdk/testing.dart';
+import 'package:tom_core_agentic/agent_sdk_testing.dart';
 import 'support/stand_in.dart';
 
 Future<Map<String, Object?>> _connectAndReport(
@@ -58,7 +58,7 @@ void main() {
     final reported = <String>[];
     final transport = StandaloneNodeAiTransport(
       node: llmNodeAt(standInExecutable),
-      serverScript: 'test/support/credential_ai_server.dart',
+      serverScript: 'test/agent_sdk/support/credential_ai_server.dart',
       apiKey: 'sk-ant-test-isolated',
       credentialIsolationRoot: root.path,
       startupTimeout: spawnStartupTimeout,
@@ -88,7 +88,7 @@ void main() {
       final reported = <String>[];
       final transport = StandaloneNodeAiTransport(
         node: llmNodeAt(standInExecutable),
-        serverScript: 'test/support/credential_ai_server.dart',
+        serverScript: 'test/agent_sdk/support/credential_ai_server.dart',
         apiKey: 'sk-ant-test-isolated',
         credentialIsolationRoot: root.path,
         startupTimeout: spawnStartupTimeout,
@@ -107,7 +107,7 @@ void main() {
     final reported = <String>[];
     final transport = StandaloneNodeAiTransport(
       node: llmNodeAt(standInExecutable),
-      serverScript: 'test/support/credential_ai_server.dart',
+      serverScript: 'test/agent_sdk/support/credential_ai_server.dart',
       credentialIsolationRoot: root.path,
       startupTimeout: spawnStartupTimeout,
       onStderr: reported.add,

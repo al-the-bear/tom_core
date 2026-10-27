@@ -4,11 +4,11 @@
 /// declarations, an in-process MCP server) and preview-then-apply runs.
 library;
 
-export 'src/audit.dart';
-export 'src/binding.dart';
-export 'src/errors.dart';
-export 'src/invocation.dart';
-export 'src/preview_then_apply.dart';
-export 'src/schema.dart';
-export 'src/scope.dart';
-export 'src/tool.dart';
+export 'src/agent_tools/audit.dart';
+export 'src/agent_tools/binding.dart';
+export 'src/agent_tools/errors.dart';
+export 'src/agent_tools/invocation.dart';
+export 'src/agent_tools/preview_then_apply.dart';
+export 'src/agent_tools/schema.dart';
+export 'src/agent_tools/scope.dart';
+export 'src/agent_tools/tool.dart';

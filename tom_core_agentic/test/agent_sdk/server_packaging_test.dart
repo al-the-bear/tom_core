@@ -19,7 +19,7 @@
 ///
 /// The last group starts the real server out of a real install, so it needs
 /// Node and an installed tree; it reads the install from
-/// `AGENT_SDK_APP_DATA` (`dart run tom_core_agent_sdk:install_agent_sdk_server
+/// `AGENT_SDK_APP_DATA` (`dart run tom_core_agentic:install_agent_sdk_server
 /// --app-data DIR` produces one) and skips without it — unless
 /// `AGENT_SDK_REQUIRE_PAYLOAD` is set, which is what CI does.
 ///
@@ -32,16 +32,16 @@ import 'dart:io';
 
 import 'package:test/test.dart';
 
-import 'package:tom_core_agent_sdk/tom_core_agent_sdk.dart';
+import 'package:tom_core_agentic/agent_sdk.dart';
 import 'package:tom_llm/tom_llm.dart';
 
-import 'package:tom_core_agent_sdk/testing.dart';
+import 'package:tom_core_agentic/agent_sdk_testing.dart';
 import 'support/sessions.dart';
 
 /// Set where the end-to-end payload group must **run** rather than skip.
 ///
 /// A release machine sets it. Locally it is unset, so a developer who has not
-/// run `npm ci` in `tom_core_agent_sdk/node` still gets a clean skip rather than a
+/// run `npm ci` in `tom_core_agentic/node` still gets a clean skip rather than a
 /// failure about a tree they never asked for.
 const _requirePayloadVar = 'AGENT_SDK_REQUIRE_PAYLOAD';
 
@@ -49,12 +49,12 @@ final bool _payloadRequired =
     (Platform.environment[_requirePayloadVar] ?? '').isNotEmpty;
 
 /// The app data folder an installed AI server lives in (`<dir>/ai`), as
-/// `dart run tom_core_agent_sdk:install_agent_sdk_server --app-data <dir>` leaves it.
+/// `dart run tom_core_agentic:install_agent_sdk_server --app-data <dir>` leaves it.
 const _appDataVar = 'AGENT_SDK_APP_DATA';
 
 const _noInstall =
     '$_appDataVar names no installed AI server — run '
-    '`dart run tom_core_agent_sdk:install_agent_sdk_server --app-data <dir>` and set '
+    '`dart run tom_core_agentic:install_agent_sdk_server --app-data <dir>` and set '
     '$_appDataVar=<dir>';
 
 /// `<AGENT_SDK_APP_DATA>/ai` when it holds a finished install, else null.
@@ -113,7 +113,7 @@ Directory? _sourceNodeDir() {
     if (File('${candidate.path}${sep}agent_sdk_server.js').existsSync()) {
       return candidate;
     }
-    final nested = Directory('${dir.path}${sep}tom_core_agent_sdk${sep}node');
+    final nested = Directory('${dir.path}${sep}tom_core_agentic${sep}node');
     if (File('${nested.path}${sep}agent_sdk_server.js').existsSync()) {
       return nested;
     }
@@ -664,7 +664,7 @@ void main() {
           ? 'no Node >= $requiredNodeMajorVersion is on this machine'
           : installDir == null
           ? _noInstall
-          : 'the server source tom_core_agent_sdk/node was not found';
+          : 'the server source tom_core_agentic/node was not found';
 
       // Skipping is right for a developer who has not installed the server,
       // and wrong as the permanent state of the only end-to-end proof. This

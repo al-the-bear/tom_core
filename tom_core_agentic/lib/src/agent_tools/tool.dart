@@ -32,7 +32,7 @@ typedef AgentToolInvoke<C extends AgentToolContext> =
 const _callWritesKey = #agentToolCallWrites;
 
 /// A named, declared operation on behalf of an agent.
-class AgentTool<C extends AgentToolContext> {
+final class AgentTool<C extends AgentToolContext> {
   /// Stable, snake_case.
   final String name;
 

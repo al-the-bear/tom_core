@@ -58,7 +58,7 @@ String agentSdkMcpToolName(String server, String name) =>
 
 /// A connected CLI-server endpoint, reduced to the one operation the AI
 /// adapter needs.
-class CliServerAiChannel {
+final class CliServerAiChannel {
   /// The transport id reported in errors raised from this channel.
   final String transportId;
 

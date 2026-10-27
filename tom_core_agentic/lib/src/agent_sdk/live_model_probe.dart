@@ -44,7 +44,7 @@ const agentSdkProbeBound = Duration(seconds: 30);
 enum AgentSdkProbeOutcome { answered, noModel, unreachable }
 
 /// What the probe found, and how long finding it took.
-class AgentSdkProbe {
+final class AgentSdkProbe {
   final AgentSdkProbeOutcome outcome;
   final Duration elapsed;
 

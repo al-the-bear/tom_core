@@ -1,6 +1,6 @@
 /// A stand-in for `agent_sdk_server.js` that answers every query with the
 /// Agent SDK messages a live standalone run recorded
-/// (`test/fixtures/sdk_messages/standalone_agent_run.json`, written by
+/// (`test/agent_sdk/fixtures/sdk_messages/standalone_agent_run.json`, written by
 /// `event_stream_live_test.dart`).
 ///
 /// Spawned by the standalone transport exactly as the real server is, so the
@@ -11,11 +11,11 @@ library;
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:tom_core_agent_sdk/testing.dart';
+import 'package:tom_core_agentic/agent_sdk_testing.dart';
 
 /// Where the standalone recording is, relative to the package root.
 const standaloneRecording =
-    'test/fixtures/sdk_messages/standalone_agent_run.json';
+    'test/agent_sdk/fixtures/sdk_messages/standalone_agent_run.json';
 
 Future<void> main(List<String> args) async {
   final recorded = [

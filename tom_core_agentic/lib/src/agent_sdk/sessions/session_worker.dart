@@ -33,7 +33,7 @@ import '../stall_bound.dart';
 import '../transport/transport.dart';
 
 /// The worker side of one session.
-class AiSessionWorker {
+final class AiSessionWorker {
   final AgentSdkServerTransport _transport;
   final void Function(Map<String, Object?> message) _send;
 

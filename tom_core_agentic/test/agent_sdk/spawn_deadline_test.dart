@@ -30,10 +30,10 @@ library;
 
 import 'package:test/test.dart';
 
-import 'package:tom_core_agent_sdk/tom_core_agent_sdk.dart';
+import 'package:tom_core_agentic/agent_sdk.dart';
 import 'package:tom_llm/tom_llm.dart';
 
-import 'package:tom_core_agent_sdk/testing.dart';
+import 'package:tom_core_agentic/agent_sdk_testing.dart';
 import 'support/stand_in.dart';
 
 void main() {
@@ -74,7 +74,7 @@ void main() {
         node: llmNodeAt(standInExecutable),
         // A fixture that starts a VM and then waits for stdin without ever
         // printing a ready line: the startup wait is live and open.
-        serverScript: 'test/support/never_ready_server.dart',
+        serverScript: 'test/agent_sdk/support/never_ready_server.dart',
         startupTimeout: spawnStartupTimeout,
       );
 
@@ -108,7 +108,7 @@ void main() {
       // act on.
       final transport = StandaloneNodeAiTransport(
         node: llmNodeAt(standInExecutable),
-        serverScript: 'test/support/dying_server.dart',
+        serverScript: 'test/agent_sdk/support/dying_server.dart',
         startupTimeout: spawnStartupTimeout,
       );
       addTearDown(transport.close);
@@ -137,7 +137,7 @@ void main() {
       // original flake.
       final transport = StandaloneNodeAiTransport(
         node: llmNodeAt(standInExecutable),
-        serverScript: 'test/support/never_ready_server.dart',
+        serverScript: 'test/agent_sdk/support/never_ready_server.dart',
         startupTimeout: const Duration(milliseconds: 700),
       );
 

@@ -16,10 +16,10 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:test/test.dart';
-import 'package:tom_core_agent_sdk/tom_core_agent_sdk.dart';
+import 'package:tom_core_agentic/agent_sdk.dart';
 import 'package:tom_llm/io.dart';
 
-import '../example/readme_example.dart' as example;
+import '../../example/agent_sdk/readme.dart' as example;
 
 /// Runs [body] and returns every line it printed, in order.
 ///

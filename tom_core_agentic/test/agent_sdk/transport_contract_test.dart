@@ -25,12 +25,12 @@ import 'dart:io';
 
 import 'package:test/test.dart';
 import 'package:tom_vscode_scripting_api/tom_vscode_scripting_api.dart';
-import 'package:tom_core_agent_sdk/tom_core_agent_sdk.dart';
+import 'package:tom_core_agentic/agent_sdk.dart';
 import 'package:tom_llm/tom_llm.dart';
 
 import 'support/requests.dart';
 import 'support/completion_events.dart';
-import 'package:tom_core_agent_sdk/testing.dart';
+import 'package:tom_core_agentic/agent_sdk_testing.dart';
 import 'support/stand_in.dart';
 import 'support/path_ai_server.dart' show pathReportPrefix;
 import 'support/sessions.dart';
@@ -339,7 +339,7 @@ void main() {
       () async {
         final transport = StandaloneNodeAiTransport(
           node: llmNodeAt(standInExecutable),
-          serverScript: 'test/support/does_not_exist.dart',
+          serverScript: 'test/agent_sdk/support/does_not_exist.dart',
         );
         expect(await transport.probe(), isFalse);
         await expectLater(
@@ -460,7 +460,7 @@ void main() {
       final reported = <String>[];
       final transport = StandaloneNodeAiTransport(
         node: llmNodeAt(standInExecutable),
-        serverScript: 'test/support/path_ai_server.dart',
+        serverScript: 'test/agent_sdk/support/path_ai_server.dart',
         startupTimeout: spawnStartupTimeout,
         onStderr: reported.add,
       );
@@ -494,7 +494,7 @@ void main() {
       // `dart` is on PATH wherever this suite runs — it is what ran it.
       final transport = StandaloneNodeAiTransport(
         node: llmNodeAt('dart'),
-        serverScript: 'test/support/path_ai_server.dart',
+        serverScript: 'test/agent_sdk/support/path_ai_server.dart',
         startupTimeout: spawnStartupTimeout,
         onStderr: reported.add,
       );
@@ -867,7 +867,7 @@ void main() {
       // to count, and the abandonment names this transport.
       final transport = StandaloneNodeAiTransport(
         node: llmNodeAt(standInExecutable),
-        serverScript: 'test/support/fake_ai_server_hang.dart',
+        serverScript: 'test/agent_sdk/support/fake_ai_server_hang.dart',
         startupTimeout: spawnStartupTimeout,
       );
       await transport.connect();

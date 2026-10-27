@@ -8,12 +8,12 @@
 /// app through an in-process MCP server.
 library;
 
-export 'src/server_payload.dart';
-export 'src/session_provider.dart';
-export 'src/sessions/session_manager.dart';
-export 'src/stall_bound.dart';
-export 'src/transport/cli_server_channel.dart';
-export 'src/transport/hosted_transport.dart';
-export 'src/transport/standalone_transport.dart';
-export 'src/transport/transport.dart';
-export 'src/transport_selector.dart';
+export 'src/agent_sdk/server_payload.dart';
+export 'src/agent_sdk/session_provider.dart';
+export 'src/agent_sdk/sessions/session_manager.dart';
+export 'src/agent_sdk/stall_bound.dart';
+export 'src/agent_sdk/transport/cli_server_channel.dart';
+export 'src/agent_sdk/transport/hosted_transport.dart';
+export 'src/agent_sdk/transport/standalone_transport.dart';
+export 'src/agent_sdk/transport/transport.dart';
+export 'src/agent_sdk/transport_selector.dart';

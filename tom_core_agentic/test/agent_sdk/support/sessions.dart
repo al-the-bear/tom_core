@@ -6,7 +6,7 @@
 library;
 
 import 'package:test/test.dart';
-import 'package:tom_core_agent_sdk/tom_core_agent_sdk.dart';
+import 'package:tom_core_agentic/agent_sdk.dart';
 
 AgentSdkSessionManager testSessions({bool inProcess = false}) {
   final sessions = AgentSdkSessionManager(

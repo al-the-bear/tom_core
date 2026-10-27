@@ -1,4 +1,5 @@
-/// The compiled form of the `## Example` section in `../README.md`.
+/// The compiled form of the `### Example` section of the Agent SDK provider in
+/// `../../README.md`.
 ///
 /// Every `dart` fence in that section appears here verbatim; a snippet that is
 /// only displayed has not been shown to compile.
@@ -11,7 +12,7 @@ library;
 
 import 'dart:io';
 
-import 'package:tom_core_agent_sdk/tom_core_agent_sdk.dart';
+import 'package:tom_core_agentic/agent_sdk.dart';
 import 'package:tom_llm/io.dart';
 
 Future<void> main() async {

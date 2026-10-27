@@ -14,10 +14,10 @@
 /// Agent SDK can reach:
 ///
 /// ```bash
-/// cd tom_core_agent_sdk/node && npm install
+/// cd tom_core_agentic/node && npm install
 /// export ANTHROPIC_API_KEY=sk-ant-… # optional — see below
 /// export AGENT_SDK_LIVE=1
-/// dart test test/live_completion_test.dart
+/// dart test test/agent_sdk/live_completion_test.dart
 /// ```
 ///
 /// The key is optional because it is not the only credential the SDK accepts:
@@ -32,7 +32,7 @@
 ///
 /// ```bash
 /// export AGENT_SDK_LIVE_HOSTED=1
-/// dart test test/live_completion_test.dart
+/// dart test test/agent_sdk/live_completion_test.dart
 /// ```
 ///
 /// The CLI server is **not** running merely because VS Code is: start it with
@@ -68,13 +68,13 @@ import 'dart:io';
 
 import 'package:test/test.dart';
 import 'package:tom_vscode_scripting_api/tom_vscode_scripting_api.dart';
-import 'package:tom_core_agent_sdk/live_probe.dart';
-import 'package:tom_core_agent_sdk/tom_core_agent_sdk.dart';
+import 'package:tom_core_agentic/agent_sdk_live_probe.dart';
+import 'package:tom_core_agentic/agent_sdk.dart';
 import 'package:tom_llm/tom_llm.dart';
 
 import 'support/requests.dart';
 import 'support/completion_events.dart';
-import 'package:tom_core_agent_sdk/testing.dart';
+import 'package:tom_core_agentic/agent_sdk_testing.dart';
 import 'support/sessions.dart';
 
 const _liveVar = 'AGENT_SDK_LIVE';
@@ -230,11 +230,11 @@ void main() {
     if (node == null || !installed) {
       test(
         'skipped — needs Node >= 20 and `npm install` in '
-        'tom_core_agent_sdk/node',
+        'tom_core_agentic/node',
         () {},
         skip: node == null
             ? 'no Node >= 20 found'
-            : 'run `npm install` in tom_core_agent_sdk/node',
+            : 'run `npm install` in tom_core_agentic/node',
       );
       return;
     }
@@ -443,7 +443,7 @@ void main() {
           isTrue,
           reason:
               'the standalone server was not found at "$script"; run '
-              '`npm install` in tom_core_agent_sdk/node',
+              '`npm install` in tom_core_agentic/node',
         );
 
         await _expectRealCompletion(

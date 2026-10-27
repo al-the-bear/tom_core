@@ -1,5 +1,5 @@
 import 'package:test/test.dart';
-import 'package:tom_core_agent_tools/tom_core_agent_tools.dart';
+import 'package:tom_core_agentic/agent_tools.dart';
 
 /// An atomic scope over one list: rolled back to its copy when the body throws.
 AgentAtomicScope _over(List<String> list, List<String> labels) =>

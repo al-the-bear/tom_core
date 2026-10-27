@@ -6,4 +6,4 @@
 /// product build has no reason to link it.
 library;
 
-export 'src/live_model_probe.dart';
+export 'src/agent_sdk/live_model_probe.dart';

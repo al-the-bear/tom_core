@@ -4,7 +4,7 @@
 /// its stall bound).
 library;
 
-import 'package:tom_core_agent_sdk/tom_core_agent_sdk.dart';
+import 'package:tom_core_agentic/agent_sdk.dart';
 import 'package:tom_llm/tom_llm.dart';
 
 Stream<String> textOf(Stream<AgentSdkCompletionEvent> events) => events

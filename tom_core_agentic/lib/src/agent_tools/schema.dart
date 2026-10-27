@@ -31,7 +31,7 @@ enum AgentToolValueType {
 }
 
 /// One declared argument of a tool.
-class AgentToolArgument {
+final class AgentToolArgument {
   final String name;
   final AgentToolValueType type;
   final bool required;
@@ -56,7 +56,7 @@ class AgentToolArgument {
 }
 
 /// A tool's declared argument set.
-class AgentToolSchema {
+final class AgentToolSchema {
   final List<AgentToolArgument> arguments;
 
   const AgentToolSchema(this.arguments);

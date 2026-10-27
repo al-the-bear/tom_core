@@ -1,6 +1,6 @@
 # Standalone Agent SDK server
 
-The no-VS-Code half of `tom_core_agent_sdk`'s transports.
+The no-VS-Code half of `tom_core_agentic`'s Agent SDK transports.
 `StandaloneNodeAiTransport` starts it; you do not run it by hand.
 
 ## What it is
@@ -37,7 +37,7 @@ it means "the same interface" is literal rather than approximate.
 ## Setup
 
 ```bash
-cd tom_core_agent_sdk/node
+cd tom_core_agentic/node
 npm ci --omit=dev
 ```
 

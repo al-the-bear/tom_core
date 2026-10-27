@@ -50,7 +50,7 @@ import 'transport/standalone_transport.dart';
 /// the code that does what it describes.
 const agentSdkInstallExplanationUrl =
     'https://github.com/al-the-bear/tom_ai_core/blob/main/'
-    'tom_core_agent_sdk/README.md#installing-the-server';
+    'tom_core_agentic/README.md#installing-the-server';
 
 /// The lockfile the shipped source carries and `npm ci` installs from.
 const agentSdkServerLockfileName = 'package-lock.json';
@@ -117,7 +117,7 @@ Set<String> _keptPlatformPackages(String platform) => {
 bool _isPlatformPackage(String name) => name.startsWith('$_sdkName-');
 
 /// Which Claude Code CLI an install will get, or why it can get none.
-class AgentSdkPlatformChoice {
+final class AgentSdkPlatformChoice {
   /// The SDK platform suffix npm will install (`darwin-arm64`, …), or null
   /// when [refusal] is set.
   final String? platform;
@@ -226,7 +226,7 @@ AgentSdkPlatformChoice chooseAgentSdkPlatform({
 // ─── The build side: what package_app.dart puts in the app ─────────────────
 
 /// What a staging run did, so a build log says something a human can check.
-class AgentSdkStagingReport {
+final class AgentSdkStagingReport {
   /// Where the source files were written.
   final String destination;
 
@@ -250,7 +250,7 @@ class AgentSdkStagingReport {
 
 /// Thrown when the build cannot stage the server's source. A build failure,
 /// never a runtime one: at run time a missing server is the availability gate.
-class AgentSdkStagingException implements Exception {
+final class AgentSdkStagingException implements Exception {
   final String message;
   const AgentSdkStagingException(this.message);
   @override
@@ -298,7 +298,7 @@ AgentSdkStagingReport stageAgentSdkServer({
 
 /// What [verifyAgentSdkServerSource] found: everything wrong with the AI
 /// server source a build carries. Empty [problems] means shippable.
-class AgentSdkSourceVerification {
+final class AgentSdkSourceVerification {
   /// The directory that was checked.
   final String sourceDir;
 
@@ -398,7 +398,7 @@ AgentSdkSourceVerification verifyAgentSdkServerSource({
 ///
 /// A list of problems rather than a throw on the first one: a check that
 /// reports one fault per run makes fixing three faults three installs.
-class AgentSdkPayloadVerification {
+final class AgentSdkPayloadVerification {
   /// The directory that was checked.
   final String payloadDir;
 
@@ -469,7 +469,7 @@ AgentSdkPayloadVerification verifyAgentSdkPayloadFor({
     // Everything below would report the same fact five more times.
     problems.add(
       'the AI server is not installed at "$payloadDir" — press Install in '
-      'the AI notice, or run `dart run tom_core_agent_sdk:install_agent_sdk_server`',
+      'the AI notice, or run `dart run tom_core_agentic:install_agent_sdk_server`',
     );
     return result();
   }
@@ -637,7 +637,7 @@ Future<int> runAgentSdkCommand(
 }
 
 /// What the installing Node said about itself.
-class AgentSdkNodeRuntime {
+final class AgentSdkNodeRuntime {
   /// `process.versions.node`, e.g. `22.22.3`.
   final String version;
 
@@ -683,9 +683,9 @@ enum AgentSdkServerInstallState {
 /// install is built in a sibling directory and moved into place only after it
 /// passed [verifyAgentSdkPayloadFor], so an interrupted or failed install
 /// leaves the previous state — installed or not — exactly as it was.
-class AgentSdkServerInstaller {
+final class AgentSdkServerInstaller {
   /// The shipped server source: the packaged app's `ai/` folder, or a source
-  /// checkout's `tom_core_agent_sdk/node`.
+  /// checkout's `tom_core_agentic/node`.
   final String sourceDir;
 
   /// Where the server is installed: `<app-data>/ai`.
@@ -978,7 +978,7 @@ class AgentSdkServerInstaller {
 }
 
 /// What [AgentSdkServerInstaller.install] ended with.
-class AgentSdkServerInstallResult {
+final class AgentSdkServerInstallResult {
   /// Whether the server is installed and passed its post-install check.
   final bool ok;
 

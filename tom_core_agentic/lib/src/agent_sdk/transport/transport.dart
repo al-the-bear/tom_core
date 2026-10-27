@@ -46,7 +46,7 @@ import 'package:tom_llm/tom_llm.dart';
 /// password field. Nothing in this class can hold an application's model
 /// object; that is the point of it existing rather than passing an
 /// [LlmRequest] straight through.
-class AgentSdkCompletionRequest {
+final class AgentSdkCompletionRequest {
   /// The feature-supplied instruction.
   final String prompt;
 
@@ -104,7 +104,7 @@ final class AgentSdkToolSet {
   /// Every tool the model may call, generated from the registry.
   final List<AgentSdkToolDeclaration> declarations;
 
-  /// Runs the call [name] with [arguments] and answers the model. A refusal is
+  /// Runs the call `name` with `arguments` and answers the model. A refusal is
   /// an answer with `isError: true`, never a throw.
   final Future<LlmToolAnswer> Function(
     String name,
@@ -289,7 +289,7 @@ enum AgentSdkUnavailableKind {
 }
 
 /// What an on-demand install of a transport's server ended with.
-class AgentSdkInstallOutcome {
+final class AgentSdkInstallOutcome {
   /// Whether the server is now installed and passed its post-install check.
   final bool ok;
 

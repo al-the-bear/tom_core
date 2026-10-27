@@ -5,7 +5,7 @@
 /// The offline suite (`event_stream_test.dart`) replays
 /// recorded SDK messages; this run is where they are recorded. With
 /// `AGENT_SDK_RECORD=1` each transport's messages are written, sanitized, to
-/// `test/fixtures/sdk_messages/<transport>_agent_run.json` — re-record when
+/// `test/agent_sdk/fixtures/sdk_messages/<transport>_agent_run.json` — re-record when
 /// the Agent SDK, the model or a transport changes.
 ///
 /// Gated as `live_completion_test.dart` is: `AGENT_SDK_LIVE=1` for
@@ -21,12 +21,12 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:test/test.dart';
-import 'package:tom_core_agent_sdk/live_probe.dart';
-import 'package:tom_core_agent_sdk/tom_core_agent_sdk.dart';
+import 'package:tom_core_agentic/agent_sdk_live_probe.dart';
+import 'package:tom_core_agentic/agent_sdk.dart';
 import 'package:tom_llm/tom_llm.dart';
 
 import 'support/requests.dart';
-import 'package:tom_core_agent_sdk/testing.dart';
+import 'package:tom_core_agentic/agent_sdk_testing.dart';
 import 'support/sessions.dart';
 import 'support/tool_binding.dart';
 
@@ -150,8 +150,9 @@ Future<void> _expectFullTrail(
 
   if (_enabled(_recordVar)) {
     final home = Platform.environment['HOME'] ?? '';
-    final file = File('test/fixtures/sdk_messages/${name}_agent_run.json')
-      ..createSync(recursive: true);
+    final file = File(
+      'test/agent_sdk/fixtures/sdk_messages/${name}_agent_run.json',
+    )..createSync(recursive: true);
     file.writeAsStringSync(
       '${const JsonEncoder.withIndent('  ').convert(_sanitize(recorded, home))}\n',
     );

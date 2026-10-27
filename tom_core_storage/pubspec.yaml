@@ -34,6 +34,8 @@ dependencies:
   web: ^1.1.0
   # Reading the commit journal's entries back.
   yaml: ^3.1.0
+  # The device id the settings bootstrap mints (settings.dart).
+  uuid: ^4.0.0
 
 dev_dependencies:
   lints: ^6.0.0

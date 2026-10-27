@@ -33,7 +33,7 @@ import 'transport/transport.dart';
 /// them: show one sentence, once, and forget it. The shell already flattens
 /// both to strings at its boundary, so a reader downstream could not act on the
 /// distinction even if it were encoded here.
-class AgentSdkNotice {
+final class AgentSdkNotice {
   /// A user-facing explanation. Credential-free and content-free.
   final String message;
 
@@ -49,7 +49,7 @@ class AgentSdkNotice {
 /// the hosted transport comes first because when VS Code is already running it
 /// costs nothing and holds the credential itself, and the standalone transport
 /// follows because starting a process is the fallback, not the default.
-class AgentSdkTransportSelector {
+final class AgentSdkTransportSelector {
   /// The candidates, in preference order.
   final List<AgentSdkServerTransport> candidates;
 

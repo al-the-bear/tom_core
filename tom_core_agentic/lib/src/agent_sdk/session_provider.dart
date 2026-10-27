@@ -28,7 +28,7 @@ import 'transport/transport.dart';
 import 'transport_selector.dart';
 
 /// Anthropic, reached indirectly through whichever transport was selected.
-class AgentSdkSessionProvider extends LlmProvider {
+final class AgentSdkSessionProvider extends LlmProvider {
   /// Owns the availability verdict and the active transport.
   final AgentSdkTransportSelector selector;
 

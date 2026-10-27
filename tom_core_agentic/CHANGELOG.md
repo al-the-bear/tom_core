@@ -1,4 +1,41 @@
-## Unreleased
+## 1.9.0
+
+### Added
+
+- **`agent_sdk.dart`: Anthropic's Claude Agent SDK as a `tom_llm` provider**,
+  with `agent_sdk_live_probe.dart`, `agent_sdk_testing.dart`, the
+  `install_agent_sdk_server` executable and the Node server under `node/`.
+  Formerly the package `tom_core_agent_sdk`, which is deleted, with no
+  re-export:
+
+  - **Transports.** `AgentSdkServerTransport` with the hosted VS Code CLI server
+    transport (port scan, identity handshake, workspace pin) and the standalone
+    Node child transport (credential isolation, ready line, stderr on death).
+  - **The channel.** `CliServerAiChannel` with the stall bound as a gap and
+    401-retry detection, and `SdkTrailTranslator` from Agent SDK messages to
+    `tom_llm` run events.
+  - **Selection.** `AgentSdkTransportSelector` and the availability gate with a
+    reason a program can branch on.
+  - **Sessions.** `AgentSdkSessionProvider` and one isolate per session.
+  - **The server.** `agent_sdk_server.js`, its on-demand install
+    (`install_agent_sdk_server`) and payload verification.
+  - **Live probe.** `live_probe.dart`; test doubles in `testing.dart`.
+
+- **`agent_tools.dart`: the tool surface for LLM agents.** Formerly the
+  package `tom_core_agent_tools`, which is deleted, with no re-export:
+
+  - **Tools.** `AgentTool` with a validated argument schema, `AgentToolRegistry`
+    with `where`, and `AgentToolContext` with the guard and the transaction
+    hooks an application implements.
+  - **Scope and consent.** `AgentScope` and the five-gate `agentGuard`;
+    `AgentInvocation` with execution granted only against an
+    `AgentExecutionGrant` statement.
+  - **Audit.** `AgentAuditEntry`, `AgentAuditLog`, `AgentMemoryAuditLog` and
+    `AgentFileAuditLog` over an `AgentAuditStore`; the per-call
+    `AgentAuditRecording`.
+  - **Presentations.** `AgentToolBinding` (an `LlmToolBinding`) and
+    `AgentInProcessMcpServer`.
+  - **Runs.** `AgentRun` with its dry run, and `AgentPreviewThenApply`.
 
 ### Removed
 
@@ -13,6 +50,10 @@
 
 ### Changed
 
+- The Dart SDK floor is 3.10.8, and `tom_vscode_scripting_api` is taken from
+  pub.dev (`^2.0.0`).
+- **Breaking: the Agent SDK and agent tool classes are `final`**, under the
+  package's class-modifier rule; none was subclassed or implemented anywhere.
 - **`promptSha256`** is `'sha256:'` + `tom_basics`' `tomSha256OfText`; the
   digest is unchanged. `crypto` moves to `dev_dependencies` (the test checks
   the digest against it independently), and the `tom_basics` floor is 3.3.0.

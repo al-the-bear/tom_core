@@ -10,7 +10,7 @@
 /// export AGENT_SDK_LIVE_MEASURE=1
 /// export AGENT_SDK_LIVE_HOSTED=1 # also measure the VS Code path
 /// export AGENT_SDK_MEASURE_TOKENS=170000 # optional; the context size
-/// dart test test/stall_gap_measure_live_test.dart
+/// dart test test/agent_sdk/stall_gap_measure_live_test.dart
 /// ```
 ///
 /// **Its own gate**, because one run spends about the context size in input
@@ -54,9 +54,9 @@ import 'dart:io';
 
 import 'package:test/test.dart';
 import 'package:tom_vscode_scripting_api/tom_vscode_scripting_api.dart';
-import 'package:tom_core_agent_sdk/tom_core_agent_sdk.dart';
+import 'package:tom_core_agentic/agent_sdk.dart';
 
-import 'package:tom_core_agent_sdk/testing.dart';
+import 'package:tom_core_agentic/agent_sdk_testing.dart';
 
 const _gateVar = 'AGENT_SDK_LIVE_MEASURE';
 const _hostedVar = 'AGENT_SDK_LIVE_HOSTED';
@@ -305,7 +305,7 @@ void main() {
       if (node == null || !installed) {
         fail(
           '$_gateVar is set, so this may not skip — but '
-          '${node == null ? 'no Node >= 20 was found' : 'the server has no node_modules (run `npm ci --omit=dev` in tom_core_agent_sdk/node)'}.',
+          '${node == null ? 'no Node >= 20 was found' : 'the server has no node_modules (run `npm ci --omit=dev` in tom_core_agentic/node)'}.',
         );
       }
       final server = await Process.start(node, [script]);

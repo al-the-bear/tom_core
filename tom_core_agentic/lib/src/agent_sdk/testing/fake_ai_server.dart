@@ -4,7 +4,7 @@
 /// port, answers `workspace.getInfoVce` so the real discovery scan can identify
 /// it, and answers `agentSdk.queryVce` with scripted chunks.
 ///
-/// **Spawned** (`dart test/support/fake_ai_server.dart`) it backs the
+/// **Spawned** (`dart test/agent_sdk/support/fake_ai_server.dart`) it backs the
 /// standalone-transport tests, standing in for `agent_sdk_server.js` — it
 /// prints the same `AGENT_SDK_SERVER_READY` line and exits when stdin closes,
 /// so the Dart side's process lifecycle is exercised for real without needing
@@ -85,12 +85,12 @@ enum FakeAiServerBehaviour {
   callTools,
 
   /// Send [FakeAiServer.recorded] — Agent SDK messages recorded from a live
-  /// run (`test/fixtures/sdk_messages/`) — one chunk each, then
+  /// run (`test/agent_sdk/fixtures/sdk_messages/`) — one chunk each, then
   /// end the stream.
   replay,
 }
 
-class FakeAiServer {
+final class FakeAiServer {
   final ServerSocket _server;
 
   /// Text deltas returned for each query.
@@ -536,7 +536,7 @@ Future<void> main(List<String> args) async {
 /// "available" for reasons the test cannot see. So the socket stays bound, and
 /// every connection is closed at once: to a client that is indistinguishable
 /// from no server, and [serve] later turns the same socket into one.
-class ReservedPort {
+final class ReservedPort {
   final ServerSocket _socket;
   void Function(Socket socket)? _handler;
 

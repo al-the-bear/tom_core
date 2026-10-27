@@ -7,7 +7,7 @@ import 'dart:async';
 
 import 'package:test/test.dart';
 
-import '../example/readme_example.dart' as example;
+import '../../example/agent_tools/readme.dart' as example;
 
 Future<List<String>> _printed(FutureOr<void> Function() body) async {
   final lines = <String>[];

@@ -1,15 +1,15 @@
 /// Writes a recorded Agent SDK run as the run events the transports make of
 /// it — the replay an application's UI test feeds a stand-in transport.
 ///
-/// The input is one of `test/fixtures/sdk_messages/<transport>_agent_run.json`
-/// (recorded by `test/event_stream_live_test.dart`); the output is a JSON list
+/// The input is one of `test/agent_sdk/fixtures/sdk_messages/<transport>_agent_run.json`
+/// (recorded by `test/agent_sdk/event_stream_live_test.dart`); the output is a JSON list
 /// of `LlmEvent.toMap` maps, liveness dropped. The translation is the one a
 /// live run goes through (`SdkTrailTranslator`), so the replay is what the
 /// trail would have shown, not a paraphrase of it.
 ///
 /// ```
 /// dart run tool/write_trail_replay.dart \
-///  test/fixtures/sdk_messages/hosted_agent_run.json out.json [tool-server]
+///  test/agent_sdk/fixtures/sdk_messages/hosted_agent_run.json out.json [tool-server]
 /// ```
 ///
 /// `tool-server` is the in-process MCP server the recording's tools were
@@ -20,8 +20,8 @@ library;
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:tom_core_agent_sdk/src/transport/sdk_trail_translator.dart';
-import 'package:tom_core_agent_sdk/tom_core_agent_sdk.dart';
+import 'package:tom_core_agentic/src/agent_sdk/transport/sdk_trail_translator.dart';
+import 'package:tom_core_agentic/agent_sdk.dart';
 import 'package:tom_vscode_scripting_api/tom_vscode_scripting_api.dart';
 
 void main(List<String> args) {

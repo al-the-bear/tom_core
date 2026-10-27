@@ -85,6 +85,14 @@ String? _resolve(String from, String target) {
   return parts.join('/');
 }
 
+/// Whether [rel] (relative to `lib/`) belongs to the main library rather than
+/// to `agent_sdk.dart`'s or `agent_tools.dart`'s.
+bool _inMainLibrary(String rel) =>
+    !rel.startsWith('src/agent_sdk/') &&
+    !rel.startsWith('src/agent_tools/') &&
+    !rel.startsWith('agent_sdk') &&
+    rel != 'agent_tools.dart';
+
 void main() {
   final libDir = Directory('lib');
 
@@ -96,6 +104,11 @@ void main() {
     for (final entity in libDir.listSync(recursive: true)) {
       if (entity is! File || !entity.path.endsWith('.dart')) continue;
       final rel = entity.path.substring('lib/'.length);
+      // The Agent SDK and agent-tool libraries have barrels of their own and
+      // their own claims: the Agent SDK transports spawn processes by
+      // purpose, and agent_tools.dart's web safety is pinned by its own
+      // shape test. This test is about the main barrel.
+      if (!_inMainLibrary(rel)) continue;
       final edges = <String>{};
       for (final line in entity.readAsLinesSync()) {
         final match = _directive.firstMatch(line);
@@ -187,7 +200,7 @@ void main() {
 
       expect(
         prose,
-        contains('${direct.length} files under `lib/` import `dart:io`'),
+        contains('${direct.length} files of the main library import `dart:io`'),
         reason:
             'the direct-importer count in README.md is not ${direct.length}',
       );

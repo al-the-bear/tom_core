@@ -2,7 +2,7 @@
 /// what the app's Install button does, from a terminal.
 ///
 /// ```bash
-/// dart run tom_core_agent_sdk:install_agent_sdk_server --app-data <dir>
+/// dart run tom_core_agentic:install_agent_sdk_server --app-data <dir>
 /// ```
 ///
 /// Runs `npm ci --omit=dev` from the server's shipped lockfile into
@@ -15,7 +15,7 @@ library;
 
 import 'dart:io';
 
-import 'package:tom_core_agent_sdk/tom_core_agent_sdk.dart';
+import 'package:tom_core_agentic/agent_sdk.dart';
 import 'package:tom_llm/io.dart';
 
 Future<void> main(List<String> args) async {
@@ -97,7 +97,7 @@ String _defaultSourceDir() {
 }
 
 const _usage = '''
-Usage: dart run tom_core_agent_sdk:install_agent_sdk_server --app-data <dir> [options]
+Usage: dart run tom_core_agentic:install_agent_sdk_server --app-data <dir> [options]
 
   -a, --app-data <dir>  The app data folder; the server goes to <dir>/ai.
   -d, --dest <dir>      Install into <dir> exactly, instead of <app-data>/ai.

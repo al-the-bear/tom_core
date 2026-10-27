@@ -51,7 +51,7 @@ import 'transport/transport.dart';
 /// **Rechecking it.** The figure has to be re-measured whenever the SDK, the
 /// model or a transport changes, and one command does it for both transports:
 /// `AGENT_SDK_LIVE_MEASURE=1 AGENT_SDK_LIVE_HOSTED=1 dart test
-/// test/stall_gap_measure_live_test.dart`
+/// test/agent_sdk/stall_gap_measure_live_test.dart`
 /// (about 170k input tokens per transport; drop `AGENT_SDK_LIVE_HOSTED` to
 /// measure the standalone server alone). It prints the largest gap and the
 /// prefill, and fails when the largest gap exceeds a tenth of this bound.

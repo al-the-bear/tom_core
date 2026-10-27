@@ -14,7 +14,7 @@ library;
 import 'dart:io';
 
 import 'package:test/test.dart';
-import 'package:tom_core_agent_sdk/tom_core_agent_sdk.dart';
+import 'package:tom_core_agentic/agent_sdk.dart';
 
 void main() {
   final sep = Platform.pathSeparator;

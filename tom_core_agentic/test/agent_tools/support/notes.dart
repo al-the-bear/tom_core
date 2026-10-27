@@ -9,7 +9,7 @@ library;
 
 import 'dart:async';
 
-import 'package:tom_core_agent_tools/tom_core_agent_tools.dart';
+import 'package:tom_core_agentic/agent_tools.dart';
 
 /// One note.
 final class Note {

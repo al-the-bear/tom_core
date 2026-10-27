@@ -32,7 +32,7 @@ enum AgentSdkSessionHosting {
 }
 
 /// The sessions of one app.
-class AgentSdkSessionManager {
+final class AgentSdkSessionManager {
   /// Where sessions run.
   final AgentSdkSessionHosting hosting;
 
@@ -67,8 +67,8 @@ class AgentSdkSessionManager {
   /// run. The stream carries [prelude] and then what the session
   /// reports, ends with one [LlmRunEnded], and does not error.
   /// Cancelling it cancels the run. [onFailure] observes a transport failure
-  /// (the provider closes the availability gate on `unreachable`); [tools] answers the
-  /// run's tool calls, here, in the main isolate.
+  /// (the provider closes the availability gate on `unreachable`); the
+  /// request's `tools` answers the run's tool calls, here, in the main isolate.
   Stream<LlmEvent> run({
     required String sessionId,
     required AgentSdkServerTransport transport,

@@ -98,7 +98,7 @@ const agentSdkServerPayloadDir = 'ai';
 const requiredNodeMajorVersion = llmRequiredNodeMajorVersion;
 
 /// Reaches Anthropic through a Node server the app starts and owns.
-class StandaloneNodeAiTransport implements AgentSdkInstallableTransport {
+final class StandaloneNodeAiTransport implements AgentSdkInstallableTransport {
   /// Produces the Node this transport runs on: the app's search of the
   /// machine, or a path the caller vouches for (`llmNodeAt`).
   ///
@@ -403,7 +403,7 @@ class StandaloneNodeAiTransport implements AgentSdkInstallableTransport {
       _unavailableReason =
           'the AI server script was not found at "$serverScript" — set '
           '$standaloneScriptEnvVar to an installed server\'s script, or run '
-          '`npm ci --omit=dev` in tom_core_agent_sdk/node';
+          '`npm ci --omit=dev` in tom_core_agentic/node';
       _unavailableKind = AgentSdkUnavailableKind.unreachable;
       return false;
     }
@@ -840,7 +840,7 @@ String agentSdkNodeTooOldReason(String nodeExecutable, int major) =>
 /// installer — a developer's tool, not the packaged app's path.
 ///
 /// Resolution order: the environment override, then a source checkout's
-/// `tom_core_agent_sdk/node`, found by walking up. A packaged app does not come
+/// `tom_core_agentic/node`, found by walking up. A packaged app does not come
 /// through here: the `ai/` folder beside its executable holds the server's
 /// *source* without its dependencies, which cannot run until the user has
 /// installed them (see [StandaloneNodeAiTransport.forApp]).
@@ -927,9 +927,7 @@ List<String> _sourceCandidates(String scriptName, String sep) {
 List<String> _packageNode(String scriptName, String sep) {
   final Uri? lib;
   try {
-    lib = Isolate.resolvePackageUriSync(
-      Uri.parse('package:tom_core_agent_sdk/'),
-    );
+    lib = Isolate.resolvePackageUriSync(Uri.parse('package:tom_core_agentic/'));
   } on UnsupportedError {
     // A runner without package resolution (the Flutter test host); the
     // directory walks below still find a checkout.
@@ -953,8 +951,8 @@ List<String> _walkUpFor(Directory start, String scriptName, String sep) {
   // bounded so a script run from `/` cannot turn this into a filesystem walk.
   for (var i = 0; i < 6; i++) {
     for (final package in [
-      'tom_core_agent_sdk',
-      'tom_ai${sep}core${sep}tom_core_agent_sdk',
+      'tom_core_agentic',
+      'tom_ai${sep}core${sep}tom_core_agentic',
     ]) {
       final candidate = '${dir.path}$sep$package${sep}node$sep$scriptName';
       if (File(candidate).existsSync()) return [candidate];

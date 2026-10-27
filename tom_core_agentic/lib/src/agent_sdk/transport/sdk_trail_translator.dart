@@ -21,7 +21,7 @@ import 'package:tom_llm/tom_llm.dart';
 import 'transport.dart';
 
 /// One run's translation from Agent SDK messages to events.
-class SdkTrailTranslator {
+final class SdkTrailTranslator {
   /// The ids of the assistant messages whose text or thinking streamed as
   /// deltas — their assembled copies add no text.
   final Set<String> _streamed = {};

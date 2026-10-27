@@ -69,7 +69,7 @@ final class AgentToolErrorCode {
 /// Thrown rather than returned because a tool's body is ordinary Dart, and the
 /// alternative — every step returning a result union — would put the refusal
 /// check at every call site inside the tool rather than at its edge.
-class AgentToolException implements Exception {
+final class AgentToolException implements Exception {
   final AgentToolErrorCode code;
   final String message;
 
