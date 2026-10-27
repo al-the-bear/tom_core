@@ -123,6 +123,11 @@ broadest live UI reference.
 | 5 | [`core_flutter_acl_sample`](tom_core_samples/core_flutter_acl_sample/README.md) | The Advanced Container Layout engine — sizing, growth, alignment, nesting, borders, variants, and the four authorization states. |
 | 6 | [`core_flutter_acl_responsive`](tom_core_samples/core_flutter_acl_responsive/README.md) | Responsive UIs on the ACL engine — breakpoints, family-swap, adaptive layouts across phone/tablet/desktop. |
 
+Beside the path,
+[`core_flutter_code_scanner_sample`](tom_core_samples/core_flutter_code_scanner_sample/README.md)
+shows one contract on its own: `tom_core_flutter`'s `TomCodeScanner`,
+implemented over the `mobile_scanner` camera plugin.
+
 ---
 
 ## Documentation index

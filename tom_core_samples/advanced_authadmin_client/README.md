@@ -15,7 +15,7 @@ assignments, and the `projectRole` × field grant matrix via the auth server's
 **There is no `example/` directory and no `doc/` folder, and both absences are
 deliberate: this package is itself the runnable example, and a sample has no
 consumers who need its surface mirrored — see [the suite map](../README.md) for
-that decision, which is the same for all sixteen sample packages.** This README
+that decision, which is the same for all seventeen sample packages.** This README
 is the package's one description of its surface. It is one of the nine `advanced_*` packages that
 together form the full-stack sample, and an `example/` here would either
 duplicate `lib/main.dart` or isolate a fragment the console already shows in

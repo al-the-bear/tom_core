@@ -147,7 +147,7 @@ it demonstrates is `tom_flutter_ui`'s, which documents its widget catalogue in
 [`doc/widgets.md`](../../tom_flutter_ui/doc/widgets.md) and indexes its API
 summaries in
 [`doc/api/api_summary_index.md`](../../tom_flutter_ui/doc/api/api_summary_index.md).
-The decision is taken once for all sixteen samples in [the suite map](../README.md).
+The decision is taken once for all seventeen samples in [the suite map](../README.md).
 
 ## Component groups
 

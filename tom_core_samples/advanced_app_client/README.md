@@ -16,7 +16,7 @@ four-state authorization driven live over the wire, plus cross-user sharing.
 deliberate: this package is itself the runnable example, and a sample has no
 consumers who need its surface mirrored — see
 [the suite map](../README.md) for that decision, which is the same for all
-sixteen sample packages.** It is one of the nine `advanced_*` packages
+seventeen sample packages.** It is one of the nine `advanced_*` packages
 that together form the full-stack sample, so `flutter run` on the package is
 the demonstration — an `example/` here would either duplicate `lib/main.dart`
 or isolate a fragment the app already shows in context. Generate a platform folder first ([Before the first run](#before-the-first-run)),

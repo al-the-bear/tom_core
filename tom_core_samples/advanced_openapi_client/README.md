@@ -19,7 +19,7 @@ call the same servers, through the shared contracts and the registry.
 generated, so the runnable demonstration is the live suite,
 `test/generated_client_integration_test.dart`, and a sample has no consumers
 who need its surface mirrored — see [the suite map](../README.md) for that
-decision, which is the same for all sixteen sample packages.
+decision, which is the same for all seventeen sample packages.
 [The family's index](../README_advanced_sample.md#the-nine-packages) says which
 of the nine carry an `example/`, and why.
 

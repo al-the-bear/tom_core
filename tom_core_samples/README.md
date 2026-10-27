@@ -16,7 +16,7 @@ with the depth. Nothing about a package's API is re-documented here — the samp
 
 **No sample package carries a `doc/` folder, and none carries a `doc/api/`
 summary. That is a decision, not an omission**, and it is the same for all
-sixteen. The framework packages carry API mirrors because they have consumers
+seventeen. The framework packages carry API mirrors because they have consumers
 who need the surface without reading the source; a sample has none. Every one
 here is `publish_to: none`, nothing outside this folder imports one, and the
 three libraries among them (`advanced_todo_domain`,
@@ -49,8 +49,9 @@ and `advanced_todo_contracts` an endpoint table generated from its registry.
 > is the secured successor to `core_server_sample` / `core_client_sample`. See
 > its own map: [**Advanced Tom Core Full-Stack Sample**](README_advanced_sample.md).
 
-> **Status: built.** All seven subprojects below are present and analyze-clean
-> with green test suites — the shared `todo_domain` package and the six samples.
+> **Status: built.** All eight subprojects below are present and analyze-clean
+> with green test suites — the shared `todo_domain` package, the six samples of
+> the todo application, and the code-scanner sample.
 > Each links back here and to the package READMEs it exercises. The two live
 > demo apps in the repository root —
 > [`tom_flutter_form_test`](tom_flutter_form_test/README.md) and
@@ -125,6 +126,16 @@ linked from its name.
 | [`core_flutter_acl_sample`](core_flutter_acl_sample/README.md) | The Advanced Container Layout engine — sizing (M/P/X), growth, alignment, nesting, borders/titles, variants/breakpoints, and the four authorization states. | [`tom_flutter_ui`](../tom_flutter_ui/README.md) ACL |
 | [`core_flutter_acl_responsive`](core_flutter_acl_responsive/README.md) | Responsive UIs on the ACL engine — breakpoints, family-swap, and adaptive layouts across phone / tablet / desktop widths. | [`tom_flutter_ui`](../tom_flutter_ui/README.md) ACL |
 
+### Focused feature samples
+
+One sample stands outside the todo application: it shows a single framework
+contract implemented over a third-party plugin, and shares no domain with the
+others.
+
+| Project | What it is | Exercises |
+| --- | --- | --- |
+| [`core_flutter_code_scanner_sample`](core_flutter_code_scanner_sample/README.md) | Reading QR codes and barcodes with the device camera: an adapter that implements the `TomCodeScanner` contract over the `mobile_scanner` plugin, and a screen that scans through the contract. The plugin stays in the application; the framework holds only the contract. | [`tom_core_flutter`](../tom_core_flutter/README.md) security |
+
 ---
 
 ## Examples
@@ -141,6 +152,7 @@ server whose most useful seam needs no infrastructure gets a runnable file.
 | `core_client_sample` | **no — exempt** | a Flutter GUI app: `lib/main.dart` is the entry point and the serial widget suite is its smoke test; argued in its README, [§13 Tests](core_client_sample/README.md#13-tests) |
 | `core_flutter_ui_showcase`, `core_flutter_form_showcase` | **no — exempt** | Flutter showcase apps: each screen is an example, run with `flutter run` |
 | `core_flutter_acl_sample`, `core_flutter_acl_responsive` | **no — exempt** | Flutter showcase apps, as above |
+| `core_flutter_code_scanner_sample` | **no — exempt** | a Flutter app: `lib/main.dart` is the entry point, and its two suites run the adapter's mappings and the scan screen without a camera |
 | the nine `advanced_*` packages | the three hand-written libraries and `advanced_ops_server` — yes; the other four runtimes and the generated `advanced_openapi_client` — **no, exempt** | stated per package in [the advanced family's index](README_advanced_sample.md#the-nine-packages) |
 
 An exempt row is a decision, not a gap: a sweep that finds no `example/` in one
@@ -161,6 +173,9 @@ previous ones introduced.
 | 5 | [`core_flutter_acl_sample`](core_flutter_acl_sample/README.md) | The Advanced Container Layout engine and the four authorization states. |
 | 6 | [`core_flutter_acl_responsive`](core_flutter_acl_responsive/README.md) | Responsive UIs on the ACL engine. |
 
+[`core_flutter_code_scanner_sample`](core_flutter_code_scanner_sample/README.md)
+is not on the path: it assumes nothing from the samples before it and can be
+read at any point.
 ---
 
 ## Running the samples
@@ -193,7 +208,7 @@ bootstrap) — see its `README.md` for the one-command bring-up.
 
 ## Reflection seeds
 
-Thirteen of the sixteen packages carry a generated `*.reflection.dart` — the
+Thirteen of the seventeen packages carry a generated `*.reflection.dart` — the
 reflection seed a program or a test installs with `initializeReflection()`.
 The rule for them is the same in every package, decided once here:
 
@@ -271,6 +286,7 @@ tom_core_samples/
   core_flutter_form_showcase/    forms framework in depth
   core_flutter_acl_sample/       Advanced Container Layout engine + four auth states
   core_flutter_acl_responsive/   responsive layouts on the ACL engine
+  core_flutter_code_scanner_sample/  TomCodeScanner over the mobile_scanner camera plugin
   advanced_todo_domain/          the advanced sample's reflected domain and grade vocabulary
   advanced_todo_contracts/       its wire DTOs and endpoint registry
   advanced_client_core/          its Flutter-free authenticated HTTP client

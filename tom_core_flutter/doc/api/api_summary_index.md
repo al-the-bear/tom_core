@@ -17,7 +17,7 @@ the kernel API) and adds the Flutter-specific surface documented here.
 | Preferences | [api_summary_preferences.md](api_summary_preferences.md) | Device-stored preferences (`TomDevicePreferences`, per-platform stores) and the account store's client (`TomUserPreferencesClient`). |
 | Resources | [api_summary_resources.md](api_summary_resources.md) | Typed config properties (`TomProperty` and typed subclasses). |
 | Runtime | [api_summary_runtime.md](api_summary_runtime.md) | Compile-time platform selection (`clientPlatformUtils`). |
-| Security | [api_summary_security.md](api_summary_security.md) | The client second-factor flow (`Tom2FAFlowPanel`, `Tom2FAFlowController`), its pluggable mechanism registry and the shipped TOTP mechanism. |
+| Security | [api_summary_security.md](api_summary_security.md) | The client second-factor flow (`Tom2FAFlowPanel`, `Tom2FAFlowController`), its pluggable mechanism registry, the shipped TOTP mechanism, and the code-scanner contract (`TomCodeScanner`) an application implements over its camera plugin. |
 
 ## Modules
 
@@ -107,6 +107,12 @@ the kernel API) and adds the Flutter-specific surface documented here.
 | `TomWebAuthnPlatformException` | class | A passkey ceremony the platform could not complete. |
 | `Tom2FATexts` | class | Every resource key the second-factor UI resolves, and the helpers that resolve them; entirely static. |
 | `TomQrCodeView` | class | A QR code painted from the pure-Dart `qr` encoder, re-encoded only when its payload changes. |
+| `TomCodeScanner` | abstract class | The contract for reading codes with the device camera; the application implements it over the plugin it chooses. |
+| `TomFakeCodeScanner` | class | The scanner a test drives: it delivers the codes and failures the test tells it to. |
+| `TomScannedCode` | class | One decoded code: payload, format, raw bytes, time read. |
+| `TomCodeFormat` | enum | The symbologies a scan can ask for — `qrCode`, `dataMatrix`, `aztec`, `pdf417`, `code128`, `code39`, `ean13`, `ean8`, `upcA`, `other`. |
+| `TomCodeScannerAvailability` | enum | Whether a scanner can read codes here, and if not, why. |
+| `TomCodeScannerException` | class | Why a scan could not start, keyed `code_scanner.*`. |
 
 ## Alphabetical Type Index
 
@@ -131,6 +137,10 @@ the kernel API) and adds the Flutter-specific surface documented here.
 | `TomClientEnvironment` | Configuration |
 | `TomClientException` | Little Things |
 | `TomClientUIException` | Little Things |
+| `TomCodeFormat` | Security |
+| `TomCodeScanner` | Security |
+| `TomCodeScannerAvailability` | Security |
+| `TomCodeScannerException` | Security |
 | `TomDevicePreferenceCipher` | Preferences |
 | `TomDevicePreferenceException` | Preferences |
 | `TomDevicePreferenceJson` | Preferences |
@@ -140,6 +150,7 @@ the kernel API) and adds the Flutter-specific surface documented here.
 | `TomDoubleProperty` | Resources |
 | `TomEffectiveSettings` | Configuration |
 | `TomEncryptedDevicePreferenceStore` | Preferences |
+| `TomFakeCodeScanner` | Security |
 | `TomFileClientConfigurationStore` | Configuration |
 | `TomFlutterPlatformUtils` | Runtime (internal — not exported) |
 | `TomIntProperty` | Resources |
@@ -153,6 +164,7 @@ the kernel API) and adds the Flutter-specific surface documented here.
 | `TomProperty<T>` | Resources |
 | `TomPropertyException` | Resources |
 | `TomQrCodeView` | Security |
+| `TomScannedCode` | Security |
 | `TomSetting<T>` | Configuration |
 | `TomStoredDevicePreferences` | Preferences |
 | `TomStringProperty` | Resources |

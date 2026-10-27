@@ -43,7 +43,10 @@ What it adds on top of the kernel is deliberately small:
 - **Client security** — the framework-owned second-factor flow: a
   ready-made enrol-and-challenge panel over a seam onto the application's own
   auth client, pluggable per-mechanism rendering resolved through a registry,
-  and the shipped TOTP mechanism.
+  and the shipped TOTP mechanism. Beside it, the code-scanner contract
+  (`TomCodeScanner`): the framework declares how a screen reads QR codes and
+  barcodes, and the application implements it over the camera plugin it
+  chooses.
 
 ### Relationship to `tom_flutter_ui`
 
@@ -158,6 +161,9 @@ and the server are two readings of one contract. See
 | `TomWebAuthnPlatform` | The seam to whatever makes passkeys on this target — the browser on the web |
 | `Tom2FATexts` | Every resource key the second-factor UI resolves, and the helpers that resolve them |
 | `TomQrCodeView` | A QR code painted from the pure-Dart `qr` encoder, themed like any other widget |
+| `TomCodeScanner` | The contract for reading codes with the device camera; the application implements it over its own camera plugin |
+| `TomFakeCodeScanner` | The scanner a test drives, delivering the codes and failures the test tells it to |
+| `TomScannedCode` / `TomCodeFormat` / `TomCodeScannerAvailability` / `TomCodeScannerException` | A decoded code, the symbologies a scan asks for, whether scanning can work here, and why a scan could not start |
 
 ### Little things (`little_things`)
 
@@ -197,6 +203,7 @@ Flutter toolchain (`flutter test` / a Flutter entry point).
 | [`example/preferences/`](example/preferences/preferences_example.dart) | Registering a device store once, typed reads/writes, persistence across a restart, reading and writing the account store over a real socket, and the device-over-server precedence |
 | [`example/runtime/`](example/runtime/runtime_example.dart) | Obtaining the platform-appropriate `TomPlatformUtils`, querying its predicates beside the Flutter target that decides them, and taking an HTTP client from it |
 | [`example/security/`](example/security/security_example.dart) | Walking a `Tom2FAFlowController` through all three stops of a second-factor login — chooser, enrolment and challenge — plus the registry rule that decides what the chooser may list, and resource resolution with its missing-key behaviour |
+| [`example/security/`](example/security/code_scanner_example.dart) | Installing and resolving a `TomCodeScanner`, asking its availability, taking the first code of a kind with `scanOnce`, a timeout, and a scan that cannot start — all on the `TomFakeCodeScanner` test double |
 | [`example/little_things/`](example/little_things/little_things_example.dart) | The two client exception types and the type-based discrimination pattern |
 
 > **Cross-package sample.** The

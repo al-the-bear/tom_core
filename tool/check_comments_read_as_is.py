@@ -167,10 +167,10 @@ ID_SHAPE = re.compile(r"\b([a-z]{2,12})\d+(_[a-zäñößü]{4})?\b")
 #: count, not a real obstacle.
 KNOWN_STEMS = frozenset(
     """
-    abc address api arg arm avc base black col command container data db dec
-    demo element es
+    abc address api arg arm avc base black code col command container data db
+    dec demo ean element es
     fade field flex form gsm hs http image iso layer level list map march material mp
-    name names oauth operant opt pass person phase pkcs prefix python row rs scope
+    name names oauth operant opt pass pdf person phase pkcs prefix python row rs scope
     scores sha shade sigusr spacer sqlite step street strongpass subtitle time
     total tz ucs utf value white win woff wrap
     """.split()
@@ -197,7 +197,7 @@ CAPS_SHAPE = re.compile(r"\b([A-Z]{2,12})\d+\b")
 #: mermaid node prefixes the design diagrams use (``RT1``, ``FB1``).
 KNOWN_CAPS = frozenset(
     """
-    AES AWS ES FB FF HS INT ISO MD MGF MP PKCS POP RFC RGBA RS RT SHA SIGUSR SKU
+    AES AWS ES FB FF HS INT ISO MD MGF MP PDF PKCS POP RFC RGBA RS RT SHA SIGUSR SKU
     USR UTF X ZIP
     """.split()
 )

@@ -2,7 +2,9 @@
 
 The client half of the framework's second-factor design: a ready-made
 enrol-and-challenge flow, a seam onto the application's own auth client, a
-registry of pluggable per-mechanism panels, and the shipped TOTP mechanism.
+registry of pluggable per-mechanism panels, and the shipped TOTP mechanism. It
+also holds the code-scanner contract: the interface an application implements
+over its own camera plugin to read QR codes and barcodes.
 
 ## Table of Contents
 
@@ -17,6 +19,7 @@ registry of pluggable per-mechanism panels, and the shipped TOTP mechanism.
 - [The Shipped Passkey Mechanism](#the-shipped-passkey-mechanism)
 - [Text Resources](#text-resources)
 - [The QR View](#the-qr-view)
+- [The Code Scanner](#the-code-scanner)
 - [Dependencies](#dependencies)
 
 ---
@@ -36,6 +39,12 @@ registry of pluggable per-mechanism panels, and the shipped TOTP mechanism.
 | `TomWebAuthnPlatform` / `TomUnavailableWebAuthnPlatform` / `TomWebAuthnPlatformException` | abstract class / class / class | The seam to whatever makes passkeys on this target: the browser on the web, nothing elsewhere unless the application supplies a plugin |
 | `Tom2FATexts` | class | Every resource key this feature resolves, and the one helper that resolves them — all static |
 | `TomQrCodeView` | class | A QR code painted from the pure-Dart `qr` encoder, re-encoded only when its payload changes |
+| `TomCodeScanner` | abstract class | The contract for reading codes with the device camera; an application implements it over the camera plugin it chooses |
+| `TomFakeCodeScanner` | class | The test double: a scanner that delivers the codes and failures a test tells it to |
+| `TomScannedCode` | class | One decoded code — payload, format, raw bytes, the time it was read |
+| `TomCodeFormat` | enum | The symbologies a scan can ask for |
+| `TomCodeScannerAvailability` | enum | Whether a scanner can read codes here, and if not, why |
+| `TomCodeScannerException` | class | Why a scan could not start, keyed `code_scanner.*` |
 
 **Two client mechanisms ship: TOTP everywhere, and passkeys where the target
 has a platform authenticator** — on the web, through the browser. The server
@@ -640,15 +649,11 @@ It is sized by the caller rather than by intrinsic content: a QR code has no
 natural size, only a natural aspect, and the panel is the party that knows how
 much room it can spare.
 
-**It generates; the framework does not scan, and that is a decision.** The one
-QR use Tom Core has is showing an enrolment URI for a phone to read, and that is
-served. Reading a code — off another device, or off a printed recovery sheet —
-needs a camera preview and a decoder over its frames, and a camera plugin
-brings a platform-permissions surface (camera entitlements, runtime prompts,
-per-platform manifests) that every Tom application would carry for a use none
-of them has asked for. An application that wants to scan depends on a camera
-plugin and a decoder directly and keeps both in its own layer; there is no Tom
-interface for it to implement.
+**It generates; reading a code is the code scanner's job.** The QR use the
+second-factor flow has is showing an enrolment URI for a phone to read, and
+this widget serves it. Reading a code — off another device, or off a printed
+recovery sheet — goes through [`TomCodeScanner`](#the-code-scanner), a
+contract the framework holds without a camera plugin behind it.
 
 Encoding is the expensive part of this widget by a wide margin — a typical
 enrolment URI costs on the order of 2.6 ms, some 16 % of a 60 fps frame budget,
@@ -690,15 +695,190 @@ generic renderer with no opinion about where strings come from, and the caller
 does have one. A screen-reader user needs the widget's *purpose* announced and
 the base32 fallback string beside it, not a transcription of the code.
 
+## The Code Scanner
+
+Reading a code needs three things: a camera preview, a decoder over its
+frames, and the platform permissions both bring — camera entitlements, runtime
+prompts, per-platform manifests. A camera plugin supplies all three. The
+framework holds the **contract** for scanning and never the plugin: an
+application that scans picks its plugin, keeps it in its own layer, and
+implements `TomCodeScanner` over it in one adapter class. An application that
+does not scan carries no camera dependency and no permission surface.
+
+Everything above the adapter — a screen that scans an enrolment code, a test
+that drives one — is written against the contract. In a test it runs on
+`TomFakeCodeScanner`, which needs no camera.
+
+### The contract
+
+| Member | Signature | What it does |
+| ------ | --------- | ------------ |
+| `availability` | `Future<TomCodeScannerAvailability> availability()` | Whether scanning can work here now |
+| `scan` | `Stream<TomScannedCode> scan({Set<TomCodeFormat> formats = const {}})` | The codes the camera reads, as it reads them; every format the adapter supports when `formats` is empty |
+| `preview` | `Widget preview(BuildContext context)` | The camera preview of the running scan, placed by the screen |
+| `dispose` | `Future<void> dispose()` | Releases everything the scanner holds; it scans no more afterwards |
+| `scanOnce` | `Future<TomScannedCode?> scanOnce({formats, accept, timeout})` | The first code `scan` reads that `accept` takes, or `null` when `timeout` passes first. Implemented on the contract over `scan` |
+| `resolve` | `static TomCodeScanner? resolve()` | The installed scanner, or `null` |
+| `install` | `static void install(TomCodeScanner scanner)` | Installs the process-wide scanner, replacing one installed before |
+
+The first four are abstract; an adapter implements them. `scanOnce`,
+`resolve` and `install` come with the contract.
+
+A decoded code is a `TomScannedCode`: its `payload` text, its `format`, the
+raw `bytes` when the decoder reports them, and `scannedAt`. `TomCodeFormat`
+names the symbologies a scan can ask for — `qrCode`, `dataMatrix`, `aztec`,
+`pdf417`, `code128`, `code39`, `ean13`, `ean8` and `upcA`. A code the
+decoder reads in any other symbology arrives as `other`.
+
+### Installing and resolving a scanner
+
+The application installs its adapter once, at start-up. `install` puts it in
+the bean context by type, and `resolve` reads it back:
+
+```dart
+// at start-up
+TomCodeScanner.install(MobileScannerCodeScanner());
+
+// wherever a code is wanted
+final scanner = TomCodeScanner.resolve();
+```
+
+`resolve` answers `null` when nothing was installed. Code that offers a scan
+only where one is possible can test for that rather than fail.
+
+### The lifecycle is the stream's
+
+`scan` opens the camera when its stream is **listened to** and releases it
+when the subscription is **cancelled**. There is no start or stop method:
+listening is starting, cancelling is stopping. One scan runs at a time.
+
+A code that stays in view is reported **once**, not on every frame. A screen
+that lists what it read gets one row per code held up to the camera.
+
+`scanOnce` is the common case wrapped: it listens, waits for the first code
+`accept` takes (any code when `accept` is omitted), and cancels. It ends in
+one of four ways — a code, `null` after `timeout`, `null` when the stream
+ends, or the stream's error rethrown. On every one of them the subscription is
+cancelled before the future completes, so once `scanOnce` returns the camera
+is off.
+
+```dart
+final code = await TomCodeScanner.resolve()!.scanOnce(
+  formats: {TomCodeFormat.qrCode},
+  accept: (code) => code.payload.startsWith('otpauth://'),
+  timeout: const Duration(minutes: 1),
+);
+```
+
+### Availability
+
+`availability()` lets a screen decide whether to offer a scan button before
+the user presses it:
+
+| Value | Meaning | A screen typically |
+| ----- | ------- | ------------------ |
+| `available` | The camera can be used | Offers the scan |
+| `permissionNotRequested` | The user has not been asked yet; scanning will ask | Offers the scan |
+| `permissionDenied` | The user refused the camera; the platform's settings are the way back | Says where to allow it |
+| `noCamera` | The device has no camera | Offers no scan |
+| `unsupported` | The platform or the adapter cannot scan here | Offers no scan |
+
+What an adapter can answer depends on its plugin. A plugin that cannot report
+the permission without starting the camera answers `permissionNotRequested`
+until the first scan, and what that scan found afterwards.
+
+### Errors and their keys
+
+A scan that cannot start ends with a `TomCodeScannerException` **on the
+stream**, never with an empty stream. An empty stream would read as "nothing
+scanned yet" when the truth is "nothing can be scanned", and a screen could
+not tell the two apart. The exception's `key` names the cause:
+
+| Key | Raised when |
+| --- | ----------- |
+| `code_scanner.permission_denied` | The user refused the camera |
+| `code_scanner.no_camera` | The device has no camera |
+| `code_scanner.unsupported` | The platform or the adapter cannot scan |
+| `code_scanner.failed` | The camera could not start for another reason |
+| `code_scanner.disposed` | A scan was asked of a scanner that was disposed |
+
+`TomCodeScannerException` extends `TomException`, so its `defaultUserMessage`
+is there for a screen to show and its `rootException` carries the plugin's own
+error.
+
+### The test double
+
+`TomFakeCodeScanner` is a complete `TomCodeScanner` that a test drives by
+hand:
+
+| Member | What it does |
+| ------ | ------------ |
+| `emit(payload, {format})` | Delivers a code to the running scan; answers whether a scan was running. A code of a format the scan did not ask for is not delivered, as a real decoder would not report it |
+| `fail(cause)` | Makes the next scan end with a `code_scanner.<cause>` error |
+| `availabilityValue` | What `availability()` answers; `available` unless set |
+| `listening` | Whether a scan is running — whether "the camera is on" |
+| `lastFormats`, `scansStarted` | The formats the last scan asked for, and how many scans started |
+| `disposed` | Whether `dispose()` was called |
+
+Its `preview` is an empty box keyed
+`ValueKey('tom-fake-code-scanner-preview')`, so a widget test can find where a
+screen placed it. After `dispose()`, `scan` answers a stream that fails with
+`code_scanner.disposed`.
+
+```dart
+final fake = TomFakeCodeScanner();
+TomCodeScanner.install(fake);
+
+final enrolment = TomCodeScanner.resolve()!.scanOnce(
+  formats: {TomCodeFormat.qrCode},
+  accept: (code) => code.payload.startsWith('otpauth://'),
+);
+await Future<void>.delayed(Duration.zero);
+fake
+  ..emit('https://example.com/menu')
+  ..emit('otpauth://totp/Tom:ada?secret=JBSWY3DPEHPK3PXP');
+final code = await enrolment;   // the otpauth code; the menu link was passed over
+assert(!fake.listening);        // and the camera is off again
+```
+
+This is taken from
+[`example/security/code_scanner_example.dart`](../example/security/code_scanner_example.dart),
+which `test/code_scanner_test.dart` runs.
+
+### Writing an adapter
+
+An adapter is one class that extends `TomCodeScanner` and is the only file in
+the application that imports the camera plugin. It does five things:
+
+1. **Maps the formats.** `TomCodeFormat` to the plugin's format type and back.
+   An empty set, or one holding `other`, asks the decoder for every format.
+2. **Opens the camera on listen.** In `scan`, return a stream whose
+   `onListen` starts the plugin's camera controller with the requested
+   formats, and whose `onCancel` stops and disposes it.
+3. **Reports each code once.** Use the plugin's duplicate suppression, or
+   suppress repeats in the adapter, so a code held in view is one event.
+4. **Turns plugin errors into keys.** Catch the plugin's start-up error and add
+   a `TomCodeScannerException` with the matching `code_scanner.*` key to the
+   stream, with the plugin error as `rootException`.
+5. **Shows the preview.** `preview` returns the plugin's preview widget for
+   the running controller, or an empty box when no scan runs.
+
+`tom_core_samples/core_flutter_code_scanner_sample` is a complete adapter over
+the `mobile_scanner` plugin: `MobileScannerCodeScanner`, its format, code and
+error mappings as plain functions with their own tests, a screen that scans
+through the contract, and a widget test that drives that screen through
+`TomFakeCodeScanner`. Moving to another plugin means rewriting the adapter and
+nothing else.
+
 ## Dependencies
 
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
-| `dart:async` | dart | `two_factor_totp_client.dart` | the one-second `Timer` behind the challenge panel's countdown |
+| `dart:async` | dart | `code_scanner.dart`, `two_factor_totp_client.dart` | the one-second `Timer` behind the challenge panel's countdown; the scan stream's controller, subscription, completer and timeout `Timer` |
 | `dart:js_interop` | dart | `webauthn_platform_web.dart` | the browser's `navigator.credentials`, on the web only — selected by a conditional import |
 | `dart:js_interop_unsafe` | dart | `webauthn_platform_web.dart` | `setProperty` / `getProperty`, to set WebAuthn's binary fields as typed arrays |
 | `dart:typed_data` | dart | `webauthn_platform_web.dart` | `Uint8List`, converted to and from the browser's array buffers |
-| `flutter` | package | `qr_code_view.dart`, `two_factor_client.dart`, `two_factor_flow.dart`, `two_factor_totp_client.dart`, `two_factor_webauthn_client.dart` | `material` for the flow frame and the TOTP panels, which style their countdown and footnote lines from the ambient theme; `widgets` for the rest; `services` for the digits-only input formatter |
+| `flutter` | package | `code_scanner.dart`, `qr_code_view.dart`, `two_factor_client.dart`, `two_factor_flow.dart`, `two_factor_totp_client.dart`, `two_factor_webauthn_client.dart` | `material` for the flow frame and the TOTP panels, which style their countdown and footnote lines from the ambient theme; `widgets` for the rest; `services` for the digits-only input formatter |
 | `qr` | package | `qr_code_view.dart` | the pure-Dart QR encoder `TomQrCodeView` paints |
-| `tom_core_kernel` | package | 7 of 9 files | the wire types the controller surfaces (`Tom2FAPendingEnrolment`, `Tom2FAChallenge`, `Tom2FAMethodDescriptor` and its resource-key convention), `TomTextResourceProvider` for text lookup, `TomTotp` for the default code width, and the passkey wire types (`TomWebAuthnCreationOptions`, `TomWebAuthnRequestOptions`, the two responses, `TomBase64Url`) |
+| `tom_core_kernel` | package | 8 of 10 files | the wire types the controller surfaces (`Tom2FAPendingEnrolment`, `Tom2FAChallenge`, `Tom2FAMethodDescriptor` and its resource-key convention), `TomTextResourceProvider` for text lookup, `TomTotp` for the default code width, and the passkey wire types (`TomWebAuthnCreationOptions`, `TomWebAuthnRequestOptions`, the two responses, `TomBase64Url`), and `TomBean` and `TomException` for the code scanner's installation and its errors |
 | `tom_flutter_ui` | package | `two_factor_flow.dart`, `two_factor_totp_client.dart`, `two_factor_webauthn_client.dart` | `TomText`, `TomListTile`, `TomTextButton`, `TomSelectableText`, `TomTextField` and `TomFilledButton` — plus `TomUIIcons`, which resolves the chooser's icon names to drawable icons |

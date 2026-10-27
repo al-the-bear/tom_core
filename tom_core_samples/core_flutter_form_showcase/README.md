@@ -675,7 +675,7 @@ on it, and its only public surface is the app shell and its group list. The API
 it demonstrates is `tom_flutter_ui`'s, which carries its own reference — for the
 forms framework,
 [`api_summary_forms.md`](../../tom_flutter_ui/doc/api/api_summary_forms.md). The
-decision is taken once for all sixteen samples in [the suite map](../README.md).
+decision is taken once for all seventeen samples in [the suite map](../README.md).
 
 ---
 

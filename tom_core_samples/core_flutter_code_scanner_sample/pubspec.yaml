@@ -1,0 +1,31 @@
+name: core_flutter_code_scanner_sample
+description: >-
+  Tom Core sample — an adapter that implements tom_core_flutter's
+  TomCodeScanner over the mobile_scanner camera plugin, and a screen that
+  scans through the contract. The plugin stays in the application; the
+  framework holds only the contract.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.11.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # The contract this sample implements (TomCodeScanner) and its test double.
+  tom_core_flutter:
+    path: ../../tom_core_flutter
+
+  # The camera plugin behind the adapter: preview, decoding, permissions.
+  # Android, iOS, macOS and web.
+  mobile_scanner: ^7.4.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

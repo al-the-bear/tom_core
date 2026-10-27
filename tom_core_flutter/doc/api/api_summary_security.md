@@ -3,7 +3,8 @@
 The client half of the framework's second-factor design — the flow widget, the
 controller seam, the pluggable mechanism contract and its registry, the shipped
 TOTP and passkey mechanisms, the passkey platform seam, the resource keys and
-the QR view.
+the QR view — and the code-scanner contract an application implements over its
+own camera plugin, with its test double.
 
 ## Table of Contents
 
@@ -23,12 +24,18 @@ the QR view.
   - [TomWebAuthnPlatformException](#tomwebauthnplatformexception)
   - [Tom2FATexts](#tom2fatexts)
   - [TomQrCodeView](#tomqrcodeview)
+  - [TomCodeFormat](#tomcodeformat)
+  - [TomScannedCode](#tomscannedcode)
+  - [TomCodeScannerAvailability](#tomcodescanneravailability)
+  - [TomCodeScannerException](#tomcodescannerexception)
+  - [TomCodeScanner](#tomcodescanner)
+  - [TomFakeCodeScanner](#tomfakecodescanner)
 - [Global Functions and Constants](#global-functions-and-constants)
 - [Internal Symbols (not exported)](#internal-symbols-not-exported)
 
 ## Overview
 
-Sources: all seven exported from the package barrel
+Sources: all eight exported from the package barrel
 (`lib/tom_core_flutter.dart`). The two passkey bindings a conditional import
 selects between are not exported, and are listed under
 [Internal Symbols](#internal-symbols-not-exported):
@@ -42,10 +49,14 @@ selects between are not exported, and are listed under
 | `lib/src/tomclient/security/webauthn_platform.dart` | `TomWebAuthnPlatform`, `TomUnavailableWebAuthnPlatform`, `TomWebAuthnPlatformException` |
 | `lib/src/tomclient/security/two_factor_texts.dart` | `Tom2FATexts` |
 | `lib/src/tomclient/security/qr_code_view.dart` | `TomQrCodeView` |
+| `lib/src/tomclient/security/code_scanner.dart` | `TomCodeFormat`, `TomScannedCode`, `TomCodeScannerAvailability`, `TomCodeScannerException`, `TomCodeScanner`, `TomFakeCodeScanner` |
 
-Thirteen public types. The flow widget renders whichever stop of a second-factor
+Nineteen public types. The flow widget renders whichever stop of a second-factor
 login the application's controller reports; per-mechanism rendering is resolved
-through a process-wide registry keyed by mechanism string. See
+through a process-wide registry keyed by mechanism string. The code scanner is
+a contract only: the framework declares `TomCodeScanner` and ships no camera
+plugin, so an application implements it with an adapter over the plugin it
+chooses. See
 [`security.md`](../security.md) for the design and the integration narrative.
 
 ## Class Hierarchy
@@ -74,6 +85,16 @@ Tom2FAEnrolmentPanelContext       (value)
 Tom2FAChallengePanelContext       (value)
 Tom2FAClientRegistry              (static-only)
 Tom2FATexts                       (static-only)
+
+TomCodeScanner                    (abstract — implemented by the application's adapter)
+    └── TomFakeCodeScanner        (test double)
+
+TomException
+    └── TomCodeScannerException
+
+TomScannedCode                    (value)
+TomCodeFormat                     (enum)
+TomCodeScannerAvailability        (enum)
 ```
 
 ## Classes
@@ -552,6 +573,177 @@ const TomQrCodeView({
 Encoding uses medium error correction — the standard authenticator level. Higher
 levels buy damage tolerance a screen-displayed code has no use for, at the cost
 of a denser grid that scans worse on small displays.
+
+### TomCodeFormat
+
+The symbologies a scanner can be asked for. A code the adapter's decoder
+reports in a symbology outside this list arrives as `other`.
+
+| Value | Symbology |
+| ----- | --------- |
+| `qrCode` | QR code |
+| `dataMatrix` | Data Matrix |
+| `aztec` | Aztec |
+| `pdf417` | PDF417 |
+| `code128` | Code 128 |
+| `code39` | Code 39 |
+| `ean13` | EAN-13 |
+| `ean8` | EAN-8 |
+| `upcA` | UPC-A |
+| `other` | A symbology the decoder reported that is none of the above |
+
+### TomScannedCode
+
+One decoded code.
+
+- **Extends:** none
+
+#### Constructors
+
+```dart
+TomScannedCode({
+  required String payload,
+  TomCodeFormat format = TomCodeFormat.qrCode,
+  List<int>? bytes,
+  DateTime? scannedAt,
+})
+```
+
+`bytes` is copied into an unmodifiable list; `scannedAt` defaults to the
+moment of construction.
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `payload` | `String` | The decoded text. For a code that holds bytes no text represents, the adapter's best reading of them, often empty (final). |
+| `format` | `TomCodeFormat` | The symbology it was read in (final). |
+| `bytes` | `List<int>?` | The raw bytes, when the decoder reports them (final). |
+| `scannedAt` | `DateTime` | When it was read (final). |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `toString` | `String toString()` | *(override)* `TomScannedCode(<format>: <payload>)`. |
+
+### TomCodeScannerAvailability
+
+Whether a scanner can read codes on this device, and if not, why.
+
+| Value | Meaning |
+| ----- | ------- |
+| `available` | The camera can be used. |
+| `permissionNotRequested` | The user has not been asked yet; scanning will ask. |
+| `permissionDenied` | The user refused the camera; the platform's settings are the way back. |
+| `noCamera` | The device has no camera. |
+| `unsupported` | The platform or the adapter cannot scan here — a desktop build of an adapter that only reads on mobile, say. |
+
+### TomCodeScannerException
+
+Raised when scanning cannot start. It arrives as an error on the scan's
+stream, and `key` names why.
+
+- **Extends:** `TomException`
+
+#### Constructors
+
+```dart
+TomCodeScannerException(
+  String key,
+  String defaultUserMessage, {
+  Map<String, Object?>? parameters,
+  Object? rootException,
+  StackTrace? stack,
+})
+```
+
+The parameters mirror `TomException`.
+
+| Key | Raised when |
+| --- | ----------- |
+| `code_scanner.permission_denied` | The user refused the camera. |
+| `code_scanner.no_camera` | The device has no camera. |
+| `code_scanner.unsupported` | The platform or the adapter cannot scan. |
+| `code_scanner.failed` | The camera could not start for another reason. |
+| `code_scanner.disposed` | A scan was asked of a scanner that was disposed. |
+
+### TomCodeScanner
+
+A source of decoded codes: the device camera behind a plugin the application
+chose. The framework declares the contract and ships no implementation that
+uses a camera; an application writes an adapter over its plugin and installs
+it at start-up.
+
+The lifecycle is the stream's. `scan` opens the camera when the stream is
+listened to and releases it when the subscription is cancelled. One scan runs
+at a time. A refused permission, a missing camera and an unsupported platform
+arrive as a `TomCodeScannerException` on the stream, never as an empty
+stream, so a screen can tell "nothing scanned yet" from "nothing can be
+scanned".
+
+- **Extends:** none (abstract)
+
+#### Constructors
+
+```dart
+const TomCodeScanner()
+```
+
+#### Static Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `resolve` | `static TomCodeScanner? resolve()` | The installed scanner, or `null` when none was installed. Read from the bean context by type. |
+| `install` | `static void install(TomCodeScanner scanner)` | Installs `scanner` as the process-wide scanner, replacing one installed before. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `availability` | `Future<TomCodeScannerAvailability> availability()` | *(abstract)* Whether scanning can work here now. |
+| `scan` | `Stream<TomScannedCode> scan({Set<TomCodeFormat> formats = const {}})` | *(abstract)* The codes the camera reads, as it reads them, of `formats` — every format the adapter supports when empty. A code that stays in view is reported once, not on every frame. The camera runs while the stream is listened to. |
+| `preview` | `Widget preview(BuildContext context)` | *(abstract)* The camera preview of the running scan, placed by the screen. |
+| `dispose` | `Future<void> dispose()` | *(abstract)* Releases everything the scanner holds; it scans no more afterwards. |
+| `scanOnce` | `Future<TomScannedCode?> scanOnce({Set<TomCodeFormat> formats = const {}, bool Function(TomScannedCode code)? accept, Duration? timeout})` | The first code `scan` reads that `accept` takes (any code when `accept` is omitted), or `null` when `timeout` passes first or the stream ends. An error on the stream is rethrown. The subscription is cancelled before the future completes, so the camera is off once it returns. |
+
+### TomFakeCodeScanner
+
+A `TomCodeScanner` that reads what a test tells it to. It needs no camera and
+no plugin, so code written against the contract runs on it in a unit or
+widget test.
+
+- **Extends:** `TomCodeScanner`
+
+#### Constructors
+
+```dart
+TomFakeCodeScanner({
+  TomCodeScannerAvailability availabilityValue =
+      TomCodeScannerAvailability.available,
+})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `availabilityValue` | `TomCodeScannerAvailability` | What `availability` answers. Writable. |
+| `lastFormats` | `Set<TomCodeFormat>` | The formats the last scan asked for. |
+| `scansStarted` | `int` | How many scans were started (listened to). |
+| `listening` | `bool` | Whether a scan is running — whether "the camera is on" (getter). |
+| `disposed` | `bool` | Whether `dispose` was called (getter). |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `emit` | `bool emit(String payload, {TomCodeFormat format = TomCodeFormat.qrCode})` | Delivers a code to the running scan. Answers whether a scan was running to receive it. A code of a format the scan did not ask for is not delivered, as a real decoder would not report it. |
+| `fail` | `void fail(String cause)` | Makes the next scan end with a `code_scanner.<cause>` error. |
+| `availability` | `Future<TomCodeScannerAvailability> availability()` | *(override)* Answers `availabilityValue`. |
+| `scan` | `Stream<TomScannedCode> scan({Set<TomCodeFormat> formats = const {}})` | *(override)* A stream `emit` feeds. After `dispose`, a stream that fails with `code_scanner.disposed`. |
+| `preview` | `Widget preview(BuildContext context)` | *(override)* An empty `SizedBox.expand` keyed `ValueKey('tom-fake-code-scanner-preview')`, so a widget test can find it. |
+| `dispose` | `Future<void> dispose()` | *(override)* Closes the running scan and marks the scanner disposed. |
 
 ## Global Functions and Constants
 

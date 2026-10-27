@@ -5,7 +5,9 @@
 
 The client half of the framework's second-factor design: a ready-made
 enrol-and-challenge flow, a seam onto the application's own auth client, a
-registry of pluggable per-mechanism panels, and the shipped TOTP mechanism.
+registry of pluggable per-mechanism panels, and the shipped TOTP mechanism. It
+also holds the code-scanner contract an application implements over its own
+camera plugin.
 
 Everything about a second-factor login that is the same whichever mechanism is
 in play — the chooser, the frame, the attempt counter, the error line, the skip
@@ -27,6 +29,12 @@ whose auth client already handles refresh.
 | `TomTotp2FAClientMechanism` | The shipped authenticator-app mechanism, registered under `'totp'`. Its challenge panel counts down to the next code rollover and says so when one overtakes a typed code — warning, not blocking, because the server accepts one step either side of its own. Also the public `digitsOf` / `periodOf` / `secondsRemainingIn` / `groupSecret` helpers. |
 | `Tom2FATexts` | Every resource key this feature resolves, and the `text` / `textWith` helpers that resolve them. No literal user-facing text exists anywhere in the feature. |
 | `TomQrCodeView` | A QR code painted from the pure-Dart `qr` encoder, so it themes like any other widget. Never throws on its payload: empty, or too long to encode, renders an empty square. Re-encodes and repaints only when the payload or the styling changes, not on every parent rebuild. |
+| `TomCodeScanner` | The contract for reading codes with the device camera. The framework ships no camera plugin: an application implements it with an adapter over the plugin it chooses, installs it with `install`, and code that scans reads it with `resolve`. `scan` is a stream — the camera runs while it is listened to, a code in view is reported once, and a scan that cannot start ends with an error rather than an empty stream. `scanOnce` takes the first code an `accept` predicate takes, or `null` after a timeout, and releases the camera on every ending. |
+| `TomScannedCode` | One decoded code: `payload`, `format`, raw `bytes` when the decoder reports them, `scannedAt`. |
+| `TomCodeFormat` | The symbologies a scan can ask for — `qrCode`, `dataMatrix`, `aztec`, `pdf417`, `code128`, `code39`, `ean13`, `ean8`, `upcA` — and `other` for anything else the decoder reads. |
+| `TomCodeScannerAvailability` | Whether a scanner can read codes here: `available`, `permissionNotRequested`, `permissionDenied`, `noCamera`, `unsupported`. |
+| `TomCodeScannerException` | Why a scan could not start: `code_scanner.permission_denied`, `code_scanner.no_camera`, `code_scanner.unsupported`, `code_scanner.failed`, `code_scanner.disposed`. |
+| `TomFakeCodeScanner` | The test double: `emit` delivers a code to the running scan, `fail` makes the next scan end with an error, `listening` says whether "the camera is on". Its preview is keyed `tom-fake-code-scanner-preview`. |
 
 ## Quick start
 
@@ -66,6 +74,31 @@ factor and the dearest to run, so offering it is a step the deployment takes.
 implements one and walks it through all three stops; the panels themselves are
 widgets, so they are shown in `test/two_factor_client_test.dart` instead.
 
+## Scanning codes
+
+`TomQrCodeView` shows a code; `TomCodeScanner` reads one. The scanner is a
+contract only — a camera plugin brings a preview, a decoder and a
+platform-permissions surface, and an application that does not scan should
+carry none of it. An application that scans writes one adapter over its plugin
+and installs it at start-up; everything above the adapter is written against
+the contract and runs on `TomFakeCodeScanner` in a test:
+
+```dart
+TomCodeScanner.install(MobileScannerCodeScanner());
+
+final code = await TomCodeScanner.resolve()!.scanOnce(
+  formats: {TomCodeFormat.qrCode},
+  accept: (code) => code.payload.startsWith('otpauth://'),
+  timeout: const Duration(minutes: 1),
+);
+```
+
+[`example/security/code_scanner_example.dart`](../../../../example/security/code_scanner_example.dart)
+walks the contract on the test double, and `test/code_scanner_test.dart` runs
+it. `tom_core_samples/core_flutter_code_scanner_sample` holds a complete
+adapter over the `mobile_scanner` plugin. See `doc/security.md` for the
+lifecycle, availability, the error keys and how to write an adapter.
+
 ## How a mechanism becomes renderable
 
 `Tom2FAClientRegistry.register` is the only route into the registry, and the
@@ -101,7 +134,7 @@ rather than a rule; the suite pins both contexts' field sets so either becomes a
 decision rather than a drift.
 
 **A lapsed deadline is said out loud, not enforced.** Both wire types carry an
-`isExpired` and the flow now reads it at the two stops where a deadline exists,
+`isExpired` and the flow reads it at the two stops where a deadline exists,
 rendering a line above the panel. The panel and its submit button stay:
 `expiresAt` is an absolute instant the server issued, there is no skew window on
 this path, and a flow that hid the panel on its own verdict would lock a user

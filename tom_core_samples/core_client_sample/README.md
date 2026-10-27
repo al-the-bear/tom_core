@@ -457,7 +457,7 @@ core_client_sample/
 There is no `doc/` folder and no API reference mirror, deliberately: this is an
 application, not a library — `publish_to: 'none'`, and no package depends on
 it — so its surface is read as a worked example, which this README and the code
-already are. The decision is taken once for all sixteen samples in
+already are. The decision is taken once for all seventeen samples in
 [the suite map](../README.md).
 
 ---
