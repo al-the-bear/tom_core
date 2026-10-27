@@ -1,7 +1,7 @@
 name: tom_core_flutter
 description: Flutter integration layer for the TOM framework — re-exports tom_core_kernel and adds Flutter widgets and client utilities.
 version: 1.2.1
-publish_to: none
+repository: https://github.com/al-the-bear/tom_core
 
 environment:
   # Raised to match tom_flutter_ui, which this package now depends on for the
@@ -16,7 +16,7 @@ dependencies:
   fetch_client: ^1.0.2
   timezone_to_country:
   web: ^1.1.1
-  tom_reflection: ">=1.0.1"
+  tom_reflection: ^1.0.2
   tom_core_kernel:
     path: ../tom_core_kernel
   # The widget library the framework-owned second-factor panels render with, so

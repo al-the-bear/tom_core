@@ -1,7 +1,9 @@
 # tom_core_server
 
+Published on pub.dev as [`tom_core_server` 1.3.0](https://pub.dev/packages/tom_core_server).
+
 > **Attribution.** The Tom Framework is developed by Peter Nicolai Alexis Kyaw.
-> These packages are BSD-3-Clause licensed and internal (`publish_to: none`).
+> These packages are BSD-3-Clause licensed and published on pub.dev.
 
 > **⚠️ Work in progress — unstable API.** The Tom Core packages are under active
 > development and not yet stable. Their version numbers carry no promise about
@@ -72,13 +74,11 @@ Because the barrel re-exports the kernel, a server app depends only on
 
 ## Installation
 
-This package is internal to the Tom workspace and consumed by path (it is
-`publish_to: none`), so there is no `dart pub add` line:
+Add it from pub.dev:
 
 ```yaml
 dependencies:
-  tom_core_server:
-    path: ../tom_core_server
+  tom_core_server: ^1.3.0
 ```
 
 Then import the single barrel — it re-exports `tom_core_kernel`,

@@ -6,8 +6,7 @@ description: >-
   entry points of their own, and a GitHub repository or any git server over
   smart HTTP as a backend.
 version: 0.1.0
-publish_to: none
-repository: https://github.com/al-the-bear/tom_ai_core
+repository: https://github.com/al-the-bear/tom_core
 
 environment:
   sdk: ^3.10.0
@@ -21,7 +20,7 @@ dependencies:
   # AES-256-GCM for the optional cache cipher (cipher.dart).
   pointycastle: ^4.0.0
   # The structured diagnostics port, the YAML emitter and the content hash.
-  tom_basics: ">=3.3.0"
+  tom_basics: ^3.3.0
   # The HTTP client the git backend's transport is given (git.dart).
   http: ^1.2.0
   # Git in pure Dart, for the git backend (git.dart): no git binary needed.

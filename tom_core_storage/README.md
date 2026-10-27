@@ -1,7 +1,9 @@
 # tom_core_storage
 
+Published on pub.dev as [`tom_core_storage` 0.1.0](https://pub.dev/packages/tom_core_storage).
+
 > **Attribution.** The Tom Framework is developed by Peter Nicolai Alexis Kyaw.
-> These packages are BSD-3-Clause licensed and internal (`publish_to: none`).
+> These packages are BSD-3-Clause licensed and published on pub.dev.
 
 Storage for Tom applications — a compare-and-swap storage port, keyed file
 media, a device-local cache and a durable offline commit journal — with the
@@ -42,12 +44,11 @@ Around the port sit the parts every application with remote documents needs:
 
 ## Installation
 
-The package is consumed by path inside this workspace:
+Add it from pub.dev:
 
 ```yaml
 dependencies:
-  tom_core_storage:
-    path: ../../tom_ai/core/tom_core_storage
+  tom_core_storage: ^0.1.0
 ```
 
 Dart SDK `^3.10.0`. No Flutter dependency.

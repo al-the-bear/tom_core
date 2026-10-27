@@ -1,7 +1,9 @@
 # tom_core_flutter
 
+Published on pub.dev as [`tom_core_flutter` 1.2.1](https://pub.dev/packages/tom_core_flutter).
+
 > **Attribution.** The Tom Framework is developed by Peter Nicolai Alexis Kyaw.
-> These packages are BSD-3-Clause licensed and internal (`publish_to: none`).
+> These packages are BSD-3-Clause licensed and published on pub.dev.
 
 > **⚠️ Work in progress — unstable API.** The Tom Core packages are under active
 > development and not yet stable. Their version numbers carry no promise about
@@ -63,13 +65,11 @@ want the full UI/forms/ACL toolkit.
 
 ## Installation
 
-This package is internal to the Tom workspace and consumed by path (it is
-`publish_to: none`), so there is no `dart pub add` line:
+Add it from pub.dev:
 
 ```yaml
 dependencies:
-  tom_core_flutter:
-    path: ../tom_core_flutter
+  tom_core_flutter: ^1.2.1
 ```
 
 Then import the single barrel — it re-exports `tom_core_kernel` and

@@ -1,7 +1,9 @@
 # tom_core_kernel
 
+Published on pub.dev as [`tom_core_kernel` 1.1.16](https://pub.dev/packages/tom_core_kernel).
+
 > **Attribution.** The Tom Framework is developed by Peter Nicolai Alexis Kyaw.
-> These packages are BSD-3-Clause licensed and internal (`publish_to: none`).
+> These packages are BSD-3-Clause licensed and published on pub.dev.
 
 > **⚠️ Work in progress — unstable API.** The Tom Core packages are under active
 > development and not yet stable. Their version numbers carry no promise about
@@ -45,14 +47,11 @@ serialized without hand-written boilerplate. Conceptually it provides five thing
 
 ## Installation
 
-This package is internal to the Tom workspace and consumed by path (it is
-`publish_to: none`), so there is no `dart pub add` line. Add it as a path
-dependency:
+Add it from pub.dev:
 
 ```yaml
 dependencies:
-  tom_core_kernel:
-    path: ../tom_core_kernel
+  tom_core_kernel: ^1.1.16
 ```
 
 Then import the single barrel:
