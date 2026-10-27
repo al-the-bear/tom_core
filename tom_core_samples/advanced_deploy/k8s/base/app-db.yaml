@@ -1,0 +1,62 @@
+# app_db: one MariaDB instance with a persistent volume. It starts empty;
+# the schema is the servers' to create — each applies its migration chain at
+# start, under the migration lock, so no initdb script runs here.
+apiVersion: v1
+kind: Service
+metadata:
+  name: app-db
+  labels: {app.kubernetes.io/name: app-db, app.kubernetes.io/part-of: advanced-todo}
+spec:
+  selector: {app.kubernetes.io/name: app-db}
+  ports:
+    - name: mariadb
+      port: 3306
+      targetPort: mariadb
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: app-db
+  labels: {app.kubernetes.io/name: app-db, app.kubernetes.io/part-of: advanced-todo}
+spec:
+  serviceName: app-db
+  replicas: 1
+  selector:
+    matchLabels: {app.kubernetes.io/name: app-db}
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: app-db, app.kubernetes.io/part-of: advanced-todo}
+    spec:
+      containers:
+        - name: mariadb
+          image: mariadb:11
+          ports:
+            - {name: mariadb, containerPort: 3306}
+          env:
+            - name: MARIADB_DATABASE
+              value: app_db
+            - name: MARIADB_USER
+              value: app
+            - name: MARIADB_PASSWORD
+              valueFrom: {secretKeyRef: {name: advanced-db-credentials, key: app-password}}
+            - name: MARIADB_ROOT_PASSWORD
+              valueFrom: {secretKeyRef: {name: advanced-db-credentials, key: app-root-password}}
+          readinessProbe:
+            exec: {command: [healthcheck.sh, --connect, --innodb_initialized]}
+            periodSeconds: 5
+          livenessProbe:
+            exec: {command: [healthcheck.sh, --connect]}
+            initialDelaySeconds: 30
+            periodSeconds: 20
+          resources:
+            requests: {cpu: 100m, memory: 256Mi}
+            limits: {memory: 512Mi}
+          volumeMounts:
+            - {name: data, mountPath: /var/lib/mysql}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources:
+          requests: {storage: 1Gi}

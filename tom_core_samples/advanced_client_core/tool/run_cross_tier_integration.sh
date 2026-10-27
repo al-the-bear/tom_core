@@ -19,7 +19,22 @@
 # 3307/3308 (databases) and 8080/8081 (servers) must be free. The databases
 # start from a *fresh* volume each run (`docker compose down -v`), so the
 # initdb seed re-applies and the scenario sees the known seeded state.
+#
+#   run_cross_tier_integration.sh --external-stack
+#
+# runs the same suites against a stack that is already up on those ports —
+# the sample deployed to a cluster (advanced_deploy/run_kind_integration.sh) —
+# and starts and stops nothing. The stack must hold the `dev` seed and be
+# fresh: the scenarios change grants and shares as they go.
 set -euo pipefail
+
+EXTERNAL_STACK=0
+for arg in "$@"; do
+  case "$arg" in
+    --external-stack) EXTERNAL_STACK=1 ;;
+    *) echo "Unknown argument: $arg" >&2; exit 64 ;;
+  esac
+done
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CLIENT_CORE="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -43,6 +58,10 @@ cleanup() {
   if [ "$exit_code" -ne 0 ]; then
     [ -s "$LOG_DIR/auth.log" ] && { echo "--- auth server log ---"; cat "$LOG_DIR/auth.log"; }
     [ -s "$LOG_DIR/app.log" ] && { echo "--- app server log ---"; cat "$LOG_DIR/app.log"; }
+  fi
+  if [ "$EXTERNAL_STACK" -eq 1 ]; then
+    rm -rf "$LOG_DIR"
+    return
   fi
   log "Tearing down"
   for pid in "${SERVER_PIDS[@]:-}"; do
@@ -148,6 +167,13 @@ wait_auth_up() {
   return 1
 }
 
+if [ "$EXTERNAL_STACK" -eq 1 ]; then
+  log "Using the stack already running on 8080/8081"
+  (cd "$CLIENT_CORE" && dart pub get)
+  (cd "$OPENAPI_CLIENT" && dart pub get)
+  wait_auth_up
+  wait_app_health
+else
 # 0. Preflight: refuse to start if a previous run left a port bound.
 assert_ports_free
 
@@ -194,6 +220,7 @@ log "Starting app server"
 (cd "$APP_DIR" && exec dart run bin/app_server_start.dart env=dev >"$LOG_DIR/app.log" 2>&1) &
 SERVER_PIDS+=($!)
 wait_app_health
+fi
 
 # 4. Run the scripted live scenarios against the stack. Each *skips* (rather
 #    than fails) when it cannot reach the servers, so a unit run of the package

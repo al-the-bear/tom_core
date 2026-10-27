@@ -1,0 +1,90 @@
+# The auth server: issues tokens (it alone holds the signing key) and owns
+# auth_db, including the grant matrix the app server reads.
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-server
+  labels: {app.kubernetes.io/name: auth-server, app.kubernetes.io/part-of: advanced-todo}
+spec:
+  selector: {app.kubernetes.io/name: auth-server}
+  ports:
+    - name: http
+      port: 8081
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-server
+  labels: {app.kubernetes.io/name: auth-server, app.kubernetes.io/part-of: advanced-todo}
+spec:
+  replicas: 2
+  selector:
+    matchLabels: {app.kubernetes.io/name: auth-server}
+  strategy:
+    rollingUpdate: {maxUnavailable: 0, maxSurge: 1}
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: auth-server, app.kubernetes.io/part-of: advanced-todo}
+    spec:
+      # Covers SHUTDOWN_READINESS_DELAY_SECONDS + SHUTDOWN_GRACE_PERIOD_SECONDS
+      # with room to spare; past it the kubelet sends SIGKILL.
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+      containers:
+        - name: server
+          image: advanced-auth-server:latest
+          ports:
+            - {name: http, containerPort: 8081}
+          envFrom:
+            - configMapRef: {name: advanced-config}
+          env:
+            - {name: PORT, value: "8081"}
+            - name: AUTH_DB_PASSWORD
+              valueFrom: {secretKeyRef: {name: advanced-db-credentials, key: auth-password}}
+            - {name: JWT_SIGNING_KEY_FILE, value: /etc/tom/jwt/signing-private.pem}
+            # The pair that encrypts and decrypts the access-control payload
+            # of a token; the auth server and the app server hold the same one.
+            - name: JWT_RSA_PRIV_KEY
+              valueFrom: {secretKeyRef: {name: advanced-jwt-keys, key: payload-private.pem}}
+            - name: JWT_RSA_PUB_KEY
+              valueFrom: {secretKeyRef: {name: advanced-jwt-keys, key: payload-public.pem}}
+          # /health is liveness: the process answers. /ready is readiness: its
+          # data sources answer, and it is not shutting down. The startup probe
+          # gives the boot — migrations included — up to two minutes before
+          # liveness counts.
+          startupProbe:
+            httpGet: {path: /health, port: http}
+            periodSeconds: 2
+            failureThreshold: 60
+          livenessProbe:
+            httpGet: {path: /health, port: http}
+            periodSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet: {path: /ready, port: http}
+            periodSeconds: 5
+            failureThreshold: 2
+          resources:
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {memory: 512Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          volumeMounts:
+            - {name: jwt, mountPath: /etc/tom/jwt, readOnly: true}
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - name: jwt
+          secret:
+            secretName: advanced-jwt-keys
+            defaultMode: 0440
+            items:
+              - {key: signing-private.pem, path: signing-private.pem}
+        - name: tmp
+          emptyDir: {}

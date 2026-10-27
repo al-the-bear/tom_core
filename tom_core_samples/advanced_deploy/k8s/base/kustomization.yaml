@@ -1,0 +1,19 @@
+# The advanced sample as a production deployment: two MariaDB databases, the
+# auth and app servers behind Services, and the back-office ops server.
+#
+# Two Secrets are referenced and not shipped, because a template that ships
+# key material ships somebody's keys: `advanced-db-credentials` (database
+# passwords) and `advanced-jwt-keys` (token signing and payload-encryption
+# keys). Create them from your secret store; ../../README.md lists their keys,
+# and ../../run_kind_integration.sh shows them created from fresh material.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: tom-advanced
+resources:
+  - namespace.yaml
+  - config.yaml
+  - auth-db.yaml
+  - app-db.yaml
+  - auth-server.yaml
+  - app-server.yaml
+  - ops-server.yaml

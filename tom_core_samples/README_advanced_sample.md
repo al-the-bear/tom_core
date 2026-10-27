@@ -291,6 +291,23 @@ live suites and then the connection-free ones.
 tom_core_samples/advanced_ops_server/tool/run_ops_integration.sh
 ```
 
+### Deployed to Kubernetes
+
+`advanced_deploy/` holds production container images and Kubernetes manifests
+for the three servers — a template for any Tom application, described in
+[advanced_deploy/README.md](advanced_deploy/README.md). One command deploys
+them to a local kind cluster and runs both runners above against it:
+
+```sh
+tom_core_samples/advanced_deploy/run_kind_integration.sh
+```
+
+It first deploys the production configuration (real keys, no demo data) and
+waits for every rollout, restarts the app server under polling to show the
+handover refuses nothing, then adds the demo seed and runs
+`run_cross_tier_integration.sh --external-stack` and
+`run_ops_integration.sh --external-databases` against the cluster.
+
 ### A real passkey from a browser
 
 The end-user app builds for the web, and in a browser `erin`'s enrolment offer
@@ -453,6 +470,7 @@ tom_core_samples/
   advanced_authadmin_client/     administrator Flutter console (users/roles/groups/grants)
   advanced_ops_server/           scheduled back-office work           (no port, app_db 3308, auth_db 3307)
   advanced_openapi_client/       Dart clients generated from the servers' OpenAPI documents
+  advanced_deploy/               container images + Kubernetes manifests for the three servers
   tool/                          suite-wide runners (dart doc over every package)
 ```
 

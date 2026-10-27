@@ -1,0 +1,23 @@
+# Allow-list for the `tom_ai` build context: everything is excluded, then
+# the packages the advanced servers resolve by path are admitted back.
+*
+!core/tom_core_kernel
+!core/tom_core_server
+!core/tom_core_samples/advanced_todo_contracts
+!core/tom_core_samples/advanced_todo_domain
+!core/tom_core_samples/advanced_app_server
+!core/tom_core_samples/advanced_auth_server
+!core/tom_core_samples/advanced_ops_server
+!reflection/tom_reflection_generator
+!core_extension/tom_core_openapi
+
+# Inside them: no build state, no machine-local resolution, no tests,
+# examples or documents — the image is built from what a clone holds.
+**/.dart_tool
+**/build
+**/testlog
+**/pubspec.lock
+**/.env
+**/test
+**/example
+**/doc

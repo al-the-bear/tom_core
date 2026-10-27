@@ -42,7 +42,23 @@
 # and 3308 must be free or already serving this suite's databases. Both start
 # from a *fresh* volume each run (`docker compose down -v`), so the initdb hooks
 # re-apply their chains and the run sees the known seeded state.
+#
+#   run_ops_integration.sh --external-databases
+#
+# runs the suites against databases already up on 3307/3308, with this
+# package's migration already applied — the sample deployed to a cluster, where
+# the ops server applies it at start (advanced_deploy/run_kind_integration.sh).
+# It starts and stops nothing; the suites read the credentials from
+# APP_DB_PASSWORD / AUTH_DB_PASSWORD like the server does.
 set -euo pipefail
+
+EXTERNAL_DATABASES=0
+for arg in "$@"; do
+  case "$arg" in
+    --external-databases) EXTERNAL_DATABASES=1 ;;
+    *) echo "Unknown argument: $arg" >&2; exit 64 ;;
+  esac
+done
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 OPS_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -63,6 +79,10 @@ cleanup() {
   if [ "$exit_code" -ne 0 ] && [ -s "$LOG_DIR/migrate.log" ]; then
     echo "--- ops migration log ---"
     cat "$LOG_DIR/migrate.log"
+  fi
+  if [ "$EXTERNAL_DATABASES" -eq 1 ]; then
+    rm -rf "$LOG_DIR"
+    return
   fi
   log "Tearing down"
   (cd "$APP_DIR" && docker compose down -v) >/dev/null 2>&1
@@ -94,6 +114,10 @@ wait_db_healthy() {
 #    and app servers' repositories directly rather than over HTTP (this server has
 #    no port), so a running server would only be a second writer against the rows
 #    under assertion. Why both databases — see the header.
+if [ "$EXTERNAL_DATABASES" -eq 1 ]; then
+  log "Using the databases already running on 3307/3308"
+  (cd "$OPS_DIR" && dart pub get)
+else
 log "Starting app_db and auth_db (fresh volumes)"
 (cd "$AUTH_DIR" && docker compose down -v >/dev/null 2>&1; docker compose up -d auth-db)
 (cd "$APP_DIR" && docker compose down -v >/dev/null 2>&1; docker compose up -d app-db)
@@ -117,6 +141,7 @@ log "Applying this package's [100] migration"
 (cd "$OPS_DIR" && dart run bin/ops_server_start.dart --migrate-only) \
   >"$LOG_DIR/migrate.log" 2>&1
 tail -n 5 "$LOG_DIR/migrate.log"
+fi
 
 # 4. Run the live suites. They skip rather than fail when `app_db` is
 #    unreachable so the unit run stays green; here the database is guaranteed up,

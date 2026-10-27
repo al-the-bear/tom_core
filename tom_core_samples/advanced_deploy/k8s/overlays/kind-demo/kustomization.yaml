@@ -1,0 +1,16 @@
+# The kind deployment with the sample's demo data, for the integration run.
+#
+# One change on top of ../kind: the runtime environment is `dev`, which applies
+# the `@dev,test` migrations — the demo users and projects the live suites sign
+# in as. The key material stays the real material of the base; `dev` adds the
+# seed, the dev overlay's log level and its local CORS origins.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../kind
+patches:
+  - target: {kind: ConfigMap, name: advanced-config}
+    patch: |-
+      - op: replace
+        path: /data/env
+        value: dev

@@ -1,0 +1,14 @@
+# A one-node kind cluster for the advanced sample. The NodePorts of the kind
+# overlay are mapped to the host ports the sample uses everywhere else —
+# 8080/8081 for the servers, 3307/3308 for the databases — so the live suites
+# run against the cluster unchanged.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: tom-advanced
+nodes:
+  - role: control-plane
+    extraPortMappings:
+      - {containerPort: 30080, hostPort: 8080, listenAddress: 127.0.0.1}
+      - {containerPort: 30081, hostPort: 8081, listenAddress: 127.0.0.1}
+      - {containerPort: 30307, hostPort: 3307, listenAddress: 127.0.0.1}
+      - {containerPort: 30308, hostPort: 3308, listenAddress: 127.0.0.1}

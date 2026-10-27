@@ -1,0 +1,28 @@
+# Settings every server reads, as environment variables: the configuration
+# merges the OS environment over its YAML assets, and a SCREAMING_SNAKE name
+# reaches the field of the same name (JWT_ISSUER -> jwtIssuer).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: advanced-config
+data:
+  # The runtime environment. `prod` loads no overlay asset, applies no
+  # `@dev,test` migration and refuses the framework's bundled sample keys.
+  env: prod
+  LOG_LEVEL: production
+  JWT_ISSUER: advanced-auth
+  JWT_AUDIENCE: advanced-todo
+  # Graceful shutdown: on SIGTERM the server answers /ready with 503 for the
+  # readiness delay, so the endpoints controller takes the pod out of its
+  # Service before the listener closes; in-flight requests then get the grace
+  # period. terminationGracePeriodSeconds must cover both.
+  SHUTDOWN_READINESS_DELAY_SECONDS: "5"
+  SHUTDOWN_GRACE_PERIOD_SECONDS: "20"
+  AUTH_DB_HOST: auth-db
+  AUTH_DB_PORT: "3306"
+  AUTH_DB_NAME: auth_db
+  AUTH_DB_USER: auth
+  APP_DB_HOST: app-db
+  APP_DB_PORT: "3306"
+  APP_DB_NAME: app_db
+  APP_DB_USER: app

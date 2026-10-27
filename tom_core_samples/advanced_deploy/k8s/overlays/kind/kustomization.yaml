@@ -1,0 +1,47 @@
+# The base deployed to a local kind cluster, still as production (`env: prod`,
+# real key material, no demo data). Two changes, none of them to the servers:
+#  - the images are the ones run_kind_integration.sh built and loaded (tag
+#    `local`, never pulled);
+#  - the servers and databases are reachable from the host through NodePorts
+#    (kind-cluster.yaml maps them to 8080/8081 and 3307/3308).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../base
+images:
+  - {name: advanced-auth-server, newTag: local}
+  - {name: advanced-app-server, newTag: local}
+  - {name: advanced-ops-server, newTag: local}
+patches:
+  - target: {kind: Service, name: app-server}
+    patch: |-
+      - op: add
+        path: /spec/type
+        value: NodePort
+      - op: add
+        path: /spec/ports/0/nodePort
+        value: 30080
+  - target: {kind: Service, name: auth-server}
+    patch: |-
+      - op: add
+        path: /spec/type
+        value: NodePort
+      - op: add
+        path: /spec/ports/0/nodePort
+        value: 30081
+  - target: {kind: Service, name: auth-db}
+    patch: |-
+      - op: add
+        path: /spec/type
+        value: NodePort
+      - op: add
+        path: /spec/ports/0/nodePort
+        value: 30307
+  - target: {kind: Service, name: app-db}
+    patch: |-
+      - op: add
+        path: /spec/type
+        value: NodePort
+      - op: add
+        path: /spec/ports/0/nodePort
+        value: 30308
