@@ -36,7 +36,7 @@ dependencies:
   # overriding the method every consumer calls and thereby skipping the
   # deployment cap (the min(user, server) meet).
   meta: ^1.9.0
-  stack_trace: ^1.12.2
+  stack_trace: ^1.12.1
   http: ^1.6.0
   typed_data: ^1.4.0
   yaml: ^3.1.4
