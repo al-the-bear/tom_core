@@ -69,9 +69,9 @@ Dart SDK `^3.10.0`. No Flutter dependency.
 | `TomLocalFileSystemStorage` | The local filesystem (`io.dart`): atomic multi-file commits through staged temps and a recorded intent; every commit moves the head, however fast two same-size commits follow each other. |
 | `TomGitHubStorage` | A GitHub repository (`github.dart`): one save is one commit, compare-and-swap on the branch head, conditional reads, rate-limit waits, LFS refusal, progress per object. |
 | `TomGitHubLocator` | `github:<owner>/<repo>[@<branch>]/<path>` — parsed and printed. |
-| `TomGitStorage` | Any git server over smart HTTP (`git.dart`), with no git binary: a local clone is the medium, a head is the document's object id in the branch tip, a commit is a compare-and-swap on it and then a push; a push that lost the race to a change of another document is rebuilt on the new tip and pushed again, one that lost it to this document is a `TomCasConflictException`. |
-| `TomGitLocator` | `git:<repository-url>[#<branch>]::<path>` — parsed and printed; without a branch, the server's default. |
-| `tomGitMemoryClones`, `tomGitDirectoryClones` | Where the git backend keeps its clones: in memory (`git.dart`), or one bare repository per remote under a directory, in git's own layout (`io.dart`). |
+| `TomGitStorage` | Any git server over smart HTTP (`git.dart`), and with an `openLocal` opener a repository in a folder on this device, with no git binary. For a server a local clone is the medium, a head is the document's object id in the branch tip, a commit is a compare-and-swap on it and then a push; a push that lost the race to a change of another document is rebuilt on the new tip and pushed again, one that lost it to this document is a `TomCasConflictException`. A folder's repository is written in place under git's ref lock; a branch some working tree has checked out is read and never written. |
+| `TomGitLocator` | `git:<repository-url>[#<branch>]::<path>`, the URL `http(s):` or `file:` — parsed and printed; without a branch, the server's default or the folder's `HEAD`; an empty path is the repository root, a folder. |
+| `tomGitMemoryClones`, `tomGitDirectoryClones`, `tomGitLocalRepositories` | Where the git backend keeps its clones — in memory (`git.dart`), or one bare repository per remote under a directory, in git's own layout (`io.dart`) — and how it opens a repository in a folder: a working repository, a linked worktree or a bare one (`io.dart`, `TomGitLocalRepository`). |
 | `tomOpenBrowserMedium` | A medium over IndexedDB (`web.dart`). |
 | `TomAesGcmCacheCipher` | AES-256-GCM sealing of cache files (`cipher.dart`). |
 | `TomMemoryRemote`, `TomMemoryStorage`, `TomStaleHead` | Test support (`testing.dart`): an in-memory compare-and-swap remote shared by per-device storages whose reads, writes, quota, key and replica lag each fail on their own switch. |
@@ -80,10 +80,10 @@ Dart SDK `^3.10.0`. No Flutter dependency.
 
 | Import | Holds | Platforms |
 | --- | --- | --- |
-| `package:tom_core_storage/tom_core_storage.dart` | the port, media, cache, journal, asset store and policies | all, the web included (no `dart:io`, no browser API, no cipher) |
-| `package:tom_core_storage/io.dart` | `TomLocalFileSystemStorage`, `TomDirectoryBundleMedium`, `tomGitDirectoryClones` | desktop, server, mobile |
+| `package:tom_core_storage/tom_core_storage.dart` | the port, media, cache, journal, asset store and policies, and both repository locators (`TomGitHubLocator`, `TomGitLocator`) | all, the web included (no `dart:io`, no browser API, no cipher) |
+| `package:tom_core_storage/io.dart` | `TomLocalFileSystemStorage`, `TomDirectoryBundleMedium`, `tomGitDirectoryClones`, `tomGitLocalRepositories` | desktop, server, mobile |
 | `package:tom_core_storage/github.dart` | `TomGitHubStorage`, `tomGitHubWaitOf` | all, the web included (over `tom_github_api`) |
-| `package:tom_core_storage/git.dart` | `TomGitStorage`, `TomGitLocator`, `tomGitMemoryClones` | all, the web included (over `tom_git` and `http`) |
+| `package:tom_core_storage/git.dart` | `TomGitStorage`, `TomGitLocalRepository`, `tomGitMemoryClones` | all, the web included (over `tom_git` and `http`) |
 | `package:tom_core_storage/web.dart` | `tomOpenBrowserMedium`, `TomBrowserStorageException` | browser (a VM test gets an in-memory stand-in) |
 | `package:tom_core_storage/cipher.dart` | `TomAesGcmCacheCipher` | all |
 | `package:tom_core_storage/settings.dart` | device settings, the settings-key bootstrap, the key port, the secret-store port, identity, storage locations and forgetting one | all, the web included (no `dart:io`, no container format, no platform plugin) |

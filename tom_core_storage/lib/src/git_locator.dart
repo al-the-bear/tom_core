@@ -1,9 +1,16 @@
-/// Where a document lives in a git repository reached over HTTP(S).
+/// Where a document lives in a git repository: on a server, or in a folder.
 library;
 
 /// `git:<repository-url>[#<branch>]::<path>` — a container at [path] on
-/// [branch] (the remote's default branch when absent) of the repository at
-/// [remote].
+/// [branch] of the repository at [remote].
+///
+/// The repository is an `http(s)` URL of a server that speaks smart HTTP, or a
+/// `file:` URL naming a repository in a folder on this device. Without a
+/// branch the locator means the remote's default branch, or for a folder the
+/// branch its `HEAD` names.
+///
+/// An empty [path] names the repository root — a folder, which is listed;
+/// it is never a container, so reading or writing one is refused.
 ///
 /// `::` separates the repository from the path because it never occurs in an
 /// http(s) URL, while `/`, `@` and `:` all do.
@@ -15,8 +22,11 @@ class TomGitLocator {
   final Uri remote;
   final String? branch;
 
-  /// Slash-separated, relative to the repository root, never empty.
+  /// Slash-separated, relative to the repository root; empty for the root.
   final String path;
+
+  /// Whether [remote] is a folder on this device rather than a server.
+  bool get isLocal => remote.isScheme('file');
 
   static bool matches(String locator) => locator.startsWith(scheme);
 
@@ -48,16 +58,18 @@ class TomGitLocator {
       }
     }
     final remote = Uri.tryParse(repository);
-    if (remote == null ||
-        !(remote.isScheme('https') || remote.isScheme('http')) ||
-        remote.host.isEmpty) {
+    final served =
+        remote != null &&
+        (remote.isScheme('https') || remote.isScheme('http')) &&
+        remote.host.isNotEmpty;
+    final local =
+        remote != null && remote.isScheme('file') && remote.path.isNotEmpty;
+    if (!served && !local) {
       throw FormatException(
-        'A git locator needs an http(s) repository URL',
+        'A git locator needs an http(s) repository URL or a file: URL of a '
+        'folder',
         locator,
       );
-    }
-    if (path.isEmpty) {
-      throw FormatException('A git locator has no document path', locator);
     }
     return TomGitLocator(remote: remote, path: path, branch: branch);
   }

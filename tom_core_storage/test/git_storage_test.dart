@@ -16,6 +16,7 @@ import 'package:test/test.dart';
 import 'package:tom_core_storage/git.dart';
 import 'package:tom_core_storage/io.dart';
 import 'package:tom_core_storage/tom_core_storage.dart';
+import 'package:tom_git/io.dart';
 import 'package:tom_git/testing.dart';
 import 'package:tom_git/tom_git.dart';
 import 'package:tom_test_support/gitea.dart';
@@ -77,6 +78,239 @@ void main() {
         client: server.client,
       ),
     );
+  });
+
+  group('git over a local repository', () {
+    late Directory root;
+    var n = 0;
+    setUp(() {
+      root = scratchDirectory('contract_git_local_${_stamp()}');
+      gitOpenDirectory('${root.path}/store.git', create: true);
+    });
+    tearDown(() => root.deleteSync(recursive: true));
+    storageContract(
+      'STORE-GIT-LOCAL',
+      open: () async => TomGitStorage(
+        openClone: tomGitMemoryClones(),
+        openLocal: tomGitLocalRepositories(),
+      ),
+      locator: (name) =>
+          'git:${Uri.directory('${root.path}/store.git')}::docs/${n++}_$name',
+      secondDevice: () async => TomGitStorage(
+        openClone: tomGitMemoryClones(),
+        openLocal: tomGitLocalRepositories(),
+      ),
+    );
+  });
+
+  group('git backend, local repositories', () {
+    late Directory root;
+    late TomGitStorage storage;
+    setUp(() {
+      root = scratchDirectory('git_local_${_stamp()}');
+      storage = TomGitStorage(
+        openClone: tomGitMemoryClones(),
+        openLocal: tomGitLocalRepositories(),
+      );
+    });
+    tearDown(() {
+      storage.close();
+      root.deleteSync(recursive: true);
+    });
+
+    /// A working repository at [name] with `main` checked out and holding
+    /// `readme.md`.
+    Future<String> working(String name) async {
+      final folder = '${root.path}/$name';
+      final repo = gitOpenDirectory('$folder/.git', create: true);
+      File('$folder/.git/config').writeAsStringSync(
+        '[core]\n\trepositoryformatversion = 0\n\tbare = false\n',
+      );
+      final tree = await repo.editTree(null, writes: {'readme.md': _b('hi')});
+      final commit = await repo.commit(
+        tree: tree,
+        parents: [],
+        message: 'init',
+        author: GitPerson(name: 'T', email: 't@x', seconds: 1700000000),
+      );
+      await repo.refs.write('refs/heads/main', commit);
+      return folder;
+    }
+
+    test('STORE-GIT-LOCAL-1: the branch checked out in a working repository '
+        'is read, and a write to it is refused, naming the branch', () async {
+      final folder = await working('notes');
+      final url = Uri.directory(folder);
+      expect(
+        utf8.decode(await storage.readBytes('git:$url::readme.md')),
+        'hi',
+        reason: 'no branch named: HEAD\'s, the one checked out',
+      );
+      await expectLater(
+        storage.commit(
+          'git:$url::doc.webwork.zip',
+          TomChangeset.singleFile(_b('x')),
+          expectedHead: null,
+        ),
+        throwsA(
+          isA<TomStorageException>().having(
+            (e) => e.message,
+            'message',
+            allOf(contains('"main"'), contains('checked out')),
+          ),
+        ),
+      );
+      expect(
+        await storage.headOf('git:$url::doc.webwork.zip'),
+        isNull,
+        reason: 'nothing was written',
+      );
+    });
+
+    test('STORE-GIT-LOCAL-2: another branch of a working repository is '
+        'written in git\'s own layout and leaves the checked-out branch '
+        'alone', () async {
+      final folder = await working('notes');
+      final before = await gitOpenDirectory(
+        '$folder/.git',
+      ).refs.read('refs/heads/main');
+      final loc = 'git:${Uri.directory(folder)}#webwork::doc.webwork.zip';
+      final head = await storage.commit(
+        loc,
+        TomChangeset.singleFile(_b('saved')),
+        expectedHead: null,
+      );
+      final repo = GitLocalRepository.open(folder).repository;
+      final tip = await repo.refs.read('refs/heads/webwork');
+      expect(tip, isNotNull);
+      final entry = await repo.entryAt(
+        (await repo.readCommit(tip!)).tree,
+        'doc.webwork.zip',
+      );
+      expect(entry!.id.hex, head);
+      expect(await repo.refs.read('refs/heads/main'), before);
+    });
+
+    test('STORE-GIT-LOCAL-3: a folder that holds no repository is refused, '
+        'naming the folder', () async {
+      final folder = '${root.path}/plain';
+      Directory(folder).createSync();
+      await expectLater(
+        storage.headOf('git:${Uri.directory(folder)}::doc.webwork.zip'),
+        throwsA(
+          isA<TomStorageException>().having(
+            (e) => e.message,
+            'message',
+            contains('not a git repository'),
+          ),
+        ),
+      );
+    });
+
+    test('STORE-GIT-LOCAL-4: a commit that loses the race to another writer '
+        'on the branch is rebuilt on the new tip; one that loses it on the '
+        'same document is a conflict', () async {
+      final folder = '${root.path}/store.git';
+      gitOpenDirectory(folder, create: true);
+      final url = Uri.directory(folder);
+      final mine = 'git:$url::mine.kdbx';
+      final head = await storage.commit(
+        mine,
+        TomChangeset.singleFile(_b('1')),
+        expectedHead: null,
+      );
+      final other = TomGitStorage(
+        openClone: tomGitMemoryClones(),
+        openLocal: tomGitLocalRepositories(),
+      );
+      addTearDown(other.close);
+      await other.commit(
+        'git:$url::theirs.txt',
+        TomChangeset.singleFile(_b('theirs')),
+        expectedHead: null,
+      );
+      final next = await storage.commit(
+        mine,
+        TomChangeset.singleFile(_b('2')),
+        expectedHead: head,
+      );
+      expect(
+        utf8.decode(await storage.readBytes('git:$url::theirs.txt')),
+        'theirs',
+      );
+      await other.commit(
+        mine,
+        TomChangeset.singleFile(_b('3')),
+        expectedHead: next,
+      );
+      await expectLater(
+        storage.commit(
+          mine,
+          TomChangeset.singleFile(_b('4')),
+          expectedHead: next,
+        ),
+        throwsA(isA<TomCasConflictException>()),
+      );
+    });
+
+    test('STORE-GIT-LOCAL-5: the repository root is a folder: it lists, and '
+        'a document there is addressed under it', () async {
+      final folder = '${root.path}/store.git';
+      gitOpenDirectory(folder, create: true);
+      final url = Uri.directory(folder);
+      await storage.commit(
+        'git:$url::top.webwork.zip',
+        TomChangeset.singleFile(_b('t')),
+        expectedHead: null,
+      );
+      final entries = await storage.list('git:$url::');
+      expect(entries.map((e) => e.name), contains('top.webwork.zip'));
+      await expectLater(
+        storage.commit(
+          'git:$url::',
+          TomChangeset.singleFile(_b('x')),
+          expectedHead: null,
+        ),
+        throwsA(isA<TomStorageException>()),
+      );
+    });
+
+    test('STORE-GIT-LOCAL-7: a commit is by the committer asked for when it '
+        'is made', () async {
+      final folder = '${root.path}/store.git';
+      gitOpenDirectory(folder, create: true);
+      var name = 'First';
+      final named = TomGitStorage(
+        openClone: tomGitMemoryClones(),
+        openLocal: tomGitLocalRepositories(),
+        committer: () => (name: name, email: ''),
+      );
+      addTearDown(named.close);
+      name = 'Ada';
+      await named.commit(
+        'git:${Uri.directory(folder)}::a.kdbx',
+        TomChangeset.singleFile(_b('a')),
+        expectedHead: null,
+      );
+      final repo = GitLocalRepository.open(folder).repository;
+      final commit = await repo.readCommit(
+        (await repo.refs.read('refs/heads/main'))!,
+      );
+      expect(commit.author.name, 'Ada');
+      expect(commit.author.email, '');
+    });
+
+    test('STORE-GIT-LOCAL-6: without a local opener a file: locator is not '
+        'this backend\'s, and an http one still is', () {
+      final remoteOnly = TomGitStorage(openClone: tomGitMemoryClones());
+      addTearDown(remoteOnly.close);
+      expect(
+        remoteOnly.handles('git:file:///tmp/x/::doc.webwork.zip'),
+        isFalse,
+      );
+      expect(remoteOnly.handles('git:https://example.org/r.git::d'), isTrue);
+      expect(storage.handles('git:file:///tmp/x/::doc.webwork.zip'), isTrue);
+    });
   });
 
   group('git backend', () {

@@ -5,5 +5,4 @@
 /// clone from `package:tom_core_storage/io.dart`, or one in memory.
 library;
 
-export 'src/git/git_locator.dart';
 export 'src/git/git_storage.dart';

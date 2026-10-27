@@ -22,6 +22,7 @@ export 'src/backoff_policy.dart';
 export 'src/bundle_medium.dart';
 export 'src/commit_journal.dart';
 export 'src/commit_progress.dart';
+export 'src/git_locator.dart';
 export 'src/github_locator.dart';
 export 'src/lfs_pointer.dart';
 export 'src/location_prefix.dart';

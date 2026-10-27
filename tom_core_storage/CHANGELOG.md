@@ -38,7 +38,13 @@
   again, a lost race to this document's a `TomCasConflictException`, and
   `TomTokenRequiredException` / `TomTokenRejectedException` when the server
   asks for a credential. Locators are `TomGitLocator`:
-  `git:<repository-url>[#<branch>]::<path>`.
+  `git:<repository-url>[#<branch>]::<path>`, the repository `http(s):` or
+  `file:`; an empty path is the repository root, which lists.
+  With `openLocal` (`tomGitLocalRepositories` from `io.dart`) a `file:`
+  locator is a repository in a folder on this device — a working repository,
+  a linked worktree or a bare one — read and written in place, compare-and-
+  swap on the branch under git's ref lock; a branch some working tree has
+  checked out is read and never written.
 - **A storage contract.** `test/support/storage_contract.dart`: what a
   caller may rely on from every backend, run against the local filesystem
   and the git backend.
