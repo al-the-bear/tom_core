@@ -64,8 +64,8 @@ class TomWebAuthnSoftwareAuthenticator {
       userVerified,
       countsSignatures,
       Uint8List.fromList(List.generate(16, (_) => random.nextInt(256))),
-      pair.privateKey as pc.ECPrivateKey,
-      pair.publicKey as pc.ECPublicKey,
+      pair.privateKey,
+      pair.publicKey,
     );
   }
 

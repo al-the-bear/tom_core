@@ -23,10 +23,11 @@ dependencies:
   # own documentation. Required, it compiled both ways — an override may widen
   # a required positional — so this module implemented both spellings.
   tom_basics: ^3.3.0
-  # Floor 1.1.0: earlier versions drew secure random bytes with an exclusive
-  # bound of 255, so no byte could be 0xFF — a bias inherited by every RSA key
-  # pair and every password salt, both of which this package re-exports.
-  tom_crypto: ^1.3.0
+  # Floor 1.4.0: the release on pointycastle 4, so the kernel and
+  # tom_core_server, which names pointycastle's types itself, share one
+  # pointycastle. (1.1.0 already fixed the secure-random bias: earlier versions
+  # drew bytes with an exclusive bound of 255, so no byte could be 0xFF.)
+  tom_crypto: ^1.4.0
   # HMAC-SHA1 for the RFC 4226 / 6238 one-time-password primitives (TomTotp),
   # which both tiers need: the server to verify a code, an enrolment tool or an
   # authenticator to produce one.

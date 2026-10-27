@@ -31,9 +31,10 @@ dependencies:
   # The AES-GCM cipher of field-level encryption
   # (object_persistence/field_encryption.dart), and the generated reflection
   # output, which imports `pointycastle/asymmetric/api.dart` directly to name
-  # RSAPrivateKey and RSAPublicKey; tom_crypto 1.2.0 re-exports both key types,
-  # so hand-written code reaches them through the kernel barrel.
-  pointycastle: ^3.9.1
+  # RSAPrivateKey and RSAPublicKey; tom_crypto re-exports both key types, so
+  # hand-written code reaches them through the kernel barrel. Major 4, the
+  # major tom_crypto 1.4.0 is built on: one pointycastle in the graph.
+  pointycastle: ^4.0.0
   # Needed by the generated reflection output, and by
   # authentication/jwt_signing.dart, which imports it under a prefix. The names
   # this package's own code uses — SecretKey, JWT — are re-exported by
