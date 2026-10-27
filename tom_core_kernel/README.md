@@ -94,6 +94,7 @@ require a `dart run build_runner build` to generate `*.reflection.dart`.
 | `TomContextEntry<T>` | A typed value carried on the context |
 | `TomTenantContext` / `TomTenantScopedCommand` / `TomTenantEvent` | The tenant — an isolation boundary, not an organization — carried in the zone, into a job's body and across an isolate hop |
 | `TomTraceContext` | The W3C trace and span the work belongs to, carried in the zone; parses and renders `traceparent` |
+| `TomRequestId` | The id of the unit of work — a request, a job run, a socket message — carried in the zone beside its trace; every log line, server exception and audit entry of the work names it |
 | `TomScope` / `ScopeCapture` | Hierarchical, zone-propagated scope identifiers |
 
 ### Dependency injection (`beanlocator`)

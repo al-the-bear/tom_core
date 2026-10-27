@@ -244,6 +244,25 @@ class TomWebSocketConnection {
     return message;
   });
 
+  /// Reads every message from the peer in turn, running [onMessage] for each
+  /// as work of its own, and completes when the peer ends the conversation.
+  ///
+  /// Each call runs in a new span of the connection's trace with the request
+  /// id `<trace id>-<span id>` ([TomRequestId.runChild]), so the log lines,
+  /// exceptions and audit entries of one message name that message, and still
+  /// name the upgrade request's trace. A handler reading [messages] itself
+  /// writes everything under the upgrade request's id. The two read the same
+  /// single-subscription stream: use one or the other.
+  ///
+  /// The next message is read only once [onMessage] has completed, so the
+  /// messages are handled in the order the peer sent them; an error from
+  /// [onMessage] ends the loop and reaches the caller.
+  Future<void> serve(FutureOr<void> Function(dynamic message) onMessage) async {
+    await for (final message in messages) {
+      await TomRequestId.runChild(() async => onMessage(message));
+    }
+  }
+
   /// How many frames the peer has sent, counted as the handler reads them.
   ///
   /// A frame the handler never reads is not counted: the stream is

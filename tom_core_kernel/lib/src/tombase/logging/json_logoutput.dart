@@ -35,6 +35,7 @@ import 'dart:convert';
 
 import 'package:tom_basics/tom_basics.dart';
 
+import '../context/request_id.dart';
 import '../context/tenant_context.dart';
 import '../context/trace_context.dart';
 
@@ -45,14 +46,15 @@ typedef TomLogFieldProvider = String? Function();
 /// The context fields every structured log line carries, read from the zone
 /// the entry is logged in.
 ///
-/// The kernel registers `trace_id` and `span_id` ([TomTraceContext.current])
-/// and `tenant` ([TomTenantContext.currentId]); `tom_core_server` adds
-/// `request_id`. An application adds its own with [register] — a field must
+/// The kernel registers `trace_id` and `span_id` ([TomTraceContext.current]),
+/// `request_id` ([TomRequestId.current]) and `tenant`
+/// ([TomTenantContext.currentId]). An application adds its own with [register] — a field must
 /// name work, not a person (see the library documentation).
 abstract final class TomLogContext {
   static final Map<String, TomLogFieldProvider> _providers = {
     'trace_id': () => TomTraceContext.current?.traceId,
     'span_id': () => TomTraceContext.current?.spanId,
+    'request_id': () => TomRequestId.current?.value,
     'tenant': () => TomTenantContext.currentId,
   };
 

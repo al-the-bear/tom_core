@@ -11,7 +11,6 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 import '../audit/audit_record.dart';
 import '../datasources/read_replicas.dart';
 import '../audit/audit_trail.dart';
-import '../little_things/request_id.dart';
 import '../little_things/server_exception.dart';
 import '../server/server.dart';
 import '../transactions/transaction_manager.dart';
@@ -647,7 +646,7 @@ class TomEndpointHandler {
     final authentication = getFromCurrentZone<TomPrincipal>();
     final token = getFromCurrentZone<TomClientJwtToken>();
     final requestId = getFromCurrentZone<TomRequestId>();
-    final reqId = requestId == null ? "" : requestId.uuid;
+    final reqId = requestId == null ? "" : requestId.value;
 
     // Read once, before the loop: a request body is a single-pass stream, so a
     // per-parameter decode would find it already drained. Decoding here also
@@ -1091,7 +1090,7 @@ class TomEndpointHandler {
     logInfo.route = metadata.endpoint.uri;
 
     final requestId = getFromCurrentZone<TomRequestId>();
-    final reqId = requestId == null ? "" : requestId.uuid;
+    final reqId = requestId == null ? "" : requestId.value;
 
     try {
       await enforceAccess();
@@ -1377,7 +1376,7 @@ class TomEndpointHandler {
     logInfo?.route = metadata.endpoint.uri;
 
     final requestId = getFromCurrentZone<TomRequestId>();
-    final reqId = requestId == null ? "" : requestId.uuid;
+    final reqId = requestId == null ? "" : requestId.value;
 
     try {
       await enforceAccess();

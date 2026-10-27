@@ -1760,7 +1760,7 @@ void main() {
       );
       // This is what stitches an endpoint denial together with the repository
       // writes of the same request.
-      expect(sink.records.single.requestId, requestId.uuid);
+      expect(sink.records.single.requestId, requestId.value);
     });
   });
 }

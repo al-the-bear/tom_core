@@ -124,7 +124,8 @@ destination — a timeout per attempt, a `TomHttpRetryPolicy`, a
 `TomHttpResilience` holds the defaults, the per-destination policies and that
 state, and applies a configuration map. `TomDefaultHttpClientFactory` returns
 the platform client inside a `TomResilientClient`, so every `TomServerChannel`
-call runs under these policies — a 30-second timeout among them.
+call runs under these policies — a 30-second timeout among them — and carries
+the caller's trace as a child span (`TomResilientClient.propagateTrace`).
 
 ## Class Hierarchy
 
@@ -1733,7 +1734,8 @@ abstract final class TomHttpResilience
 A `package:http` client applying the resilience policies to every call: the
 timeout per attempt, retries for calls that may be repeated, the destination's
 circuit breaker and bulkhead. Records the `tom_http_client_*` series into
-`TomMetrics.registry`.
+`TomMetrics.registry`, and adds the current trace to every call it sends
+(`propagateTrace`).
 
 - **Extends:** `BaseClient` (`package:http`) — `get`, `post`, `put`, `delete`, `read` and the other convenience methods all go through `send`.
 
@@ -1753,11 +1755,17 @@ uses it; without, `TomHttpResilience.policyFor` decides per destination.
 | -------- | ---- | ----------- |
 | `policy` | `TomHttpResiliencePolicy?` | The policy of every call, or `null` to use the destination's. |
 
+##### Static Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `propagateTrace` | `static void propagateTrace(BaseRequest request)` | Adds the current trace to `request` as a new child span — `traceparent`, and `tracestate` when the trace carries one — so the callee continues it; a Tom server then takes the trace id as its request id. Adds nothing outside a trace, or when the request already names a `traceparent`. The request id itself is not sent: a callee believes a request-id header only from its own trusted proxies. |
+
 ##### Methods
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `send` | `Future<StreamedResponse> send(BaseRequest request)` | *(override)* Sends `request` under its policy. Throws `TomHttpResilienceException` (`http.client.circuit_open`, `http.client.bulkhead_full`, or `http.client.timeout` once the attempts run out), or the inner client's error; returns the last response when a retryable status outlasts the attempts. The bulkhead permit is held until the response body has been read, has failed or was cancelled. |
+| `send` | `Future<StreamedResponse> send(BaseRequest request)` | *(override)* Adds the current trace (`propagateTrace`), then sends `request` under its policy. Throws `TomHttpResilienceException` (`http.client.circuit_open`, `http.client.bulkhead_full`, or `http.client.timeout` once the attempts run out), or the inner client's error; returns the last response when a retryable status outlasts the attempts. The bulkhead permit is held until the response body has been read, has failed or was cancelled. |
 | `close` | `void close()` | *(override)* Closes the inner client. |
 
 ## Enums

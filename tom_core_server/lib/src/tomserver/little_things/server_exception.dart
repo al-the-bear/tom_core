@@ -2,8 +2,6 @@ import 'dart:isolate';
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
-import 'request_id.dart';
-
 /// Base class for every exception raised by `tom_core_server`.
 ///
 /// [TomServerException] extends the kernel's [TomException] with two
@@ -145,7 +143,7 @@ class TomServerException extends TomException {
     if (requestUuid != null) return;
     TomRequestId? requestId = getFromCurrentZone<TomRequestId>();
     if (requestId != null) {
-      requestUuid = requestId.uuid;
+      requestUuid = requestId.value;
     }
   }
 

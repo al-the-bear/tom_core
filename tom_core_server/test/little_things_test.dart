@@ -39,16 +39,16 @@ import 'package:test/test.dart';
 void main() {
   group('TomRequestId', () {
     test('generates a non-empty v4 uuid', () {
-      expect(TomRequestId().uuid, isNotEmpty);
+      expect(TomRequestId().value, isNotEmpty);
     });
 
     test('generates distinct ids per instance', () {
-      expect(TomRequestId().uuid, isNot(TomRequestId().uuid));
+      expect(TomRequestId().value, isNot(TomRequestId().value));
     });
 
     test('toString carries the uuid', () {
       final id = TomRequestId();
-      expect(id.toString(), 'TomRequestId: ${id.uuid}');
+      expect(id.toString(), 'TomRequestId: ${id.value}');
     });
   });
 
@@ -88,7 +88,7 @@ void main() {
       final requestId = TomRequestId();
       runZoned(() {
         final e = TomServerException('K', 'm');
-        expect(e.requestUuid, requestId.uuid);
+        expect(e.requestUuid, requestId.value);
       }, zoneValues: {TomRequestId: requestId});
     });
 
@@ -117,7 +117,7 @@ void main() {
       final requestId = TomRequestId();
       runZoned(() {
         final s = TomServerException('K', 'm').toString();
-        expect(s, endsWith(' request: ${requestId.uuid}'));
+        expect(s, endsWith(' request: ${requestId.value}'));
         expect(s, contains('client-throw: true'));
       }, zoneValues: {TomRequestId: requestId});
     });
@@ -128,7 +128,7 @@ void main() {
       final requestId = TomRequestId();
       runZoned(() {
         final s = TomServerException('K', 'm', clientThrow: false).toString();
-        expect(s, endsWith('client-throw: false request: ${requestId.uuid}'));
+        expect(s, endsWith('client-throw: false request: ${requestId.value}'));
       }, zoneValues: {TomRequestId: requestId});
     });
   });
@@ -180,7 +180,7 @@ void main() {
       runZoned(() {
         final e = TomServerException('K', 'm', requestUuid: 'inbound-request');
         expect(e.requestUuid, 'inbound-request');
-        expect(e.requestUuid, isNot(ambient.uuid));
+        expect(e.requestUuid, isNot(ambient.value));
       }, zoneValues: {TomRequestId: ambient});
     });
 
@@ -189,7 +189,7 @@ void main() {
       // ordinary case, which is every exception raised while serving.
       final ambient = TomRequestId();
       runZoned(
-        () => expect(TomServerException('K', 'm').requestUuid, ambient.uuid),
+        () => expect(TomServerException('K', 'm').requestUuid, ambient.value),
         zoneValues: {TomRequestId: ambient},
       );
     });
@@ -427,7 +427,7 @@ void main() {
             'm',
             reason: TomLoginFailure.accountProblem,
           ).requestUuid,
-          requestId.uuid,
+          requestId.value,
         );
       }, zoneValues: {TomRequestId: requestId});
     });

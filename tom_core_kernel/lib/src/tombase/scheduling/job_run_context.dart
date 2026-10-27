@@ -47,6 +47,7 @@ library;
 import 'dart:async';
 import 'dart:isolate';
 
+import '../context/request_id.dart';
 import '../isolate_pooling/tom_worker.dart';
 import 'schedule.dart';
 
@@ -156,16 +157,22 @@ class TomJobRunCommand extends TomCommand {
   /// Where checkpoints are sent to be stored.
   final SendPort saves;
 
+  /// Runs [inner] as work of its own ([TomRequestId.runRoot]): every attempt
+  /// starts a new trace and its log lines carry that trace's id as
+  /// `request_id`, whichever zone the scheduler ticked in and whichever isolate
+  /// the attempt runs on.
   @override
-  Future<Object?> execute() => runZoned(
-    inner.execute,
-    zoneValues: {
-      TomJobRunContext._zoneKey: TomJobRunContext._(
-        runId,
-        jobName,
-        checkpoint,
-        saves,
-      ),
-    },
+  Future<Object?> execute() => TomRequestId.runRoot(
+    () => runZoned(
+      inner.execute,
+      zoneValues: {
+        TomJobRunContext._zoneKey: TomJobRunContext._(
+          runId,
+          jobName,
+          checkpoint,
+          saves,
+        ),
+      },
+    ),
   );
 }

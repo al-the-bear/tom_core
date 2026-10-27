@@ -48,6 +48,7 @@ import 'dart:typed_data';
 
 import 'package:http/http.dart';
 
+import '../context/trace_context.dart';
 import '../little_things/exception_base.dart';
 import '../metrics/metrics.dart';
 
@@ -586,11 +587,30 @@ class TomResilientClient extends BaseClient {
   final Client _inner;
   final Random _random;
 
+  /// Adds the current trace to [request] as a new span — `traceparent`, and
+  /// `tracestate` when the trace carries one — so the callee continues it; a
+  /// Tom server then takes the trace id as its request id, and one id follows
+  /// the work across both. Nothing is added outside a trace, or when the
+  /// request already names one.
+  ///
+  /// The request id itself is not sent: it equals the trace id unless a
+  /// trusted proxy set it, and a callee believes a request-id header only from
+  /// its own trusted proxies.
+  static void propagateTrace(BaseRequest request) {
+    final trace = TomTraceContext.current;
+    if (trace == null) return;
+    for (final name in request.headers.keys) {
+      if (name.toLowerCase() == 'traceparent') return;
+    }
+    request.headers.addAll(trace.child().headers);
+  }
+
   /// The policy of every call, or `null` to use the destination's.
   final TomHttpResiliencePolicy? policy;
 
   @override
   Future<StreamedResponse> send(BaseRequest request) async {
+    propagateTrace(request);
     final destination = TomHttpResilience.destinationOf(request.url);
     final policy = this.policy ?? TomHttpResilience.policyFor(request.url);
     final breaker = TomHttpResilience.breakerFor(destination, policy);

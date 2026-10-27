@@ -3,27 +3,25 @@
 The base exception type for every error raised by `tom_core_server`, adding
 isolate attribution and request correlation to the kernel exception — plus
 `TomLoginException`, the one subclass declared beside it (its `TomLoginFailure`
-reason is a kernel type), `TomRequestId`, the correlation id the base reads out of the zone, and
-`tomErrorEnvelope`, which renders any of them into the wire error body.
+reason is a kernel type) — and `tomErrorEnvelope`, which renders any of them
+into the wire error body. The correlation id the base reads out of the zone is
+the kernel's `TomRequestId` (context module).
 
 ## Table of Contents
 
 - [Overview](#overview)
 - [Class Hierarchy](#class-hierarchy)
 - [Classes](#classes)
-  - [TomRequestId](#tomrequestid)
   - [TomServerException](#tomserverexception)
 - [Global Functions and Constants](#global-functions-and-constants)
   - [tomErrorEnvelope](#tomerrorenvelope)
 
 ## Overview
 
-Sources: `lib/src/tomserver/little_things/request_id.dart`,
-`lib/src/tomserver/little_things/server_exception.dart`.
+Source: `lib/src/tomserver/little_things/server_exception.dart`.
 
 Everything here is what the rest of the package is built on top of: the base
-exception, the id it correlates with, and the function that turns either into
-the body a client receives.
+exception and the function that turns it into the body a client receives.
 
 `TomServerException` is the root of the server's exception hierarchy: every
 server exception type (e.g. `TomEndpointHandlerException`, `TomCacheException`,
@@ -38,9 +36,10 @@ serve; everywhere else a subtype is named. Over the kernel's
 `TomException` it adds two server-specific concerns: **isolate attribution** —
 it captures `isolateName` at construction so a logged or serialized error
 identifies the worker isolate that produced it — and **request correlation** —
-when the surrounding zone carries a `TomRequestId`, the constructor copies its
-UUID into `TomException.requestUuid`, linking the error to the request that
-triggered it. The `clientThrow` flag marks whether the exception is safe to
+when the surrounding zone carries the kernel's `TomRequestId` — set for a
+request, a job run or a socket message — the constructor copies its `value`
+into `TomException.requestUuid`, linking the error to the work that triggered
+it. The `clientThrow` flag marks whether the exception is safe to
 surface to the client.
 
 The module declares one of those subtypes itself: `TomLoginException`, which
@@ -59,8 +58,6 @@ drift apart.
 ## Class Hierarchy
 
 ```
-TomRequestId          (standalone)
-
 TomException  (kernel)
     └── TomServerException
             ├── TomLoginException  (declared here; documented under Auth)
@@ -69,37 +66,6 @@ TomException  (kernel)
 ```
 
 ## Classes
-
-### TomRequestId
-
-A per-request correlation id. `tomRequestContextMiddleware` (server module)
-creates one per incoming request and publishes it into the request zone — echoed
-to the caller as `X-Request-Id` —
-so any code under that request can recover it with
-`getFromCurrentZone<TomRequestId>()`. It is read by the `TomServerException`
-constructor, by the endpoints pipeline, and by
-`TomAuditTrail.currentRequestId()`.
-
-It is declared in this module rather than beside the middleware that produces it
-so that the package's most depended-upon module does not import its largest one.
-
-#### Constructors
-
-```dart
-TomRequestId()
-```
-
-#### Properties
-
-| Property | Type | Description |
-| -------- | ---- | ----------- |
-| `uuid` | `String` | A freshly generated v4 UUID identifying this request (`late final`). |
-
-#### Methods
-
-| Method | Signature | Description |
-| ------ | --------- | ----------- |
-| `toString` | `String toString()` | *(override)* Returns `"TomRequestId: <uuid>"`. |
 
 ### TomServerException
 
@@ -135,7 +101,7 @@ request id as a plain string rather than as a zone value, and `serverCallError`
 is the kernel's slot for "this came from an HTTP call" — filled by
 `TomServerSelfLoginException`.
 
-Copies the current zone's `TomRequestId` UUID into `requestUuid` **when the
+Copies the current zone's `TomRequestId.value` into `requestUuid` **when the
 caller did not supply one**. An explicit value wins: a caller that names a
 request is relaying a failure from elsewhere and knows something the surrounding
 zone does not, and overwriting it would re-label another request's failure with
@@ -153,7 +119,7 @@ this one's id.
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `clientMessage` | `String clientMessage(String maskedFallback)` | The message this exception may be shown to a client as: `defaultUserMessage` when `clientThrow` is true, `maskedFallback` when it is not. **Every response that carries a message reads it from here** — a handler reading `defaultUserMessage` directly breaks the thrower's promise by omission, and five types in the package set the flag `false` precisely because their messages describe server internals. The fallback is required and has no default: text belongs to the rendering tier, reached through a resource key. Only the *message* is masked; `key` stays on the wire for every exception. |
-| `toString` | `String toString()` | *(override)* The base `TomException` string extended with `isolateName`, the `clientThrow` flag, and — only when the exception was raised inside a request — a labelled ` request: <uuid>` segment. The segment is omitted entirely when `requestUuid` is null. |
+| `toString` | `String toString()` | *(override)* The base `TomException` string extended with `isolateName`, the `clientThrow` flag, and — only when the exception was raised inside a request — a labelled ` request: <request-id>` segment. The segment is omitted entirely when `requestUuid` is null. |
 
 ## Global Functions and Constants
 

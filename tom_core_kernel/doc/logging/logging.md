@@ -742,8 +742,8 @@ through `TomLogContext`; nothing at the call site passes them.
 | ----- | --------- | ------ |
 | `trace_id` | `TomTraceContext.current?.traceId` | `TomTraceContext.run` — see [Trace Context](../context/context.md#trace-context) |
 | `span_id` | `TomTraceContext.current?.spanId` | the same |
+| `request_id` | `TomRequestId.current?.value` | `TomRequestId.run`, `runRoot` and `runChild` — a server request, a job run, a socket message; see [Request Id](../context/context.md#request-id) |
 | `tenant` | `TomTenantContext.currentId` | `TomTenantContext.run` — see [Tenant Context](../context/context.md#tenant-context) |
-| `request_id` | the server's request | `tom_core_server`, which registers it |
 
 A field whose provider answers `null` or an empty string is left out of the
 line, so a line logged outside every trace and tenant carries only the fixed

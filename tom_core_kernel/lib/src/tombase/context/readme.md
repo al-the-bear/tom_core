@@ -15,8 +15,16 @@ start below is an ordinary named value.
 
 The **trace** the work belongs to has a slot too, `TomTraceContext`, in the W3C
 Trace Context form: a server request continues the caller's `traceparent` (or
-starts a trace) and runs inside it, and the structured log output writes its
-ids into every line as `trace_id` and `span_id`.
+starts a trace) and runs inside it, the structured log output writes its
+ids into every line as `trace_id` and `span_id`, and an outgoing call through
+`TomResilientClient` carries a child span of it.
+
+The **request id** of the unit of work — a request, a job run, a socket message —
+sits beside the trace, `TomRequestId`: every log line carries it as
+`request_id`, and a server exception and an audit entry name it. Work no caller
+started (a job run) takes the trace id of a new trace (`runRoot`); one step of a
+longer conversation (a socket message) takes `<trace id>-<span id>` of a new
+span (`runChild`).
 
 ## Key types
 
@@ -30,7 +38,8 @@ ids into every line as `trace_id` and `span_id`.
 | `TomTenantException` | `tenancy.id.invalid` / `tenancy.context.missing`. |
 | `TomTenantScopedCommand` | Runs a `TomCommand` inside a tenant wherever it executes, a worker isolate included. |
 | `TomTenantEvent` | An event-triggered job's event, naming the tenant the run belongs to. |
-| `TomTraceContext` | The W3C trace and span in the zone: `parse` a `traceparent` (`null` when invalid), `newRoot`, `child`, `traceparent`, `current`, `run`. |
+| `TomTraceContext` | The W3C trace and span in the zone: `parse` a `traceparent` (`null` when invalid) and its `tracestate` (`validTraceState`), `newRoot`, `child`, `traceparent`, `headers`, `current`, `run`. |
+| `TomRequestId` | The id of the current unit of work in the zone: `TomRequestId()` (a v4 UUID), `of`, `tryOf`, `isValid`, `value`, `current`, `run`, `runRoot`, `runChild`. |
 
 ## Quick start
 

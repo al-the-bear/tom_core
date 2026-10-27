@@ -307,8 +307,9 @@ avoid:
 
 - `TomPrincipal` from the zone supplies username, user id, authentication flag,
   organization and application ids.
-- `TomRequestId` from the zone supplies `requestId`, which stitches every entry
-  written during one request together.
+- The kernel's `TomRequestId` from the zone supplies `requestId`, which
+  stitches every entry written during one request — or one job run, or one
+  socket message read through `TomWebSocketConnection.serve` — together.
 
 A write outside a request — a background job, a migration — is attributed to
 `TomAuditActor.system` (username `SYSTEM`), never to a blank or null actor. An
@@ -1355,9 +1356,9 @@ a result is the value that crosses between them.
 | `dart:typed_data` | dart | `audit_anchor.dart` | `Uint8List` |
 | `crypto` | package | `audit_sink.dart` | SHA-256 for the hash chain |
 | `path` | package | `audit_anchor_store.dart`, `audit_sink.dart` | `p.basename`, `p.basenameWithoutExtension`, `p.join` |
-| `tom_core_kernel` | package | 7 of 9 files | `TomPrincipal`, `TomUser`, `getFromCurrentZone`, `TomClosable`, `tomReflector` (policy resolution by mirror), `TomScheduledJob` / `TomJobBase` / `TomRetryPolicy` and `TomBean` / `TomBeanLocatorException` for the verification job, `tomLog` for the finding channel, and — through its `tom_crypto` re-export — `rsaSign` / `rsaVerify` for anchor signatures |
+| `tom_core_kernel` | package | 7 of 9 files | `TomPrincipal`, `TomUser`, `getFromCurrentZone`, `TomClosable`, `tomReflector` (policy resolution by mirror), `TomScheduledJob` / `TomJobBase` / `TomRetryPolicy` and `TomBean` / `TomBeanLocatorException` for the verification job, `tomLog` for the finding channel, `TomRequestId`, recovered from the zone to supply `requestId`, and — through its `tom_crypto` re-export — `rsaSign` / `rsaVerify` for anchor signatures |
 | [datasources](datasources.md) | module | `sql_audit_sink.dart`, `sql_audit_sql.dart` | `TomSqlAuditSink` writes through a `TomDataSource` directly, and encodes instants with `sqlInstant` |
-| [little_things](little_things.md) | module | `audit_sink.dart`, `audit_trail.dart`, `sql_audit_sink.dart` | `TomRequestId`, recovered from the zone to supply `requestId`. This is the module's only intra-package dependency below the endpoints/persistence layer, and it is deliberately the bottom one: the id type lives beside the exception base, so attributing an entry to its request does not drag the whole server module in |
+| [little_things](little_things.md) | module | `audit_sink.dart`, `sql_audit_sink.dart` | `TomServerException`, the base of the module's exceptions |
 | [object_persistence](object_persistence.md) | module | `sql_audit_sink.dart` | `TomSqlDatasourceRepository` calls the trail on every mutation |
 
 - `pointycastle` — the `RSAPrivateKey` / `RSAPublicKey` types anchor signing

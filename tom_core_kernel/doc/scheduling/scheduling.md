@@ -41,6 +41,7 @@ fails*, and *which node in a cluster actually runs a given occurrence*.
 - [Lease Locks](#lease-locks)
   - [Choosing a substrate](#choosing-a-substrate)
 - [Observability](#observability)
+  - [The ids a run logs under](#the-ids-a-run-logs-under)
   - [Metrics](#metrics)
 - [Best Practices](#best-practices)
 - [Dependencies](#dependencies)
@@ -88,7 +89,7 @@ fails*, and *which node in a cluster actually runs a given occurrence*.
 | `TomScheduledJobException` | class | Raised when an annotated job cannot be turned into a `TomJobDefinition`. |
 | `TomJobClaim` | class | A ticket proving that one particular claim of `run` was won. |
 | `TomJobRunContext` | class | What a running body may ask of its run: its id and job, the checkpoint it starts from, and `saveCheckpoint`. |
-| `TomJobRunCommand` | class | The command the scheduler dispatches around every body: runs it inside its `TomJobRunContext`, and carries the port a save travels back through. |
+| `TomJobRunCommand` | class | The command the scheduler dispatches around every body: runs each attempt under a request id of its own inside its `TomJobRunContext`, and carries the port a save travels back through. |
 | `TomOneShotResource` | extension type | A lease resource name that will never be acquired again once its work is done — the only kind `TomLeaseLock.forget` accepts. |
 
 A **job** pairs a [schedule](#schedules) with a body. The **scheduler** turns the
@@ -1103,7 +1104,9 @@ does not change what was stored.
 ### Where a save goes
 
 The scheduler dispatches every body inside a **`TomJobRunCommand`**: a command
-wrapping the body's own, which runs it inside its `TomJobRunContext`. Because it
+wrapping the body's own, which runs it inside its `TomJobRunContext` and under
+a request id of its own (see
+[The ids a run logs under](#the-ids-a-run-logs-under)). Because it
 is a command, it crosses an isolate hop with the body — on a
 `TomWorkerPoolJobDispatcher` as much as inline. A save travels as a message to a
 port the scheduler opened for that attempt, and the scheduler writes it with
@@ -1329,6 +1332,17 @@ Three questions and where they are answered:
   one that merely **lapsed** (`holderVanished` — a node died mid-run). The run
   itself is recovered on the next tick and alerted as `runAbandoned`.
 
+### The ids a run logs under
+
+`TomJobRunCommand` runs every attempt as work of its own
+(`TomRequestId.runRoot`, see [Request Id](../context/context.md#request-id)):
+the attempt starts a new trace, and every structured log line it writes carries
+that trace's id as both `trace_id` and `request_id` — whichever zone the
+scheduler ticked in and whichever isolate the attempt runs on. Two attempts of
+one run are two traces, so a retry's lines are told apart from the attempt it
+repeats; `runId` is what joins them. An outbox delivery is a job run, so each
+delivery attempt logs under an id of its own too.
+
 ### Metrics
 
 Alerts say what went wrong; the metrics say how the jobs are doing. The
@@ -1414,7 +1428,7 @@ Two alert rules cover most of what an operator wants:
 | `dart:math` | dart | `job_definition.dart`, `job_store.dart`, `scheduler.dart` | `Random` and `pow`; in `job_store.dart`, the random part of `TomFileJobStore`'s mutex owner |
 | `tom_basics` | package | `job_store.dart`, `scheduler.dart` | `tomLog`, the default `onAlert` sink |
 | `tom_reflection` | package | `scheduled_job.dart` | `ClassMirror`, which appears in `TomScheduledJobs.discover`'s own signature. The whole of [Declaring a Job](#declaring-a-job) rests on it |
-| [context](../context/context.md) | module | `scheduler.dart` | `TomTenantContext`, `TomTenantScopedCommand` and `TomTenantEvent` — a run's body runs inside its tenant |
+| [context](../context/context.md) | module | `job_run_context.dart`, `scheduler.dart` | `TomTenantContext`, `TomTenantScopedCommand` and `TomTenantEvent` — a run's body runs inside its tenant; `TomRequestId.runRoot`, under which every attempt runs |
 | [isolate_pooling](../isolate_pooling/isolate_pooling.md) | module | `job_definition.dart`, `job_run_context.dart`, `scheduled_job.dart`, `scheduler.dart` | `TomCommand`, which *is* the job body type and what `TomJobRunCommand` extends; `TomWorkerPool` for `TomWorkerPoolJobDispatcher` |
 | [little_things](../little_things/little_things.md) | module | `job_store.dart`, `schedule.dart`, `scheduled_job.dart`, `scheduler.dart` | `TomException`, base of `TomScheduleException` and `TomScheduledJobException`, whose key a refused checkpoint save carries back to the body; `tomWriteFileAtomically` for `TomFileJobStore` |
 | [metrics](../metrics/metrics.md) | module | `scheduler.dart` | `TomMetrics.registry` and its instruments — the `tom_job_*` series of [Metrics](#metrics) |

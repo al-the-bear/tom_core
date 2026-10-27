@@ -70,7 +70,6 @@ import 'dart:async';
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
-import '../little_things/request_id.dart';
 import 'audit_record.dart';
 import 'audit_sink.dart';
 
@@ -393,7 +392,8 @@ class TomAuditTrail {
   }
 
   /// The current request's id, or `null` outside a request.
-  static String? currentRequestId() => getFromCurrentZone<TomRequestId>()?.uuid;
+  static String? currentRequestId() =>
+      getFromCurrentZone<TomRequestId>()?.value;
 
   static final TomAuditRecordIdGenerator _recordIds =
       TomAuditRecordIdGenerator();

@@ -34,6 +34,7 @@ store before the configuration is built.
 - [Log Format and Readiness](#log-format-and-readiness)
 - [Graceful Shutdown](#graceful-shutdown)
 - [Outgoing HTTP Calls](#outgoing-http-calls)
+- [Request Ids](#request-ids)
 - [Idempotency Keys](#idempotency-keys)
 - [Field-Level Encryption](#field-level-encryption)
 - [Privacy](#privacy)
@@ -938,6 +939,44 @@ The policies and the circuit and bulkhead state are per isolate. `httpClient`
 is not a field of the configuration base, so the startup warning about
 [unknown keys](#unknown-keys-in-the-configuration-resources) names it.
 
+## Request Ids
+
+Every request runs under a request id: the trace id of its W3C trace — the
+caller's, when its `traceparent` is valid — unless a trusted proxy assigned one
+in its request-id header (see [server.md](server.md#request-ids)). The
+`requestIds` key of the configuration resources
+(`TomRequestIdPolicy.configurationKey`) names that header and the proxies it is
+believed from. Like `httpClient` it is a nested map read through
+`TomServerConfigResourceProvider`, not a field of the configuration base:
+`TomServer.start` hands it to `TomRequestIdPolicy.configure` through
+`TomServer.configureRequestIds`. Without the key `X-Request-Id` is echoed on
+every response and believed from no one, so every request runs under its trace
+id.
+
+| Key | Type | Default | What it decides |
+| --- | ---- | ------- | --------------- |
+| `header` | `String` | `X-Request-Id` | The request-id header: echoed on every response, believed from a trusted proxy. Letters, digits and `-`. |
+| `trustedProxies` | `List<String>` | none | The IP addresses of the proxies — a gateway, a load balancer — whose request-id header is believed, compared with the socket peer's address. A header from any other peer is ignored: whoever sends it could otherwise choose the id their requests are logged and audited under. |
+
+```yaml
+# assets/config-resources_default.yaml
+requestIds:
+  header: X-Request-Id
+  trustedProxies: [10.0.0.2, 10.0.0.3]
+```
+
+**A value of the wrong shape stops the start.** `requestIds` that is not a map,
+an unknown key, a `header` that is not a header name or an entry of
+`trustedProxies` that is not an IP address throws a `TomRequestIdException`
+keyed `server.request_ids.config.invalid` before anything is applied. A request
+id the trusted proxy sends that is not a valid id (8 to 128 characters of ASCII
+letters, digits and `._:-`) is ignored per request, never refused.
+
+**When it applies.** `start()` applies the key right after `httpClient`. The
+setting is per isolate. `requestIds` is not a field of the configuration base,
+so the startup warning about
+[unknown keys](#unknown-keys-in-the-configuration-resources) names it.
+
 ## Idempotency Keys
 
 An endpoint annotated `@TomIdempotent` stores the response to a request that
@@ -974,7 +1013,7 @@ whole number, throws a `TomIdempotencyException` keyed
 the name does not resolve to is reported per request, as
 `endpoint.idempotency.no_datasource`.
 
-**When it applies.** `start()` applies the key right after `httpClient`, before
+**When it applies.** `start()` applies the key right after `requestIds`, before
 the router is built. A deployment that installs a store of its own assigns
 `TomIdempotency.store` after `start()`, or leaves `datasource` out. The
 settings are per isolate. `idempotency` is not a field of the configuration

@@ -23,6 +23,7 @@ export 'package:tom_basics/tom_basics.dart';
 export 'package:tom_crypto/tom_crypto.dart';
 export 'src/tombase/beanlocator/bean_locator.dart';
 export 'src/tombase/context/execution_context.dart';
+export 'src/tombase/context/request_id.dart';
 export 'src/tombase/context/tenant_context.dart';
 export 'src/tombase/context/trace_context.dart';
 export 'src/tombase/http_connection/server_connection.dart';

@@ -5,17 +5,26 @@
 
 The HTTP server entry point. `TomServer` is constructed from a
 `TomBaseServerConfiguration`, builds its endpoint router during `start`, and
-binds the listener. Each request gets a `TomRequestLogInfo` record, a
-`TomRequestId` and a W3C trace context — minted (or, for the trace, continued
-from the caller's `traceparent`) by `tomRequestContextMiddleware` before
-anything else runs, so every log line, exception and audit entry of the request
-correlates, and echoed as the `X-Request-Id` and `traceparent` response headers
-— and its own current transaction, because the authentication middleware runs the request inside a
+binds the listener. Each request gets a `TomRequestLogInfo` record, a W3C
+trace context and a kernel `TomRequestId` — set by
+`tomRequestContextMiddleware` before anything else runs, so every log line,
+exception and audit entry of the request correlates, and echoed as the
+`X-Request-Id` and `traceparent` response headers — and its own current
+transaction, because the authentication middleware runs the request inside a
 [`TomTransactionManager`](../transactions/readme.md) scope; without it, requests
 interleaving in one isolate would share whichever transaction the manager last
-made current. The id type is declared in
-[`little_things`](../little_things/readme.md), beside the exception base that
-consumes it.
+made current.
+
+**Which request id.** `TomRequestIdPolicy` chooses it: the configured
+request-id header (`X-Request-Id` by default) **only from a trusted proxy** and
+only when the kernel's `TomRequestId.isValid` accepts its value; otherwise the
+request's trace id — the caller's, when its `traceparent` is valid, so caller
+and server log one id for one piece of work, or the id of the trace the request
+starts. A malformed header of either kind is ignored, never refused. The
+`requestIds` configuration key (`header`, `trustedProxies`) sets the policy;
+`start` applies it (`TomServer.configureRequestIds`), and a value of the wrong
+shape stops the start with `server.request_ids.config.invalid`
+(`TomRequestIdException`).
 
 ## Key types
 
@@ -24,7 +33,8 @@ consumes it.
 | `TomServer` | The server: `TomServer(configuration)`; builds the `TomEndpointRouting` and starts listening. |
 | `TomRequestLogInfo` | Captured per-request log metadata, including the matched endpoint's `route` pattern the request metrics are labelled with. |
 | `tomRequestLogInfoMiddleware` | Seeds a new `TomRequestLogInfo` into every request's context; `start` installs it directly inside the shutdown gate. |
-| `tomRequestContextMiddleware` · `tomRequestIdHeader` | Mints the request id, continues or starts the trace, runs the rest of the pipeline in a zone carrying both, and answers with `X-Request-Id` and `traceparent`; registers the `request_id` field of structured log lines. |
+| `tomRequestContextMiddleware` · `tomRequestIdHeader` | Continues or starts the trace (keeping a valid `tracestate`), takes the request id the policy chooses, runs the rest of the pipeline in a zone carrying both, and answers with the policy's request-id header and `traceparent`. |
+| `TomRequestIdPolicy` · `TomRequestIdException` | Which request id a request runs under: the request-id `header` believed from the `trustedProxies`, else the trace id (`resolve`). `TomRequestIdPolicy.current` is the policy the pipeline applies, set by `configure` from the `requestIds` key; a malformed value throws `server.request_ids.config.invalid`. |
 | `TomGracefulShutdown` · `tomProbePaths` | What the server does between SIGTERM and exiting: readiness off, the listener closed, new requests refused with `503` while the probe paths pass, the requests and scheduled runs in flight finished within the grace period, leases released and pools closed. `TomServer.gracefulShutdown` holds the server's; `TomServer.shutdown()` runs it without a signal. |
 | `TomEndpointCredentials` | The path prefixes whose `Authorization` header belongs to the endpoint rather than the framework — the SCIM endpoints, whose identity provider presents a static secret. `extractAuthentication` leaves such a header unread and reports `TomCredentialOutcome.endpointCredential`; the endpoint checks it. |
 
@@ -39,7 +49,7 @@ void main() {
   final server = TomServer(configuration);
   server.start();
 
-  // The server is now listening; each request carries a TomRequestId UUID.
+  // The server is now listening; each request runs under a TomRequestId.
 }
 ```
 
@@ -74,6 +84,12 @@ the timeout, retry, circuit-breaker and bulkhead policies every framework call
 to another service runs under, overall and per destination. A value of the
 wrong shape stops the start with `http.client.config.invalid` — see
 [`doc/configuration.md`](../../../../doc/configuration.md#outgoing-http-calls).
+
+**Request ids.** Next `start` applies the `requestIds` key
+(`TomServer.configureRequestIds`, `TomRequestIdPolicy.configurationKey`): the
+request-id header and the proxies it is believed from. Without the key
+`X-Request-Id` is echoed and believed from no one, so every request runs under
+its trace id — see [`doc/server.md`](../../../../doc/server.md#request-ids).
 
 **Idempotency keys.** `start` applies the `idempotency` key of the
 configuration resources (`TomServer.configureIdempotency`,
@@ -136,7 +152,8 @@ by step without a socket.
 replacing the one JSON POST rather than running an auth server;
 `test/scim_test.dart` reads a claimed path as `endpointCredential`;
 `test/structured_logs_readiness_test.dart` covers the correlation ids and the
-log format; `test/graceful_shutdown_test.dart` the graceful shutdown, with a real
+log format, `test/request_ids_test.dart` the request-id rule and its
+configuration; `test/graceful_shutdown_test.dart` the graceful shutdown, with a real
 SIGTERM sent to a server process;
 `test/examples_test.dart` runs the example.
 

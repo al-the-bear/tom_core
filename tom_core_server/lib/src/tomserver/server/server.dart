@@ -9,7 +9,6 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 import '../authentication/api_keys.dart';
 import '../authentication/jwt_signing.dart';
 import '../authentication/server_self_login.dart';
-import '../little_things/request_id.dart';
 import '../little_things/server_exception.dart';
 import '../configuration/base_server_configuration.dart';
 import '../configuration/runtime_environment.dart';
@@ -21,6 +20,7 @@ import '../object_persistence/field_encryption.dart';
 import '../privacy/privacy.dart';
 import '../healthcheck/health_check.dart';
 import 'graceful_shutdown.dart';
+import 'request_ids.dart';
 import '../metrics/metrics_middleware.dart';
 import '../metrics/otlp_exporter.dart';
 import '../authorization/authorization_cache.dart';
@@ -73,13 +73,13 @@ Middleware tomRequestLogInfoMiddleware() => (innerHandler) {
   );
 };
 
-/// The header a server echoes the request id in, so a caller can quote it.
-const String tomRequestIdHeader = 'X-Request-Id';
-
 /// A [Middleware] that gives every request its correlation ids before
-/// anything else runs: a [TomRequestId], and the W3C trace context its
-/// `traceparent` header continues — a new span of the caller's trace, or a
-/// new trace when the request carries none or an invalid one.
+/// anything else runs: the W3C trace context its `traceparent` header
+/// continues — a new span of the caller's trace, or a new trace when the
+/// request carries none or an invalid one — and the [TomRequestId] that
+/// [policy] (by default [TomRequestIdPolicy.current], read per request)
+/// chooses: a trusted proxy's id, else the trace id. See `request_ids.dart`
+/// for the rule.
 ///
 /// Both are published into the zone the rest of the pipeline runs in, so the
 /// access-log line, an error logged during authentication and every line a
@@ -88,28 +88,25 @@ const String tomRequestIdHeader = 'X-Request-Id';
 /// id it finds here rather than minting a second one, so the id on a server
 /// exception and in the audit trail is this one too.
 ///
-/// Building it registers the `request_id` field of structured log lines
-/// ([TomLogContext]).
-///
-/// The response carries the request id in [tomRequestIdHeader], which is what
+/// The response carries the request id in the policy's header, which is what
 /// a user quotes to support, and the server span as `traceparent`, so a
 /// tracing client can attach the server's part of the trace to its own.
-Middleware tomRequestContextMiddleware() {
-  TomLogContext.register(
-    'request_id',
-    () => getFromCurrentZone<TomRequestId>()?.uuid,
-  );
+Middleware tomRequestContextMiddleware({TomRequestIdPolicy? policy}) {
   return (innerHandler) => (request) {
-    final requestId = TomRequestId();
-    final incoming = TomTraceContext.parse(request.headers['traceparent']);
+    final applied = policy ?? TomRequestIdPolicy.current;
+    final incoming = TomTraceContext.parse(
+      request.headers['traceparent'],
+      traceState: request.headers['tracestate'],
+    );
     final trace = incoming?.child() ?? TomTraceContext.newRoot();
-    return runZoned(
-      zoneValues: {TomRequestId: requestId},
+    final requestId = applied.resolve(request, trace);
+    return TomRequestId.run(
+      requestId,
       () => TomTraceContext.run(trace, () async {
         final response = await innerHandler(request);
         return response.change(
           headers: {
-            tomRequestIdHeader: requestId.uuid,
+            applied.header: requestId.value,
             'traceparent': trace.traceparent,
           },
         );
@@ -707,6 +704,7 @@ class TomServer {
     // First, so every outgoing call the start makes — the deployment's own
     // login included — runs under the configured policies.
     configureHttpClients();
+    configureRequestIds();
     configureIdempotency();
     await configureFieldEncryption();
     configurePrivacy();
@@ -925,6 +923,20 @@ class TomServer {
         config ?? TomServerConfigResourceProvider.getServerConfig();
     if (!provider.exists(httpClientConfigurationKey)) return;
     TomHttpResilience.configure(provider.get(httpClientConfigurationKey));
+  }
+
+  /// Applies the [TomRequestIdPolicy.configurationKey] map of [config] (the
+  /// server configuration unless given) with [TomRequestIdPolicy.configure]:
+  /// the request-id header and the proxies it is believed from. Called by
+  /// [start]. Without the key `X-Request-Id` is echoed and believed from no
+  /// one, so every request runs under its trace id.
+  static void configureRequestIds([TomServerConfigResourceProvider? config]) {
+    final provider =
+        config ?? TomServerConfigResourceProvider.getServerConfig();
+    if (!provider.exists(TomRequestIdPolicy.configurationKey)) return;
+    TomRequestIdPolicy.configure(
+      provider.get(TomRequestIdPolicy.configurationKey),
+    );
   }
 
   /// The configuration key holding the idempotency-key settings — see

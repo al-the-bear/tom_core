@@ -234,7 +234,7 @@ void main() async {
       expect(record.actor.authenticated, isTrue);
       expect(record.actor.organizationId, 7);
       // The request id stitches this write to the rest of the same request.
-      expect(record.requestId, requestId.uuid);
+      expect(record.requestId, requestId.value);
     });
 
     test(

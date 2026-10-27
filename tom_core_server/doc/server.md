@@ -6,10 +6,11 @@ middleware pipeline in front of the endpoint router, and binds it to a socket.
 The module also provides the middleware that the pipeline is built from —
 context setup, authentication, error mapping, and request logging — plus
 `TomRequestLogInfo`, the per-request logging state that travels in the request
-context. The other per-request value object, the correlation id `TomRequestId`,
-is *produced* here — the request-context middleware mints one for every request,
-together with the request's W3C trace context — but declared in the little-things module, beside the exception
-base that reads it; see [little_things.md](little_things.md#tomrequestid).
+context. The request's correlation ids are set here too: the request-context
+middleware continues the caller's W3C trace (or starts one) and runs the request
+under the kernel's `TomRequestId` that `TomRequestIdPolicy` chooses — the trace
+id, or a trusted proxy's request-id header; see
+[Request ids](#request-ids).
 
 ## Table of Contents
 
@@ -18,6 +19,7 @@ base that reads it; see [little_things.md](little_things.md#tomrequestid).
   - [The Deployment Logs Itself In First](#the-deployment-logs-itself-in-first)
 - [The Pipeline](#the-pipeline)
 - [Correlation Ids and Structured Logs](#correlation-ids-and-structured-logs)
+  - [Request ids](#request-ids)
   - [The log format](#the-log-format)
 - [Request Context and Zone Values](#request-context-and-zone-values)
   - [Endpoint-owned credentials](#endpoint-owned-credentials)
@@ -49,8 +51,10 @@ base that reads it; see [little_things.md](little_things.md#tomrequestid).
 | `TomEndpointCredentials` | abstract final class | The path prefixes whose `Authorization` header belongs to the endpoint, which `extractAuthentication` leaves unread. Statics only |
 | `contextSetupMiddleware` | function | Seeds entries into the request context — the same objects for every request |
 | `tomRequestLogInfoMiddleware` | function | Seeds a new `TomRequestLogInfo` into every request's context |
-| `tomRequestContextMiddleware` | function | Mints the request id and continues or starts the W3C trace; answers with both |
-| `tomRequestIdHeader` | const String | `X-Request-Id`, the response header carrying the request id |
+| `tomRequestContextMiddleware` | function | Continues or starts the W3C trace, runs the request under the id its `TomRequestIdPolicy` chooses; answers with both |
+| `tomRequestIdHeader` | const String | `X-Request-Id`, the default request-id header: echoed on every response, believed from a trusted proxy |
+| `TomRequestIdPolicy` | final class | Which request id a request runs under: the request-id header from a trusted proxy, else the trace id. `current` is the one the pipeline applies, set by `configure` from the `requestIds` key |
+| `TomRequestIdException` | class | The `requestIds` settings cannot be applied — `server.request_ids.config.invalid` |
 | `tomDefaultAuthenticationMiddleware` | function | Extracts credentials and publishes request zone values |
 | `tomLoggingMiddleware` | function | Emits the one-shot access-log line, prefixed with the application id |
 | `extractAuthentication` | function | Reads bearer credentials from a request |
@@ -81,6 +85,10 @@ for all destinations and for named ones. A value of the wrong shape stops the
 start with `http.client.config.invalid`; without the key the kernel's defaults
 stand, a 30-second timeout among them (see
 [configuration.md](configuration.md#outgoing-http-calls)). Right after, it
+applies the `requestIds` key (`TomServer.configureRequestIds`): the request-id
+header and the proxies it is believed from. A value of the wrong shape stops the
+start with `server.request_ids.config.invalid`; without the key `X-Request-Id`
+is echoed and believed from no one (see [Request ids](#request-ids)). Then it
 applies the `idempotency` key (`TomServer.configureIdempotency`): the store the
 `@TomIdempotent` endpoints keep their keys in and how long a response is
 replayed. A value of the wrong shape stops the start with
@@ -187,10 +195,10 @@ order:
    here, before anything below sees it — it is infrastructure like a probe, so
    it is not counted, logged, authenticated or rate-limited. See
    [metrics.md](metrics.md).
-4. **Request context** — `tomRequestContextMiddleware`, which mints the
-   request's `TomRequestId`, continues the caller's W3C trace from its
-   `traceparent` header (or starts one), and runs everything below in a zone
-   carrying both. Its place is what makes the ids complete: it is outside the
+4. **Request context** — `tomRequestContextMiddleware`, which continues the
+   caller's W3C trace from its `traceparent` header (or starts one), takes the
+   request's `TomRequestId` from `TomRequestIdPolicy.current`, and runs
+   everything below in a zone carrying both. Its place is what makes the ids complete: it is outside the
    access log, both error layers and authentication, so every line any of them
    writes for the request carries the same `request_id`, `trace_id` and
    `span_id`. A metrics scrape is answered above it and gets no ids. See
@@ -250,25 +258,80 @@ sees it, from `tomRequestContextMiddleware`:
 
 | Id | Where it comes from | Where it goes |
 | -- | ------------------- | ------------- |
-| `TomRequestId` | Minted per request — a v4 UUID | The request zone; the `X-Request-Id` response header (`tomRequestIdHeader`); the `request_id` field of every structured log line; a `TomServerException`'s `requestUuid`; the audit trail's `requestId` |
-| W3C trace context (`TomTraceContext`, kernel) | The request's `traceparent` header, continued with a child span of this server's own; a new trace when the header is missing or does not parse | The request zone; the `traceparent` response header (the server span); the `trace_id` and `span_id` fields of every structured log line |
+| `TomRequestId` (kernel) | `TomRequestIdPolicy`: a trusted proxy's request-id header, else the trace id — see [Request ids](#request-ids) | The request zone; the request-id response header (`tomRequestIdHeader` by default); the `request_id` field of every structured log line; a `TomServerException`'s `requestUuid`; the audit trail's `requestId` |
+| W3C trace context (`TomTraceContext`, kernel) | The request's `traceparent` header, continued with a child span of this server's own, its `tracestate` carried on; a new trace when the header is missing or does not parse | The request zone; the `traceparent` response header (the server span); the `trace_id` and `span_id` fields of every structured log line |
 
 The request id is what a user quotes to support; the trace id is what joins
-this server's lines to those of the caller and of every service it calls. A
-caller-supplied `X-Request-Id` is not adopted — the id is the server's — while a
-caller's `traceparent` is continued, because joining traces across services is
-what the header is for.
+this server's lines to those of the caller and of every service it calls. Unless
+a trusted proxy assigned the request id, the two are the same value, so a caller
+that sent a `traceparent` finds its own trace id on the server's lines and in its
+response's request-id header.
 
 `tomDefaultAuthenticationMiddleware` carries the request id it finds in the
 zone into the request's `TomZoneValues` rather than minting a second one, so the
 id on the response header, on a server exception and in the audit trail is the
 same id. Used on its own — without the request-context middleware outside it —
-it mints one itself.
+it mints one itself, a random v4 UUID.
 
-Building the middleware registers the `request_id` field with the kernel's
-`TomLogContext`; the kernel registers `trace_id`, `span_id` and `tenant`. Those
-fields are read from the zone each line is logged in, so a handler logs as it
-always did and the line carries them without being passed anything.
+The kernel's `TomLogContext` registers the `trace_id`, `span_id`, `request_id`
+and `tenant` fields. They are read from the zone each line is logged in, so a
+handler logs as it always did and the line carries them without being passed
+anything.
+
+### Request ids
+
+`TomRequestIdPolicy` decides which id a request runs under:
+
+1. A request carrying the configured request-id header (`header`, `X-Request-Id`
+   by default) **from one of the trusted proxies** runs under that value, when
+   the kernel's `TomRequestId.isValid` accepts it — 8 to 128 characters of ASCII
+   letters, digits and `._:-`, starting with a letter or digit. A proxy that
+   assigns ids — a gateway, a load balancer — is believed; anyone else could
+   choose the id their requests are logged and audited under, so the header is
+   ignored from every other peer. The peer is the socket's remote address,
+   compared as its address text (`10.0.0.2`, `::1`).
+2. Otherwise the request runs under the id of its trace: the caller's trace id
+   when its `traceparent` is valid, so the caller and this server log one id for
+   one piece of work, or the id of the new trace the request starts. A trace id
+   is accepted from anyone — it carries no authority, and its format (32
+   lower-case hex digits) leaves nothing to inject.
+3. A malformed header of either kind is ignored, never refused: the request gets
+   an id of its own, as the W3C specification requires for `traceparent`.
+
+A `tracestate` is carried on unchanged when it is printable and at most 512
+characters, and dropped otherwise. The response echoes the request id in the
+policy's header.
+
+The settings are the `requestIds` key of the server configuration
+(`TomRequestIdPolicy.configurationKey`), applied by `start()` through
+`TomServer.configureRequestIds`:
+
+```yaml
+requestIds:
+  header: X-Request-Id       # optional; the default
+  trustedProxies: [10.0.0.2] # optional; none by default
+```
+
+| Key | Default | Effect |
+| --- | ------- | ------ |
+| `header` | `X-Request-Id` | The request-id header: echoed on every response, believed from a trusted proxy. Letters, digits and `-` |
+| `trustedProxies` | none | The IP addresses whose request-id header is believed |
+
+`TomRequestIdPolicy.configure` checks the whole value before applying any of it:
+a value that is not a map, an unknown key, a `header` that is not a header name
+or an entry of `trustedProxies` that is not an IP address throws
+`server.request_ids.config.invalid` (`TomRequestIdException`) and stops the
+start. Without the key `X-Request-Id` is echoed and believed from no one, so
+every request runs under its trace id. A test or an embedding application can
+pass a policy straight to `tomRequestContextMiddleware(policy: ...)`; without
+one the middleware reads `TomRequestIdPolicy.current` per request.
+
+The same id follows work the request does not serve itself: an outgoing call
+through the kernel's `TomResilientClient` carries a child span of the request's
+trace, so a Tom server called with it runs under the same trace id. A scheduled
+job run gets an id of its own (the kernel's `TomJobRunCommand`), and so does each
+socket message a handler reads through `TomWebSocketConnection.serve` (see
+[endpoints.md](endpoints.md#websocket-endpoints)).
 
 ### The log format
 
@@ -277,10 +340,10 @@ always did and the line carries them without being passed anything.
 | Value | Output |
 | ----- | ------ |
 | `text` (default) | One human-readable line per entry — the default console output stays installed |
-| `json` | One JSON object per line (kernel `TomJsonLogOutput`): `timestamp`, `level`, `message`, `logger`, `isolate`, then the context fields `trace_id`, `span_id`, `tenant` and `request_id` where the zone has them |
+| `json` | One JSON object per line (kernel `TomJsonLogOutput`): `timestamp`, `level`, `message`, `logger`, `isolate`, then the context fields `trace_id`, `span_id`, `request_id` and `tenant` where the zone has them |
 
 ```text
-{"timestamp":"2026-10-20T08:15:02.113Z","level":"info","message":"…","logger":"TasksServer.list","isolate":"main","trace_id":"4bf92f3577b34da6a3ce929d0e0e4736","span_id":"b7ad6b7169203331","tenant":"acme","request_id":"0f4c…"}
+{"timestamp":"2026-10-20T08:15:02.113Z","level":"info","message":"…","logger":"TasksServer.list","isolate":"main","trace_id":"4bf92f3577b34da6a3ce929d0e0e4736","span_id":"b7ad6b7169203331","request_id":"4bf92f3577b34da6a3ce929d0e0e4736","tenant":"acme"}
 ```
 
 Use `json` wherever a log collector indexes the lines: "every line of one
@@ -310,8 +373,8 @@ Three channels carry per-request state:
   `TomExecutionContext`, the resolved `TomPrincipal`, the `TomClientJwtToken`,
   the `TomApiKeyIdentity` of a request a service account's API key
   authenticated (`null` otherwise; see
-  [API keys](#a-service-accounts-api-key)), and the `TomRequestId`
-  `tomRequestContextMiddleware` minted (declared in the little-things module) — and, in a
+  [API keys](#a-service-accounts-api-key)), and the kernel's `TomRequestId`
+  `tomRequestContextMiddleware` set — and, in a
   multi-tenant deployment, the request's tenant (see
   [The request's tenant](#the-requests-tenant)). Downstream
   code recovers any of them with
@@ -699,8 +762,8 @@ process at all.
 Three suites cover this module, a fourth covers its endpoint-owned
 credentials, a fifth its tenant resolution, a sixth the API keys and rate
 limits it reads, a seventh the metrics middlewares it installs, an eighth
-its correlation ids and log format, a ninth its graceful shutdown, and a tenth
-the resilience of its outgoing HTTP calls.
+its correlation ids and log format, a ninth the request-id rule, a tenth its
+graceful shutdown, and an eleventh the resilience of its outgoing HTTP calls.
 
 `test/server_test.dart` covers the pipeline as composed functions:
 `TomRequestLogInfo`, `extractAuthentication` reading a credential off a request
@@ -753,6 +816,19 @@ replacing the default console output, an application's own output kept, `text`
 changing nothing and an unknown value refused. The group `a started server`
 binds a socket and reads the `X-Request-Id` and `traceparent` response headers
 off a real response.
+
+`test/request_ids_test.dart` covers the request-id rule. The group
+`an incoming traceparent` finds the caller's trace id as the request id on both
+sides of the call, a malformed header replaced by an id of the server's own,
+and the `tracestate` travelling on the calls the handler makes. The group
+`a request-id header` believes it from a trusted proxy, ignores it from anyone
+else, replaces a malformed one even from a trusted proxy, and reads and echoes a
+configured header name. The group `the requestIds configuration` refuses a value
+of the wrong shape with `server.request_ids.config.invalid` before applying any
+of it, and reads the key from the server configuration at start. The group
+`a socket message read through serve` runs each message under an id of its own
+in the connection's trace. The id type itself is the kernel's and is tested
+there.
 
 `TomEndpointCredentials` is exercised where it is used: `test/scim_test.dart`'s
 test `the framework leaves the claimed header to the endpoint` reads a SCIM
@@ -858,23 +934,23 @@ and an application that needs one builds it today rather than waiting:
 
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
-| `dart:async` | dart | every file | `Future`, `FutureOr`, `unawaited`, and the `Completer` and `TimeoutException` the shutdown waits with |
+| `dart:async` | dart | `graceful_shutdown.dart`, `server.dart` | `Future`, `FutureOr`, `unawaited`, and the `Completer` and `TimeoutException` the shutdown waits with |
 | `dart:convert` | dart | `server.dart` | `json`, `jsonEncode`, `utf8` |
-| `dart:io` | dart | every file | `HttpServer`, `InternetAddress`, `SecurityContext`, `ProcessSignal` (SIGTERM, SIGINT), `HttpHeaders` |
+| `dart:io` | dart | every file | `HttpServer`, `InternetAddress` (also a trusted proxy's address), `SecurityContext`, `ProcessSignal` (SIGTERM, SIGINT), `HttpHeaders`, `HttpConnectionInfo` (the peer a request-id header came from) |
 | `shelf` | package | every file | the HTTP pipeline, `Request`/`Response`/`Handler`/ `Middleware`/`Router`/`Cascade`, and `serve` |
 | `shelf_router` | package | `server.dart` | the HTTP pipeline, `Request`/`Response`/`Handler`/ `Middleware`/`Router`/`Cascade`, and `serve` |
-| `tom_core_kernel` | package | every file | `TomPrincipal`, `TomClientJwtToken`, `TomBearerAuthentication`, `TomExecutionContext`/`tomExecutionContext`, `TomZoneValues`, `tomLog`, `tomPrintStackTrace`, `TomException`, `TomTraceContext` and `TomLogContext` (the request's trace and the `request_id` log field), `TomJsonLogOutput` / `TomConsoleLogOutput` (`logFormat`), `tomShutdownCleanup` (the signals the graceful shutdown runs on), `TomScheduler.started` (the schedulers it drains) and `TomHttpResilience` / `TomHttpResilienceException` (`configureHttpClients`) |
+| `tom_core_kernel` | package | every file | `TomPrincipal`, `TomClientJwtToken`, `TomBearerAuthentication`, `TomExecutionContext`/`tomExecutionContext`, `TomZoneValues`, `tomLog`, `tomPrintStackTrace`, `TomException`, `TomTraceContext` and `TomRequestId` (the request's trace and request id), `TomLogContext`, `TomJsonLogOutput` / `TomConsoleLogOutput` (`logFormat`), `tomShutdownCleanup` (the signals the graceful shutdown runs on), `TomScheduler.started` (the schedulers it drains) and `TomHttpResilience` / `TomHttpResilienceException` (`configureHttpClients`) |
 | [authentication](authentication.md) | module | `server.dart` | `TomServerSelfLogin`, `TomServerSelfLoginException`, `TomApiKeys` and `TomApiKeyIdentity` (a service account's API key) |
 | [authorization](authorization.md) | module | `server.dart` | `TomAuthorizationCache` (principal resolution) |
 | [configuration](configuration.md) | module | `server.dart` | `TomBaseServerConfiguration` |
 | [datasources](datasources.md) | module | `graceful_shutdown.dart` | `TomDataSourceInfo.closeAll`, the graceful shutdown's last step |
 | [endpoints](endpoints.md) | module | `server.dart` | `TomEndpointRouting` (router initialisation), `TomOpenApiServer` (the OpenAPI document path, set from `openApiDocument`), `TomIdempotency` (`configureIdempotency` applies the `idempotency` key) |
-| [healthcheck](healthcheck.md) | module | every file | `TomFrameworkReadinessAnalyzer`, installed on `GET /ready` by `start()` when `frameworkReadiness` is on, `TomHealthServer` / `TomDefaultHealthAnalyzer` to see whether the application installed its own, and `TomHealthServer.markShuttingDown`, the graceful shutdown's first step |
-| [little_things](little_things.md) | module | `server.dart` | `TomServerException` (its `clientThrow` flag feeds the error response) and `TomRequestId` (minted by `tomRequestContextMiddleware`, carried into every request zone) |
+| [healthcheck](healthcheck.md) | module | `graceful_shutdown.dart`, `server.dart` | `TomFrameworkReadinessAnalyzer`, installed on `GET /ready` by `start()` when `frameworkReadiness` is on, `TomHealthServer` / `TomDefaultHealthAnalyzer` to see whether the application installed its own, and `TomHealthServer.markShuttingDown`, the graceful shutdown's first step |
+| [little_things](little_things.md) | module | `request_ids.dart`, `server.dart` | `TomServerException` (its `clientThrow` flag feeds the error response; the base of `TomRequestIdException`) |
 | [messaging](messaging.md) | module | `graceful_shutdown.dart` | `TomMessageOutbox.started`, the outboxes the graceful shutdown closes |
 | [metrics](metrics.md) | module | `server.dart` | `tomMetricsEndpointMiddleware` and `tomRequestMetricsMiddleware` (the outer edge of the pipeline), `TomOtlpHttpTransport` and `TomOtlpMetricsExporter` (`metricsExporter`) |
 | [object_persistence](object_persistence.md) | module | `server.dart` | `TomFieldEncryption` (`configureFieldEncryption` applies the `fieldEncryption` key) |
 | [privacy](privacy.md) | module | `server.dart` | `TomPrivacy` (`configurePrivacy` applies the `privacy` key) |
-| [ratelimit](ratelimit.md) | module | `server.dart` | `TomRateLimits` (installed from configuration at start) and `tomRateLimitMiddleware` |
+| [ratelimit](ratelimit.md) | module | `request_ids.dart`, `server.dart` | `TomRateLimits` (installed from configuration at start) and `tomRateLimitMiddleware`; `TomClientAddress.connectionInfoKey`, where the socket peer a request-id header came from is read |
 | [tenancy](tenancy.md) | module | `server.dart` | `TomTenancy` and `TomTenantResolution` — the request's tenant, or the refusal to answer it with |
 | [transactions](transactions.md) | module | `server.dart` | `TomTransactionManager`, and `TomTransactionRecovery` / `TomRecoveryReport` (`recoverTransactions` applies the `transactions` key and recovers at start) |

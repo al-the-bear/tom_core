@@ -37,6 +37,7 @@ method, and converts the result (or any error) into a `Response`.
 - [Multipart Forms](#multipart-forms)
 - [Redirects](#redirects)
 - [WebSocket Endpoints](#websocket-endpoints)
+  - [One request id per message](#one-request-id-per-message)
   - [What the trail says about a socket](#what-the-trail-says-about-a-socket)
 - [The OpenAPI Document](#the-openapi-document)
 - [Request Logging](#request-logging)
@@ -1150,6 +1151,31 @@ handshake. `allowedOrigins` is the handshake-time counterpart of CORS — the
 page on another site from opening an authenticated socket in a visitor's
 session.
 
+### One request id per message
+
+A handler reading `socket.messages` runs, and logs, under the **upgrade
+request's** id for as long as the conversation lasts. `serve` reads the same
+messages one at a time and runs the callback for each as work of its own:
+
+```dart
+@override
+Future<void> ticker(TomWebSocketConnection socket, TomPrincipal who) =>
+    socket.serve((message) async {
+      tomLog.info('received $message'); // logged under this message's id
+      socket.sendText('echo: $message');
+    });
+```
+
+Each call runs in a new span of the connection's trace with the request id
+`<trace id>-<span id>` (the kernel's `TomRequestId.runChild`), so the log
+lines, exceptions and audit entries of one message name that message and still
+name the upgrade request's trace. The next message is read only once the
+callback has completed, so messages are handled in the order the peer sent
+them; an error from the callback ends the loop and reaches the caller, and the
+returned future completes when the peer ends the conversation. `serve` and
+`messages` read one single-subscription stream: a handler uses one or the
+other.
+
 ### What the trail says about a socket
 
 An endpoint that declares `@TomAudited` contributes **two** records per
@@ -1161,7 +1187,8 @@ conversation, and they are the two moments an auditor can act on:
 | close | when the handler returns | `WebSocket connection closed after 3.4s, 12 received, 5 sent` |
 | close (failed) | when the handler throws | the error, followed by the same shape |
 
-Both carry the **handshake's request id**, so the pair is one conversation
+Both carry the **handshake's request id** — `serve` gives each message an id of
+its own, but these two records are written outside it — so the pair is one conversation
 rather than two unrelated records, and the closing outcome is `succeeded` for a
 normal return and `failed` for a throw.
 
@@ -1642,12 +1669,12 @@ record — checking each answer; `test/examples_test.dart` runs it too.
 | `shelf_multipart` | package | `form_binding.dart` | decoding a `multipart/form-data` body into its parts |
 | `shelf_router` | package | `endpoint_pipeline.dart`, `file_endpoint.dart` | the HTTP `Request` / `Response` / `Router` types |
 | `shelf_web_socket` | package | `endpoint_pipeline.dart` | the handshake upgrade and the channel a socket handler talks through |
-| `tom_core_kernel` | package | 8 of 9 files | `tomReflector` and the mirror types (annotation discovery, parameter binding, result conversion), `TomHttpMethod`, `TomMimeType`, `TomHeader`, `TomPrincipal`, `TomClientJwtToken`, `TomAccessControl`, `TomResourceKeyProtection`, `TomComponent`, `TomBean`, `tomRemoteApis` / `TomApi` / `TomApiEndpoint`, `TomExecutionContext`, `TomTenantContext` (the tenant an idempotency key is scoped to), `tomLog` |
+| `tom_core_kernel` | package | 8 of 9 files | `tomReflector` and the mirror types (annotation discovery, parameter binding, result conversion), `TomHttpMethod`, `TomMimeType`, `TomHeader`, `TomPrincipal`, `TomClientJwtToken`, `TomAccessControl`, `TomResourceKeyProtection`, `TomComponent`, `TomBean`, `tomRemoteApis` / `TomApi` / `TomApiEndpoint`, `TomExecutionContext`, `TomTenantContext` (the tenant an idempotency key is scoped to), `TomRequestId` (the request id the pipeline logs; `TomRequestId.runChild` for each message `serve` reads), `tomLog` |
 | `web_socket_channel` | package | `endpoint_pipeline.dart`, `web_socket_endpoint.dart` | the handshake upgrade and the channel a socket handler talks through |
 | [audit](audit.md) | module | `endpoint_pipeline.dart` | `TomAuditAction`, `TomAuditOutcome`, `TomAuditTrail`, `TomAudited` |
 | [datasources](datasources.md) | module | `endpoint_pipeline.dart`, `idempotency.dart`, `idempotency_sql.dart` | `TomReplicaRouting` (a `GET` or `HEAD` request runs as read-only work), `TomFrameworkTable` / `TomFrameworkColumn` / `TomFrameworkKey` (the table's declaration), `TomDataSourceInfo` (the store's data source, resolved by name per call), `TomSchemaProvisioning`, `sqlInstant` / `parseSqlInstant` |
 | [file_storage](file_storage.md) | module | `file_endpoint.dart` | `TomBlobRange`, `TomStorageException`, `TomStoredBlob` |
-| [little_things](little_things.md) | module | 7 of 9 files | `TomServerException`, `TomRequestId`, `tomErrorEnvelope` |
+| [little_things](little_things.md) | module | 7 of 9 files | `TomServerException`, `tomErrorEnvelope` |
 | [object_persistence](object_persistence.md) | module | `file_endpoint.dart`, `idempotency.dart` | `TomAnnotationAnalyzer`, `TomColumnAuthorizationException`, `TomColumnInformation`, `TomDataScopeAuthorizationException`, `TomDbTable`, `TomDbColumn` (on `TomIdempotencyRow`), `TomFileReference` |
 | [server](server.md) | module | `endpoint_pipeline.dart` | `TomRequestLogInfo` |
 | [transactions](transactions.md) | module | `endpoint_pipeline.dart` | `TomTransactionManager` / `TomTransaction` |

@@ -1,17 +1,17 @@
 # Little Things Module
 
-The server-side base exception, the correlation id it reads, and the wire shape
-it is rendered into. This module contributes three types — `TomServerException`,
-which every other `tom_core_server` exception extends; `TomLoginException`, the
-one subclass declared here rather than beside the module that raises it, with
-a closed-set `TomLoginFailure` reason (a kernel type); and `TomRequestId`, the per-request id
-the exception constructor recovers from the zone — plus one function,
-`tomErrorEnvelope`, which turns any error into the body a client receives.
+The server-side base exception and the wire shape it is rendered into. This
+module contributes two types — `TomServerException`, which every other
+`tom_core_server` exception extends, and `TomLoginException`, the one subclass
+declared here rather than beside the module that raises it, with a closed-set
+`TomLoginFailure` reason (a kernel type) — plus one function,
+`tomErrorEnvelope`, which turns any error into the body a client receives. The
+request id the exception constructor recovers from the zone is the kernel's
+`TomRequestId` (see [Request Correlation](#request-correlation)).
 
 ## Table of Contents
 
 - [Overview](#overview)
-- [TomRequestId](#tomrequestid)
 - [TomServerException](#tomserverexception)
   - [What a raise site may throw](#what-a-raise-site-may-throw)
   - [The Whole Kernel Parameter List](#the-whole-kernel-parameter-list)
@@ -34,7 +34,6 @@ the exception constructor recovers from the zone — plus one function,
 
 | Type | Kind | Purpose |
 | ---- | ---- | ------- |
-| `TomRequestId` | class | Per-request v4-UUID correlation id, minted per request by the server's request-context middleware and published into the request zone |
 | `TomServerException` | class | Base class for all server-raised exceptions; extends the kernel's `TomException` |
 | `TomLoginException` | class | A failed login, raised by the authentication services; extends `TomServerException` and adds a `TomLoginFailure` reason |
 | `tomErrorEnvelope` | function | Renders any error into the package's wire error body — the shape every error response uses |
@@ -43,33 +42,6 @@ The kernel already provides `TomException` (UUID tracking, parameters,
 auto-logging, request UUID). `TomServerException` layers two server-specific
 concerns on top: it records **which isolate** produced the error and it
 **correlates** the error with the active request.
-
-## TomRequestId
-
-```dart
-final id = TomRequestId();
-print(id.uuid);      // 4f8c…  a fresh v4 UUID
-print(id);           // TomRequestId: 4f8c…
-```
-
-A request id is an identity and nothing else: a UUID generated in the
-constructor and a `toString` that prints it. It is *produced* by the server
-module — `tomRequestContextMiddleware` mints one for every incoming request and
-`tomDefaultAuthenticationMiddleware` carries it into `zoneValues` (minting one
-itself only when it runs without that middleware outside it) — and *consumed*
-here, by the `TomServerException`
-constructor, as well as by the endpoints pipeline (which logs it) and the audit
-trail (which stores it on every entry).
-
-It is declared in this module rather than beside the middleware that seeds it
-because the dependency arrow has to point this way. `little_things` holds the
-base class that every exception type in every other module extends — a rule
-the suite enforces rather than a tally — so it is the most depended-upon
-module in the package; `server` is the largest and most concrete. Declaring the
-id beside its producer would have made the first import the second, which is
-the cycle this placement avoids. The same move takes the audit trail off the
-server module entirely — `TomRequestId` was the only thing it imported from
-there.
 
 ## TomServerException
 
@@ -232,15 +204,18 @@ named worker, sends one back, and reads the name on the other side.
 
 ## Request Correlation
 
-`tomRequestContextMiddleware` sets a `TomRequestId` in the zone for the
-lifetime of a request, and `tomDefaultAuthenticationMiddleware` keeps it in the
-request's zone values. When a `TomServerException` is constructed inside that
-zone, its
-constructor reads the id via `getFromCurrentZone<TomRequestId>()` and copies the
-UUID into the inherited `requestUuid` field. The error is therefore linked to
-the request that triggered it without any code threading the id through the call
-stack. Outside a request zone (e.g. during startup) `requestUuid` is simply left
-unset.
+The request id is the kernel's `TomRequestId` (context module), carried in the
+zone for the lifetime of one unit of work: `tomRequestContextMiddleware` sets it
+for a request — the caller's trace id, or a trusted proxy's request-id header
+(see [server.md](server.md#request-ids)) — and `tomDefaultAuthenticationMiddleware`
+keeps it in the request's zone values; a scheduled job run gets one from
+`TomJobRunCommand` and a socket message read through
+`TomWebSocketConnection.serve` one of its own. When a `TomServerException` is
+constructed inside that zone, its constructor reads the id via
+`getFromCurrentZone<TomRequestId>()` and copies its `value` into the inherited
+`requestUuid` field. The error is therefore linked to the work that triggered it
+without any code threading the id through the call stack. Outside such a zone
+(e.g. during startup) `requestUuid` is simply left unset.
 
 **An explicitly supplied `requestUuid` wins over the ambient one**, and the zone
 lookup runs only when the caller said nothing. A caller that names a request is
@@ -249,20 +224,20 @@ the id as a plain string, a deserialiser holding it as a field — and knows
 something the surrounding zone does not. Overwriting it would re-label another
 request's failure with this one's id, which is worse than no correlation at all.
 
-`toString()` renders the correlation as a trailing `request: <uuid>` segment,
+`toString()` renders the correlation as a trailing `request: <request-id>` segment,
 and omits that segment altogether when the exception was raised outside a
 request:
 
 ```text
-<uuid>-<request-uuid>, TomServerException: K, m, ... main client-throw: true request: <request-uuid>
+<uuid>-<request-id>, TomServerException: K, m, ... main client-throw: true request: <request-id>
 <uuid>-null, TomServerException: K, m, ... main client-throw: true
 ```
 
 The label matters more than it looks. The base `TomException` already carries
 the id, but only inside the composite leading token
-`<exception-uuid>-<request-uuid>` — and because v4 UUIDs contain hyphens
-themselves, that token cannot be split back into its two ids by eye or by a
-simple pattern. The labelled copy is what makes the correlation greppable.
+`<exception-uuid>-<request-id>` — and because a v4 UUID contains hyphens
+itself, as a request id may (a socket message's is `<trace id>-<span id>`), that
+token cannot be split back into its two ids by eye or by a simple pattern. The labelled copy is what makes the correlation greppable.
 
 ## The clientThrow Flag
 
@@ -452,10 +427,9 @@ a body with no `loginFailure` is not a login failure.
 Padding the shape out with defaults would make every body look like a server
 error and cost a client that distinction.
 
-The function is declared here for the same reason `TomRequestId` is.
-`TomServerException` decides the one conditional field, and this is the module
-every other one already depends on — so both error handlers reach the builder
-without either reaching the other.
+The function is declared here because `TomServerException` decides the one
+conditional field, and this is the module every other one already depends on —
+so both error handlers reach the builder without either reaching the other.
 
 ## Not Yet Implemented
 
@@ -467,30 +441,23 @@ without either reaching the other.
   translatable; a client that does not recognise the key has the type and the
   id, and nothing to display.
   <!-- pinned: test/documented_limitations_test.dart › the error envelope carries no message -->
-- **A request id cannot be adopted from the caller.** `TomRequestId` mints a v4
-  UUID in its constructor and exposes no way to supply one, so an inbound
-  `X-Request-Id` from a proxy or an upstream service is ignored and a request
-  spanning two services has two unrelated request ids. What joins them is the
-  W3C trace id, which the server continues from the caller's `traceparent` and
-  writes on every structured log line (see
-  [server.md](server.md#correlation-ids-and-structured-logs)).
-  <!-- unpinned: absence — TomRequestId offers no way to supply an id -->
-- **Only a request gets an id.** The server's request pipeline —
-  `tomRequestContextMiddleware`, or `tomDefaultAuthenticationMiddleware` without
-  it — is the only place one is seeded, so work outside the request path — a scheduled
-  job, a start-up task, a script — raises exceptions with a null `requestUuid`
-  and nothing to group them by. Nothing prevents a caller from establishing one
-  with `runZoned`, but the framework does not do it.
+- **Work the framework does not start gets no id.** A request, a scheduled job
+  run and a socket message read through `TomWebSocketConnection.serve` each run
+  under a request id; anything else — a start-up task, a script, a socket
+  handler reading `messages` itself past the upgrade request — raises exceptions
+  with the id of whatever zone it runs in, and a null `requestUuid` outside
+  every one. Such work establishes its own with `TomRequestId.runRoot`.
   <!-- pinned: test/little_things_test.dart › requestUuid is unset when constructed outside a request zone -->
 
 ## Verification
 
-`test/little_things_test.dart` covers all four types the module contributes:
-`TomRequestId` and the zone it is read out of, `TomServerException`'s isolate
+`test/little_things_test.dart` covers all three types the module contributes:
+`TomServerException`'s isolate
 attribution — including that the name survives an isolate hop and still names
 the origin — its `clientThrow` flag and the `clientMessage` read that honours
 it, the three kernel parameters it forwards and the explicit-wins-over-ambient
-rule for `requestUuid`, the request correlation it picks up, the
+rule for `requestUuid`, the request correlation it picks up from the kernel's
+`TomRequestId` in the zone, the
 one subclass declared beside it (`TomLoginException`) with its `TomLoginFailure`
 reason and the values that set deliberately omits, and `tomErrorEnvelope` — the
 wire shape every error response uses, including the `loginFailure` field a login
@@ -517,10 +484,6 @@ transcript; `test/examples_test.dart` runs it, which is what keeps that true.
 
 ## Core Components
 
-- **`TomRequestId`** — a per-request v4 UUID and nothing else. Created once per
-  request by `tomRequestContextMiddleware` and published into the request
-  zone; recovered with `getFromCurrentZone<TomRequestId>()` by the exception
-  base, the endpoints pipeline and `TomAuditTrail.currentRequestId`.
 - **`TomServerException`** — the base server exception. Adds `isolateName`
   (originating worker), `clientThrow` (client-safe flag) with the
   `clientMessage` read that honours it, and zone-based `requestUuid` population
@@ -555,8 +518,7 @@ one.
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
 | `dart:isolate` | dart | `server_exception.dart` | `Isolate.current` for the worker's debug name |
-| `tom_core_kernel` | package | `server_exception.dart` | `TomException` (the base class), `getFromCurrentZone` |
-| `uuid` | package | `request_id.dart` | v4 UUID generation for `TomRequestId` |
+| `tom_core_kernel` | package | `server_exception.dart` | `TomException` (the base class), `getFromCurrentZone`, and `TomRequestId`, the request id the constructor correlates with |
 
 The module imports no other module of this package, which is the point: it sits
 at the bottom of the dependency graph and everything else may depend on it.

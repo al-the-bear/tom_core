@@ -15,8 +15,8 @@ survives a restart during an endpoint outage.
 
 For a log collector, `TomJsonLogOutput` writes one JSON object per line — the
 fixed fields `timestamp`, `level`, `message`, `logger`, `isolate`, then the
-context fields read from the zone: `trace_id`, `span_id` and `tenant` by
-default, plus what an application registers. Ids only — no personal data in a
+context fields read from the zone: `trace_id`, `span_id`, `request_id` and
+`tenant` by default, plus what an application registers. Ids only — no personal data in a
 fixed field.
 
 ## Key types

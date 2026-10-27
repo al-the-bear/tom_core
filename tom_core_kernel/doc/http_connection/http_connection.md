@@ -40,6 +40,7 @@ The HTTP Connection module provides a comprehensive infrastructure for making HT
   - [The Bulkhead](#the-bulkhead)
   - [Errors](#errors)
   - [Metrics](#metrics)
+  - [Trace Propagation](#trace-propagation)
   - [Identity Providers and Webhooks](#identity-providers-and-webhooks)
   - [Testing Code That Calls Out](#testing-code-that-calls-out)
 - [Best Practices](#best-practices)
@@ -1213,6 +1214,21 @@ The client records into `TomMetrics.registry` (see
 `rate(tom_http_client_retries[5m])` rising against a steady attempt rate is a
 dependency degrading; `tom_http_client_circuit_open == 1` is one that is down.
 
+### Trace Propagation
+
+Every call `TomResilientClient` sends carries the current trace: before the
+first attempt it adds `traceparent` — and `tracestate` when the trace carries
+one — for a new child span of `TomTraceContext.current`
+(`TomResilientClient.propagateTrace`, a static usable on any `BaseRequest`). The
+callee continues that trace, and a Tom server takes the trace id as its request
+id, so one id follows the work across both processes (see
+[Request Id](../context/context.md#request-id)).
+
+Nothing is added outside a trace, or when the request already names a
+`traceparent` of its own. The request id itself is not sent: it equals the trace
+id unless a trusted proxy set it, and a callee believes a request-id header only
+from its own trusted proxies.
+
 ### Identity Providers and Webhooks
 
 The two kinds of dependency an application like Tom UAM calls on a request's
@@ -1437,6 +1453,7 @@ TomApiEndpoint<PublicData, void>(
 | `meta` | package | `remote_context.dart` | `@visibleForTesting` only; no runtime behaviour |
 | `tom_basics` | package | `remote_context.dart`, `server_connection.dart` | `TomPlatformUtils.current.httpClient()`, which is how a channel obtains a platform-appropriate client |
 | [beanlocator](../beanlocator/beanlocator.md) | module | `auth_retry.dart` | `TomBean` for resolving the active `TomAuthRetryPolicy` |
+| [context](../context/context.md) | module | `resilience.dart` | `TomTraceContext`, whose child span every outgoing call carries |
 | [little_things](../little_things/little_things.md) | module | 7 of 10 files | `TomException`, the base class for error handling |
 | [metrics](../metrics/metrics.md) | module | `resilience.dart` | `TomMetrics.registry`, which the `tom_http_client_*` series are recorded into |
 | [reflection](../reflection/reflection.md) | module | `server_connection.dart` | `createInstance`, `convertToJsonString` and `convertFromJsonString`, which *are* the send path. A DTO sent through this module needs generated reflection data; without it the send fails loudly — `reflector.reflect.not_reflectable` for a class with no generated data at all, `reflector.type.not_annotated` for one that reflects but carries no `@tomReflector` — rather than sending something empty |

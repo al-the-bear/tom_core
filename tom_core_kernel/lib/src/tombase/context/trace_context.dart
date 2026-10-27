@@ -34,6 +34,7 @@ class TomTraceContext {
     required this.spanId,
     this.parentSpanId,
     this.sampled = true,
+    this.traceState,
   }) {
     _requireId(traceId, 32, 'trace id');
     _requireId(spanId, 16, 'span id');
@@ -53,7 +54,11 @@ class TomTraceContext {
   /// An invalid header is ignored rather than refused, as the W3C
   /// specification requires: a malformed header from an upstream proxy must
   /// not fail the request, it only fails to continue the trace.
-  static TomTraceContext? parse(String? header) {
+  ///
+  /// [traceState] is the request's `tracestate` header. It belongs to the
+  /// vendors that wrote it and is carried on unchanged when it is
+  /// [validTraceState]; otherwise it is dropped, never repaired.
+  static TomTraceContext? parse(String? header, {String? traceState}) {
     if (header == null) return null;
     final match = _traceparent.firstMatch(header.trim());
     if (match == null) return null;
@@ -62,6 +67,9 @@ class TomTraceContext {
         traceId: match.group(1)!,
         spanId: match.group(2)!,
         sampled: int.parse(match.group(3)!, radix: 16) & 1 == 1,
+        traceState: traceState != null && validTraceState(traceState)
+            ? traceState.trim()
+            : null,
       );
     } on FormatException {
       return null;
@@ -84,17 +92,38 @@ class TomTraceContext {
   /// Whether the trace is recorded — the `sampled` flag of `traceparent`.
   final bool sampled;
 
+  /// The caller's `tracestate`, passed on unchanged, or `null`.
+  final String? traceState;
+
+  /// Whether [value] may be passed on as a `tracestate` header: at most 512
+  /// characters of printable ASCII — the W3C limit on what a participant must
+  /// propagate. The list members are the vendors', and are not interpreted.
+  static bool validTraceState(String value) {
+    final trimmed = value.trim();
+    return trimmed.isNotEmpty &&
+        trimmed.length <= 512 &&
+        RegExp(r'^[\x20-\x7e]+$').hasMatch(trimmed);
+  }
+
   /// A new span in the same trace, continuing this one.
   TomTraceContext child() => TomTraceContext(
     traceId: traceId,
     spanId: _randomHex(8),
     parentSpanId: spanId,
     sampled: sampled,
+    traceState: traceState,
   );
 
   /// This context as a `traceparent` header value — the value to send on an
   /// outgoing call so the callee continues this span.
   String get traceparent => '00-$traceId-$spanId-${sampled ? '01' : '00'}';
+
+  /// The headers an outgoing call carries so the callee continues this span:
+  /// `traceparent`, and `tracestate` when there is one.
+  Map<String, String> get headers => {
+    'traceparent': traceparent,
+    'tracestate': ?traceState,
+  };
 
   /// The context of the current zone, or `null` outside any trace.
   static TomTraceContext? get current =>

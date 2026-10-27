@@ -57,7 +57,7 @@ names the tenant through a `TomTenantEvent`.
 | ---- | -------------- |
 | `TomJobDispatcher` | Where a job's work body is actually run. |
 | `TomJobRunContext` | What a running body may ask of its run: its id and job, the checkpoint it starts from, and `saveCheckpoint`. |
-| `TomJobRunCommand` | The command the scheduler dispatches around every body: runs it inside its `TomJobRunContext`, and carries the port a checkpoint save travels back through. |
+| `TomJobRunCommand` | The command the scheduler dispatches around every body: runs each attempt under a request id of its own (`TomRequestId.runRoot`) inside its `TomJobRunContext`, and carries the port a checkpoint save travels back through. |
 | `TomInlineJobDispatcher` | Runs bodies in the calling isolate. |
 | `TomWorkerPoolJobDispatcher` | Runs bodies on an existing `TomWorkerPool`. |
 | `TomRetryPolicy` | How a failed attempt is retried: attempts, backoff, ceiling. |

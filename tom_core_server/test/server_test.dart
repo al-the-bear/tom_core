@@ -586,7 +586,7 @@ void main() {
       final response = await handler(_get());
       expect(response.statusCode, 200);
       expect(zoneId, isNotNull);
-      expect(zoneId!.uuid, isNotEmpty);
+      expect(zoneId!.value, isNotEmpty);
     });
 
     test('resolves no principal when there are no credentials', () async {

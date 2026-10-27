@@ -112,7 +112,7 @@ void main() {
       () async {
         String? seen;
         final response = await pipeline(
-          () => seen = getFromCurrentZone<TomRequestId>()?.uuid,
+          () => seen = getFromCurrentZone<TomRequestId>()?.value,
         )(Request('GET', Uri.parse('http://localhost/a')));
         expect(seen, isNotNull);
         expect(response.headers[tomRequestIdHeader], seen);
@@ -126,7 +126,7 @@ void main() {
         'acme',
         () => pipeline(() {
           trace = TomTraceContext.current!;
-          requestId = getFromCurrentZone<TomRequestId>()!.uuid;
+          requestId = getFromCurrentZone<TomRequestId>()!.value;
           tomLog.info('serving');
         })(Request('GET', Uri.parse('http://localhost/a'))),
       );

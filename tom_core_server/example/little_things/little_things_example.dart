@@ -30,14 +30,14 @@ void run() {
   final id1 = TomRequestId();
   final id2 = TomRequestId();
   print('1. request id      => $id1');
-  print('   distinct?       => ${id1.uuid != id2.uuid}');
-  check(id1.uuid.isNotEmpty, 'a new request id arrives already identified');
+  print('   distinct?       => ${id1.value != id2.value}');
+  check(id1.value.isNotEmpty, 'a new request id arrives already identified');
   check(
-    id1.uuid != id2.uuid,
+    id1.value != id2.value,
     'two requests never share a correlation id, so a log line names one of them',
   );
   check(
-    id1.toString() == 'TomRequestId: ${id1.uuid}',
+    id1.toString() == 'TomRequestId: ${id1.value}',
     'the rendering carries the bare uuid, so a log line stays greppable by it',
   );
 
@@ -102,12 +102,12 @@ void run() {
     print('5. requestUuid (in zone) => ${correlated.requestUuid}');
     print('   rendered         => $correlated');
     check(
-      correlated.requestUuid == requestId.uuid,
+      correlated.requestUuid == requestId.value,
       'an exception raised while serving a request correlates itself with it, '
       'with nothing passed in',
     );
     check(
-      correlated.toString().endsWith(' request: ${requestId.uuid}'),
+      correlated.toString().endsWith(' request: ${requestId.value}'),
       'the labelled segment separates the two uuids that the composite token '
       'runs together',
     );

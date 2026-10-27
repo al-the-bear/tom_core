@@ -59,10 +59,10 @@ The structured side writes each entry as one JSON object per line
 (`TomJsonLogOutput`) — the fixed fields `timestamp`, `level`, `message`,
 `logger` and `isolate`, then the **context fields** `TomLogContext` reads from
 the zone the entry was logged in: `trace_id` and `span_id` from
-`TomTraceContext.current`, `tenant` from `TomTenantContext.currentId`, and any
-field an application registers (`tom_core_server` adds `request_id`). A log
-collector indexes such a line field by field, so every line of one trace or one
-tenant is a query. The fixed fields and the framework's context fields are ids,
+`TomTraceContext.current`, `request_id` from `TomRequestId.current`, `tenant`
+from `TomTenantContext.currentId`, and any field an application registers. A log
+collector indexes such a line field by field, so every line of one trace, one
+request or one tenant is a query. The fixed fields and the framework's context fields are ids,
 never personal data.
 
 The log-level type (`TomLogLevel`) is defined in `tom_basics`, not in this
@@ -530,16 +530,16 @@ entry is logged in. All members are static.
 
 - **Kind:** abstract final class (static members only).
 
-The kernel registers three fields, in this order:
+The kernel registers four fields, in this order:
 
 | Context field | Provider |
 | ----- | -------- |
 | `trace_id` | `TomTraceContext.current?.traceId` |
 | `span_id` | `TomTraceContext.current?.spanId` |
+| `request_id` | `TomRequestId.current?.value` |
 | `tenant` | `TomTenantContext.currentId` |
 
-`tom_core_server` adds `request_id`. A field must name work — a trace, a
-request, a tenant — never a person.
+A field must name work — a trace, a request, a tenant — never a person.
 
 #### Static Properties
 

@@ -22,7 +22,7 @@ surface documented here.
 | File Storage | [api_summary_file_storage.md](api_summary_file_storage.md) | Streaming blob storage: one put/get contract over memory, directory, database and S3 backends, and a deduplicating store with a per-owner quota in front of any of them. |
 | Health Check | [api_summary_healthcheck.md](api_summary_healthcheck.md) | Health analyzer and health-check service/server — process-wide or per instance, with cooperative cancellation of a timed-out analysis — and the framework readiness checks `/ready` answers with by default — or `503 shutting down` once a graceful shutdown has begun. |
 | Item Authorization | [api_summary_item_authorization.md](api_summary_item_authorization.md) | Item authorizations kept by an external authority: the port to it, a caching client for checks, accessible items and the user's sharing acts, and the row scope it feeds. |
-| Little Things | [api_summary_little_things.md](api_summary_little_things.md) | The server-side base exception `TomServerException`, the `TomLoginFailure` reason its login subclass carries, the per-request correlation id `TomRequestId` it reads, and `tomErrorEnvelope`, the wire shape every error response uses. |
+| Little Things | [api_summary_little_things.md](api_summary_little_things.md) | The server-side base exception `TomServerException`, the `TomLoginFailure` reason its login subclass carries — correlated with the kernel's request id — and `tomErrorEnvelope`, the wire shape every error response uses. |
 | Messaging | [api_summary_messaging.md](api_summary_messaging.md) | Channel-neutral messages, delivery transports (SMTP, HTTP SMS gateway and stand-ins), MIME encoding, the durable outbox, resource-keyed email and SMS, and the idempotent receiver (inbox) for consuming a broker's messages once. |
 | Metrics | [api_summary_metrics.md](api_summary_metrics.md) | The request series, the Prometheus scrape endpoint answered ahead of authentication, and the OTLP/HTTP transport and metrics exporter. |
 | Object Persistence | [api_summary_object_persistence.md](api_summary_object_persistence.md) | Persistence annotations, repositories, query builder, operators/expressions, subqueries and association filters, grouped queries and their aggregates, paging and sorting, file-reference columns, data scoping, column authorization, field-level encryption with its keys, rotation and re-encryption, and the entity lifecycle: soft delete, history tables, lifecycle hooks and change events. |
@@ -613,7 +613,6 @@ surface documented here.
 
 | Type | Kind | Description |
 | ---- | ---- | ----------- |
-| `TomRequestId` | class | Per-request v4-UUID correlation id, published into the request zone. |
 | `TomServerException` | class | Server-side base exception (extends `TomException`). |
 | `tomErrorEnvelope` | function | Renders any error into the package's wire error body — the shape every error response uses. |
 
@@ -907,8 +906,10 @@ surface documented here.
 | `tomDefaultAuthenticationMiddleware` | function | Default auth middleware. |
 | `tomLoggingMiddleware` | function | Request-logging middleware. |
 | `tomRequestLogInfoMiddleware` | function | Seeds a new `TomRequestLogInfo` into every request's context. |
-| `tomRequestIdHeader` | constant | `X-Request-Id`, the response header carrying the request id. |
-| `tomRequestContextMiddleware` | function | Mints the request id, continues or starts the W3C trace, answers with both. |
+| `tomRequestIdHeader` | constant | `X-Request-Id`, the default request-id header: echoed on every response, believed from a trusted proxy. |
+| `tomRequestContextMiddleware` | function | Continues or starts the W3C trace, runs the request under the id its `TomRequestIdPolicy` chooses, answers with both. |
+| `TomRequestIdPolicy` | final class | Which request id a request runs under: a trusted proxy's request-id header, else the trace id; set from the `requestIds` key. |
+| `TomRequestIdException` | class | The `requestIds` settings cannot be applied (extends `TomServerException`). |
 | `noopHandler` | function | A handler returning a fixed status. |
 | `TomGracefulShutdown` | class | What the server does between SIGTERM and exiting: readiness off, new requests refused, work in flight finished, leases released, pools closed. |
 | `tomProbePaths` | constant | `health` and `ready`, the paths a draining server keeps answering. |
@@ -1646,8 +1647,9 @@ surface documented here.
 | `TomRepositoryBlobReferences` | Object Persistence |
 | `TomRepositoryException` | Object Persistence |
 | `tomRequestContextMiddleware` | Server |
-| `TomRequestId` | Little Things |
+| `TomRequestIdException` | Server |
 | `tomRequestIdHeader` | Server |
+| `TomRequestIdPolicy` | Server |
 | `TomRequestLogInfo` | Server |
 | `tomRequestLogInfoMiddleware` | Server |
 | `tomRequestMetricsMiddleware` | Metrics |

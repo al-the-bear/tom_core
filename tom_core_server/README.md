@@ -106,7 +106,7 @@ added.
 | ---- | -------------- |
 | `TomServer` | The shelf-based HTTP host and its middleware pipeline; `logFormat: json` writes one JSON log line per entry, and the `httpClient` block sets the timeout, retry, circuit-breaker and bulkhead policies of every outgoing framework call (`configureHttpClients`) |
 | `TomGracefulShutdown` / `TomServer.shutdown` | What the server does between SIGTERM (or SIGINT) and exiting: `/ready` answers `503`, the listener closes, a new request is refused with `503` and `Connection: close`, the requests and scheduled runs in flight get the grace period (`shutdownGracePeriodSeconds`) to finish, then the outboxes and schedulers release their leases and the data sources close their pools |
-| `tomRequestContextMiddleware` / `tomRequestIdHeader` | Every request's correlation ids: a request id echoed as `X-Request-Id`, and the caller's W3C `traceparent` continued with a span of the server's own — carried as `request_id`, `trace_id` and `span_id` on every structured log line it writes |
+| `tomRequestContextMiddleware` / `tomRequestIdHeader` / `TomRequestIdPolicy` | Every request's correlation ids: the caller's W3C `traceparent` continued with a span of the server's own, and a request id — the trace id, or a trusted proxy's `X-Request-Id` (`requestIds` key) — echoed as `X-Request-Id`; carried as `request_id`, `trace_id` and `span_id` on every structured log line it writes |
 | `TomEndpoint` / `TomEndpointHandler` / `TomEndpointRouting` | Endpoint declaration and the request-handling pipeline |
 | `TomService` / `TomApiImplementation` / `TomTransactional` | Annotations that turn a class into a routed API, and mark a handler transactional |
 | `TomFileEndpoint` / `TomFileSlots` / `TomFileSlot` | Upload/download/probe/delete over a `<table>/<id>/<column>` slot derived from the entity's own annotations — registered per repository, exposed only where `@TomFileReference` says so |
@@ -175,7 +175,7 @@ added.
 | `preferences` | `TomUserPreference`, `TomUserPreferenceRepository`, `TomUserPreferences`, `TomUserPreferencesServer` | Per-principal preferences that follow the user across devices: one scoped table, a typed service that reads its caller from the request zone, and the `/preferences/*` endpoints behind the kernel's contract |
 | `healthcheck` | `TomHealthService`, `TomHealthServer`, `TomHealthAnalyzer`, `TomFrameworkReadinessAnalyzer` | Liveness at `/health` and readiness at `/ready`, each with a pluggable analyzer — process-wide, or a service instance's own — whose timed-out analysis is cancelled cooperatively; `/ready` answers by default with the framework's own checks — data sources answering `SELECT 1`, no migration running or failed, started outboxes delivering — one line per check in the body — and `503 shutting down` once a graceful shutdown has begun |
 | `cmdline` | `TomArgs`, `TomEnvFile` | Argument parsing and `.env` loading |
-| `little_things` | `TomServerException`, `TomLoginException`, `TomRequestId` | Server exception base (extends kernel `TomException`), the login failure it raises, and the per-request correlation id it reads from the zone |
+| `little_things` | `TomServerException`, `TomLoginException` | Server exception base (extends kernel `TomException`), correlated with the kernel's request id in the zone, and the login failure it raises |
 
 ## Quick start
 

@@ -15,17 +15,21 @@ shutdown that stops it on SIGTERM.
   - [TomServer](#tomserver)
   - [TomEndpointCredentials](#tomendpointcredentials)
   - [TomGracefulShutdown](#tomgracefulshutdown)
+  - [TomRequestIdPolicy](#tomrequestidpolicy)
+  - [TomRequestIdException](#tomrequestidexception)
 - [Enums](#enums)
 - [Global Functions and Constants](#global-functions-and-constants)
 
 ## Overview
 
 Sources: `lib/src/tomserver/server/server.dart`,
-`lib/src/tomserver/server/graceful_shutdown.dart`.
+`lib/src/tomserver/server/graceful_shutdown.dart`,
+`lib/src/tomserver/server/request_ids.dart`.
 
 `TomServer` is built from a `TomBaseServerConfiguration`. Its `start` method
 first applies the `httpClient` configuration key to the framework's outgoing
-HTTP calls (`configureHttpClients`) and the `idempotency` key to the
+HTTP calls (`configureHttpClients`), the `requestIds` key to the request-id
+policy (`configureRequestIds`) and the `idempotency` key to the
 idempotency-key store (`configureIdempotency`), installs the field-encryption
 keyring from the `fieldEncryption` key (`configureFieldEncryption`) and the
 privacy module's subject keys from the `privacy` key (`configurePrivacy`),
@@ -39,8 +43,8 @@ shelf `Pipeline` — the shutdown gate (`TomGracefulShutdown.middleware`),
 `tomRequestLogInfoMiddleware` (seeds a new
 `TomRequestLogInfo` per request), the metrics module's
 `tomMetricsEndpointMiddleware` (when `metricsEndpoint` is on) and
-`tomRequestContextMiddleware` (mints the request id and continues or starts
-the W3C trace), `tomRequestMetricsMiddleware`, `tomLoggingMiddleware`, an outer
+`tomRequestContextMiddleware` (continues or starts the W3C trace and takes the
+request id `TomRequestIdPolicy.current` chooses), `tomRequestMetricsMiddleware`, `tomLoggingMiddleware`, an outer
 error layer,
 `tomDefaultAuthenticationMiddleware`, `tomRateLimitMiddleware` (the ratelimit module's) and an inner error layer — optionally wraps the router in a `Cascade` with
 pre/post handlers, binds the socket (with TLS unless `noSsl`), and registers
@@ -67,14 +71,16 @@ The module exposes the composable middleware as top-level functions
 `noopHandler`. Per-request state travels in the request context
 (`TomRequestLogInfo`), the request zone, and — because the authentication
 middleware also opens a `TomTransactionManager.runInTransactionScope` — the
-current transaction. The zone-carried correlation id
-`TomRequestId` is *produced* here — `tomRequestContextMiddleware` mints one per
-request and `tomDefaultAuthenticationMiddleware` carries it into `zoneValues` —
-but declared in `little_things`,
-beside the exception base that consumes it, so that the most depended-upon
-module of the package does not have to import the largest one. It is documented
-in
-[api_summary_little_things.md](api_summary_little_things.md#tomrequestid).
+current transaction. The zone-carried correlation id is the kernel's
+`TomRequestId`: `tomRequestContextMiddleware` sets the one `TomRequestIdPolicy`
+chooses — the configured request-id header from a trusted proxy, when the
+kernel's `TomRequestId.isValid` accepts it, else the request's trace id, the
+caller's when its `traceparent` is valid — and
+`tomDefaultAuthenticationMiddleware` carries it into `zoneValues`. A malformed
+header of either kind is ignored, never refused. `TomRequestIdPolicy.configure`
+sets the policy from the `requestIds` key and throws a `TomRequestIdException`
+keyed `server.request_ids.config.invalid` for a value of the wrong shape. See
+[server.md](../server.md#request-ids).
 
 ## Class Hierarchy
 
@@ -83,9 +89,12 @@ TomRequestLogInfo        (standalone)
 TomServer                (standalone)
 TomEndpointCredentials   (abstract final, statics only)
 TomGracefulShutdown      (standalone)
+TomRequestIdPolicy       (final, standalone)
+TomServerException  (little_things)
+    └── TomRequestIdException
 ```
 
-All four classes are standalone (no Tom base class).
+All classes but `TomRequestIdException` are standalone (no Tom base class).
 
 ## Classes
 
@@ -150,9 +159,10 @@ TomServer(TomBaseServerConfiguration configuration)
 | ------ | --------- | ----------- |
 | `warnOnDevelopmentTlsMaterial` | `void warnOnDevelopmentTlsMaterial()` | Warns when this server is about to serve TLS with the checked-in development pair, naming which half is still at its default. Called by `start` before it builds the `SecurityContext`. Silent when `noSsl` is set, since nothing is served over TLS. Nothing refuses to start: an opt-in flag would cost every local TLS run an extra setting. Public and separate from `start` because `start` binds a socket and returns nothing, so a property of the boot is otherwise unobservable. |
 | `warnOnUnenforcedResourceKeys` | `void warnOnUnenforcedResourceKeys()` | Warns when this server is about to serve with resource-key grants unenforced (`tom.protection.resourceKeys` off, the default) outside a development or test environment, naming the setting that changes it. Called by `start` before the socket is bound. Silent when enforcement is on or the environment is development or test. Nothing refuses to start: the default stays off because enforcing refuses every undeclared endpoint of an application with no grants configured. |
-| `start` | `Future<HttpServer> start()` | Applies the `httpClient` configuration key to the outgoing HTTP calls (`configureHttpClients`) and the `idempotency` key to the idempotency-key store (`configureIdempotency`) before anything else, so the deployment's own login runs under the configured policies, awaits the keyring the `fieldEncryption` key describes (`configureFieldEncryption`), installs the subject keys the `privacy` key describes (`configurePrivacy`), and applies the `transactions` key — the decision log, and with `recoverOnStart` a recovery of the prepared branches a dead process left (`recoverTransactions`); then logs the deployment in as itself (`TomServerSelfLogin.loginAndInstall`), warns if the TLS material is still the development pair, installs the rate limits the `rateLimits` configuration key describes when none were installed (`TomRateLimits.fromConfiguration`), starts `metricsExporter` when `otlpEndpoint` is set, applies `logFormat` (`applyLogFormat`), installs a `TomFrameworkReadinessAnalyzer` on `GET /ready` when `frameworkReadiness` is on and the readiness analyzer is still the default one, initialises the router, composes the pipeline, builds TLS, resolves the listen address, and binds the socket. The future completes **when the socket is listening**, with the bound `HttpServer` — so a bind failure rejects it rather than surfacing as an unhandled asynchronous error, and the socket can be closed by its opener. A deployment that configured a service credential and cannot log in has the error rethrown and **no socket is bound**; one that configured none is unaffected. Awaiting is optional: the bound socket keeps the isolate alive on its own. Once bound, the socket is handed to `gracefulShutdown`, which is registered for SIGTERM and SIGINT. |
+| `start` | `Future<HttpServer> start()` | Applies the `httpClient` configuration key to the outgoing HTTP calls (`configureHttpClients`), the `requestIds` key to the request-id policy (`configureRequestIds`) and the `idempotency` key to the idempotency-key store (`configureIdempotency`) before anything else, so the deployment's own login runs under the configured policies, awaits the keyring the `fieldEncryption` key describes (`configureFieldEncryption`), installs the subject keys the `privacy` key describes (`configurePrivacy`), and applies the `transactions` key — the decision log, and with `recoverOnStart` a recovery of the prepared branches a dead process left (`recoverTransactions`); then logs the deployment in as itself (`TomServerSelfLogin.loginAndInstall`), warns if the TLS material is still the development pair, installs the rate limits the `rateLimits` configuration key describes when none were installed (`TomRateLimits.fromConfiguration`), starts `metricsExporter` when `otlpEndpoint` is set, applies `logFormat` (`applyLogFormat`), installs a `TomFrameworkReadinessAnalyzer` on `GET /ready` when `frameworkReadiness` is on and the readiness analyzer is still the default one, initialises the router, composes the pipeline, builds TLS, resolves the listen address, and binds the socket. The future completes **when the socket is listening**, with the bound `HttpServer` — so a bind failure rejects it rather than surfacing as an unhandled asynchronous error, and the socket can be closed by its opener. A deployment that configured a service credential and cannot log in has the error rethrown and **no socket is bound**; one that configured none is unaffected. Awaiting is optional: the bound socket keeps the isolate alive on its own. Once bound, the socket is handed to `gracefulShutdown`, which is registered for SIGTERM and SIGINT. |
 | `shutdown` | `Future<void> shutdown()` | Shuts this server down gracefully — `gracefulShutdown.shutdown()`: readiness off, no new requests, the requests and scheduled work in flight finished within the grace period, leases released and pools closed. Idempotent. A signal runs it through `tomShutdownCleanup`; calling it directly never ends the process. |
 | `configureHttpClients` | `static void configureHttpClients([TomServerConfigResourceProvider? config])` | Applies the `httpClientConfigurationKey` map of `config` — the server configuration (`TomServerConfigResourceProvider.getServerConfig()`) when omitted — to the kernel's `TomHttpResilience.configure`: the timeout, retry, circuit-breaker and bulkhead defaults of every outgoing framework call, and the policies of the destinations it names. Without the key nothing changes and the kernel's defaults stand, a 30-second timeout among them. Throws a `TomHttpResilienceException` keyed `http.client.config.invalid` when the value is not a map or a setting has the wrong shape, before anything is applied. Called by `start`; public and static so a boot can apply the settings before `TomSecrets.load` reaches a secret store. See [configuration.md](../configuration.md#outgoing-http-calls). |
+| `configureRequestIds` | `static void configureRequestIds([TomServerConfigResourceProvider? config])` | Applies the `TomRequestIdPolicy.configurationKey` (`requestIds`) map of `config` — the server configuration when omitted — with `TomRequestIdPolicy.configure`: the request-id header and the proxies it is believed from. Without the key nothing changes, so `X-Request-Id` is echoed and believed from no one and every request runs under its trace id. Throws a `TomRequestIdException` keyed `server.request_ids.config.invalid` for a value of the wrong shape, before anything is applied. Called by `start`, right after `configureHttpClients`. See [server.md](../server.md#request-ids). |
 | `configureIdempotency` | `static void configureIdempotency([TomServerConfigResourceProvider? config])` | Applies the `idempotencyConfigurationKey` map of `config` — the server configuration when omitted — with `TomIdempotency.configure`: a `datasource` installs a `TomSqlIdempotencyStore` over the data source of that name (`table`, `createSchema`), `retentionMinutes` sets `TomIdempotency.defaultRetention`, `inProgressTimeoutSeconds` sets `TomIdempotency.inProgressTimeout`. Without the key nothing changes, and the in-memory store with a 24-hour retention stands — which holds on one process only. Throws a `TomIdempotencyException` keyed `endpoint.idempotency.config.invalid` when the value is not a map or a duration is not a positive whole number, before anything is applied. Called by `start`. See [configuration.md](../configuration.md#idempotency-keys). |
 | `configureFieldEncryption` | `static Future<void> configureFieldEncryption([TomServerConfigResourceProvider? config])` | Applies the `TomFieldEncryption.configurationKey` (`fieldEncryption`) map of `config` — the server configuration when omitted — with `TomFieldEncryption.configure`: installs a `TomFieldKeyring` over a `TomSqlDataKeyStore` of the named data source (`table`, `createSchema`) with the listed key-encryption keys (`keys`, primary first), `refreshSeconds` and `acceptPlaintext`, and loads its keys. Without the key nothing is installed, and an encrypted column fails its first write with `field_encryption.not_configured` rather than storing plaintext. Throws a `TomFieldEncryptionException` keyed `field_encryption.config.invalid` for a value of the wrong shape and `field_encryption.invalid_kek` for a bad key, before anything is installed. A `secret:` reference in a key is resolved by `TomFieldEncryption.configure` through the registered secrets providers. Called by `start`, after `configureIdempotency`. See [configuration.md](../configuration.md#field-level-encryption). |
 | `configurePrivacy` | `static void configurePrivacy([TomServerConfigResourceProvider? config])` | Applies the `TomPrivacy.configurationKey` (`privacy`) map of `config` — the server configuration when omitted — with `TomPrivacy.configure`: installs `TomSubjectKeys` over a `TomSqlSubjectKeyStore` of the named data source (`table`, `createSchema`), wrapped under the installed field-encryption keyring's key-encryption keys, which makes the audit trail seal `@TomPersonal` values per data subject so an erasure reaches them there. Without the key nothing is installed and personal values are recorded as they are. Throws a `TomPrivacyException` keyed `privacy.config.invalid` for a value of the wrong shape. Called by `start`, after `configureFieldEncryption`, whose keys wrap the subject keys. See [configuration.md](../configuration.md#privacy). |
@@ -222,6 +232,77 @@ TomGracefulShutdown({
 | `middleware` | `Middleware middleware()` | Counts the requests in flight and, while draining, answers every request but the probe paths (`tomProbePaths`) with `503 shutting down`, `Connection: close` and `Retry-After: 1`, which a client or proxy retries elsewhere. `TomServer.start` installs it as the outermost layer of the pipeline. |
 | `shutdown` | `Future<void> shutdown()` | Runs the shutdown once; a second call is handed the first one's future. Completes when the pools are closed. What is unfinished at the deadline is logged as a warning and not waited for. |
 
+### TomRequestIdPolicy
+
+How a request's id is chosen. A request carrying `header` **from one of the
+`trustedProxies`**, with a value the kernel's `TomRequestId.isValid` accepts,
+runs under that value; otherwise it runs under the id of its trace — the
+caller's trace id when its `traceparent` is valid, so caller and server log one
+id for one piece of work, or the id of the new trace it starts. A malformed
+header of either kind is ignored, never refused. A trace id is accepted from
+anyone: it carries no authority, and its format leaves nothing to inject.
+
+- **Kind:** final class.
+- **Extends:** none
+
+#### Constructors
+
+```dart
+const TomRequestIdPolicy({
+  String header = tomRequestIdHeader,
+  Set<String> trustedProxies = const {},
+})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `header` | `String` | The request-id header: echoed on every response, and believed from a trusted proxy (final). |
+| `trustedProxies` | `Set<String>` | The addresses of the proxies whose request-id header is believed — the socket peer, compared as its address text (`10.0.0.2`, `::1`) (final). |
+
+#### Static Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `configurationKey` | `String` | `'requestIds'`, the configuration key `configure` reads (const). |
+| `current` | `TomRequestIdPolicy` | The policy the request pipeline applies; set by `configure`. Defaults to `const TomRequestIdPolicy()`: `X-Request-Id`, believed from no one. |
+
+#### Static Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `configure` | `static void configure(Object? config)` | Sets `current` from the `requestIds` map — `header` (optional, default `X-Request-Id`; letters, digits and `-`) and `trustedProxies` (optional, a list of IP addresses; none by default). Throws `server.request_ids.config.invalid` for a value that is not a map, an unknown key, a `header` that is not a header name or an entry that is not an IP address, before anything is applied. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `resolve` | `TomRequestId resolve(Request request, TomTraceContext trace)` | The id `request` runs under, given the `trace` it is served in: the trimmed `header` value when the socket peer (`TomClientAddress.connectionInfoKey`) is one of `trustedProxies` and `TomRequestId.tryOf` accepts it, else `TomRequestId.of(trace.traceId)`. |
+
+### TomRequestIdException
+
+Thrown when the request-id settings cannot be applied.
+
+| Key | Meaning |
+| --- | ------- |
+| `server.request_ids.config.invalid` | The `requestIds` configuration has a value of the wrong shape; thrown by `TomRequestIdPolicy.configure`. |
+
+- **Extends:** `TomServerException`
+
+#### Constructors
+
+```dart
+TomRequestIdException(
+  String key,
+  String defaultUserMessage, {
+  Map<String, Object?>? parameters,
+  StackTrace? stack,
+  Object? rootException,
+  bool autoLog = false,
+})
+```
+
 ## Enums
 
 ### TomCredentialOutcome
@@ -258,10 +339,10 @@ installed `TomApiKeys`.
 | ---- | --------- | ----------- |
 | `contextSetupMiddleware` | `Middleware contextSetupMiddleware(String id, [Map<String, Object>? context])` | A pass-through shelf `Middleware` that merges `context` into a copy of the request context before the inner handler runs (`id` labels it for tracing). The entries are the same objects for every request, so a value a request mutates — a `TomRequestLogInfo` — is seeded by `tomRequestLogInfoMiddleware` instead. |
 | `tomRequestLogInfoMiddleware` | `Middleware tomRequestLogInfoMiddleware()` | Seeds a new `TomRequestLogInfo` under `TomRequestLogInfo.contextName` into every request's context — one instance per request, because `tomLoggingMiddleware` marks it logged and the endpoint pipeline sets whether it should be. `TomServer.start` installs it directly inside the shutdown gate (`TomGracefulShutdown.middleware`). |
-| `tomRequestIdHeader` | `const String tomRequestIdHeader = 'X-Request-Id'` | The response header a server echoes the request id in, so a caller can quote it to support. |
-| `tomRequestContextMiddleware` | `Middleware tomRequestContextMiddleware()` | Gives every request its correlation ids before anything else runs: a fresh `TomRequestId`, and the W3C trace context its `traceparent` header continues — a child span of the caller's trace, or a new trace (`TomTraceContext.newRoot`) when the header is missing or invalid. Runs the rest of the pipeline in a zone carrying both, so the access-log line, an error logged during authentication and every line a handler writes share the same `request_id`, `trace_id` and `span_id`. Answers with the request id in `tomRequestIdHeader` and the server span as `traceparent`. Building it registers the `request_id` field of structured log lines (`TomLogContext`). `TomServer.start` installs it after the metrics endpoint and before the request metrics. |
+| `tomRequestIdHeader` | `const String tomRequestIdHeader = 'X-Request-Id'` | The default request-id header: the one a server echoes the request id in, so a caller can quote it to support, and the one it believes from a trusted proxy. |
+| `tomRequestContextMiddleware` | `Middleware tomRequestContextMiddleware({TomRequestIdPolicy? policy})` | Gives every request its correlation ids before anything else runs: the W3C trace context its `traceparent` header continues — a child span of the caller's trace, its valid `tracestate` kept, or a new trace (`TomTraceContext.newRoot`) when the header is missing or invalid — and the `TomRequestId` that `policy` (by default `TomRequestIdPolicy.current`, read per request) chooses: a trusted proxy's id, else the trace id. Runs the rest of the pipeline in a zone carrying both, so the access-log line, an error logged during authentication and every line a handler writes share the same `request_id`, `trace_id` and `span_id`. Answers with the request id in the policy's header and the server span as `traceparent`. `TomServer.start` installs it after the metrics endpoint and before the request metrics. |
 | `extractAuthentication` | `(TomPrincipal?, TomClientJwtToken?, TomCredentialOutcome) extractAuthentication(Request req)` | Extracts bearer credentials from the `Authorization` header, returning `(principal, token, outcome)`. A header on a path claimed in `TomEndpointCredentials` is not read: the answer is `(null, null, endpointCredential)`. The first two elements are `null` whenever the request is not authenticated; [`TomCredentialOutcome`](#tomcredentialoutcome) says which of the five ways that happened, because `(null, null)` is the answer to all five and an operator cannot act on it. Never raises and never refuses — a public endpoint is served through this same pipeline — but every refusal is recorded at warning level, and never with the credential in it. The scheme is matched case-insensitively, as RFC 7235 requires. |
-| `tomDefaultAuthenticationMiddleware` | `Middleware tomDefaultAuthenticationMiddleware(String id, [Map<String, Object>? context])` | The default authentication middleware: resolves the effective `TomPrincipal` — from the bearer token, or, when the request carries no `Authorization` header, from an `X-API-Key` the installed `TomApiKeys` accepts (ignored with a warning when none is installed) — and runs the inner handler in a zone exposing the request, execution context, principal, token, the `TomApiKeyIdentity` of an accepted key, and the `TomRequestId` — the one `tomRequestContextMiddleware` minted when it ran outside, a fresh one otherwise — and inside a `TomTransactionManager.runInTransactionScope`, so the current transaction is per-request rather than per-isolate. A replacement must establish both. |
+| `tomDefaultAuthenticationMiddleware` | `Middleware tomDefaultAuthenticationMiddleware(String id, [Map<String, Object>? context])` | The default authentication middleware: resolves the effective `TomPrincipal` — from the bearer token, or, when the request carries no `Authorization` header, from an `X-API-Key` the installed `TomApiKeys` accepts (ignored with a warning when none is installed) — and runs the inner handler in a zone exposing the request, execution context, principal, token, the `TomApiKeyIdentity` of an accepted key, and the `TomRequestId` — the one `tomRequestContextMiddleware` set when it ran outside, a new random one otherwise — and inside a `TomTransactionManager.runInTransactionScope`, so the current transaction is per-request rather than per-isolate. A replacement must establish both. |
 | `tomLoggingMiddleware` | `Middleware tomLoggingMiddleware()` | The default request-logging middleware: emits one access-log line per request, guarded by the request's `TomRequestLogInfo`. Both guards are the reason shelf's `logRequests()` is not the default — it reads no request context, so it can honour neither. |
 | `noopHandler` | `Handler noopHandler(String id, int statusCode)` | A `Handler` that ignores the request and always replies with `statusCode` (`id` labels it for tracing). |
 | `tomProbePaths` | `const Set<String> tomProbePaths = {'health', 'ready'}` | The paths a draining server keeps answering — the liveness and readiness probes — so an orchestrator sees an alive, unready process rather than a dead one. `TomGracefulShutdown.middleware` passes them through while it refuses everything else. |

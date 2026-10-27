@@ -16,7 +16,7 @@ declarations are omitted.
 | Module | Summary | What it provides |
 | ------ | ------- | ---------------- |
 | Bean Locator | [api_summary_beanlocator.md](api_summary_beanlocator.md) | Component annotation and typed bean lookup/dependency injection. |
-| Context | [api_summary_context.md](api_summary_context.md) | Zone-scoped typed execution context and ambient providers, and the zone-carried tenant and W3C trace context. |
+| Context | [api_summary_context.md](api_summary_context.md) | Zone-scoped typed execution context and ambient providers, and the zone-carried tenant, W3C trace context and request id. |
 | HTTP Connection | [api_summary_http_connection.md](api_summary_http_connection.md) | Server call model, remote APIs/endpoints, headers, MIME types, auth-retry, client factories, and the timeout, retry, circuit-breaker and bulkhead policies of outgoing calls. |
 | Isolate Pooling | [api_summary_isolate_pooling.md](api_summary_isolate_pooling.md) | Worker/executor/command model and isolate worker pool. |
 | JSON | [api_summary_json.md](api_summary_json.md) | JSON serialization contract, map merge/traversal, env substitution, pretty printing. |
@@ -62,7 +62,8 @@ declarations are omitted.
 | `TomTenantException` | class | Invalid tenant id or missing tenant context (extends `TomException`). |
 | `TomTenantScopedCommand` | class | A `TomCommand` that runs its inner command inside a tenant, across isolates too. |
 | `TomTenantEvent` | class | An event for an event-triggered job, carrying its tenant. |
-| `TomTraceContext` | class | The W3C trace and span the current zone's work belongs to; parses and renders `traceparent`. |
+| `TomTraceContext` | class | The W3C trace and span the current zone's work belongs to; parses and renders `traceparent` and carries `tracestate`. |
+| `TomRequestId` | final class | The id of the current unit of work — a request, a job run, a socket message — that every log line, server exception and audit entry of it names. |
 
 ### HTTP Connection (`lib/src/tombase/http_connection/`)
 
@@ -193,7 +194,7 @@ declarations are omitted.
 | `TomInMemoryLogReplayStore` | class | In-memory `TomLogReplayStore` — the zero-config default. |
 | `TomLogReplayStore` | abstract class | Pluggable backend for `TomRemoteLogOutput`'s replay queue. |
 | `TomLogFieldProvider` | typedef | Computes one context field of a structured log line from the current zone. |
-| `TomLogContext` | abstract final class | The context fields every structured log line carries (`trace_id`, `span_id`, `tenant`, and registered ones). |
+| `TomLogContext` | abstract final class | The context fields every structured log line carries (`trace_id`, `span_id`, `request_id`, `tenant`, and registered ones). |
 | `TomJsonLogOutput` | class | Log output writing one JSON object per line. |
 
 ### Metrics (`lib/src/tombase/metrics/`)
@@ -315,7 +316,7 @@ declarations are omitted.
 | `TomScheduleException`, `TomScheduledJobException` | class | Misconfiguration, raised eagerly at construction / scan time. |
 | `TomJobClaim` | class | A ticket proving that one particular claim of `run` was won. |
 | `TomJobRunContext` | class | What a running job body may ask of its run: its checkpoint, and a way to save a new one. |
-| `TomJobRunCommand` | class | The command the scheduler dispatches around every body, carrying its run context. |
+| `TomJobRunCommand` | class | The command the scheduler dispatches around every body, carrying its run context and running each attempt under a request id of its own. |
 | `TomOneShotResource` | extension type | A lease resource name that will never be acquired again once its work is done — the only kind `TomLeaseLock.forget` accepts. |
 | `TomJobBacklog` | class | The due, unclaimed runs of one job — what `TomJobStore.backlog` answers. |
 

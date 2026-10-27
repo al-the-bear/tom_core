@@ -7,7 +7,9 @@ The module also carries the **tenant** a piece of work belongs to —
 organization: see [Tenant Context](#tenant-context). And it carries the
 **trace** the work belongs to — `TomTraceContext`, in the W3C Trace Context
 form — so every log line written while serving a request can name it: see
-[Trace Context](#trace-context).
+[Trace Context](#trace-context). Beside the trace sits the **request id** of the
+unit of work — `TomRequestId`, the id a request, a job run or a socket message
+is logged, raised and audited under: see [Request Id](#request-id).
 
 ## Table of Contents
 
@@ -37,6 +39,10 @@ form — so every log line written while serving a request can name it: see
   - [Continuing, starting and running a trace](#continuing-starting-and-running-a-trace)
   - [An invalid header is ignored, an invalid id is refused](#an-invalid-header-is-ignored-an-invalid-id-is-refused)
   - [Who reads it](#who-reads-it)
+- [Request Id](#request-id)
+  - [Where the id comes from](#where-the-id-comes-from)
+  - [Running work under an id](#running-work-under-an-id)
+  - [Which values are ids](#which-values-are-ids)
 - [Best Practices](#best-practices)
   - [1. Always write the entry's type parameter](#1-always-write-the-entrys-type-parameter)
   - [2. Handle Missing Context](#2-handle-missing-context)
@@ -57,7 +63,8 @@ form — so every log line written while serving a request can name it: see
 | `TomTenantException` | class | A tenant id that cannot be used, or tenant-owned work with no tenant in context. |
 | `TomTenantScopedCommand` | class | A `TomCommand` that runs its inner command inside a tenant, wherever it executes. |
 | `TomTenantEvent` | class | An event for an event-triggered job, carrying the tenant it was raised for. |
-| `TomTraceContext` | class | The W3C trace and span the current zone's work belongs to: `parse`, `newRoot`, `child`, `traceparent`, `current`, `run`. |
+| `TomTraceContext` | class | The W3C trace and span the current zone's work belongs to: `parse`, `newRoot`, `child`, `traceparent`, `traceState`, `headers`, `current`, `run`. |
+| `TomRequestId` | final class | The id of the current unit of work — a request, a job run, a socket message: `of`, `tryOf`, `isValid`, `value`, `current`, `run`, `runRoot`, `runChild`. |
 
 The execution-context system consists of four public types:
 
@@ -705,7 +712,9 @@ traceparent: 00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01
 | `spanId` | This span, 16 lower-case hex digits. |
 | `parentSpanId` | The span this one continues, or `null` for the first span of a trace — and for a context parsed from a header, whose `spanId` is the caller's span. |
 | `sampled` | Whether the trace is recorded — the `sampled` flag of `traceparent`. |
+| `traceState` | The caller's `tracestate` header, carried on unchanged, or `null`. A child span keeps it. |
 | `traceparent` | This context as a header value — what to send on an outgoing call so the callee continues this span. |
+| `headers` | The headers an outgoing call carries so the callee continues this span: `traceparent`, and `tracestate` when there is one. |
 | `current` | The context of the current zone, or `null` outside any trace. |
 
 ### Continuing, starting and running a trace
@@ -730,14 +739,19 @@ print(TomTraceContext.current); // null — outside the run
 
 | Member | Meaning |
 | ------ | ------- |
-| `parse(header)` | The context a `traceparent` value names, or `null` for an absent or invalid one. |
+| `parse(header, {traceState})` | The context a `traceparent` value names, or `null` for an absent or invalid one. `traceState` is the request's `tracestate` header: kept when `validTraceState` accepts it, dropped otherwise — never repaired. |
+| `validTraceState(value)` | Whether `value` may be passed on as `tracestate`: at most 512 characters of printable ASCII, the W3C limit on what a participant must propagate. Its list members belong to the vendors that wrote them and are not interpreted. |
 | `newRoot({sampled})` | A new trace with a new span, for work no caller is tracing. Ids come from a secure random source and are never all zeros. |
 | `child()` | A new span in the same trace: same `traceId` and `sampled`, a new `spanId`, this span as `parentSpanId`. |
 | `run(context, body)` | Runs `body` with `context` as the current trace context. The zone follows the body across its awaits, as every zone value does; nested runs replace the context for their body only. |
 
 `tom_core_server`'s request pipeline does exactly the first two lines for every
-request: it continues an incoming `traceparent` with a server span, or starts a
-trace, and serves the request inside `TomTraceContext.run`.
+request: it continues an incoming `traceparent` (and its `tracestate`) with a
+server span, or starts a trace, and serves the request inside
+`TomTraceContext.run`. On the way out, `TomResilientClient` adds a child span of
+the current trace to every outgoing call (`TomResilientClient.propagateTrace`,
+see [HTTP resilience](../http_connection/http_connection.md)), so the callee
+continues the same trace.
 
 ### An invalid header is ignored, an invalid id is refused
 
@@ -758,12 +772,87 @@ The structured log output of the logging module, `TomJsonLogOutput`, writes
 `TomTraceContext.current`'s `traceId` and `spanId` into every line as
 `trace_id` and `span_id` — see [Structured JSON
 Output](../logging/logging.md#structured-json-output). Nothing at the call site
-passes them: a line logged anywhere inside the run carries them.
+passes them: a line logged anywhere inside the run carries them. The same
+output writes the current `TomRequestId` as `request_id`.
 
 Exporting spans — recording each span's start, end and outcome and sending them
 to a tracing backend — is a separate concern this module does not do. The trace
 context is the seam such an exporter uses: the spans it would record are the
 ones `run` delimits, under the ids this type carries.
+
+## Request Id
+
+`TomRequestId` is the id of one unit of work — a request, a job run, a socket
+message — carried in the zone beside its `TomTraceContext`. Every structured log
+line written while the work runs carries it as `request_id`, every
+`tom_core_server` exception raised during it names it, and an audit entry
+records it, so one id finds everything one piece of work did.
+
+### Where the id comes from
+
+| Work | Request id |
+| ---- | ---------- |
+| An HTTP request with a valid `traceparent` | the caller's trace id — the same id on both sides of the call |
+| An HTTP request with a request-id header from a trusted proxy | that header's value, when it is a valid id |
+| Any other HTTP request | the trace id of the new trace it starts |
+| A job run, and so an outbox delivery | the trace id of a new trace (`runRoot`) |
+| A socket message read through `TomWebSocketConnection.serve` | `<trace id>-<span id>` of the message's own span of the connection's trace (`runChild`) |
+
+The HTTP rows are `tom_core_server`'s request pipeline (`TomRequestIdPolicy`);
+the job row is the scheduling module, whose `TomJobRunCommand` runs every
+attempt under `runRoot`. This type holds the value and the ways of starting work
+under one.
+
+### Running work under an id
+
+```dart complete
+import 'package:tom_core_kernel/tom_core_kernel.dart';
+
+void main() {
+  // Work no caller started: a new trace, whose trace id is the request id.
+  TomRequestId.runRoot(() {
+    final root = TomRequestId.current!;
+    print(root.value == TomTraceContext.current!.traceId); // true
+
+    // One step of that work, with an id of its own naming the trace.
+    TomRequestId.runChild(() {
+      final trace = TomTraceContext.current!;
+      print(TomRequestId.current!.value ==
+          '${trace.traceId}-${trace.spanId}'); // true
+    });
+  });
+
+  // An id chosen elsewhere, published for one body.
+  TomRequestId.run(TomRequestId.of('order-import-0042'), () {
+    print(TomRequestId.current); // TomRequestId: order-import-0042
+  });
+
+  print(TomRequestId.current); // null — outside any unit of work
+}
+```
+
+| Member | Meaning |
+| ------ | ------- |
+| `TomRequestId()` | A new id: a random version-4 UUID. |
+| `TomRequestId.of(value)` | The id `value`; throws `FormatException` unless `isValid` accepts it. |
+| `tryOf(value)` | The id `value` names, or `null` when it is absent or not valid. |
+| `isValid(value)` | Whether `value` may be a request id — see below. |
+| `value` | The id. |
+| `current` | The id of the current zone, or `null` outside any unit of work. The id is published under its own type, so `getFromCurrentZone<TomRequestId>()` answers the same. |
+| `run(id, body)` | Runs `body` with `id` as the current request id. |
+| `runRoot(body)` | Runs `body` as work of its own: in a new trace, whose trace id is the request id. For work no caller started — a job run, a delivery. |
+| `runChild(body)` | Runs `body` as one step of the current work: in a new span of the current trace (a new trace when there is none), whose id is `<trace id>-<span id>`. For one message of a longer conversation. |
+| `==` / `hashCode` | Two ids are equal when their values are. |
+| `toString()` | `TomRequestId: <value>`. |
+
+### Which values are ids
+
+A request id is 8 to 128 characters of ASCII letters, digits and `._:-`, the
+first a letter or digit (`[A-Za-z0-9][A-Za-z0-9._:-]{7,127}`). The set is narrow
+on purpose: the id is written into log lines, response headers and an audit
+column 191 characters wide, and a caller may supply it — so nothing that could
+break a line, a header or a log parser gets through. A trace id (32 hex digits),
+a `<trace id>-<span id>` pair and a UUID all qualify.
 
 ## Best Practices
 
@@ -919,7 +1008,7 @@ than a `!`.
 | ---------- | ---- | ----------- | --- |
 | `dart:async` | dart | every file | `Future`, and `runZoned` for `TomTraceContext.run` |
 | `dart:collection` | dart | `execution_context.dart` | `UnmodifiableMapView`, the read-only view `contextMap` hands out |
-| `dart:math` | dart | `trace_context.dart` | `Random.secure`, the source of new trace and span ids |
+| `dart:math` | dart | `request_id.dart`, `trace_context.dart` | `Random.secure`, the source of new trace and span ids and of a new request id's UUID |
 | [isolate_pooling](../isolate_pooling/isolate_pooling.md) | module | `tenant_context.dart` | `TomCommand`, which `TomTenantScopedCommand` extends so a tenant survives an isolate hop |
 | [little_things](../little_things/little_things.md) | module | `execution_context.dart`, `tenant_context.dart` | `getFromCurrentZone`, the zone lookup the context installs itself for, and `TomException`, the base of `TomTenantException` |
 | [security](../security/security.md) | module | `execution_context.dart` | `TomPrincipal` for authenticated user context |

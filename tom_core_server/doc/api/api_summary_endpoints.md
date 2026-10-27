@@ -910,6 +910,7 @@ TomWebSocketConnection()
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `attachChannel` | `void attachChannel(WebSocketChannel channel, [String? subprotocol])` | Attaches the accepted channel; called by the pipeline, not by application code. |
+| `serve` | `Future<void> serve(FutureOr<void> Function(dynamic message) onMessage)` | Reads every message from the peer in turn and runs `onMessage` for each as work of its own: in a new span of the connection's trace with the request id `<trace id>-<span id>` (`TomRequestId.runChild`), so the log lines, exceptions and audit entries of one message name that message and still name the upgrade request's trace. The next message is read only once `onMessage` has completed; an error from it ends the loop and reaches the caller; completes when the peer ends the conversation. Reads the same single-subscription stream as `messages`: use one or the other. |
 | `sendText` | `void sendText(String message)` | Sends a text frame. |
 | `sendBytes` | `void sendBytes(List<int> bytes)` | Sends a binary frame. |
 | `close` | `Future<void> close([int? code, String? reason])` | Closes the socket; idempotent. |
