@@ -34,7 +34,11 @@ import '../storage.dart';
 /// The head token is a digest of the container's own state — for a single file
 /// its size and modification time, for a directory the same over every part.
 /// It is opaque and only ever compared, which is what makes it interchangeable
-/// with a git commit sha.
+/// with a git commit sha. A file's time is read to the millisecond, so a
+/// commit writes only once the clock is past the previous time of every file
+/// it replaces: two same-size writes inside one millisecond would otherwise
+/// leave the head where it was, and a device holding the older head could
+/// commit over the newer write.
 class TomLocalFileSystemStorage extends TomStorage {
   /// Marks a staged write. Shared with `TomDirectoryBundleMedium`, so a
   /// temp either of them leaves is invisible to the other.
@@ -184,13 +188,20 @@ class TomLocalFileSystemStorage extends TomStorage {
     if (changeset.isEmpty) return actualHead ?? TomStorage.emptyHead;
 
     if (!directory) {
+      final before = _modifiedTimes([locator]);
+      await _clockPast(before);
       // One file is one rename, which the filesystem already makes atomic.
       final temp = _stage({locator: changeset.containerBytes});
       File(temp.keys.single).renameSync(locator);
+      _advancePast(before);
       return (await headOf(locator))!;
     }
 
     final dir = Directory(locator)..createSync(recursive: true);
+    final before = _modifiedTimes([
+      for (final relative in changeset.writes.keys) p.join(dir.path, relative),
+    ]);
+    await _clockPast(before);
     final staged = _stage({
       for (final entry in changeset.writes.entries)
         p.join(dir.path, entry.key): entry.value,
@@ -208,6 +219,7 @@ class TomLocalFileSystemStorage extends TomStorage {
     // the next access to the container finishes what it records.
     probe?.call(TomLocalCommitStep.recorded);
     _applyIntent(dir);
+    _advancePast(before);
     return (await headOf(locator))!;
   }
 
@@ -243,6 +255,43 @@ class TomLocalFileSystemStorage extends TomStorage {
   }
 
   // ── Internals ───────────────────────────────────────────────────────────
+
+  /// The modification time of each of [paths] that exists now, as the head
+  /// token reads it (`stat`, to the millisecond; `lastModifiedSync` reports
+  /// whole seconds).
+  static Map<String, DateTime> _modifiedTimes(Iterable<String> paths) => {
+    for (final path in paths)
+      if (File(path).existsSync()) path: File(path).statSync().modified,
+  };
+
+  /// Waits until the clock's millisecond is past every time in [before], so
+  /// a file written next is stamped strictly later than the one it replaces.
+  /// Ordinarily under a millisecond: the times are those of earlier writes.
+  static Future<void> _clockPast(Map<String, DateTime> before) async {
+    if (before.isEmpty) return;
+    final latest = before.values
+        .map((t) => t.millisecondsSinceEpoch)
+        .reduce((a, b) => a > b ? a : b);
+    while (DateTime.now().millisecondsSinceEpoch <= latest) {
+      await Future<void>.delayed(const Duration(milliseconds: 1));
+    }
+  }
+
+  /// Moves each file of [before] strictly past the time it had then, where
+  /// the write still left it at or before it — a clock that stepped back.
+  /// Setting a time is only exact to the second, so the step is one second.
+  static void _advancePast(Map<String, DateTime> before) {
+    for (final MapEntry(key: path, value: previous) in before.entries) {
+      final file = File(path);
+      if (!file.existsSync()) continue;
+      if (file.statSync().modified.isAfter(previous)) continue;
+      file.setLastModifiedSync(
+        DateTime.fromMillisecondsSinceEpoch(
+          (previous.millisecondsSinceEpoch ~/ 1000 + 1) * 1000,
+        ),
+      );
+    }
+  }
 
   /// Writes every entry to a temp sibling, returning temp → target.
   ///

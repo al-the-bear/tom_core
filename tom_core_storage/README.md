@@ -66,7 +66,7 @@ Dart SDK `^3.10.0`. No Flutter dependency.
 | `TomObjectCeiling` | The largest object a commit may carry: the tighter of a configured and a backend limit. |
 | `TomLfsPointer` | Recognises a Git-LFS pointer, so a backend refuses it by name instead of delivering 130 bytes as content. |
 | `TomTokenSource` | Where a remote backend's access token comes from. |
-| `TomLocalFileSystemStorage` | The local filesystem (`io.dart`): atomic multi-file commits through staged temps and a recorded intent. |
+| `TomLocalFileSystemStorage` | The local filesystem (`io.dart`): atomic multi-file commits through staged temps and a recorded intent; every commit moves the head, however fast two same-size commits follow each other. |
 | `TomGitHubStorage` | A GitHub repository (`github.dart`): one save is one commit, compare-and-swap on the branch head, conditional reads, rate-limit waits, LFS refusal, progress per object. |
 | `TomGitHubLocator` | `github:<owner>/<repo>[@<branch>]/<path>` — parsed and printed. |
 | `TomGitStorage` | Any git server over smart HTTP (`git.dart`), with no git binary: a local clone is the medium, a head is the document's object id in the branch tip, a commit is a compare-and-swap on it and then a push; a push that lost the race to a change of another document is rebuilt on the new tip and pushed again, one that lost it to this document is a `TomCasConflictException`. |

@@ -85,3 +85,8 @@
   `TomDirectoryBundleMedium`), `web.dart` (`tomOpenBrowserMedium` over
   IndexedDB) and `cipher.dart` (`TomAesGcmCacheCipher` over a
   `TomCacheKeyStore`).
+- **A local commit always moves the head.** A file's head token is its size
+  and its modification time to the millisecond, so a commit writes only once
+  the clock is past the previous time of every file it replaces. Two
+  same-size commits inside one millisecond otherwise left the head unchanged,
+  and a device holding the older head could commit over the newer write.
