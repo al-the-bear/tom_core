@@ -7,8 +7,9 @@
 
 Tom Core is the set of packages every Tom application is built on: a
 platform-neutral kernel (dependency injection, observable state, security,
-resources, logging) and the runtimes layered on top of it — a server stack, two
-Flutter layers, and a set of agentic building blocks.
+resources, logging) and the runtimes layered on top of it — a server stack and
+two Flutter layers — plus the storage an application keeps its documents and
+settings in.
 
 This repository ([`al-the-bear/tom_core`](https://github.com/al-the-bear/tom_core))
 holds the whole layer. This document is the **map**; each package has its own
@@ -86,6 +87,12 @@ for all entries is this repository root.
 | --- | --- |
 | [`tom_flutter_ui`](tom_flutter_ui/README.md) | The Flutter widget library: a Material/Cupertino-aware widget set, a declarative form system, a behavioural action system, and a fluent row-based layout engine (Advanced Container Layout). Every widget understands the kernel's `tomId`/`tomGroup` visibility, the four-state `TomAuthState` model, and resource-driven styling. |
 
+### Storage
+
+| Package | What it is |
+| --- | --- |
+| [`tom_core_storage`](tom_core_storage/README.md) | Storage for Tom applications: a compare-and-swap storage port, keyed file media, a device-local cache and a durable offline commit journal, with the local filesystem, a GitHub repository, any git server over smart HTTP, the browser and the cache cipher behind entry points of their own; and, in `settings.dart`, device settings, the key and secret-store ports, identity and storage locations. It builds on `tom_basics`, `tom_git` and `tom_github_api`, not on the kernel. |
+
 ### Demo & test apps
 
 These are runnable harnesses (`publish_to: none`), not libraries — they exercise
@@ -142,6 +149,7 @@ tom_core_kernel/       platform-neutral foundation (DI, state, security, …)   
 tom_core_server/       backend runtime: HTTP, persistence, auth               (runtime)
 tom_core_flutter/      Flutter integration layer (re-exports the kernel)      (runtime)
 tom_flutter_ui/        Flutter widget library: widgets, forms, ACL engine     (UI)
+tom_core_storage/      storage port, media, cache, journal; settings          (storage)
 tom_core_samples/      the sample applications, and the two demo apps:        (samples)
   tom_flutter_form_test/  runnable demo: the form framework                   (demo app)
   tom_flutter_ui_test/    runnable demo/smoke-test: the whole widget library  (demo app)
