@@ -792,7 +792,8 @@ openApiDocument: "openapi/openapi.json"
 
 Six settings decide how the series the framework records leave the process: a
 Prometheus scrape, an OTLP push, both or neither. The series are recorded
-either way; both exports are off by default.
+either way; both exports are off by default. Two more switch tracing on, which
+sends spans to the same OTLP receiver.
 
 | Setting | Type | Default | What it decides |
 | ------- | ---- | ------- | --------------- |
@@ -802,6 +803,8 @@ either way; both exports are off by default.
 | `otlpEndpoint` | `String` | `""` | The OTLP/HTTP receiver's base URL (`http://collector:4318`); `/v1/metrics` is appended. Empty pushes nothing. Environment name `OTLP_ENDPOINT`. |
 | `otlpHeaders` | `String` | `""` | Headers sent with every push, as `key=value,key=value` with percent-encoded values — the form of `OTEL_EXPORTER_OTLP_HEADERS`. An entry without `=` stops the start with `otlp.config.invalid_headers`. Secret-bearing when it carries a credential. Environment name `OTLP_HEADERS`. |
 | `otlpMetricsIntervalSeconds` | `int` | `60` | How often metrics are pushed. Environment name `OTLP_METRICS_INTERVAL_SECONDS`. |
+| `tracing` | `bool` | `false` | Whether `TomServer.start` records spans and exports them to `otlpEndpoint` (`/v1/traces`, OTLP/HTTP protobuf, with `otlpHeaders`). Off, no span is made. On with an empty `otlpEndpoint`, the start is refused with `tracing.config.no_endpoint`. Environment name `TRACING`. |
+| `tracingSamplePercent` | `int` | `100` | The percentage of new traces recorded, 0 to 100; a request continuing a caller's trace follows the caller's `sampled` flag. Outside the range the start is refused with `tracing.config.invalid_sample_percent`. Environment name `TRACING_SAMPLE_PERCENT`. |
 
 ```yaml
 # assets/config-resources_default.yaml
@@ -812,7 +815,8 @@ otlpEndpoint: "http://otel-collector:4318"
 
 The series, the scrape endpoint and the export are described in
 [metrics.md](metrics.md); where the scrape sits in the pipeline, in
-[server.md](server.md#the-pipeline).
+[server.md](server.md#the-pipeline); the spans and their sampling, in
+[tracing.md](tracing.md).
 
 ## Log Format and Readiness
 

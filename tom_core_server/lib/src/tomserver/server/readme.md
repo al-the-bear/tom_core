@@ -159,6 +159,12 @@ Kubernetes settings.
 and pushes over OTLP through `TomServer.metricsExporter` when `otlpEndpoint` is
 set — see [`doc/metrics.md`](../../../../doc/metrics.md).
 
+**Tracing.** With `tracing` on, `start` installs the tracing module's
+`TomOtelTracer` (`TomServer.configureTracing`, kept as `TomServer.tracer`) right
+after `configureHttpClients`, and `tomRequestContextMiddleware` opens each
+request's server span, named `<METHOD> <route>` — see
+[`doc/tracing.md`](../../../../doc/tracing.md).
+
 See [`doc/server.md`](../../../../doc/server.md) for the boot sequence, the
 middleware chain and the shutdown path, and
 `example/server/server_example.dart` for a walkthrough of the surface a

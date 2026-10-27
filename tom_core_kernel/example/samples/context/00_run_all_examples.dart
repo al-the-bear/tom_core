@@ -18,6 +18,7 @@ import '02_context_nesting_example.dart' as context_nesting;
 import '03_context_providers_example.dart' as context_providers;
 import '04_async_and_zonevalues_example.dart' as async_zonevalues;
 import '05_trace_context_example.dart' as trace_context;
+import '06_tracing_example.dart' as tracing;
 
 /// Standalone entry point for running context examples.
 Future<void> main() async {
@@ -44,6 +45,9 @@ Future<void> run() async {
 
   await trace_context.run();
   print('✓ Trace context examples passed\n');
+
+  await tracing.run();
+  print('✓ Tracing examples passed\n');
 
   sampleGroupFooter('Context');
 }

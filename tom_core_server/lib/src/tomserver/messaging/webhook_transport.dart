@@ -236,6 +236,8 @@ class TomWebhookTransport extends TomMessageTransport {
     }
   }
 
+  static const Set<String> _traceHeaders = {'traceparent', 'tracestate'};
+
   Future<(int, String)> _exchange(
     Uri endpoint,
     TomMessage message,
@@ -246,7 +248,12 @@ class TomWebhookTransport extends TomMessageTransport {
         'POST',
         endpoint,
         headers: {
-          ...message.headers,
+          // The trace a queued message carries is the one its delivery
+          // continues; the call itself propagates the delivery's own position,
+          // so the receiver's span is a child of this call.
+          for (final header in message.headers.entries)
+            if (!_traceHeaders.contains(header.key.toLowerCase()))
+              header.key: header.value,
           ...settings.headers,
           TomHeader.contentType: contentType,
         },

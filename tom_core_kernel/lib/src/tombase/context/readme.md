@@ -26,6 +26,17 @@ started (a job run) takes the trace id of a new trace (`runRoot`); one step of a
 longer conversation (a socket message) takes `<trace id>-<span id>` of a new
 span (`runChild`).
 
+The **spans** of a trace — the timed, named steps a tracing backend shows — are
+recorded through `TomTracing` (`tracing.dart`). The framework opens a span
+around a request, an SQL statement, a transaction, an outgoing HTTP call, a job
+run and an outbox delivery; an installed `TomTracer` decides what becomes of
+it. No tracer is installed by default, and then no span is made at all: the
+instrumented code asks whether a tracer is installed and runs exactly as it
+would without tracing. A span's `context` is the `TomTraceContext` its work runs
+in, so log lines and outgoing `traceparent` headers name the span they were
+written in. `tom_core_server` provides the OpenTelemetry tracer;
+`TomRecordingTracer` keeps spans in memory for tests.
+
 ## Key types
 
 | Type | Responsibility |
@@ -39,7 +50,13 @@ span (`runChild`).
 | `TomTenantScopedCommand` | Runs a `TomCommand` inside a tenant wherever it executes, a worker isolate included. |
 | `TomTenantEvent` | An event-triggered job's event, naming the tenant the run belongs to. |
 | `TomTraceContext` | The W3C trace and span in the zone: `parse` a `traceparent` (`null` when invalid) and its `tracestate` (`validTraceState`), `newRoot`, `child`, `traceparent`, `headers`, `current`, `run`. |
-| `TomRequestId` | The id of the current unit of work in the zone: `TomRequestId()` (a v4 UUID), `of`, `tryOf`, `isValid`, `value`, `current`, `run`, `runRoot`, `runChild`. |
+| `TomRequestId` | The id of the current unit of work in the zone: `TomRequestId()` (a v4 UUID), `of`, `tryOf`, `isValid`, `value`, `current`, `run`, `runRoot` (optionally the first span of its trace: `spanName`, `spanKind`, `spanAttributes`), `runChild`. |
+| `TomSpanKind` | The OpenTelemetry span kinds: `internal`, `server`, `client`, `producer`, `consumer`. |
+| `TomSpan` | One span being recorded: `context`, `name`, `setName`, `setAttribute`, `recordError`, `setError`, `end`. |
+| `TomTracer` | Makes spans (`startSpan`), `flush`, `shutdown`. Installed with `TomTracing.install`. |
+| `TomTracing` | The installed tracer and the ways to open spans with it: `install`, `tracer`, `isRecording`, `currentSpan`, `start` (`childOnly` starts nothing outside a trace), `within`, `ending`, `trace`, `untraced`. |
+| `TomRecordingTracer` | A tracer keeping ended spans in memory (`spans`, `open`, `named`, `childrenOf`, `clear`) — for tests. |
+| `TomRecordedSpan` | A span `TomRecordingTracer` recorded: `kind`, `attributes`, `errors`, `errorDescription`, `started`, `ended`. |
 
 ## Quick start
 

@@ -33,7 +33,7 @@ by default.
   - [Cumulative, over HTTP, in JSON](#cumulative-over-http-in-json)
   - [Headers](#headers)
   - [Failures and the final push](#failures-and-the-final-push)
-  - [One transport for every signal](#one-transport-for-every-signal)
+  - [One endpoint for every signal](#one-endpoint-for-every-signal)
 - [Per-Isolate Registries](#per-isolate-registries)
 - [Failure Keys](#failure-keys)
 - [Not Yet Implemented](#not-yet-implemented)
@@ -286,14 +286,18 @@ than the default policy's thirty.
 client, so a server shutting down does not lose what it counted since the last
 push. The shutdown cleanup closes the exporter; a second `close` does nothing.
 
-### One transport for every signal
+### One endpoint for every signal
 
 `TomOtlpHttpTransport` knows nothing about metrics: it posts a JSON body to
 `<endpoint>/v1/<signal>` with the configured headers (`urlOf` names the URL).
-The metrics exporter is its first user and posts `v1/metrics`. Tracing is
-designed on the same transport: a trace exporter posts its spans to
-`v1/traces` through it, so a deployment configures one endpoint and one set of
-headers for all its telemetry.
+The metrics exporter posts `v1/metrics` through it. Spans, when `tracing` is on,
+go to the same endpoint's `v1/traces` — `urlOf('traces')` — with the same
+headers, sent by the OpenTelemetry SDK's protobuf exporter the tracing module
+configures; so a deployment configures one endpoint and one set of headers for
+all its telemetry. See [tracing.md](tracing.md#export).
+
+A push runs `TomTracing.untraced`: with tracing on it would otherwise be an
+outgoing HTTP call, a client span of its own, exported in turn.
 
 ## Per-Isolate Registries
 
@@ -323,11 +327,10 @@ counts; they are not summed across isolates in process.
   `poolMaxSize` (reported as `state="max"`), and a cache has no epoch counter.
   Nothing records what does not exist.
   <!-- unpinned: absence — neither an installation-wide pool cap nor a cache epoch exists in tom_core -->
-- **No tracing yet.** The OTLP transport is signal-neutral and a trace exporter
-  is designed to post `v1/traces` through it, but no spans are recorded today.
-  <!-- unpinned: absence — no span is recorded -->
-- **OTLP over HTTP with JSON only.** No gRPC and no protobuf bodies: JSON over
-  HTTP is the encoding every receiver accepts and needs no generated code.
+- **Metrics over OTLP/HTTP with JSON only.** No gRPC and no protobuf bodies
+  for metrics: JSON over HTTP is the encoding every receiver accepts and needs
+  no generated code. Spans are sent in protobuf by the OpenTelemetry SDK's
+  exporter (see [tracing.md](tracing.md#export)).
   <!-- unpinned: decision — JSON over HTTP is the one encoding every receiver accepts -->
 - **Registries are not merged across isolates.** Each isolate's registry is its
   own; see [Per-Isolate Registries](#per-isolate-registries).
@@ -370,8 +373,9 @@ consumers: promtool (`promtool check metrics`) accepts the scrape of every
 series the framework records, and an OpenTelemetry Collector receives an export
 with every series and its points. It skips unless both are available;
 `tool/run_otel_tests.sh` starts the collector with `tool/otel/collector.yaml`,
-pulls promtool's image (`prom/prometheus`), runs the suite and treats a run in
-which every test skipped as a failure.
+pulls promtool's image (`prom/prometheus`), runs the suite together with
+`test/tracing_otel_test.dart` (see [tracing.md](tracing.md#verification)) and
+treats a run in which every test skipped as a failure.
 
 The series the kernel records are the kernel's to test; `TomSqlJobStore.backlog`
 is covered by the kernel's scheduling contract suite, which
@@ -410,6 +414,6 @@ in-process receiver, read back. Every step checks its own result, and
 | `dart:convert` | dart | `otlp_exporter.dart` | `jsonEncode`, the body of an export |
 | `http` | package | `otlp_exporter.dart` | `Client`, which posts an export |
 | `shelf` | package | `metrics_middleware.dart` | `Request`, `Response` and `Middleware` |
-| `tom_core_kernel` | package | every file | `TomMetrics`, `TomMetricRegistry`, `TomCounter`, `TomHistogram`, `TomMetricFamily`, `TomMetricKind`, `TomMetricPoint`, `tomPrometheusText`, `tomPrometheusContentType`, `TomClosable`, `tomLog` and `TomResilientClient` (the OTLP transport's default client) |
+| `tom_core_kernel` | package | every file | `TomMetrics`, `TomMetricRegistry`, `TomCounter`, `TomHistogram`, `TomMetricFamily`, `TomMetricKind`, `TomMetricPoint`, `tomPrometheusText`, `tomPrometheusContentType`, `TomClosable`, `tomLog`, `TomResilientClient` (the OTLP transport's default client) and `TomTracing` (the push runs untraced) |
 | [little_things](little_things.md) | module | `otlp_exporter.dart` | `TomServerException`, the base of `TomOtlpExportException` |
 | [server](server.md) | module | `metrics_middleware.dart` | `TomRequestLogInfo`, whose `route` the endpoint pipeline sets |

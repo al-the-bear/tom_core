@@ -26,6 +26,7 @@ export 'src/tombase/context/execution_context.dart';
 export 'src/tombase/context/request_id.dart';
 export 'src/tombase/context/tenant_context.dart';
 export 'src/tombase/context/trace_context.dart';
+export 'src/tombase/context/tracing.dart';
 export 'src/tombase/http_connection/server_connection.dart';
 export 'src/tombase/http_connection/auth_retry.dart';
 export 'src/tombase/http_connection/endpoints_apis.dart';

@@ -635,7 +635,9 @@ scheduler's isolate through a port and completes once it is stored.
 
 The command the scheduler dispatches around every body: runs `inner` inside a
 `TomJobRunContext` for one attempt, as work of its own — in a new trace whose id
-is the attempt's request id (`TomRequestId.runRoot`).
+is the attempt's request id (`TomRequestId.runRoot`). With a tracer installed
+(`TomTracing`) the attempt is that trace's first span, `job <jobName>`, with
+`tom.job.name` and `tom.job.run_id`.
 
 - **Extends:** `TomCommand`
 
@@ -665,7 +667,7 @@ TomJobRunCommand({
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `execute` | `Future<Object?> execute()` | *(override)* Runs `inner` under `TomRequestId.runRoot` — a new trace, its trace id the request id every log line of the attempt carries — in a zone carrying the context. |
+| `execute` | `Future<Object?> execute()` | *(override)* Runs `inner` under `TomRequestId.runRoot` — a new trace, its trace id the request id every log line of the attempt carries — in a zone carrying the context; with a tracer installed, as the span `job <jobName>`. |
 
 ## The store
 

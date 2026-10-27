@@ -42,6 +42,7 @@ The HTTP Connection module provides a comprehensive infrastructure for making HT
   - [Errors](#errors)
   - [Metrics](#metrics)
   - [Trace Propagation](#trace-propagation)
+  - [The Client Span](#the-client-span)
   - [Identity Providers and Webhooks](#identity-providers-and-webhooks)
   - [Testing Code That Calls Out](#testing-code-that-calls-out)
 - [Best Practices](#best-practices)
@@ -1265,6 +1266,30 @@ Nothing is added outside a trace, or when the request already names a
 id unless a trusted proxy set it, and a callee believes a request-id header only
 from its own trusted proxies.
 
+### The Client Span
+
+With a tracer installed (`TomTracing`, see
+[Tracing](../context/context.md#tracing)), every call `send` makes is a
+`client` span named after its method — `GET`, `POST` — covering all its
+attempts, with the OpenTelemetry HTTP attributes:
+
+| Attribute | Value |
+| --------- | ----- |
+| `http.request.method` | The method. |
+| `url.full` | Scheme, host, port and path — never the query or user info, which may carry credentials. |
+| `server.address` | The host. |
+| `server.port` | The port. |
+| `http.response.status_code` | The status answered, once there is one. |
+
+A `5xx` answer marks the span failed (`HTTP <status>`), as does a call that got
+no answer — a timeout, an open circuit, a refused connection; the error is
+recorded on the span and thrown on. The call carries the span's own position as
+its `traceparent`, so the callee's server span is a child of the call that made
+it. `propagateTrace(request, span: position)` sends a given position as it is;
+without `span` it sends a new child of the current trace. With no tracer
+installed `send` opens no span and propagates a child of the current trace, as
+above.
+
 ### Identity Providers and Webhooks
 
 The two kinds of dependency an application like Tom UAM calls on a request's
@@ -1489,7 +1514,7 @@ TomApiEndpoint<PublicData, void>(
 | `meta` | package | `remote_context.dart` | `@visibleForTesting` only; no runtime behaviour |
 | `tom_basics` | package | `remote_context.dart`, `server_connection.dart` | `TomPlatformUtils.current.httpClient()`, which is how a channel obtains a platform-appropriate client |
 | [beanlocator](../beanlocator/beanlocator.md) | module | `auth_retry.dart` | `TomBean` for resolving the active `TomAuthRetryPolicy` |
-| [context](../context/context.md) | module | `resilience.dart` | `TomTraceContext`, whose child span every outgoing call carries |
+| [context](../context/context.md) | module | `resilience.dart` | `TomTraceContext`, whose child span every outgoing call carries, and `TomTracing` / `TomSpanKind`, the client span of each call |
 | [little_things](../little_things/little_things.md) | module | 7 of 10 files | `TomException`, the base class for error handling |
 | [metrics](../metrics/metrics.md) | module | `resilience.dart` | `TomMetrics.registry`, which the `tom_http_client_*` series are recorded into |
 | [reflection](../reflection/reflection.md) | module | `server_connection.dart` | `createInstance`, `convertToJsonString` and `convertFromJsonString`, which *are* the send path. A DTO sent through this module needs generated reflection data; without it the send fails loudly — `reflector.reflect.not_reflectable` for a class with no generated data at all, `reflector.type.not_annotated` for one that reflects but carries no `@tomReflector` — rather than sending something empty |

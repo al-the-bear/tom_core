@@ -199,6 +199,9 @@ class PostgresDatasource extends TomSqlDatasource {
   String get driverLabel => "PostgresDatasource";
 
   @override
+  String get dbSystemName => 'postgresql';
+
+  @override
   String get preparedStatementLabel => "PostgresPreparedStatement";
 
   @override

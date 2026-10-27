@@ -15,6 +15,7 @@ cluster, where its integration suites run against them.
 | `k8s/overlays/kind-demo/` | The kind deployment with the sample's demo data (`env: dev`) |
 | `kind-cluster.yaml` | A one-node kind cluster mapping the NodePorts to host ports 8080/8081 and 3307/3308 |
 | `run_kind_integration.sh` | Creates the cluster, deploys it and runs the integration suites against it |
+| `otel/collector.yaml`, `otel/docker-compose.yaml` | A local OpenTelemetry Collector receiving the servers' spans and metrics on `127.0.0.1:4318` and writing them to files |
 
 ## The image
 
@@ -120,6 +121,43 @@ the job in flight finishes and the audit trail is flushed. It writes under
 - **Audit anchors.** They are written to `/app/data/anchors`. They belong in a
   store the server cannot rewrite: mount one there and set
   `OPS_ANCHOR_INDEPENDENT=true`.
+
+## Tracing and the local collector
+
+The servers record spans when `tracing` is on and export them over OTLP/HTTP —
+to the receiver their metrics are pushed to. Three variables configure it:
+
+| Variable | Field | Effect |
+| -------- | ----- | ------ |
+| `TRACING` | `tracing` | `true` records a span per request, SQL statement, transaction, outgoing call, job run and outbox delivery; off by default |
+| `OTLP_ENDPOINT` | `otlpEndpoint` | The receiver's base URL; spans go to `<OTLP_ENDPOINT>/v1/traces`. A server with `TRACING=true` and no endpoint refuses to start |
+| `TRACING_SAMPLE_PERCENT` | `tracingSamplePercent` | The percentage of new traces recorded, 0 to 100, default 100; a request from a traced caller follows the caller's decision |
+
+`OTLP_HEADERS` (`otlpHeaders`) adds headers to every export, such as a
+backend's credential; it belongs in a Secret, not the ConfigMap. A server's
+spans are exported under its `appId` as `service.name`: `auth` and `app` for the
+auth and app servers.
+
+`otel/` runs an OpenTelemetry Collector on one machine. It receives OTLP over
+HTTP on `127.0.0.1:4318` (`OTEL_COLLECTOR_PORT`) and writes every trace export to
+`otel/out/traces.json` and every metrics export to `otel/out/metrics.json`, one
+export per line (`OTEL_COLLECTOR_OUT` moves the folder):
+
+```bash
+# from tom_core_samples
+docker compose -f advanced_deploy/otel/docker-compose.yaml up -d
+cd advanced_app_server
+TRACING=true OTLP_ENDPOINT=http://127.0.0.1:4318 \
+  dart run bin/app_server_start.dart env=dev
+```
+
+A server exports a batch every five seconds and once more when it shuts down.
+To look at the traces rather than read them, replace the file exporters in
+`collector.yaml` with a backend's — Jaeger, Tempo, a vendor's. In a cluster the
+collector runs as its own workload and `OTLP_ENDPOINT` names its Service.
+`advanced_client_core/tool/run_cross_tier_integration.sh --trace` starts this
+collector, runs both servers against it and checks what they exported. See
+`tom_core_server/doc/tracing.md` for every span and its attributes.
 
 ## Running it on kind
 

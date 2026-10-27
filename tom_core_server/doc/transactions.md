@@ -27,6 +27,7 @@ names and rolls back the rest — see
 - [Ambient Access](#ambient-access)
 - [Transaction Scopes](#transaction-scopes)
 - [How the Pipeline Uses It](#how-the-pipeline-uses-it)
+- [Tracing](#tracing)
 - [Read-Only](#read-only)
 - [Sequential by design](#sequential-by-design)
 - [Concurrency Model](#concurrency-model)
@@ -432,6 +433,37 @@ try {
 reaches every participant as the argument of `startTransaction`, so a read-only
 endpoint opens a read-only transaction and the data source opens
 `START TRANSACTION READ ONLY` — see [Read-Only](#read-only).
+
+## Tracing
+
+With a tracer installed (`TomTracing`; a server installs one when `tracing` is
+on, see [tracing.md](tracing.md)) a `TomTransaction` opened inside traced work —
+a request, a job run, another span — is a span named `transaction`, started
+with the transaction and ended with its conclusion. It is
+`TomTransaction.span`: `null` with tracing off, and `null` for a transaction
+opened outside any trace, which the span is started `childOnly` to leave
+unrecorded.
+
+| Attribute | Value |
+| --------- | ----- |
+| `tom.transaction.id` | `TomTransaction.id` |
+| `tom.transaction.read_only` | `TomTransaction.isReadOnly` |
+| `tom.transaction.outcome` | The conclusion's `TomTransactionOutcome`: `committed`, `partiallyCommitted`, `rolledBack`, `rolledBackWithFailures` |
+| `tom.transaction.participants` | How many participants were enlisted |
+
+`TomTransaction.runInSpan(body)` runs `body` inside the span, so the spans it
+opens — the statements of the enlisted data sources — are the transaction's
+children. `TomTransactionManager.runInTransaction` runs its body that way, and
+so does the endpoint pipeline for a `@TomTransactional` endpoint; a transaction
+driven by hand with `startTransaction` runs its work in the span only through
+`runInSpan`. The conclusion itself — prepare, commit or roll back — runs inside
+the span too.
+
+An outcome that left work outstanding — `partiallyCommitted` or
+`rolledBackWithFailures` — marks the span failed; a conclusion that throws
+records the error. A commit that concludes by rolling back ends the span once,
+with the rollback's outcome.
+<!-- pinned: test/tracing_test.dart › is a span around its work, ending with its outcome -->
 
 ## Read-Only
 
@@ -1208,7 +1240,7 @@ resumed by a second orchestrator, and an unknown saga refused.
 | `dart:async` | dart | `saga.dart`, `transaction_manager.dart`, `transaction_recovery.dart` | `Future`, `FutureOr`, `Timer`, `Zone`, `unawaited` |
 | `dart:convert` | dart | `saga.dart` | `jsonEncode` / `jsonDecode`, for a saga's data and its copy |
 | `dart:math` | dart | `transaction_manager.dart` | `Random.secure`, the process tag in a transaction's id |
-| `tom_core_kernel` | package | `saga.dart`, `transaction_manager.dart`, `transaction_recovery.dart` | `tomLog`, for the coordinator's own account of a veto, a participant that threw, a partial commit and a decision it could not record, and the recovery's account of each branch; and the scheduling a saga runs on — `TomScheduler`, `TomJobStore`, `TomMemoryJobStore`, `TomJobDefinition`, `TomEventSchedule`, `TomInlineJobDispatcher`, `TomRetryPolicy`, `TomPermanentFailure`, `TomPermanentJobFailure`, `TomJobAlertSink`, `TomLeaseLock`, `TomCommand`, `TomClosable` — plus `TomTenantContext` and `tomReflector` |
+| `tom_core_kernel` | package | `saga.dart`, `transaction_manager.dart`, `transaction_recovery.dart` | `tomLog`, for the coordinator's own account of a veto, a participant that threw, a partial commit and a decision it could not record, and the recovery's account of each branch; and the scheduling a saga runs on — `TomScheduler`, `TomJobStore`, `TomMemoryJobStore`, `TomJobDefinition`, `TomEventSchedule`, `TomInlineJobDispatcher`, `TomRetryPolicy`, `TomPermanentFailure`, `TomPermanentJobFailure`, `TomJobAlertSink`, `TomLeaseLock`, `TomCommand`, `TomClosable` — plus `TomTenantContext`, `tomReflector`, and `TomTracing` / `TomSpan` (the transaction's span) |
 | `uuid` | package | `saga.dart` | `UuidV4`, for a saga id when `begin` is given none |
 | [datasources](datasources.md) | module | `saga.dart`, `saga_sql.dart`, `transaction_recovery.dart` | `TomFrameworkTable` / `TomFrameworkColumn`, the saga and decision tables' single declarations; `TomDataSource`, `TomDataSourceInfo` and `TomSchemaProvisioning`, to resolve and provision the store's and the log's data source, and to find the registered two-phase data sources a recovery scans; `sqlInstant` / `parseSqlInstant` |
 | [little_things](little_things.md) | module | `saga.dart`, `transaction_manager.dart`, `transaction_recovery.dart` | `TomServerException` (base of `TomTransactionException`, `TomSagaException` and `TomTransactionRecoveryException`) |

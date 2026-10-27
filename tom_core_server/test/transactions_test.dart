@@ -1015,7 +1015,16 @@ void main() {
         'lib/src/tomserver/transactions/transaction_manager.dart',
       ).readAsStringSync();
 
-      for (final method in ['commitTransaction', 'rollbackTransaction']) {
+      // The public conclusions run their drive inside the transaction's span;
+      // the drive itself is `_commit` / `_rollback`.
+      expect(
+        source,
+        allOf(
+          contains('commitTransaction() => _traced(_commit);'),
+          contains('rollbackTransaction() => _traced(_rollback);'),
+        ),
+      );
+      for (final method in ['_commit', '_rollback']) {
         final body = source.substring(
           source.indexOf('Future<TomTransactionResult> $method() async {'),
         );

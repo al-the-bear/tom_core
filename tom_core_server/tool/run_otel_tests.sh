@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Runs the `otel` suite (test/metrics_otel_test.dart): the Prometheus scrape is
-# linted by promtool, and an OTLP export is sent to an OpenTelemetry Collector
-# whose file exporter writes back what it received. Starts the collector,
+# Runs the `otel` suite (test/metrics_otel_test.dart, test/tracing_otel_test.dart):
+# the Prometheus scrape is linted by promtool, and OTLP exports of metrics and
+# of spans are sent to an OpenTelemetry Collector whose file exporters write
+# back what it received. Starts the collector,
 # waits for it, runs `dart test --tags otel`, removes it. A run in which every
 # test skipped is a failure, not a pass.
 set -euo pipefail
@@ -26,8 +27,9 @@ for _ in $(seq 1 60); do
 done
 output="$(TOM_OTLP_TEST_ENDPOINT="http://127.0.0.1:$PORT" \
   TOM_OTLP_TEST_OUTPUT="$OUT/metrics.json" \
+  TOM_OTLP_TEST_TRACES_OUTPUT="$OUT/traces.json" \
   TOM_PROMTOOL_IMAGE="$PROMTOOL" \
-  dart test --tags otel test/metrics_otel_test.dart 2>&1)" || { printf '%s\n' "$output"; docker logs "$NAME" 2>&1 | tail -20; exit 1; }
+  dart test --tags otel test/metrics_otel_test.dart test/tracing_otel_test.dart 2>&1)" || { printf '%s\n' "$output"; docker logs "$NAME" 2>&1 | tail -20; exit 1; }
 printf '%s\n' "$output"
 if printf '%s' "$output" | grep -q 'All tests skipped'; then
   echo "Every otel test skipped: the collector or promtool was not available — treating as failure." >&2

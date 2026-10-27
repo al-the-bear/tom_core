@@ -54,6 +54,11 @@ dependencies:
   uuid: ^4.6.0
   path: ^1.9.1
   xml: ^7.0.1
+  # The OpenTelemetry SDK behind the tracing module (tracing/): span
+  # processing, sampling and the OTLP/HTTP span exporter. Only that module
+  # imports it; the framework's spans go through the kernel's TomTracing seam,
+  # so the SDK can be replaced there alone.
+  opentelemetry: ^0.18.11
   postgres: ^3.5.20
   meta: ^1.18.0
 dev_dependencies:

@@ -70,6 +70,7 @@ and hands each to the outbox. This module does not know that layer exists.
 - [Delivery Semantics: One Retry Mechanism](#delivery-semantics-one-retry-mechanism)
 - [What "Queued" Guarantees](#what-queued-guarantees)
 - [Failure Reporting](#failure-reporting)
+- [Tracing](#tracing)
 - [Wiring a Server](#wiring-a-server)
   - [The outbox and readiness](#the-outbox-and-readiness)
 - [Messages per Tenant](#messages-per-tenant)
@@ -666,6 +667,11 @@ the authentication off a call, which is not a decision a message gets to make.
 No bearer token is attached. The kernel's call layer injects the caller's by
 default, and a subscribed endpoint has no idea what that is — presenting it
 would hand a user credential to a third party.
+
+The message's `traceparent` and `tracestate` headers are the one exception to
+"the message's headers are carried": they name the trace the delivery
+continues (see [Tracing](#tracing)), and the call propagates its own client
+span instead, so the receiver's span is a child of the call that reached it.
 
 ### No signing
 
@@ -1404,6 +1410,34 @@ Two channels, deliberately not overlapping:
 
 Failures are *not* on the receipt stream. Emitting them on both would make "how
 many times did this fail" a question with two answers.
+
+## Tracing
+
+With a tracer installed (`TomTracing`; a server installs one when `tracing` is
+on, see [tracing.md](tracing.md)) the outbox carries a trace from the work that
+queued a message to its delivery, however much later and on whichever node that
+runs.
+
+| Span | Span kind | When | Attributes |
+| ---- | --------- | ---- | ---------- |
+| `outbox send` | producer | `TomMessageOutbox.send` queues the message | `messaging.system` (`tom_outbox`), `messaging.operation.type` (`send`), `messaging.destination.name` (the outbox's job name), `messaging.message.id` |
+| `outbox deliver` | consumer | the delivery job run hands the message to its transport | the same, with `messaging.operation.type` `process`, and `tom.job.run_id` |
+
+`send` writes the producer span's `traceparent` (and `tracestate`) into
+`TomMessage.headers` before the message is stored, so the header travels with
+the queued message. The delivery parses it and continues it: `outbox deliver`
+is a child of `outbox send`, in the trace of the request that queued the
+message. A message queued outside any trace carries no header, and its delivery
+is a step of the job run's own trace (`job messaging.outbox`). The transport
+call the delivery makes — an SMTP conversation, a webhook POST through
+`TomResilientClient` — runs inside the delivery span.
+
+The header is part of the stored message, so an email carries it to whoever
+reads its source. A webhook does not post it: `TomWebhookTransport` leaves
+`traceparent` and `tracestate` out of the call and propagates the call's own
+client span (see [Headers, and who wins](#headers-and-who-wins)). With tracing
+off the message is queued unchanged.
+<!-- pinned: test/tracing_test.dart › carries the trace that queued it to its delivery -->
 
 ## Wiring a Server
 
@@ -2179,7 +2213,7 @@ was processed before, and reads nothing out of a mailbox.
 | `http2` | package | `push_transport.dart` | the HTTP/2 client APNs requires |
 | `path` | package | `message_transport.dart` | file naming in `TomFileMessageTransport` |
 | `shelf` | package | `delivery_report_endpoint.dart` | `Request` / `Response`, because a carrier acts on the status code and the pipeline's own envelope would make every refusal a `500` |
-| `tom_core_kernel` | package | 12 of 19 files | `TomScheduler`, `TomJobStore`, `TomJobDefinition`, `TomRetryPolicy`, `TomJobAlertSink`, `TomPermanentFailure`, `TomCommand`, `TomClosable`, `TomPrincipal`, `TomUser`, `TomBean`, `TomDataSource`, `tomLog`, `TomHeader` / `TomMimeType`, and `TomServerChannel` / `TomServerCall` / `TomServerCallSpecs` — the HTTP call layer `TomSmsTransport`, `TomWebhookTransport` and `TomHttp1PushExchange` reach their endpoints through, rather than a raw client |
+| `tom_core_kernel` | package | 12 of 19 files | `TomScheduler`, `TomJobStore`, `TomJobDefinition`, `TomRetryPolicy`, `TomJobAlertSink`, `TomPermanentFailure`, `TomCommand`, `TomClosable`, `TomPrincipal`, `TomUser`, `TomBean`, `TomDataSource`, `tomLog`, `TomHeader` / `TomMimeType`, `TomTracing` / `TomSpanKind` / `TomTraceContext` (the outbox's send and delivery spans), and `TomServerChannel` / `TomServerCall` / `TomServerCallSpecs` — the HTTP call layer `TomSmsTransport`, `TomWebhookTransport` and `TomHttp1PushExchange` reach their endpoints through, rather than a raw client |
 | `uuid` | package | `message.dart` | `UuidV4`, for a message id when the caller supplies none |
 | [configuration](configuration.md) | module | `sms_transport.dart`, `smtp_transport.dart` | `TomBaseServerConfiguration` |
 | [datasources](datasources.md) | module | `delivery_report_sql.dart`, `inbox.dart`, `inbox_sql.dart`, `sql_delivery_report_store.dart` | `TomFrameworkTable` — the single declaration the DDL, the statements and the convergence guard all derive from — plus `TomDataSourceInfo`, `TomSchemaProvisioning` and `sqlInstant` |

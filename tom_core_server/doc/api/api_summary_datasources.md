@@ -1353,6 +1353,7 @@ or calls, not part of the surface an application reaches for.
 | `openConnectionCount` | `int` | *(getter)* How many connections the pool holds, lent or idle; `0` when not open. |
 | `lentConnectionCount` | `int` | *(getter)* How many connections are lent out — to transactions or statements. |
 | `pooledLinks` | `Iterable<TomSqlLink>` | *(getter, protected)* Every connection of the pool, lent or idle; empty when not open. |
+| `dbSystemName` | `String` | *(getter, protected, abstract)* The `db.system.name` attribute of a statement's span — `mariadb`, `postgresql`. |
 
 ##### Methods — what a driver supplies
 
@@ -1385,7 +1386,7 @@ or calls, not part of the surface an application reaches for.
 | ------ | --------- | ----------- |
 | `registerAs` | `void registerAs(String name)` | Records the registry name `registeredName` reports. Called by `TomDataSourceInfo.initialize` when it creates the driver, before the data source is opened; a data source created by hand calls it to be labelled. |
 | `connect` | `Future<void> connect()` | Opens the data source: creates the pool from `poolSettings` and opens its first connection, then its replicas — a replica that cannot be reached is left out for `replicaRetryMs`, not fatal. A server that cannot be reached or refuses the session fails the call with the driver's own error and leaves the data source unopened. Does nothing on an open data source. |
-| `withLink` | `Future<R> withLink<R>(String operation, Future<R> Function(TomSqlLink link) body, {String? statement})` | *(protected)* Runs `body` on the connection `operation` belongs on — the one place connections are chosen. `statement`, the SQL a statement path runs, is what read-replica routing reads: a repository read of it in read-only work may run on a replica, a replica that cannot lend a connection is left out for `replicaRetryMs` and the statement runs here, and a statement that is not a read records the principal's write for `replicaStickinessMs`. Otherwise: a transaction's own lifecycle statement runs on the connection pinned to that transaction; a statement inside a running transaction first enlists this data source in it, then runs on the transaction's connection; any other statement borrows a connection for itself and hands it back, discarding it if it went down while in use. |
+| `withLink` | `Future<R> withLink<R>(String operation, Future<R> Function(TomSqlLink link) body, {String? statement, String? sqlText})` | *(protected)* Runs `body` on the connection `operation` belongs on — the one place connections are chosen. With a tracer installed (`TomTracing`) the statement is a `client` span on its connection, named after its first keyword, carrying `db.system.name` (`dbSystemName`), `db.operation.name`, `db.query.text` — `statement`, or `sqlText` for a path that is never routed (a command, a statement being prepared), as written with its placeholders and never a bound value — and `tom.datasource`. The span is started `childOnly`: a statement run outside any trace records none. `statement`, the SQL a statement path runs, is what read-replica routing reads: a repository read of it in read-only work may run on a replica, a replica that cannot lend a connection is left out for `replicaRetryMs` and the statement runs here, and a statement that is not a read records the principal's write for `replicaStickinessMs`. Otherwise: a transaction's own lifecycle statement runs on the connection pinned to that transaction; a statement inside a running transaction first enlists this data source in it, then runs on the transaction's connection; any other statement borrows a connection for itself and hands it back, discarding it if it went down while in use. |
 | `prepareStatement` | `Future<TomPreparedStatement<T>> prepareStatement<T extends Object>(TomQuery query, [Type? resultType])` | *(override)* Renders `query` through `sqlDialect`, translates it with `toPositional`, and prepares it on the connection the current zone selects, so a statement the server cannot compile fails here. A grouped query's `projectionTypes` travel with the returned handle. |
 | `mapGroupedRow` | `TomGroupedRow mapGroupedRow(TomSqlRow row, Map<String, Type> projection)` | Maps one row of a grouped result, reading each alias as the Dart type the query declared for it. Throws `error.result_processing_grouped.unknown_type` for a declared type outside `int` / `double` / `String` / `bool` / `DateTime`. |
 | `executeQuery` | `Future<List<T>> executeQuery<T extends Object>(String command, [Map<String, dynamic>? params, Type? resultType])` | *(override)* Runs a read command with reflection-based row→object mapping. A `TomClass` result type maps by observable member — by member name without `@TomDbTable`, by `@TomDbColumn` with it — supporting `int` / `double` / `String` / `bool` / `DateTime` members whether declared as the plain or the nullable (`TomN…`) observable, with a SQL `NULL` read as `null`. The rows are mapped after the connection is handed back, so a `@TomReference` column's own query never needs a second connection while the first is held. |
@@ -1652,6 +1653,7 @@ MariaDbDatasource()
 | -------- | ---- | ----------- |
 | `sqlDialect` | `TomStandardSqlDialect` | *(override)* The MariaDB SQL dialect, a `MariadbSqlDialect`. |
 | `driverLabel` | `String` | *(override)* `MariadbDatasource`. |
+| `dbSystemName` | `String` | *(override)* `mariadb`. |
 | `preparedStatementLabel` | `String` | *(override)* `MariadbPreparedStatement`. |
 | `participantPrefix` | `String` | *(override)* `MariaDb`. |
 | `commitStatement` | `String` | *(override)* `COMMIT;`. |
@@ -1810,6 +1812,7 @@ Sets `port` to PostgreSQL's default, `5432`.
 | `schema` | `String` | The schema statements resolve unqualified names in — set as the session's `search_path` when a connection opens — or empty for the server's default (`public`). This is what a schema-isolated tenant is on PostgreSQL: one database, a schema per tenant. |
 | `sslMode` | `String` | How the connection is encrypted: `disable`, `require` (encrypt, accept any certificate) or `verifyFull` (encrypt and verify). Default `require`. Any other value fails the first connection with `error.initialize.invalid_ssl_mode` (parameter `sslMode`). |
 | `driverLabel` | `String` | *(override)* `PostgresDatasource`. |
+| `dbSystemName` | `String` | *(override)* `postgresql`. |
 | `preparedStatementLabel` | `String` | *(override)* `PostgresPreparedStatement`. |
 | `participantPrefix` | `String` | *(override)* `Postgres`. |
 | `commitStatement` | `String` | *(override)* `COMMIT`. |

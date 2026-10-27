@@ -1,0 +1,25 @@
+# An OpenTelemetry Collector for the advanced sample on one machine: it
+# receives OTLP over HTTP on 4318 — the servers' `otlpEndpoint` — and writes
+# every trace and metrics export to a file under ./out, one export per line, in
+# the collector's own JSON. Replace the file exporters with your backend's
+# (Jaeger, Tempo, a vendor) to look at the traces rather than read them.
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+
+exporters:
+  file/traces:
+    path: /out/traces.json
+  file/metrics:
+    path: /out/metrics.json
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      exporters: [file/traces]
+    metrics:
+      receivers: [otlp]
+      exporters: [file/metrics]

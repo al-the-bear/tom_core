@@ -32,7 +32,8 @@ serialized without hand-written boilerplate. Conceptually it provides five thing
 - **Observable state** — values and objects that notify observers on change, with
   a terse operator syntax (`|` set, `~` read, `>>` observe).
 - **Ambient context** — zone-propagated execution context, the tenant and the
-  W3C trace a piece of work belongs to, and hierarchical scope identifiers, so a deeply nested
+  W3C trace a piece of work belongs to with the spans recorded in it when a
+  tracer is installed, and hierarchical scope identifiers, so a deeply nested
   call can resolve "where am I" without threading parameters through every
   frame.
 - **Dependency injection** — a reflection-driven bean container.
@@ -97,6 +98,7 @@ require a `dart run build_runner build` to generate `*.reflection.dart`.
 | `TomTenantContext` / `TomTenantScopedCommand` / `TomTenantEvent` | The tenant — an isolation boundary, not an organization — carried in the zone, into a job's body and across an isolate hop |
 | `TomTraceContext` | The W3C trace and span the work belongs to, carried in the zone; parses and renders `traceparent` |
 | `TomRequestId` | The id of the unit of work — a request, a job run, a socket message — carried in the zone beside its trace; every log line, server exception and audit entry of the work names it |
+| `TomTracing` / `TomTracer` / `TomSpan` / `TomRecordingTracer` | Spans: the timed steps of a trace — a request, an SQL statement, a transaction, an outgoing call, a job run — recorded by an installed tracer, and nothing at all without one. `tom_core_server` provides the OpenTelemetry tracer |
 | `TomScope` / `ScopeCapture` | Hierarchical, zone-propagated scope identifiers |
 
 ### Dependency injection (`beanlocator`)

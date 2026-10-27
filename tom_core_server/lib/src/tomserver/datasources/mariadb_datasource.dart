@@ -190,6 +190,9 @@ class MariaDbDatasource extends TomSqlDatasource {
   String get driverLabel => "MariadbDatasource";
 
   @override
+  String get dbSystemName => 'mariadb';
+
+  @override
   String get preparedStatementLabel => "MariadbPreparedStatement";
 
   @override

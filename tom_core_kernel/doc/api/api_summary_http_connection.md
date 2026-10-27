@@ -1740,7 +1740,10 @@ A `package:http` client applying the resilience policies to every call: the
 timeout per attempt, retries for calls that may be repeated, the destination's
 circuit breaker and bulkhead. Records the `tom_http_client_*` series into
 `TomMetrics.registry`, and adds the current trace to every call it sends
-(`propagateTrace`).
+(`propagateTrace`). With a tracer installed (`TomTracing`, context module) every
+call is a `client` span named after its method, carrying `http.request.method`,
+`url.full` (no query or user info), `server.address`, `server.port` and
+`http.response.status_code`; a `5xx` or a call with no answer marks it failed.
 
 - **Extends:** `BaseClient` (`package:http`) — `get`, `post`, `put`, `delete`, `read` and the other convenience methods all go through `send`.
 
@@ -1764,13 +1767,13 @@ uses it; without, `TomHttpResilience.policyFor` decides per destination.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `propagateTrace` | `static void propagateTrace(BaseRequest request)` | Adds the current trace to `request` as a new child span — `traceparent`, and `tracestate` when the trace carries one — so the callee continues it; a Tom server then takes the trace id as its request id. Adds nothing outside a trace, or when the request already names a `traceparent`. The request id itself is not sent: a callee believes a request-id header only from its own trusted proxies. |
+| `propagateTrace` | `static void propagateTrace(BaseRequest request, {TomTraceContext? span})` | Adds the current trace to `request` as a new child span — `traceparent`, and `tracestate` when the trace carries one — so the callee continues it; a Tom server then takes the trace id as its request id. With `span`, the position of the client span the call is recorded in, that position is sent as it is, so the callee's span is a child of the call's. Adds nothing outside a trace, or when the request already names a `traceparent`. The request id itself is not sent: a callee believes a request-id header only from its own trusted proxies. |
 
 ##### Methods
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `send` | `Future<StreamedResponse> send(BaseRequest request)` | *(override)* Adds the current trace (`propagateTrace`), then sends `request` under its policy. Throws `TomHttpResilienceException` (`http.client.circuit_open`, `http.client.bulkhead_full`, or `http.client.timeout` once the attempts run out), or the inner client's error; returns the last response when a retryable status outlasts the attempts. The bulkhead permit is held until the response body has been read, has failed or was cancelled. |
+| `send` | `Future<StreamedResponse> send(BaseRequest request)` | *(override)* With a tracer installed, opens the call's `client` span. Adds the trace (`propagateTrace`, the client span's position when there is one), then sends `request` under its policy. Throws `TomHttpResilienceException` (`http.client.circuit_open`, `http.client.bulkhead_full`, or `http.client.timeout` once the attempts run out), or the inner client's error; returns the last response when a retryable status outlasts the attempts. The bulkhead permit is held until the response body has been read, has failed or was cancelled. |
 | `close` | `void close()` | *(override)* Closes the inner client. |
 
 ## Enums

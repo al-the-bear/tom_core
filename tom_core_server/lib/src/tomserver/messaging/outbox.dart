@@ -242,7 +242,39 @@ class TomMessageOutbox implements TomClosable {
   /// attempt is made at the first tick after it. A notification held through
   /// its recipient's quiet hours is queued this way, so it is durable from the
   /// moment it was raised. An instant already past is the same as none.
-  Future<bool> send(TomMessage message, {DateTime? notBefore}) async {
+  ///
+  /// With a tracer installed ([TomTracing]) queueing is a producer span,
+  /// `outbox send`, and the message is queued with that span's `traceparent`
+  /// (and `tracestate`) in its [TomMessage.headers]: the delivery continues
+  /// the trace that queued it however much later it runs, and an email
+  /// carries the header to whoever reads its source.
+  Future<bool> send(TomMessage message, {DateTime? notBefore}) {
+    final span = TomTracing.start(
+      'outbox send',
+      kind: TomSpanKind.producer,
+      attributes: _messagingAttributes(message, 'send'),
+    );
+    if (span == null) return _send(message, notBefore);
+    final traced = message.copyWith(
+      headers: {...message.headers, ...span.context.headers},
+    );
+    return TomTracing.within(
+      span,
+      () => TomTracing.ending(span, () => _send(traced, notBefore)),
+    );
+  }
+
+  Map<String, Object> _messagingAttributes(
+    TomMessage message,
+    String operation,
+  ) => {
+    'messaging.system': 'tom_outbox',
+    'messaging.operation.type': operation,
+    'messaging.destination.name': jobName,
+    'messaging.message.id': message.id,
+  };
+
+  Future<bool> _send(TomMessage message, DateTime? notBefore) async {
     _requireOpen();
     final now = _clock();
     final runAt = notBefore != null && notBefore.isAfter(now) ? notBefore : now;
@@ -409,8 +441,29 @@ class _TomDeliveryCommand extends TomCommand {
       );
     }
     final message = TomMessage.fromJson(payload);
-    final receipt = await _outbox.router.send(message);
-    await _outbox._report(receipt, message);
-    return receipt.toJson();
+    // The delivery continues the trace that queued the message, when it was
+    // queued in one; otherwise it is a step of the job run's own trace.
+    final producer = TomTraceContext.parse(
+      message.headers['traceparent'],
+      traceState: message.headers['tracestate'],
+    );
+    final span = TomTracing.start(
+      'outbox deliver',
+      kind: TomSpanKind.consumer,
+      parent: producer,
+      attributes: {
+        ..._outbox._messagingAttributes(message, 'process'),
+        'tom.job.run_id': _run.id,
+      },
+    );
+    Future<Object?> deliver() async {
+      final receipt = await _outbox.router.send(message);
+      await _outbox._report(receipt, message);
+      return receipt.toJson();
+    }
+
+    return span == null
+        ? deliver()
+        : TomTracing.within(span, () => TomTracing.ending(span, deliver));
   }
 }

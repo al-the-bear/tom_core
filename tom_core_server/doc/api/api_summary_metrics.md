@@ -35,7 +35,8 @@ installs both at the outer edge of its pipeline, the scrape only when
 `TomOtlpHttpTransport` posts OTLP/HTTP JSON bodies to `<endpoint>/v1/<signal>`
 and knows no signal; `TomOtlpMetricsExporter` is its first user, pushing
 `tomOtlpMetricsJson` of the registry to `v1/metrics` every interval and once more
-on `close`. A trace exporter posts `v1/traces` through the same transport.
+on `close`. The tracing module's span exporter posts to `urlOf('traces')` with
+the same headers.
 `TomServer.start` creates the exporter as `TomServer.metricsExporter` when
 `otlpEndpoint` names a receiver. `TomOtlpExportException` is every failure the
 module raises.
@@ -83,7 +84,8 @@ TomOtlpExportException(
 
 Posts OTLP/HTTP JSON bodies to a receiver — the OpenTelemetry Collector, Grafana
 Alloy, a vendor's agent. Signal-neutral: the metrics exporter posts `metrics`,
-a trace exporter `traces`, through one endpoint and one set of headers.
+the tracing module's span exporter `traces`, through one endpoint and one set
+of headers.
 
 - **Extends:** none
 
@@ -116,7 +118,7 @@ a test passes its own.
 | ------ | --------- | ----------- |
 | `parseHeaders` | `static Map<String, String> parseHeaders(String text)` | The headers `text` names in the `key=value,key=value` form of `OTEL_EXPORTER_OTLP_HEADERS`: keys trimmed and lower-cased, values percent-decoded, empty entries skipped. Throws `otlp.config.invalid_headers` for an entry with no `=`. |
 | `urlOf` | `Uri urlOf(String signal)` | The URL `signal` (`metrics`, `traces`, `logs`) is posted to: the endpoint's path with `v1/<signal>` appended. |
-| `export` | `Future<void> export(String signal, Map<String, Object?> body)` | Posts `body`, JSON-encoded with `content-type: application/json` and `headers`, to `urlOf(signal)`. Throws `otlp.export.failed` when the receiver cannot be reached, does not answer within `timeout`, or answers anything but a `2xx`. |
+| `export` | `Future<void> export(String signal, Map<String, Object?> body)` | Posts `body`, JSON-encoded with `content-type: application/json` and `headers`, to `urlOf(signal)`, untraced (`TomTracing.untraced`), so a push records no span of its own. Throws `otlp.export.failed` when the receiver cannot be reached, does not answer within `timeout`, or answers anything but a `2xx`. |
 | `close` | `void close()` | Closes the HTTP client. |
 
 ### TomOtlpMetricsExporter

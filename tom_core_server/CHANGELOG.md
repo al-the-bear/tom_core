@@ -2,6 +2,43 @@
 
 ### Added
 
+- **OpenTelemetry tracing** (`tracing` module, new; `server`,
+  `configuration`, `datasources`, `transactions`, `messaging`, `metrics`
+  modules; kernel `TomTracing` seam). `TomOtelTracer({processors, resource,
+  samplePercent, exportClient})` implements the kernel's `TomTracer` over
+  `package:opentelemetry` (`^0.18.11`, imported by this module only), sampling
+  parent-based with new traces at `samplePercent` decided from the trace id;
+  `TomOtelTracer.otlp({endpoint, headers, resource, samplePercent,
+  exportInterval, client})` exports OTLP/HTTP protobuf to
+  `<endpoint>/v1/traces`, batched every 5 s; `fromConfiguration(configuration,
+  {serviceName})`; `flush`, `shutdown` and `close` wait for the exports in
+  flight. `TomUntracedClient` (`idle`; `close` lets calls in flight finish) and
+  `TomInMemorySpanExporter` (`spans`, `named`, `childrenOf`, `attributeOf`).
+  `TomTracingException`, error keys `tracing.config.no_endpoint` and
+  `tracing.config.invalid_sample_percent`. Configuration `tracing` (`TRACING`,
+  default `false`) and `tracingSamplePercent` (`TRACING_SAMPLE_PERCENT`, default
+  `100`); spans go to `otlpEndpoint` with `otlpHeaders`.
+  `TomServer.configureTracing()`, called by `start()` right after
+  `configureHttpClients()`, installs the tracer as `TomServer.tracer` and
+  registers it with the shutdown cleanup. Spans: the request's server span in
+  `tomRequestContextMiddleware`, named `<METHOD> <route>`, continuing the
+  caller's `traceparent` and answered as the response's; each SQL statement a
+  client span named after its first keyword with `db.system.name`
+  (`TomSqlDatasource.dbSystemName`: `mariadb`, `postgresql`),
+  `db.operation.name`, `db.query.text` (placeholders, never bound values) and
+  `tom.datasource`, `withLink` taking `sqlText`; `TomTransaction.span`
+  (`transaction`, with id, read-only flag, outcome and participant count) —
+  statements and transactions only inside traced work (kernel
+  `TomTracing.start(childOnly:)`) — and
+  `runInSpan`, used by `runInTransaction` and transactional endpoints;
+  `TomMessageOutbox.send` a producer span `outbox send` writing `traceparent` /
+  `tracestate` into `TomMessage.headers`, continued by the consumer span
+  `outbox deliver`; `TomWebhookTransport` no longer posts the message's trace
+  headers. The metrics push runs untraced. `doc/tracing.md`,
+  `doc/api/api_summary_tracing.md`, `example/tracing/tracing_example.dart`;
+  tests in `test/tracing_test.dart`, `test/tracing_db_test.dart` (`db`) and
+  `test/tracing_otel_test.dart` (`otel`, run by `tool/run_otel_tests.sh`, whose
+  collector configuration gains a traces pipeline).
 - **Export charts, the email channel, and the export register with quota and
   retention** (`export`, `db_migration` modules). `TomTabularChart({type,
   categoryColumn, valueColumns, title})` with `TomChartType` (`bar`, `line`,

@@ -20,6 +20,13 @@ tenant, the W3C trace and the request id a piece of work belongs to.
   - [TomTenantEvent](#tomtenantevent)
   - [TomTraceContext](#tomtracecontext)
   - [TomRequestId](#tomrequestid)
+  - [TomSpan](#tomspan)
+  - [TomTracer](#tomtracer)
+  - [TomTracing](#tomtracing)
+  - [TomRecordingTracer](#tomrecordingtracer)
+  - [TomRecordedSpan](#tomrecordedspan)
+- [Enums](#enums)
+  - [TomSpanKind](#tomspankind)
 - [Global Functions and Constants](#global-functions-and-constants)
   - [Constants](#constants)
   - [Functions](#functions)
@@ -29,7 +36,8 @@ tenant, the W3C trace and the request id a piece of work belongs to.
 Source: `lib/src/tombase/context/execution_context.dart`,
 `lib/src/tombase/context/request_id.dart`,
 `lib/src/tombase/context/tenant_context.dart`,
-`lib/src/tombase/context/trace_context.dart`.
+`lib/src/tombase/context/trace_context.dart`,
+`lib/src/tombase/context/tracing.dart`.
 
 The Context module uses Dart's Zone system to propagate contextual information
 across async boundaries. `TomExecutionContext` holds a map of named
@@ -75,6 +83,15 @@ elsewhere — `tom_core_server`'s request pipeline uses the caller's trace id, o
 trusted proxy's request-id header. An id is 8 to 128 characters of ASCII
 letters, digits and `._:-`, starting with a letter or digit.
 
+`TomTracing` records the **spans** of a trace — the timed, named steps of a
+request, an SQL statement, a transaction, an outgoing call, a job run — through
+an installed `TomTracer`. No tracer is installed by default, and then nothing is
+created: an instrumented call asks whether a tracer is installed and runs its
+work unchanged. A span's `context` is the `TomTraceContext` its work runs in, so
+log lines and outgoing `traceparent` headers name the current span.
+`tom_core_server` provides the OpenTelemetry tracer (`TomOtelTracer`);
+`TomRecordingTracer` keeps ended spans in memory for tests.
+
 ## Class Hierarchy
 
 ```
@@ -96,6 +113,12 @@ TomTenantEvent
 TomTraceContext
 
 TomRequestId  (final)
+
+TomSpan  (abstract)
+    └── TomRecordedSpan  (implements)
+TomTracer  (abstract)
+    └── TomRecordingTracer  (implements)
+TomTracing  (abstract final)
 ```
 
 ## Classes
@@ -456,7 +479,7 @@ source. `TomRequestId.of` throws `FormatException` unless `isValid` accepts
 | `tryOf` | `static TomRequestId? tryOf(String? value)` | The id `value` names, or `null` when `value` is absent or not valid. |
 | `isValid` | `static bool isValid(String value)` | Whether `value` may be a request id: 8 to 128 characters of ASCII letters, digits and `._:-`, the first a letter or digit. Narrow on purpose: the id is written into log lines, response headers and an audit column 191 characters wide, and a caller may supply it. |
 | `run` | `static R run<R>(TomRequestId id, R Function() body)` | Runs `body` with `id` as the current request id. |
-| `runRoot` | `static R runRoot<R>(R Function() body)` | Runs `body` as work of its own: in a new trace (`TomTraceContext.newRoot`), whose trace id is the request id. For work no caller started — a job run, a delivery. |
+| `runRoot` | `static R runRoot<R>(R Function() body, {String? spanName, TomSpanKind spanKind = TomSpanKind.internal, Map<String, Object> spanAttributes = const {}})` | Runs `body` as work of its own: in a new trace (`TomTraceContext.newRoot`), whose trace id is the request id. For work no caller started — a job run, a delivery. With `spanName` and a tracer installed, the work is the first span of that trace, of `spanKind` with `spanAttributes`, ended when `body` completes; the trace and request id are then the span's. |
 | `runChild` | `static R runChild<R>(R Function() body)` | Runs `body` as one step of the current work: in a new span of the current trace (a new trace, as `runRoot`, when there is none), with the request id `<trace id>-<span id>`. For work that belongs to a longer conversation — one message of a socket. |
 
 #### Properties
@@ -478,6 +501,146 @@ source. `TomRequestId.of` throws `FormatException` unless `isValid` accepts
 | ------ | --------- | ----------- |
 | `operator ==` | `bool operator ==(Object other)` | *(override)* Equal to another `TomRequestId` with the same `value`. |
 | `toString` | `String toString()` | *(override)* `TomRequestId: <value>`. |
+
+### TomSpan
+
+One span being recorded. Attribute values are strings, booleans, integers,
+doubles, or lists of one of those; anything else is recorded as its
+`toString()`.
+
+- **Kind:** abstract class.
+- **Extends:** none
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `context` | `TomTraceContext` | *(getter)* The position this span's work runs at: its trace, its own id, its parent. |
+| `name` | `String` | *(getter)* The span's name. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `setName` | `void setName(String name)` | Renames the span — for a name known only once the work has started, such as the route a request matched. |
+| `setAttribute` | `void setAttribute(String key, Object value)` | Sets attribute `key` to `value`. |
+| `recordError` | `void recordError(Object error, [StackTrace? stack])` | Records `error` as an exception of the span and marks it failed. |
+| `setError` | `void setError(String description)` | Marks the span failed with `description`, without an exception — an HTTP request answered with a server error. |
+| `end` | `void end()` | Ends the span; a second call does nothing. |
+
+### TomTracer
+
+Makes spans. Installed with `TomTracing.install`; `tom_core_server`'s
+`TomOtelTracer` and `TomRecordingTracer` implement it.
+
+- **Kind:** abstract class.
+- **Extends:** none
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `startSpan` | `TomSpan startSpan(String name, {TomSpanKind kind = TomSpanKind.internal, TomTraceContext? parent, Map<String, Object> attributes = const {}})` | Starts a span continuing `parent` — a span of this process or the remote position a caller sent in its `traceparent` — or a new trace when `parent` is `null`. The tracer decides whether the span is sampled. |
+| `flush` | `Future<void> flush()` | Sends what has been recorded so far. |
+| `shutdown` | `Future<void> shutdown()` | Flushes and stops; spans started afterwards are not exported. |
+
+### TomTracing
+
+The installed tracer, and the ways the framework opens spans with it. With no
+tracer installed every member that would start a span answers `null` or runs
+its body unchanged.
+
+- **Kind:** abstract final class (static members only).
+- **Extends:** none
+
+#### Static Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `tracer` | `TomTracer?` | *(getter)* The installed tracer, or `null` — tracing is off. |
+| `isRecording` | `bool` | *(getter)* Whether a span started here would be recorded: a tracer is installed and the zone is not `untraced`. |
+| `currentSpan` | `TomSpan?` | *(getter)* The span whose work the current zone runs, or `null`. |
+
+#### Static Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `install` | `static void install(TomTracer? tracer)` | Installs `tracer`, or switches tracing off with `null`. The tracer a previous call installed is not shut down; its owner does that. |
+| `start` | `static TomSpan? start(String name, {TomSpanKind kind = TomSpanKind.internal, Map<String, Object> attributes = const {}, TomTraceContext? parent, bool root = false, bool childOnly = false})` | Starts a span, or answers `null` when nothing would record it. The span continues `parent`, by default `TomTraceContext.current`; with `root` it starts a new trace whatever the zone carries. With `childOnly` nothing is started outside a trace (no `parent` and no current trace context): a step only worth seeing as part of larger work — an SQL statement, a transaction — records nothing when it runs on its own, as a scheduler's poll does. Does not make the span current. |
+| `within` | `static R within<R>(TomSpan span, R Function() body)` | Runs `body` as `span`'s work: `span` is `currentSpan` and its context the current `TomTraceContext`. The span is not ended. |
+| `ending` | `static R ending<R>(TomSpan span, R Function() body)` | Runs `body` and ends `span` when it returns or, for a future, when that completes. An error is recorded on the span and passed on. `body` runs in the zone it is called from. |
+| `trace` | `static Future<R> trace<R>(String name, Future<R> Function(TomSpan? span) body, {TomSpanKind kind = TomSpanKind.internal, Map<String, Object> attributes = const {}})` | Runs `body` in a span named `name` continuing the current trace and ends it when `body` completes; an error is recorded and rethrown. `body` receives the span, or `null` when tracing is off. |
+| `untraced` | `static R untraced<R>(R Function() body)` | Runs `body` with nothing traced inside it — a tracer's own export calls. |
+
+### TomRecordingTracer
+
+A `TomTracer` keeping every ended span in memory — for tests, and for looking
+at what the framework traces without a collector. Ids are minted as
+`TomTraceContext` mints them; every span is recorded, sampled or not.
+
+- **Implements:** `TomTracer`
+
+#### Constructors
+
+```dart
+TomRecordingTracer()
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `spans` | `List<TomRecordedSpan>` | The ended spans, in the order they ended (final). |
+| `open` | `List<TomRecordedSpan>` | The spans started and not ended yet (final). |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `startSpan` | `TomSpan startSpan(String name, {TomSpanKind kind = TomSpanKind.internal, TomTraceContext? parent, Map<String, Object> attributes = const {}})` | *(override)* A `TomRecordedSpan` with `parent.child()` as its context, or `TomTraceContext.newRoot()` without a parent. |
+| `named` | `List<TomRecordedSpan> named(String name)` | The ended spans named `name`. |
+| `childrenOf` | `List<TomRecordedSpan> childrenOf(TomRecordedSpan span)` | The ended spans whose parent is `span`. |
+| `clear` | `void clear()` | Forgets every recorded span. |
+| `flush` | `Future<void> flush()` | *(override)* Does nothing. |
+| `shutdown` | `Future<void> shutdown()` | *(override)* Does nothing. |
+
+### TomRecordedSpan
+
+A span `TomRecordingTracer` recorded. Created only by the tracer.
+
+- **Implements:** `TomSpan`
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `kind` | `TomSpanKind` | The span's kind (final). |
+| `context` | `TomTraceContext` | *(override)* Its position in the trace (final). |
+| `name` | `String` | *(getter, override)* Its name, as last set. |
+| `attributes` | `Map<String, Object>` | The attributes set on it (final). |
+| `errors` | `List<Object>` | The errors recorded on it (final). |
+| `errorDescription` | `String?` | Why it failed — the description `setError` last gave, else the first recorded error — or `null` for a span that did not. |
+| `started` | `DateTime` | When it started (final). |
+| `ended` | `DateTime?` | When it ended, or `null` while it runs. |
+
+#### Methods
+
+`setName`, `setAttribute`, `recordError`, `setError` and `end` as `TomSpan`
+describes them; `toString()` is `TomRecordedSpan(<name>, <traceparent>)`.
+
+## Enums
+
+### TomSpanKind
+
+What a span's work is to the trace — the OpenTelemetry span kinds.
+
+| Value | Meaning |
+| ----- | ------- |
+| `internal` | Work inside one process. |
+| `server` | The handling of a request that arrived from a caller. |
+| `client` | A call to another service — an outgoing HTTP call, an SQL statement. |
+| `producer` | Handing a message to a queue, for a consumer to process later. |
+| `consumer` | The processing of a message taken from a queue. |
 
 ## Global Functions and Constants
 

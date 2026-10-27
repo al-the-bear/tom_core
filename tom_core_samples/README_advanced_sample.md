@@ -281,6 +281,21 @@ exit:
 A green run is a genuine live-stack pass — the runner converts a
 server-unreachable skip into a failure.
 
+With `--trace` the same run also checks the servers' tracing:
+
+```sh
+tom_core_samples/advanced_client_core/tool/run_cross_tier_integration.sh --trace
+```
+
+It starts the local OpenTelemetry Collector of `advanced_deploy/otel/` on host
+port `4318`, runs both servers with `TRACING=true` and `OTLP_ENDPOINT` pointing
+at it, and after the suites fails unless both services (`auth`, `app`) exported
+request spans named after their routes and the app server exported SQL spans
+inside those requests' traces. It prints, per service, the spans it read, the
+routed requests, the SQL statements and the requests with SQL among them. See
+[advanced_deploy/README.md](advanced_deploy/README.md#tracing-and-the-local-collector)
+for the collector and the tracing settings.
+
 The back-office server has its own runner, because its assertions need a database
 but no server: it boots `app_db` and `auth_db` (which the boot's datasource
 initialization insists on, and against which the privacy suite erases a user),

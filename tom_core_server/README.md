@@ -71,7 +71,11 @@ observable state, security, resources) and adds everything a service needs:
 - **metrics** recorded by every module — requests by route pattern, SQL
   statements and connection pools, cache lookups, rate-limit refusals and the
   scheduler's jobs — read by a **Prometheus scrape** answered ahead of
-  authentication or pushed to an **OpenTelemetry collector over OTLP**.
+  authentication or pushed to an **OpenTelemetry collector over OTLP**;
+- **tracing** with OpenTelemetry — a span per request, SQL statement,
+  transaction, outgoing call, job run and outbox delivery, carried across
+  services in `traceparent` and exported over OTLP to the same collector; off
+  until `tracing` is configured, and free while off.
 
 Because the barrel re-exports the kernel, a server app depends only on
 `tom_core_server` — one import gives both the kernel API and the server stack.
@@ -160,7 +164,7 @@ added.
 | `TomTransactionRecovery` / `TomSqlDecisionLog` | Recovery of the branches a process that died between the two phases left prepared: the coordinator records its decision before the commit phase, and a recovery — at start with `recoverOnStart`, or on demand — commits the decided branches and rolls back the rest |
 | `TomSagaOrchestrator` / `TomSaga` / `TomSagaStep` / `TomSqlSagaStore` | Sagas: work across services run step by step, each step a local transaction with the saga's move guarded by its version, the steps already done compensated last first when a step fails for good — on the kernel's job scheduler, kept in `tom_saga`, resumed after a restart in every tenant |
 
-### Platform services (`configuration`, `cache`, `authentication`, `authorization`, `item_authorization`, `tenancy`, `ratelimit`, `metrics`, `audit`, `privacy`, `messaging`, `notifications`, `resources`, `export`, `file_storage`, `scheduling`, `preferences`, `healthcheck`, `cmdline`, `little_things`)
+### Platform services (`configuration`, `cache`, `authentication`, `authorization`, `item_authorization`, `tenancy`, `ratelimit`, `metrics`, `tracing`, `audit`, `privacy`, `messaging`, `notifications`, `resources`, `export`, `file_storage`, `scheduling`, `preferences`, `healthcheck`, `cmdline`, `little_things`)
 
 | Module | Key types | What it does |
 | ------ | --------- | ------------ |
@@ -172,6 +176,7 @@ added.
 | `tenancy` | `TomTenancy`, `TomTenant`, `TomTenantIsolation`, `TomTenantHostResolver`, `TomTenantHeaderResolver` | Multi-tenancy. A **tenant** is an isolation boundary — not an organization, which is a business unit inside a tenant. Each tenant's data lives in the shared database, a schema of its own or a database of its own, chosen per tenant and reached through one data-source routing seam; a request's tenant is its token's `tenant` claim, or before login its host or a header; `@TomTenantOwned` entities are filtered and checked per tenant |
 | `ratelimit` | `TomRateLimits`, `TomRateLimitRule`, `TomRateLimitScope`, `TomMemoryRateLimiter`, `TomSqlRateLimiter`, `tomRateLimitMiddleware` | Request rate limits per signed-in user, per API key or per client address, as sliding-window counters kept per node or in a table every node shares; a request over a limit is answered `429` with `Retry-After`, an admitted one carries `RateLimit-*` headers. Nothing is limited until a deployment configures `rateLimits`; behind a proxy the client address is read from `X-Forwarded-For` only from a trusted proxy |
 | `metrics` | `tomRequestMetricsMiddleware`, `tomMetricsEndpointMiddleware`, `TomOtlpHttpTransport`, `TomOtlpMetricsExporter` | The series every module records into the kernel's `TomMetrics.registry` — requests by method, route pattern and status, SQL statements and pool usage per data source (and per tenant pool), cache hits and misses, rate-limit refusals, and the scheduler's job lag, duration, outcomes and backlog — exposed as a Prometheus scrape at `/metrics`, answered before authentication with a bearer token of its own, and pushed cumulatively to an OTLP/HTTP collector, once more on shutdown. Both are off until `metricsEndpoint` / `otlpEndpoint` are configured |
+| `tracing` | `TomOtelTracer`, `TomUntracedClient`, `TomInMemorySpanExporter`, `TomTracingException` | The OpenTelemetry tracer behind the kernel's `TomTracing` seam: the server span of every request (`<METHOD> <route>`), and the spans of SQL statements (the statement as written, never a bound value), transactions, outgoing HTTP calls, job runs and the outbox's send and delivery, carried across services in `traceparent` and through the outbox in the message's headers, sampled parent-first and exported over OTLP/HTTP to the metrics' `otlpEndpoint`. Off until `tracing` is configured, and no span is made while it is off |
 | `audit` | `TomAuditTrail`, `TomAudited`, `TomAuditRecord`, `TomAuditSink`, `TomSqlAuditSink`, `TomAuditAnchor`, `TomAuditAnchorStore`, `TomAuditAnchorPublisher` | Attributable, tamper-evident trail written at the endpoint and repository chokepoints, stored in memory, in append-only files, or in a table whose write-once guarantee is the grant it is served with — and anchors, published outside the server, that turn a wholesale rewrite or a truncation from invisible into provable |
 | `privacy` | `TomPrivacy`, `TomDataSubject`, `TomPersonal`, `TomRetention`, `TomSubjectKeys`, `TomSqlSubjectKeyStore` | GDPR tooling over the application's own repositories: `@TomDataSubject` marks the column naming a person and what erasing them does to the row (delete, anonymize, unlink), `@TomPersonal` the columns holding their data, `@TomRetention` how long rows are kept; `erase` reaches every registered entity and is audited, `exportSubject` renders everything held about a person as CSV, XLSX or PDF, and a retention job deletes or anonymizes what is past its time. With subject keys installed, personal values in the audit trail are sealed per person, and erasing them shreds the key — the values become unreadable while the hash chain still verifies |
 | `messaging` | `TomMessage`, `TomMessageTransport`, `TomSmtpTransport`, `TomMessageOutbox`, `TomInbox` | Outbound messages: a channel-neutral shape, SMTP, and a durable outbox on the kernel's job scheduler; an idempotent receiver for consuming a broker's messages once |
@@ -262,6 +267,7 @@ there, or excluded with a stated reason.
 | [`example/ratelimit/`](example/ratelimit/) | A service account's scoped API key authenticating requests through the server's own middlewares, limits per key and per anonymous address answering `429` with `Retry-After`, a rotation and a revocation |
 | [`example/tenancy/`](example/tenancy/) | Two tenants in one deployment: request resolution by host, header and token, a login binding its token, and caches, revocations, jobs and the outbox kept apart |
 | [`example/metrics/`](example/metrics/) | Requests counted by route pattern rather than path, a scrape refused without its token and answered with it, cache lookups in the same scrape, and the registry pushed over OTLP to an in-process receiver and once more on close |
+| [`example/tracing/`](example/tracing/) | A request continuing its caller's trace as a server span named after its route, its transaction and outgoing call as children, the callee continuing the call's span, and the tree exported over OTLP to an in-process receiver |
 | [`example/healthcheck/`](example/healthcheck/) | The liveness and readiness verdicts and what a probe acts on, two instances with analyzers of their own, and an analysis cancelled at its deadline; `readiness_logging_example.dart` adds the framework readiness checks and the JSON log line a request writes with its trace and request ids |
 | [`example/cmdline/`](example/cmdline/) · [`example/little_things/`](example/little_things/) | CLI and exceptions |
 
@@ -553,7 +559,8 @@ apps get the full kernel API through one dependency. See the
   reachable; `tool/run_sso_tests.sh` starts one and runs it. The metrics
   exports are checked by their consumers in the `otel`-tagged suite, which
   skips unless `tool/run_otel_tests.sh` started an OpenTelemetry Collector and
-  named promtool's image.
+  named promtool's image; the same suite has the collector read the span
+  export.
 
   No count is given, and that is deliberate. A count here is a claim nothing
   checks, and this package's whole position is that an unchecked claim about

@@ -36,6 +36,7 @@ authenticates a calling service; see
 - [Error Mapping](#error-mapping)
 - [Extending the Pipeline](#extending-the-pipeline)
 - [Metrics](#metrics)
+- [Tracing](#tracing)
 - [Graceful Shutdown](#graceful-shutdown)
   - [What it waits for](#what-it-waits-for)
   - [Configuration](#configuration)
@@ -100,7 +101,11 @@ circuit-breaker and bulkhead policies every outgoing framework call runs under,
 for all destinations and for named ones. A value of the wrong shape stops the
 start with `http.client.config.invalid`; without the key the kernel's defaults
 stand, a 30-second timeout among them (see
-[configuration.md](configuration.md#outgoing-http-calls)). Right after, it
+[configuration.md](configuration.md#outgoing-http-calls)). Next it installs the
+tracer the configuration asks for (`TomServer.configureTracing`), so the start's
+own outgoing calls and SQL are traced too; with `tracing` off nothing is
+installed, and with `tracing` on and no `otlpEndpoint` the start stops with
+`tracing.config.no_endpoint` (see [Tracing](#tracing)). Right after, it
 applies the browser- and transport-security keys `securityHeaders`, `cors`,
 `sessionCookie` and `mutualTls` (`TomServer.configureSecurity`), each when it is
 present; a value of the wrong shape stops the start with the key of the setting
@@ -224,7 +229,8 @@ order:
 4. **Request context** — `tomRequestContextMiddleware`, which continues the
    caller's W3C trace from its `traceparent` header (or starts one), takes the
    request's `TomRequestId` from `TomRequestIdPolicy.current`, and runs
-   everything below in a zone carrying both. Its place is what makes the ids complete: it is outside the
+   everything below in a zone carrying both. With a tracer installed it also
+   opens the request's server span (see [Tracing](#tracing)). Its place is what makes the ids complete: it is outside the
    access log, both error layers and authentication, so every line any of them
    writes for the request carries the same `request_id`, `trace_id` and
    `span_id`. A metrics scrape is answered above it and gets no ids. See
@@ -297,7 +303,7 @@ sees it, from `tomRequestContextMiddleware`:
 | Id | Where it comes from | Where it goes |
 | -- | ------------------- | ------------- |
 | `TomRequestId` (kernel) | `TomRequestIdPolicy`: a trusted proxy's request-id header, else the trace id — see [Request ids](#request-ids) | The request zone; the request-id response header (`tomRequestIdHeader` by default); the `request_id` field of every structured log line; a `TomServerException`'s `requestUuid`; the audit trail's `requestId` |
-| W3C trace context (`TomTraceContext`, kernel) | The request's `traceparent` header, continued with a child span of this server's own, its `tracestate` carried on; a new trace when the header is missing or does not parse | The request zone; the `traceparent` response header (the server span); the `trace_id` and `span_id` fields of every structured log line |
+| W3C trace context (`TomTraceContext`, kernel) | The request's `traceparent` header, continued with a child span of this server's own — the server span's, with a tracer installed — its `tracestate` carried on; a new trace when the header is missing or does not parse | The request zone; the `traceparent` response header (the server span); the `trace_id` and `span_id` fields of every structured log line |
 
 The request id is what a user quotes to support; the trace id is what joins
 this server's lines to those of the caller and of every service it calls. Unless
@@ -778,6 +784,37 @@ The series, their labels and the exporter are described in
 [metrics.md](metrics.md).
 <!-- pinned: test/metrics_test.dart › exposes the request, cache, rate-limit and job series -->
 
+## Tracing
+
+**With `tracing` on, the server records spans and exports them over OTLP.**
+`start()` calls `TomServer.configureTracing` right after
+`configureHttpClients`: it builds a `TomOtelTracer` from the configuration
+(`TomOtelTracer.fromConfiguration`) — spans sent to `otlpEndpoint`'s
+`/v1/traces` with `otlpHeaders`, new traces sampled at `tracingSamplePercent`,
+the application id as `service.name` — installs it with `TomTracing.install`,
+keeps it as `TomServer.tracer` and registers it with the shutdown cleanup, which
+exports what is left before the process ends. A tracer the application
+installed itself is kept, and `tracer` stays `null`.
+
+| Key | Default | Effect |
+| --- | ------- | ------ |
+| `tracing` | `false` | Record spans and export them to `otlpEndpoint`; refused without one |
+| `tracingSamplePercent` | `100` | The percentage of new traces recorded |
+
+`tomRequestContextMiddleware` opens the request's `server` span, continuing the
+caller's `traceparent` (and `tracestate`) or starting a trace. It is named after
+the method, and renamed `<METHOD> <route>` — `GET /tasks/<id>`, never the
+concrete path — once the endpoint pipeline has recorded the route in
+`TomRequestLogInfo.route`. Its attributes are `http.request.method`, `url.path`,
+`url.scheme`, `network.protocol.version`, `http.route` and
+`http.response.status_code`; a `5xx` marks it failed. The response's
+`traceparent` header is the server span, and every log line written for the
+request carries its `span_id`. The spans the request's work opens — its
+transaction, its SQL statements, its outgoing calls — are its children. The
+spans, their attributes and the sampling rule are described in
+[tracing.md](tracing.md).
+<!-- pinned: test/tracing_test.dart › is a server span continuing the caller, named after its route -->
+
 ## Graceful Shutdown
 
 An orchestrator stopping a server sends SIGTERM, waits its grace period, then
@@ -951,8 +988,9 @@ Three suites cover this module, a fourth covers its endpoint-owned
 credentials, a fifth its tenant resolution, a sixth the API keys and rate
 limits it reads, a seventh the metrics middlewares it installs, an eighth
 its correlation ids and log format, a ninth the request-id rule, a tenth its
-graceful shutdown, an eleventh the resilience of its outgoing HTTP calls, and a
-twelfth its browser- and transport-security settings.
+graceful shutdown, an eleventh the resilience of its outgoing HTTP calls, a
+twelfth its browser- and transport-security settings, and a thirteenth the
+server span of each request.
 
 `test/server_test.dart` covers the pipeline as composed functions:
 `TomRequestLogInfo`, `extractAuthentication` reading a credential off a request
@@ -992,6 +1030,12 @@ The two metrics middlewares at the outer edge are covered by
 request counted under its route pattern, an unmatched path, an escaping error
 counted as a `500`, and a scrape that is answered before — and so not counted
 by — the request series. See [metrics.md](metrics.md#verification).
+
+The request's server span is covered by `test/tracing_test.dart`, group
+`a request`: a span continuing the caller's `traceparent`, named after the route
+the endpoint recorded and answered as the response's `traceparent`, a `5xx`
+marked failed, and a request without a tracer answered unchanged, with a trace.
+See [tracing.md](tracing.md#verification).
 
 `test/structured_logs_readiness_test.dart` covers the correlation ids and the
 log format. In the group `request context` it runs requests through
@@ -1153,7 +1197,7 @@ and an application that needs one builds it today rather than waiting:
 | `http` | package | `mutual_tls.dart` | `http.Client` and `IOClient`, the outgoing client presenting this service's certificate |
 | `shelf` | package | every file | the HTTP pipeline, `Request`/`Response`/`Handler`/ `Middleware`/`Router`/`Cascade`, and `serve` / `serveRequests` |
 | `shelf_router` | package | `server.dart` | the HTTP pipeline, `Request`/`Response`/`Handler`/ `Middleware`/`Router`/`Cascade`, and `serve` |
-| `tom_core_kernel` | package | `graceful_shutdown.dart`, `mutual_tls.dart`, `request_ids.dart`, `server.dart` | `TomPrincipal`, `TomClientJwtToken`, `TomBearerAuthentication`, `TomExecutionContext`/`tomExecutionContext`, `TomZoneValues`, `tomLog`, `tomPrintStackTrace`, `TomException`, `TomTraceContext` and `TomRequestId` (the request's trace and request id), `TomLogContext`, `TomJsonLogOutput` / `TomConsoleLogOutput` (`logFormat`), `tomShutdownCleanup` (the signals the graceful shutdown runs on), `TomScheduler.started` (the schedulers it drains) and `TomHttpResilience` / `TomHttpResilienceException` (`configureHttpClients`), `TomHttpClientFactory`, `TomHttpClientAbstractFactory` and `TomResilientClient` (the mutual-TLS client), `TomUser` and `TomAccessControlInformation` (a service principal) |
+| `tom_core_kernel` | package | `graceful_shutdown.dart`, `mutual_tls.dart`, `request_ids.dart`, `server.dart` | `TomPrincipal`, `TomClientJwtToken`, `TomBearerAuthentication`, `TomExecutionContext`/`tomExecutionContext`, `TomZoneValues`, `tomLog`, `tomPrintStackTrace`, `TomException`, `TomTraceContext` and `TomRequestId` (the request's trace and request id), `TomTracing`, `TomSpan` and `TomSpanKind` (the request's server span), `TomLogContext`, `TomJsonLogOutput` / `TomConsoleLogOutput` (`logFormat`), `tomShutdownCleanup` (the signals the graceful shutdown runs on), `TomScheduler.started` (the schedulers it drains) and `TomHttpResilience` / `TomHttpResilienceException` (`configureHttpClients`), `TomHttpClientFactory`, `TomHttpClientAbstractFactory` and `TomResilientClient` (the mutual-TLS client), `TomUser` and `TomAccessControlInformation` (a service principal) |
 | [authentication](authentication.md) | module | `server.dart` | `TomServerSelfLogin`, `TomServerSelfLoginException`, `TomApiKeys` and `TomApiKeyIdentity` (a service account's API key), `TomSessionCookie` and `TomSessionCookieException` (a browser session's cookie and its CSRF check) |
 | [authorization](authorization.md) | module | `server.dart` | `TomAuthorizationCache` (principal resolution) |
 | [configuration](configuration.md) | module | `server.dart` | `TomBaseServerConfiguration`; `TomFeatureFlagsServer` (`configureFeatureFlags` applies the `featureFlags` key) |
@@ -1167,4 +1211,5 @@ and an application that needs one builds it today rather than waiting:
 | [privacy](privacy.md) | module | `server.dart` | `TomPrivacy` (`configurePrivacy` applies the `privacy` key) |
 | [ratelimit](ratelimit.md) | module | `mutual_tls.dart`, `request_ids.dart`, `server.dart` | `TomRateLimits` (installed from configuration at start) and `tomRateLimitMiddleware`; `TomClientAddress.connectionInfoKey`, where the socket peer a request-id header came from is read, and where the client certificate rides |
 | [tenancy](tenancy.md) | module | `server.dart` | `TomTenancy` and `TomTenantResolution` — the request's tenant, or the refusal to answer it with |
+| [tracing](tracing.md) | module | `server.dart` | `TomOtelTracer` (`configureTracing` installs it from the `tracing` keys) |
 | [transactions](transactions.md) | module | `server.dart` | `TomTransactionManager`, and `TomTransactionRecovery` / `TomRecoveryReport` (`recoverTransactions` applies the `transactions` key and recovers at start) |

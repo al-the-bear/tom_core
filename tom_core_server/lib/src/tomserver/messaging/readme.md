@@ -190,7 +190,9 @@ Source: `webhook_transport.dart`
 A message addressing two URLs is refused **permanently**: the outbox retries a
 message rather than a recipient, so a POST that succeeded at one endpoint and
 failed at another would be re-sent to both, and a webhook is not idempotent.
-Fan-out is two messages.
+Fan-out is two messages. The message's `traceparent` and `tracestate` headers
+are not posted: the call carries its own client span's position, so the
+receiver continues the delivery rather than the request that queued it.
 
 ### Delivery reports
 
@@ -251,7 +253,7 @@ Source: `outbox.dart`
 
 | Type | What it is |
 | ---- | ---------- |
-| `TomMessageOutbox` | The send queue, on the kernel's job scheduler. A send that outlives the process that asked for it, with retry driven by the permanent/transient distinction above. Each message's run gets a window instant of its own (`TomEventInstants`, in `scheduling`), so two messages queued in the same microsecond stay two runs. The message id is the idempotence key: `send` answers `false` and queues nothing for an id the store still holds — queued, delivered or failed for good — until `purgeFinished` removes its run. `send(message, notBefore: instant)` holds a message until that instant. `start()` registers it in `TomMessageOutbox.started`, which the framework readiness check on `GET /ready` asks whether it is delivering. |
+| `TomMessageOutbox` | The send queue, on the kernel's job scheduler. A send that outlives the process that asked for it, with retry driven by the permanent/transient distinction above. Each message's run gets a window instant of its own (`TomEventInstants`, in `scheduling`), so two messages queued in the same microsecond stay two runs. The message id is the idempotence key: `send` answers `false` and queues nothing for an id the store still holds — queued, delivered or failed for good — until `purgeFinished` removes its run. `send(message, notBefore: instant)` holds a message until that instant. `start()` registers it in `TomMessageOutbox.started`, which the framework readiness check on `GET /ready` asks whether it is delivering. With a tracer installed, `send` is a producer span, `outbox send`, written into the message's headers as `traceparent` / `tracestate`, and the delivery a consumer span, `outbox deliver`, continuing it. |
 | `tomOutboxJobName` | The scheduler job name the outbox registers under (`messaging.outbox`). |
 
 ### Application messaging

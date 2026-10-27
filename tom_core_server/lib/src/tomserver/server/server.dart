@@ -29,6 +29,7 @@ import 'request_ids.dart';
 import 'security_headers.dart';
 import '../metrics/metrics_middleware.dart';
 import '../metrics/otlp_exporter.dart';
+import '../tracing/otel_tracer.dart';
 import '../authorization/authorization_cache.dart';
 import '../ratelimit/rate_limit.dart';
 import '../tenancy/tenancy.dart';
@@ -104,21 +105,54 @@ Middleware tomRequestContextMiddleware({TomRequestIdPolicy? policy}) {
       request.headers['traceparent'],
       traceState: request.headers['tracestate'],
     );
-    final trace = incoming?.child() ?? TomTraceContext.newRoot();
+    final span = TomTracing.start(
+      request.method,
+      kind: TomSpanKind.server,
+      parent: incoming,
+      root: incoming == null,
+      attributes: {
+        'http.request.method': request.method,
+        'url.path': '/${request.url.path}',
+        'url.scheme': request.requestedUri.scheme,
+        'network.protocol.version': request.protocolVersion,
+      },
+    );
+    final trace =
+        span?.context ?? incoming?.child() ?? TomTraceContext.newRoot();
     final requestId = applied.resolve(request, trace);
+    Future<Response> serve() async {
+      final response = await innerHandler(request);
+      if (span != null) _concludeServerSpan(span, request, response.statusCode);
+      return response.change(
+        headers: {
+          applied.header: requestId.value,
+          'traceparent': trace.traceparent,
+        },
+      );
+    }
+
     return TomRequestId.run(
       requestId,
-      () => TomTraceContext.run(trace, () async {
-        final response = await innerHandler(request);
-        return response.change(
-          headers: {
-            applied.header: requestId.value,
-            'traceparent': trace.traceparent,
-          },
-        );
-      }),
+      () => span == null
+          ? TomTraceContext.run(trace, serve)
+          : TomTracing.within(span, () => TomTracing.ending(span, serve)),
     );
   };
+}
+
+/// Names a request's server span after the route its endpoint matched —
+/// `GET /tasks/<id>`, the OpenTelemetry HTTP convention, never the concrete
+/// path — and records the status; a `5xx` marks the span failed.
+void _concludeServerSpan(TomSpan span, Request request, int status) {
+  final info = request.context[TomRequestLogInfo.contextName];
+  final route = info is TomRequestLogInfo ? info.route : null;
+  if (route != null) {
+    span
+      ..setName('${request.method} $route')
+      ..setAttribute('http.route', route);
+  }
+  span.setAttribute('http.response.status_code', status);
+  if (status >= 500) span.setError('HTTP $status');
 }
 
 /// Why a request carries the credentials it does — the third element of
@@ -748,6 +782,8 @@ class TomServer {
     // First, so every outgoing call the start makes — the deployment's own
     // login included — runs under the configured policies.
     configureHttpClients();
+    // Next, so the start's own outgoing calls and SQL are traced too.
+    configureTracing();
     configureSecurity();
     configureFeatureFlags();
     configureRequestIds();
@@ -970,6 +1006,32 @@ class TomServer {
     if (configuration.exitOnShutdownSignal) {
       tomShutdownCleanup.exitAfterSignalShutdown = true;
     }
+  }
+
+  /// The tracer [configureTracing] installed, or `null` when tracing is off.
+  TomOtelTracer? tracer;
+
+  /// Installs the tracer the configuration asks for
+  /// ([TomOtelTracer.fromConfiguration]) — spans exported to
+  /// [TomBaseServerConfiguration.otlpEndpoint], under the application id as
+  /// `service.name` — and registers it for a final export at shutdown. Does
+  /// nothing when [TomBaseServerConfiguration.tracing] is off, or when a
+  /// tracer is already installed: an application installing its own with
+  /// [TomTracing.install] keeps it.
+  ///
+  /// Called by [start]. Throws `tracing.config.no_endpoint` when tracing is on
+  /// with no endpoint to export to.
+  void configureTracing() {
+    if (TomTracing.tracer != null) return;
+    final appId = tomAppId;
+    final configured = TomOtelTracer.fromConfiguration(
+      configuration,
+      serviceName: appId.isEmpty ? 'tom_server' : appId,
+    );
+    if (configured == null) return;
+    TomTracing.install(configured);
+    tomShutdownCleanup.addClosable(configured);
+    tracer = configured;
   }
 
   /// The configuration key holding the resilience settings of outgoing HTTP

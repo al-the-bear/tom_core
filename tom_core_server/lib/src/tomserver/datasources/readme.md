@@ -106,6 +106,13 @@ failures and its pool's connections, waits and failed acquires, labelled with
 `registeredName` (`<base>@<tenant>` for a tenant's own pool); the series names
 are the `tomDb…Metric` constants — see [`doc/metrics.md`](../../../../doc/metrics.md).
 
+**Tracing.** With a tracer installed every statement is also a `client` span
+named after its first keyword, carrying `db.system.name` (`dbSystemName`:
+`mariadb` or `postgresql`), `db.operation.name`, `db.query.text` — the
+statement as written, with its placeholders and never a bound value — and
+`tom.datasource`. A statement run outside any trace — a scheduler's poll —
+records no span. See [`doc/tracing.md`](../../../../doc/tracing.md).
+
 See [`doc/datasources.md`](../../../../doc/datasources.md) for the driver
 registry, the connection pool, the connection lifecycle and the transaction
 seam, and

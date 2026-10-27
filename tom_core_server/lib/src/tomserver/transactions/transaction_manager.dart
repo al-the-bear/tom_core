@@ -265,7 +265,62 @@ class TomTransaction {
       .padLeft(8, '0');
   static int _counter = 0;
 
-  TomTransaction._(this._scope, [this.isReadOnly = false]);
+  TomTransaction._(this._scope, [this.isReadOnly = false]) {
+    span = TomTracing.start(
+      'transaction',
+      childOnly: true,
+      attributes: {
+        'tom.transaction.id': id,
+        'tom.transaction.read_only': isReadOnly,
+      },
+    );
+  }
+
+  /// The transaction's span — from its start to its conclusion — or `null`
+  /// when tracing is off or the transaction was opened outside traced work. Its work runs inside it when the transaction is
+  /// opened by [TomTransactionManager.runInTransaction] or a transactional
+  /// endpoint, so the statements it makes are its children. The span ends
+  /// with the conclusion, carrying the outcome; an outcome that left work
+  /// outstanding (partly committed, not undone) marks it failed.
+  late final TomSpan? span;
+
+  bool _spanConcluded = false;
+
+  /// Concludes the transaction with [conclude] inside its span, and ends the
+  /// span with the outcome — once, though a commit may conclude by rolling
+  /// back.
+  Future<TomTransactionResult> _traced(
+    Future<TomTransactionResult> Function() conclude,
+  ) async {
+    final span = this.span;
+    if (span == null || _spanConcluded) return conclude();
+    _spanConcluded = true;
+    final TomTransactionResult result;
+    try {
+      result = await TomTracing.within(span, conclude);
+    } catch (error, stack) {
+      span
+        ..recordError(error, stack)
+        ..end();
+      rethrow;
+    }
+    span
+      ..setAttribute('tom.transaction.outcome', result.outcome.name)
+      ..setAttribute('tom.transaction.participants', _participants.length);
+    if (result.outcome == TomTransactionOutcome.partiallyCommitted ||
+        result.outcome == TomTransactionOutcome.rolledBackWithFailures) {
+      span.setError(result.outcome.name);
+    }
+    span.end();
+    return result;
+  }
+
+  /// Runs [body] as the transaction's work: inside its [span] when there is
+  /// one, so what it traces are the span's children.
+  R runInSpan<R>(R Function() body) {
+    final span = this.span;
+    return span == null ? body() : TomTracing.within(span, body);
+  }
 
   /// Enlists [ttp] in this transaction, calling its `startTransaction()` once.
   ///
@@ -399,7 +454,9 @@ class TomTransaction {
   /// already asked" an arbitrary subset. `test/transactions_test.dart` pins it
   /// with participants that suspend inside every hook; see
   /// `doc/transactions.md`, "Sequential by design".
-  Future<TomTransactionResult> commitTransaction() async {
+  Future<TomTransactionResult> commitTransaction() => _traced(_commit);
+
+  Future<TomTransactionResult> _commit() async {
     _isRunning = false;
     // The scope is cleared in a `finally` rather than on the way out, so that
     // it is cleared *whatever* leaves this method. Every participant call
@@ -585,7 +642,9 @@ class TomTransaction {
   /// requiring a human, because the work was neither committed nor undone, and
   /// a boolean built only from the `endTransaction` calls reported it as
   /// success.
-  Future<TomTransactionResult> rollbackTransaction() async {
+  Future<TomTransactionResult> rollbackTransaction() => _traced(_rollback);
+
+  Future<TomTransactionResult> _rollback() async {
     _isRunning = false;
     // Cleared in a `finally` for the reason [commitTransaction] gives: the
     // scope must never hold a transaction that is no longer running, and that
@@ -811,7 +870,7 @@ abstract class TomTransactionManager {
     }
     final R result;
     try {
-      result = await body(transaction);
+      result = await transaction.runInSpan(() async => body(transaction));
     } catch (_) {
       await transaction.rollbackTransaction();
       rethrow;

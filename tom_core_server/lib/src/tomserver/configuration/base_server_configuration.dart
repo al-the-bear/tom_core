@@ -1048,6 +1048,25 @@ utj3flRQDLaDAl91lySpAjUp9aM8
   /// Environment name: `OTLP_METRICS_INTERVAL_SECONDS`.
   int otlpMetricsIntervalSeconds = 60;
 
+  /// Whether [TomServer.start] records spans and exports them to
+  /// [otlpEndpoint] (`/v1/traces`, OTLP/HTTP protobuf) — a server span per
+  /// request, and spans for SQL statements, transactions, outgoing HTTP calls,
+  /// job runs and outbox deliveries.
+  ///
+  /// Off by default, and free when off: no span is made. The trace context
+  /// (`traceparent`, the `trace_id` of log lines) is carried either way.
+  /// Starting with tracing on and no [otlpEndpoint] is refused.
+  ///
+  /// Environment name: `TRACING`.
+  bool tracing = false;
+
+  /// The percentage of new traces recorded when [tracing] is on, 0 to 100. A
+  /// request continuing a caller's trace is recorded as the caller's
+  /// `traceparent` says, whatever this is.
+  ///
+  /// Environment name: `TRACING_SAMPLE_PERCENT`.
+  int tracingSamplePercent = 100;
+
   /// Builds the merged value map used to populate a configuration instance.
   ///
   /// Starts from a **deep copy** of the active provider's

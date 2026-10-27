@@ -9,7 +9,10 @@ organization: see [Tenant Context](#tenant-context). And it carries the
 form — so every log line written while serving a request can name it: see
 [Trace Context](#trace-context). Beside the trace sits the **request id** of the
 unit of work — `TomRequestId`, the id a request, a job run or a socket message
-is logged, raised and audited under: see [Request Id](#request-id).
+is logged, raised and audited under: see [Request Id](#request-id). The
+**spans** of a trace — the timed, named steps a tracing backend shows — are
+recorded through `TomTracing` when an application installs a tracer, and not at
+all when it installs none: see [Tracing](#tracing).
 
 ## Table of Contents
 
@@ -43,6 +46,12 @@ is logged, raised and audited under: see [Request Id](#request-id).
   - [Where the id comes from](#where-the-id-comes-from)
   - [Running work under an id](#running-work-under-an-id)
   - [Which values are ids](#which-values-are-ids)
+- [Tracing](#tracing)
+  - [Off costs nothing](#off-costs-nothing)
+  - [The span is the trace context](#the-span-is-the-trace-context)
+  - [Opening a span](#opening-a-span)
+  - [What the framework traces](#what-the-framework-traces)
+  - [The recording tracer](#the-recording-tracer)
 - [Best Practices](#best-practices)
   - [1. Always write the entry's type parameter](#1-always-write-the-entrys-type-parameter)
   - [2. Handle Missing Context](#2-handle-missing-context)
@@ -65,6 +74,12 @@ is logged, raised and audited under: see [Request Id](#request-id).
 | `TomTenantEvent` | class | An event for an event-triggered job, carrying the tenant it was raised for. |
 | `TomTraceContext` | class | The W3C trace and span the current zone's work belongs to: `parse`, `newRoot`, `child`, `traceparent`, `traceState`, `headers`, `current`, `run`. |
 | `TomRequestId` | final class | The id of the current unit of work — a request, a job run, a socket message: `of`, `tryOf`, `isValid`, `value`, `current`, `run`, `runRoot`, `runChild`. |
+| `TomSpanKind` | enum | The OpenTelemetry span kinds: `internal`, `server`, `client`, `producer`, `consumer`. |
+| `TomSpan` | abstract class | One span being recorded: `context`, `name`, `setName`, `setAttribute`, `recordError`, `setError`, `end`. |
+| `TomTracer` | abstract class | Makes spans (`startSpan`), `flush`, `shutdown`; installed with `TomTracing.install`. |
+| `TomTracing` | abstract final class | The installed tracer and the ways the framework opens spans: `install`, `tracer`, `isRecording`, `currentSpan`, `start`, `within`, `ending`, `trace`, `untraced`. |
+| `TomRecordingTracer` | class | A tracer keeping ended spans in memory, for tests: `spans`, `open`, `named`, `childrenOf`, `clear`. |
+| `TomRecordedSpan` | class | A span `TomRecordingTracer` recorded: `kind`, `attributes`, `errors`, `errorDescription`, `started`, `ended`. |
 
 The execution-context system consists of four public types:
 
@@ -775,10 +790,9 @@ Output](../logging/logging.md#structured-json-output). Nothing at the call site
 passes them: a line logged anywhere inside the run carries them. The same
 output writes the current `TomRequestId` as `request_id`.
 
-Exporting spans — recording each span's start, end and outcome and sending them
-to a tracing backend — is a separate concern this module does not do. The trace
-context is the seam such an exporter uses: the spans it would record are the
-ones `run` delimits, under the ids this type carries.
+Recording spans — each step's start, end, attributes and outcome — is
+`TomTracing`'s, beside this type: see [Tracing](#tracing). With a tracer
+installed, the context of the current zone is that of the current span.
 
 ## Request Id
 
@@ -840,7 +854,7 @@ void main() {
 | `value` | The id. |
 | `current` | The id of the current zone, or `null` outside any unit of work. The id is published under its own type, so `getFromCurrentZone<TomRequestId>()` answers the same. |
 | `run(id, body)` | Runs `body` with `id` as the current request id. |
-| `runRoot(body)` | Runs `body` as work of its own: in a new trace, whose trace id is the request id. For work no caller started — a job run, a delivery. |
+| `runRoot(body, {spanName, spanKind, spanAttributes})` | Runs `body` as work of its own: in a new trace, whose trace id is the request id. For work no caller started — a job run, a delivery. With `spanName` and a tracer installed, the work is the first span of that trace, of `spanKind` (default `internal`) with `spanAttributes`, ended when `body` completes — so the trace a job run's log lines name is the trace its spans are exported under. |
 | `runChild(body)` | Runs `body` as one step of the current work: in a new span of the current trace (a new trace when there is none), whose id is `<trace id>-<span id>`. For one message of a longer conversation. |
 | `==` / `hashCode` | Two ids are equal when their values are. |
 | `toString()` | `TomRequestId: <value>`. |
@@ -853,6 +867,109 @@ on purpose: the id is written into log lines, response headers and an audit
 column 191 characters wide, and a caller may supply it — so nothing that could
 break a line, a header or a log parser gets through. A trace id (32 hex digits),
 a `<trace id>-<span id>` pair and a UUID all qualify.
+
+## Tracing
+
+`TomTracing` records the **spans** of a trace: the timed, named steps — a
+request, an SQL statement, a transaction, an outgoing call — that a tracing
+backend draws as a tree. `TomTraceContext` is the *position* in a trace that
+every piece of work carries; a span is the *record* of one step. The framework
+opens its spans through `TomTracing`, and an installed `TomTracer` decides what
+becomes of them. `tom_core_server` provides `TomOtelTracer`, which exports them
+over OTLP to an OpenTelemetry collector (see the server's
+[tracing guide](../../../tom_core_server/doc/tracing.md));
+`TomRecordingTracer` keeps them in memory.
+
+### Off costs nothing
+
+No tracer is installed by default. Every instrumented call then asks one
+question — is a tracer installed? — and runs its work exactly as it would
+without tracing: no span object, no zone, no attribute map. The trace context
+and the request id keep working as they do without a tracer, since they do not
+depend on one.
+
+```dart
+TomTracing.install(tracer); // switch tracing on
+TomTracing.install(null);   // and off; the previous tracer is not shut down
+```
+
+`TomTracing.install` replaces the installed tracer; shutting down the one it
+replaced is its owner's job. `isRecording` is `true` when a span started here
+would be recorded — a tracer is installed and the zone is not `untraced`.
+
+### The span is the trace context
+
+A span's `context` is the `TomTraceContext` its work runs in. `within` runs a
+body with the span as `currentSpan` and its context as `TomTraceContext.current`,
+so the `trace_id` and `span_id` a log line carries are those of the span the
+line was written in, and an outgoing call propagates the span that made it.
+With a tracer installed the ids are the tracer's; without one the framework
+mints them as described in [Trace Context](#trace-context).
+
+### Opening a span
+
+```dart complete
+import 'package:tom_core_kernel/tom_core_kernel.dart';
+
+Future<void> main() async {
+  final tracer = TomRecordingTracer();
+  TomTracing.install(tracer);
+
+  await TomTracing.trace('import orders', (span) async {
+    span?.setAttribute('tom.import.count', 3); // span is null with tracing off
+    await TomTracing.trace('parse', (_) async {});
+  });
+
+  final parent = tracer.named('import orders').single;
+  print(tracer.childrenOf(parent).single.name); // parse
+  TomTracing.install(null);
+}
+```
+
+| Member | Meaning |
+| ------ | ------- |
+| `tracer` | The installed tracer, or `null` — tracing is off. |
+| `install(tracer)` | Installs `tracer`, or switches tracing off with `null`. |
+| `isRecording` | Whether a span started here would be recorded. |
+| `currentSpan` | The span whose work the current zone runs, or `null`. |
+| `start(name, {kind, attributes, parent, root, childOnly})` | Starts a span, or answers `null` when nothing would record it. It continues `parent`, by default `TomTraceContext.current`; with `root` it starts a new trace. With `childOnly` nothing is started outside a trace — no `parent` and no current trace context: a step only worth seeing as part of larger work (an SQL statement, a transaction) records nothing when it runs on its own, as a scheduler's poll does. Starting a span does not make it current. |
+| `within(span, body)` | Runs `body` as `span`'s work: `span` is `currentSpan` and its context the current trace context. The span is not ended. |
+| `ending(span, body)` | Runs `body` and ends `span` when it returns or, for a future, completes. An error is recorded on the span and passed on. |
+| `trace(name, body, {kind, attributes})` | `start`, `within` and `ending` in one: runs `body` in a span continuing the current trace. `body` receives the span, or `null` when tracing is off — and then simply runs. |
+| `untraced(body)` | Runs `body` with nothing traced inside it — for a tracer's own export calls, which would otherwise be traced and exported in turn. |
+
+A `TomSpan` has a `TomSpanKind` — `internal`, `server` (a request that
+arrived), `client` (an outgoing call, an SQL statement), `producer` (handing a
+message to a queue) or `consumer` (processing it). `setAttribute` takes
+strings, booleans, integers, doubles or lists of one of those; anything else is
+recorded as its `toString()`. `setName` renames a span whose name is known only
+once its work has started — the route a request matched. `recordError` records
+an exception and marks the span failed; `setError` marks it failed without one
+(a request answered `5xx`). `end` ends it; a second call does nothing.
+
+A tracer implements `TomTracer.startSpan(name, {kind, parent, attributes})`;
+`parent` is a span of this process or the remote position a caller sent in its
+`traceparent`, and the tracer decides whether the new span is sampled.
+`flush` sends what has been recorded so far and `shutdown` flushes and stops.
+
+### What the framework traces
+
+| Operation | Span | Opened by |
+| --------- | ---- | --------- |
+| A job attempt | `job <jobName>`, the first span of a trace of its own, with `tom.job.name` and `tom.job.run_id` | `TomJobRunCommand` through `TomRequestId.runRoot` (scheduling module) |
+| An outgoing HTTP call | a `client` span named after the method, with the OpenTelemetry HTTP attributes; the callee continues it | `TomResilientClient.send` (http_connection module) |
+| An HTTP request, an SQL statement, a transaction, an outbox send and delivery | see the server's [tracing guide](../../../tom_core_server/doc/tracing.md); a statement and a transaction only inside traced work (`childOnly`) | `tom_core_server` |
+
+### The recording tracer
+
+`TomRecordingTracer` keeps every ended span in memory, in the order it ended
+(`spans`), and the started ones not yet ended (`open`). `named(name)` and
+`childrenOf(span)` find spans; `clear` forgets them. Ids are minted as
+`TomTraceContext` mints them, and every span is recorded, sampled or not. Each
+`TomRecordedSpan` exposes its `kind`, `attributes`, the `errors` recorded on
+it, `errorDescription` (`null` for a span that did not fail), and `started` /
+`ended`. It is the tracer the framework's own tests install, and a way of
+looking at what the framework traces without a collector.
 
 ## Best Practices
 
@@ -1006,7 +1123,7 @@ than a `!`.
 
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
-| `dart:async` | dart | every file | `Future`, and `runZoned` for `TomTraceContext.run` |
+| `dart:async` | dart | every file | `Future`, and `runZoned` for `TomTraceContext.run`, `TomTracing.within` and `TomTracing.untraced` |
 | `dart:collection` | dart | `execution_context.dart` | `UnmodifiableMapView`, the read-only view `contextMap` hands out |
 | `dart:math` | dart | `request_id.dart`, `trace_context.dart` | `Random.secure`, the source of new trace and span ids and of a new request id's UUID |
 | [isolate_pooling](../isolate_pooling/isolate_pooling.md) | module | `tenant_context.dart` | `TomCommand`, which `TomTenantScopedCommand` extends so a tenant survives an isolate hop |

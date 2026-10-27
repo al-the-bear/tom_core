@@ -221,6 +221,7 @@ export 'src/tomserver/server/security_headers.dart';
 export 'src/tomserver/server/server.dart';
 export 'src/tomserver/tenancy/tenancy.dart';
 export 'src/tomserver/tenancy/tenant_resolution.dart';
+export 'src/tomserver/tracing/otel_tracer.dart';
 export 'src/tomserver/transactions/saga.dart';
 export 'src/tomserver/transactions/saga_sql.dart';
 export 'src/tomserver/transactions/transaction_manager.dart';

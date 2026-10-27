@@ -57,6 +57,9 @@ void main() {
 **Metrics.** `metricsEndpoint`, `metricsPath`, `metricsToken`, `otlpEndpoint`,
 `otlpHeaders` and `otlpMetricsIntervalSeconds` decide whether the series leave
 the process as a Prometheus scrape, an OTLP push, or both — see [`doc/metrics.md`](../../../../doc/metrics.md).
+`tracing` and `tracingSamplePercent` switch on the OpenTelemetry tracer, whose
+spans go to the same `otlpEndpoint` with the same `otlpHeaders` — see
+[`doc/tracing.md`](../../../../doc/tracing.md).
 
 **Feature flags.** The `featureFlags` key maps each flag to its `default`, its
 `rules` (by `tenants`, `roles`, `percentage`) and whether it is `exposed` to

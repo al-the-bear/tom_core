@@ -569,3 +569,27 @@ user, the same grant edit reaching the **file endpoint** (one cell deciding
 whether bytes may be written), and the item's **child collections** gated one
 step apart (`commenter` for a comment, `editor` for a subtask) as three
 principals touch one item.
+
+### Tracing the run
+
+```sh
+tool/run_cross_tier_integration.sh --trace
+```
+
+also starts the local OpenTelemetry Collector of
+[`advanced_deploy/otel/`](../advanced_deploy/otel/) on host port `4318`
+(`OTEL_COLLECTOR_PORT`) and runs both servers with `TRACING=true` and
+`OTLP_ENDPOINT` naming it. After the suites it reads what the collector wrote
+and fails the run unless each service — `auth` and `app`, the servers'
+`service.name` — exported server spans named after their routes (carrying
+`http.route`), and the app server SQL statement spans (carrying
+`db.system.name`) inside the traces of those requests. For each service it
+prints what it counted — spans, routed requests, SQL statements, and requests
+with SQL:
+
+```text
+<service>: <n> spans, <n> routed requests, <n> SQL statements, <n> requests with SQL
+```
+
+It cannot be combined with `--external-stack`, whose servers the run does not
+configure.

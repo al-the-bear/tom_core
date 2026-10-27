@@ -23,6 +23,7 @@ import 'dart:async';
 import 'dart:math';
 
 import 'trace_context.dart';
+import 'tracing.dart';
 
 /// The correlation id of the work running in the current zone.
 ///
@@ -70,7 +71,34 @@ final class TomRequestId {
 
   /// Runs [body] as work of its own: in a new trace, whose trace id is the
   /// request id. For work no caller started — a job run, a delivery.
-  static R runRoot<R>(R Function() body) {
+  ///
+  /// With [spanName], and a tracer installed ([TomTracing]), the work is the
+  /// first span of that trace, of [spanKind] and with [spanAttributes], ended
+  /// when [body] completes — so the trace a job run's log lines name is the
+  /// trace its spans are exported under.
+  static R runRoot<R>(
+    R Function() body, {
+    String? spanName,
+    TomSpanKind spanKind = TomSpanKind.internal,
+    Map<String, Object> spanAttributes = const {},
+  }) {
+    final span = spanName == null
+        ? null
+        : TomTracing.start(
+            spanName,
+            kind: spanKind,
+            attributes: spanAttributes,
+            root: true,
+          );
+    if (span != null) {
+      return TomTracing.within(
+        span,
+        () => run(
+          TomRequestId.of(span.context.traceId),
+          () => TomTracing.ending(span, body),
+        ),
+      );
+    }
     final trace = TomTraceContext.newRoot();
     return TomTraceContext.run(
       trace,

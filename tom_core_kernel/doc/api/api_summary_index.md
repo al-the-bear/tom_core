@@ -16,7 +16,7 @@ declarations are omitted.
 | Module | Summary | What it provides |
 | ------ | ------- | ---------------- |
 | Bean Locator | [api_summary_beanlocator.md](api_summary_beanlocator.md) | Component annotation and typed bean lookup/dependency injection. |
-| Context | [api_summary_context.md](api_summary_context.md) | Zone-scoped typed execution context and ambient providers, and the zone-carried tenant, W3C trace context and request id. |
+| Context | [api_summary_context.md](api_summary_context.md) | Zone-scoped typed execution context and ambient providers, the zone-carried tenant, W3C trace context and request id, and the tracing seam that records spans. |
 | HTTP Connection | [api_summary_http_connection.md](api_summary_http_connection.md) | Server call model, remote APIs/endpoints, headers, MIME types, auth-retry, client factories, and the timeout, retry, circuit-breaker and bulkhead policies of outgoing calls. |
 | Isolate Pooling | [api_summary_isolate_pooling.md](api_summary_isolate_pooling.md) | Worker/executor/command model and isolate worker pool. |
 | JSON | [api_summary_json.md](api_summary_json.md) | JSON serialization contract, map merge/traversal, env substitution, pretty printing. |
@@ -65,6 +65,12 @@ declarations are omitted.
 | `TomTenantEvent` | class | An event for an event-triggered job, carrying its tenant. |
 | `TomTraceContext` | class | The W3C trace and span the current zone's work belongs to; parses and renders `traceparent` and carries `tracestate`. |
 | `TomRequestId` | final class | The id of the current unit of work — a request, a job run, a socket message — that every log line, server exception and audit entry of it names. |
+| `TomSpanKind` | enum | The OpenTelemetry span kinds: `internal`, `server`, `client`, `producer`, `consumer`. |
+| `TomSpan` | abstract class | One span being recorded; its `context` is the trace position its work runs at. |
+| `TomTracer` | abstract class | Makes spans; installed with `TomTracing.install`. |
+| `TomTracing` | abstract final class | The installed tracer and the ways to open spans (`start`, `within`, `ending`, `trace`, `untraced`); nothing is created when no tracer is installed. |
+| `TomRecordingTracer` | class | A tracer keeping ended spans in memory, for tests. |
+| `TomRecordedSpan` | class | A span `TomRecordingTracer` recorded. |
 
 ### HTTP Connection (`lib/src/tombase/http_connection/`)
 

@@ -993,19 +993,25 @@ abstract class TomSqlDatasource implements TomDataSource {
   /// [statement] is the SQL a statement path runs: a repository read of it in
   /// read-only work may be served by a read replica (`read_replicas.dart`). A
   /// replica that cannot lend a connection is left out for [replicaRetryMs],
-  /// and the statement runs here.
+  /// and the statement runs here. [sqlText] is the SQL of a path that is never
+  /// routed — a command, a statement being prepared — given only so that its
+  /// span can name it.
+  ///
+  /// With a tracer installed ([TomTracing]) the statement is a client span on
+  /// its connection — see [_timed].
   @protected
   Future<R> withLink<R>(
     String operation,
     Future<R> Function(TomSqlLink link) body, {
     String? statement,
+    String? sqlText,
   }) async {
     final pool = _requirePool(operation);
     final replica = await _replicaFor(operation, statement);
     if (replica != null) {
       var started = false;
       try {
-        return await replica.withLink(operation, (link) {
+        return await replica.withLink(operation, sqlText: statement, (link) {
           started = true;
           return body(link);
         });
@@ -1021,12 +1027,12 @@ abstract class TomSqlDatasource implements TomDataSource {
     final branch = await _branchForThisZone();
     if (branch != null) {
       final link = await _pinnedLink(pool, branch);
-      return _timed(operation, () => body(link));
+      return _timed(operation, () => body(link), statement ?? sqlText);
     }
     final link = await _acquireTimed(pool);
     var lost = false;
     try {
-      return await _timed(operation, () => body(link));
+      return await _timed(operation, () => body(link), statement ?? sqlText);
     } catch (_) {
       lost = !link.connected;
       rethrow;
@@ -1039,14 +1045,37 @@ abstract class TomSqlDatasource implements TomDataSource {
   /// its duration in `tom_db_statement_duration_seconds` and, when it throws,
   /// `tom_db_statement_errors`. The wait for the connection is not part of it:
   /// that is `tom_db_pool_acquire_duration_seconds`.
-  Future<R> _timed<R>(String operation, Future<R> Function() body) async {
-    final labels = {
-      'datasource': registeredName,
-      'operation': _operationLabels[operation] ?? operation,
-    };
+  ///
+  /// With a tracer installed, a statement made in traced work — a request, a
+  /// job run — is also a client span, following the OpenTelemetry database
+  /// conventions: named after the statement's first keyword (`SELECT`), with `db.system.name` ([dbSystemName]),
+  /// `db.operation.name`, `db.query.text` — the [statement] as written, with
+  /// its placeholders and never a bound value — and `tom.datasource`, the
+  /// registered name.
+  Future<R> _timed<R>(
+    String operation,
+    Future<R> Function() body, [
+    String? statement,
+  ]) async {
+    final label = _operationLabels[operation] ?? operation;
+    final labels = {'datasource': registeredName, 'operation': label};
+    final keyword = statement == null ? null : _firstKeyword(statement);
+    final span = TomTracing.start(
+      keyword ?? label,
+      kind: TomSpanKind.client,
+      childOnly: true,
+      attributes: {
+        'db.system.name': dbSystemName,
+        'db.operation.name': keyword ?? label,
+        'db.query.text': ?statement,
+        'tom.datasource': registeredName,
+      },
+    );
     final watch = Stopwatch()..start();
     try {
-      return await body();
+      return span == null
+          ? await body()
+          : await TomTracing.within(span, () => TomTracing.ending(span, body));
     } catch (_) {
       TomMetrics.registry
           .counter(
@@ -1099,6 +1128,15 @@ abstract class TomSqlDatasource implements TomDataSource {
           .recordDuration(watch.elapsed, labels);
     }
   }
+
+  /// The statement's first word, upper-cased — `SELECT`, `INSERT`, `WITH` —
+  /// or `null` for a statement that opens with none.
+  static String? _firstKeyword(String statement) =>
+      RegExp(r'^\s*([A-Za-z]+)').firstMatch(statement)?.group(1)?.toUpperCase();
+
+  /// The `db.system.name` of a statement's span: `mariadb`, `postgresql`.
+  @protected
+  String get dbSystemName;
 
   /// The `operation` label of each [withLink] operation.
   static const Map<String, String> _operationLabels = {
@@ -1240,6 +1278,7 @@ abstract class TomSqlDatasource implements TomDataSource {
     // Every other connection prepares it when it first runs it.
     await withLink(
       "prepareStatement",
+      sqlText: q,
       (link) => prepareOn(link, q, params.length),
     );
     return newPreparedStatement<T>(
@@ -2117,6 +2156,7 @@ abstract class TomSqlDatasource implements TomDataSource {
     _refuseMultipleStatements(command, "executeCommand");
     final result = await withLink(
       "executeCommand",
+      sqlText: command,
       (link) => runChecked<TomSqlResult>(
         () => runCommandOn(link, command, tomSqlBindParams(params)),
         (e, s) => datasourceException(

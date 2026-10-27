@@ -34,6 +34,7 @@ surface documented here.
 | Scheduling | [api_summary_scheduling.md](api_summary_scheduling.md) | The relational half of the job scheduler: the shared job queue, fencing leases, and the node roll call; and unique window instants for runs enqueued outside a schedule. |
 | Server | [api_summary_server.md](api_summary_server.md) | The HTTP server, per-request logging state and correlation ids, middleware, the log format, the paths whose credentials belong to the endpoint, the security headers every response carries, mutual TLS between services, and the graceful shutdown on SIGTERM. |
 | Tenancy | [api_summary_tenancy.md](api_summary_tenancy.md) | Multi-tenancy: the deployment's tenants, the three isolation models chosen per tenant, data-source routing, and the resolution of a request's tenant from its token, host or header. |
+| Tracing | [api_summary_tracing.md](api_summary_tracing.md) | The OpenTelemetry tracer behind the kernel's tracing seam: spans exported over OTLP/HTTP, parent-based sampling, the untraced export client, and an in-memory span exporter for tests. |
 | Transactions | [api_summary_transactions.md](api_summary_transactions.md) | Distributed transaction manager and participants, the recovery of prepared branches a dead process left — the decision log and the recovery — and sagas: work across services as local transactions undone by compensations, their orchestrator, stores and table. |
 
 ## Modules
@@ -979,6 +980,15 @@ surface documented here.
 | `TomTenantHeaderResolver` | class | Names the tenant by a header, `X-Tenant-Id` by default. |
 | `TomTenantResolution` | class | A request's tenant, none, or the rejection to answer it with. |
 
+### Tracing (`lib/src/tomserver/tracing/`)
+
+| Type | Kind | Description |
+| ---- | ---- | ----------- |
+| `TomTracingException` | class | Tracing cannot be set up as configured (extends `TomServerException`). |
+| `TomOtelTracer` | class | The kernel's `TomTracer` over the OpenTelemetry SDK, exporting spans over OTLP/HTTP; installed by `TomServer.start` when `tracing` is on. |
+| `TomUntracedClient` | class | An HTTP client whose calls are never traced, and whose close lets calls in flight finish — what the span exporter sends through. |
+| `TomInMemorySpanExporter` | class | A span exporter keeping exported spans in memory; for tests. |
+
 ### Transactions (`lib/src/tomserver/transactions/`)
 
 | Type | Kind | Description |
@@ -1536,6 +1546,7 @@ surface documented here.
 | `TomInboxOutcome` | Messaging |
 | `TomInboxRow` | Messaging |
 | `TomInformationSchemaColumnRow` | Database Migration |
+| `TomInMemorySpanExporter` | Tracing |
 | `TomInSubquery` | Object Persistence |
 | `TomIntConfig` | Configuration |
 | `TomInvalidationChannel` | Cache |
@@ -1665,6 +1676,7 @@ surface documented here.
 | `TomOperator` | Datasources |
 | `TomOptimisticLockException` | Object Persistence |
 | `TomOrganizationFallback` | Authentication |
+| `TomOtelTracer` | Tracing |
 | `TomOtlpExportException` | Metrics |
 | `TomOtlpHttpTransport` | Metrics |
 | `TomOtlpMetricsExporter` | Metrics |
@@ -1938,6 +1950,7 @@ surface documented here.
 | `TomTlsConnectionInfo` | Server |
 | `TomTotp2FAService` | Authentication |
 | `TomTotpSecretResolver` | Authentication |
+| `TomTracingException` | Tracing |
 | `TomTransaction` | Transactions |
 | `TomTransactional` | Endpoints |
 | `TomTransactionDecisionLog` | Transactions |
@@ -1953,6 +1966,7 @@ surface documented here.
 | `TomTypedPersistenceBase` | Datasources |
 | `TomTypePersistenceInfo` | Datasources |
 | `TomUnaryOperator` | Object Persistence |
+| `TomUntracedClient` | Tracing |
 | `TomUpdate` | Datasources |
 | `TomUserPreference` | Preferences |
 | `TomUserPreferenceException` | Preferences |

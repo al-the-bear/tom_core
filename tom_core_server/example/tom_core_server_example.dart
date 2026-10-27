@@ -257,6 +257,11 @@ const List<TourStop> tour = [
         'and the same registry pushed over OTLP',
   ),
   TourStop(
+    'example/tracing/tracing_example.dart',
+    'A request as a server span continuing its caller, its transaction and '
+        'outgoing call as children, and the tree exported over OTLP',
+  ),
+  TourStop(
     'example/healthcheck/healthcheck_example.dart',
     'The health and readiness verdicts, and what a probe can act on',
   ),

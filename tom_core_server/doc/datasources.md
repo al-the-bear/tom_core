@@ -45,6 +45,7 @@ declared.
   - [Walking the chain](#walking-the-chain)
   - [Deciding whether to retry](#deciding-whether-to-retry)
 - [The Connection Pool](#the-connection-pool)
+  - [Tracing](#tracing)
 - [The SQL Drivers](#the-sql-drivers)
   - [Settings](#settings)
   - [Connections](#connections)
@@ -1079,6 +1080,39 @@ series names are the constants `tomDbStatementDurationMetric`,
 `tomDbStatementErrorsMetric`, `tomDbPoolConnectionsMetric`,
 `tomDbPoolAcquireDurationMetric` and `tomDbPoolAcquireFailuresMetric`. See
 [metrics.md](metrics.md#data-sources).
+
+### Tracing
+
+With a tracer installed (`TomTracing`; a server installs one when `tracing` is
+on, see [tracing.md](tracing.md)) every statement `TomSqlDatasource` runs on a
+connection is a `client` span, opened in `withLink` around the same work the
+statement duration measures — the statement on its connection, not the wait for
+the connection. The span follows the OpenTelemetry database conventions:
+
+| Attribute | Value |
+| --------- | ----- |
+| `db.system.name` | `dbSystemName`, which each driver declares: `mariadb` for `MariaDbDatasource`, `postgresql` for `PostgresDatasource` |
+| `db.operation.name` | The statement's first keyword, upper-cased — `SELECT`, `INSERT`, `WITH` |
+| `db.query.text` | The statement as written, with its placeholders |
+| `tom.datasource` | `registeredName` — `<base>@<tenant>` for a tenant's own pool |
+
+The span is named after the first keyword. A query and a prepared statement's
+execution pass their SQL to `withLink` as `statement`, which read-replica
+routing also reads; a command and a statement being prepared pass it as
+`sqlText`, which only names the span. Without either — `withDriverConnection` —
+the span is named after the operation (`driver`). A statement a read replica
+serves is a span of the replica, under its own `registeredName`. A statement
+that throws is a failed span with the error recorded.
+
+**A statement is recorded only inside traced work.** The span is started with
+`childOnly` (`TomTracing.start`): inside a request, a job run or another span it
+is recorded; a statement run outside any trace — a scheduler polling its job
+store — records nothing.
+
+**`db.query.text` never carries a bound value.** It is the statement as the
+caller wrote it, with its `:name` or `?` placeholders; the values bound to them
+are not recorded anywhere in the span. `test/tracing_db_test.dart` binds a
+marker value and checks that no attribute of any exported span carries it.
 
 ## The SQL Drivers
 
@@ -2523,7 +2557,7 @@ and `test/examples_test.dart` runs it.
 | `mysql_client` | package | `mariadb_datasource.dart`, `sql_failure_mode.dart` | the MariaDB / MySQL client used by `MariaDbDatasource`, and its `MySQLServerException` |
 | `postgres` | package | `postgres_datasource.dart`, `sql_failure_mode.dart` | the PostgreSQL client used by `PostgresDatasource`, and its `ServerException` |
 | `tom_basics` | package | `sql_failure_mode.dart` | `TomBaseException`, walked to find the driver exception at the root of a failure chain |
-| `tom_core_kernel` | package | 7 of 16 files | `TomObject`, `tomReflector` / `ClassMirror` / `InstanceMirror`, `TomException`, `TomZonedDate` / `TomZonedTime`, `TomExecutionContext`, `runChecked` / `runCheckedSync`, `tomLog` |
+| `tom_core_kernel` | package | 7 of 16 files | `TomObject`, `tomReflector` / `ClassMirror` / `InstanceMirror`, `TomException`, `TomZonedDate` / `TomZonedTime`, `TomExecutionContext`, `runChecked` / `runCheckedSync`, `tomLog`, `TomTracing` / `TomSpanKind` (a statement's span) |
 | [little_things](little_things.md) | module | `connection_pool.dart`, `datasource_initialization.dart`, `sql_datasource.dart` | `TomServerException` |
 | [object_persistence](object_persistence.md) | module | `sql_datasource.dart`, `sql_dialects.dart`, `read_replicas.dart` | `TomAnnotationAnalyzer` (also reading `@TomPrimaryReads` off an entity), `TomColumnInformation`, `TomDbTable`, `DbCol`, `TomQuerySentenceCompiler`, `TomGroupedSelect` / `TomGroupedRow`, `TomFieldEncryption` (decrypting an entity's encrypted columns, and the raw read) |
 | [transactions](transactions.md) | module | `datasource_initialization.dart`, `sql_datasource.dart`, `mariadb_datasource.dart`, `postgres_datasource.dart`, `framework_table.dart`, `read_replicas.dart` | `TomTransactionParticipant` for the contract `TomDataSource` implements, `TomTransaction` for the one a driver is handed on enlistment (which is where `isReadOnly` becomes a `READ ONLY` begin statement), `TomTransactionManager.runInTransaction` for `TomFrameworkTable.replaceRow`'s two statements, and `TomTransactionManager.getCurrentTransaction` for whether the running transaction is read-only work; `TomPreparedBranchHolder` and `TomTwoPhaseRecoverable`, the two roles `TomSqlTwoPhaseRecovery` gives a two-phase driver in recovering its prepared branches |

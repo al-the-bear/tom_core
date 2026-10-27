@@ -1113,7 +1113,13 @@ class TomEndpointHandler {
       tomLog.trace(
         "$reqId-${req.url}: Calling method $callName on ${instance.reflectee.runtimeType} with parameters $positionalArguments",
       );
-      result = instance.invoke(callName, positionalArguments);
+      // Inside the transaction's span, when it has one, so the statements the
+      // handler makes are its children.
+      result = transaction == null
+          ? instance.invoke(callName, positionalArguments)
+          : transaction.runInSpan(
+              () => instance.invoke(callName, positionalArguments),
+            );
       if (result is Future) {
         result = await result;
       }

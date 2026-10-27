@@ -4,8 +4,9 @@
 /// Collector, Grafana Alloy, a vendor's agent — receives. The transport speaks
 /// OTLP/HTTP with JSON bodies, which every receiver accepts, and knows nothing
 /// about signals: it posts a body to `<endpoint>/v1/<signal>`. The metrics
-/// exporter is its first user and posts to `v1/metrics`; a trace exporter
-/// posts spans through the same transport to `v1/traces`, so a deployment
+/// exporter posts to `v1/metrics`. Spans go to the same endpoint's
+/// `v1/traces` ([TomOtlpHttpTransport.urlOf]) with the same headers, sent by the OpenTelemetry
+/// SDK's protobuf exporter the tracing module configures, so a deployment
 /// configures one endpoint and one set of headers for all its telemetry.
 ///
 /// Metrics are exported **cumulatively**: every export carries each series'
@@ -95,13 +96,15 @@ class TomOtlpHttpTransport {
     final url = urlOf(signal);
     final http.Response response;
     try {
-      response = await _client
-          .post(
-            url,
-            headers: {...headers, 'content-type': 'application/json'},
-            body: jsonEncode(body),
-          )
-          .timeout(timeout);
+      // Untraced: with tracing on, the push would otherwise be a client span
+      // of its own, exported in turn.
+      response = await TomTracing.untraced(
+        () => _client.post(
+          url,
+          headers: {...headers, 'content-type': 'application/json'},
+          body: jsonEncode(body),
+        ),
+      ).timeout(timeout);
     } catch (error, stack) {
       throw TomOtlpExportException(
         'otlp.export.failed',

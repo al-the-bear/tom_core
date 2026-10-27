@@ -8839,6 +8839,7 @@ class After {}
         'authenticationErrorHandler',
         'loggingMiddleware',
         'gracefulShutdown',
+        'tracer',
         'httpClientConfigurationKey',
         'idempotencyConfigurationKey',
         'metricsExporter',

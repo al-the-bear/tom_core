@@ -16,7 +16,9 @@ series exists once however it leaves the process.
 on is configuration (`metricsEndpoint`, `otlpEndpoint`). The scrape is answered
 at the outer edge of the pipeline, before authentication — infrastructure like a
 probe, with a bearer token of its own (`metricsToken`) compared in constant
-time. The `route` label is the endpoint's pattern (`/tasks/<id>`), never the raw
+time. Spans, when `tracing` is on, go to the same `otlpEndpoint` with the
+same `otlpHeaders` — see [`doc/tracing.md`](../../../../doc/tracing.md). The
+`route` label is the endpoint's pattern (`/tasks/<id>`), never the raw
 path, and a request no endpoint matched is `unmatched`.
 
 ## Key types
@@ -26,7 +28,7 @@ path, and a request no endpoint matched is `unmatched`.
 | `tomRequestMetricsMiddleware` | Records `tom_http_server_requests` {method, route, status} and `tom_http_server_request_duration_seconds` {method, route} for every request; `TomServer` places it outside both error layers. |
 | `tomMetricsEndpointMiddleware` | Answers `GET` / `HEAD` of the scrape path with the registry in the Prometheus text format, checking the bearer token when one is set; passes every other request on. |
 | `tomUnmatchedRoute` | `'unmatched'` — the `route` label of a request no endpoint matched. |
-| `TomOtlpHttpTransport` | Posts OTLP/HTTP JSON bodies to `<endpoint>/v1/<signal>` with configured headers; `parseHeaders` reads the `OTEL_EXPORTER_OTLP_HEADERS` form. Signal-neutral — a trace exporter posts `v1/traces` through the same transport. Its default client is the kernel's `TomResilientClient`: a push is not retried, but an open circuit refuses it at once (the server's `httpClient` key). |
+| `TomOtlpHttpTransport` | Posts OTLP/HTTP JSON bodies to `<endpoint>/v1/<signal>` with configured headers; `parseHeaders` reads the `OTEL_EXPORTER_OTLP_HEADERS` form. Signal-neutral — `urlOf('traces')` is where the tracing module's span exporter posts, with the same headers. A push runs untraced (`TomTracing.untraced`). Its default client is the kernel's `TomResilientClient`: a push is not retried, but an open circuit refuses it at once (the server's `httpClient` key). |
 | `TomOtlpMetricsExporter` | Pushes the registry every interval, cumulatively; a failed push is logged and the next carries the same totals; `close` pushes once more. |
 | `tomOtlpMetricsJson` | A snapshot as an OTLP `ExportMetricsServiceRequest` in the JSON encoding. |
 | `TomOtlpExportException` | `otlp.export.failed` and `otlp.config.invalid_headers`. |

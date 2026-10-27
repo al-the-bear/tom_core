@@ -1,0 +1,17 @@
+# A local OpenTelemetry Collector for the advanced sample's servers.
+#
+#   docker compose -f advanced_deploy/otel/docker-compose.yaml up -d
+#   TRACING=true OTLP_ENDPOINT=http://127.0.0.1:4318 \
+#     dart run bin/app_server_start.dart env=dev
+#
+# Spans and metrics land in advanced_deploy/otel/out/traces.json and
+# metrics.json. The published port is OTEL_COLLECTOR_PORT (4318 by default).
+services:
+  otel-collector:
+    image: ${OTEL_COLLECTOR_IMAGE:-otel/opentelemetry-collector-contrib:0.111.0}
+    container_name: advanced-otel-collector
+    ports:
+      - "127.0.0.1:${OTEL_COLLECTOR_PORT:-4318}:4318"
+    volumes:
+      - ./collector.yaml:/etc/otelcol-contrib/config.yaml:ro
+      - ${OTEL_COLLECTOR_OUT:-./out}:/out

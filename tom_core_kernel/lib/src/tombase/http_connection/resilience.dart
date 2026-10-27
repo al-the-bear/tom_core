@@ -49,6 +49,7 @@ import 'dart:typed_data';
 import 'package:http/http.dart';
 
 import '../context/trace_context.dart';
+import '../context/tracing.dart';
 import '../little_things/exception_base.dart';
 import '../metrics/metrics.dart';
 
@@ -596,21 +597,64 @@ class TomResilientClient extends BaseClient {
   /// The request id itself is not sent: it equals the trace id unless a
   /// trusted proxy set it, and a callee believes a request-id header only from
   /// its own trusted proxies.
-  static void propagateTrace(BaseRequest request) {
-    final trace = TomTraceContext.current;
+  ///
+  /// With [span], the position of the client span the call is recorded in,
+  /// that position is sent as it is: the callee's span is then a child of the
+  /// span that made the call.
+  static void propagateTrace(BaseRequest request, {TomTraceContext? span}) {
+    final trace = span ?? TomTraceContext.current?.child();
     if (trace == null) return;
     for (final name in request.headers.keys) {
       if (name.toLowerCase() == 'traceparent') return;
     }
-    request.headers.addAll(trace.child().headers);
+    request.headers.addAll(trace.headers);
   }
 
   /// The policy of every call, or `null` to use the destination's.
   final TomHttpResiliencePolicy? policy;
 
+  /// Sends [request] under the policies. With a tracer installed
+  /// ([TomTracing]) the call is a client span named after its method, with the
+  /// OpenTelemetry HTTP attributes: method, URL without query or user info,
+  /// server address and port, and the status answered — a `5xx` marks the span
+  /// failed, as does a call that got no answer.
   @override
-  Future<StreamedResponse> send(BaseRequest request) async {
-    propagateTrace(request);
+  Future<StreamedResponse> send(BaseRequest request) {
+    final url = request.url;
+    final span = TomTracing.start(
+      request.method,
+      kind: TomSpanKind.client,
+      attributes: {
+        'http.request.method': request.method,
+        'url.full': Uri(
+          scheme: url.scheme,
+          host: url.host,
+          port: url.port,
+          path: url.path,
+        ).toString(),
+        'server.address': url.host,
+        'server.port': url.port,
+      },
+    );
+    if (span == null) return _send(request, null);
+    return TomTracing.within(
+      span,
+      () => TomTracing.ending(span, () async {
+        final response = await _send(request, span.context);
+        span.setAttribute('http.response.status_code', response.statusCode);
+        if (response.statusCode >= 500) {
+          span.setError('HTTP ${response.statusCode}');
+        }
+        return response;
+      }),
+    );
+  }
+
+  Future<StreamedResponse> _send(
+    BaseRequest request,
+    TomTraceContext? span,
+  ) async {
+    propagateTrace(request, span: span);
     final destination = TomHttpResilience.destinationOf(request.url);
     final policy = this.policy ?? TomHttpResilience.policyFor(request.url);
     final breaker = TomHttpResilience.breakerFor(destination, policy);

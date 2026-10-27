@@ -26,15 +26,31 @@
 # the sample deployed to a cluster (advanced_deploy/run_kind_integration.sh) —
 # and starts and stops nothing. The stack must hold the `dev` seed and be
 # fresh: the scenarios change grants and shares as they go.
+#
+#   run_cross_tier_integration.sh --trace
+#
+# also starts the local OpenTelemetry Collector of advanced_deploy/otel and runs
+# both servers with tracing on, exporting to it (TRACING=true, OTLP_ENDPOINT).
+# After the suites it reads what the collector received and fails unless each
+# server exported request spans named after their routes, and the app server
+# the SQL statements under them. Host port 4318 (OTEL_COLLECTOR_PORT) must be
+# free. Not combinable with --external-stack, whose servers this run does not
+# configure.
 set -euo pipefail
 
 EXTERNAL_STACK=0
+TRACE=0
 for arg in "$@"; do
   case "$arg" in
     --external-stack) EXTERNAL_STACK=1 ;;
+    --trace) TRACE=1 ;;
     *) echo "Unknown argument: $arg" >&2; exit 64 ;;
   esac
 done
+if [ "$EXTERNAL_STACK" -eq 1 ] && [ "$TRACE" -eq 1 ]; then
+  echo "--trace configures the servers this run starts; it cannot be combined with --external-stack." >&2
+  exit 64
+fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CLIENT_CORE="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -42,6 +58,8 @@ SAMPLES="$(cd "$CLIENT_CORE/.." && pwd)"
 AUTH_DIR="$SAMPLES/advanced_auth_server"
 APP_DIR="$SAMPLES/advanced_app_server"
 OPENAPI_CLIENT="$SAMPLES/advanced_openapi_client"
+OTEL_DIR="$SAMPLES/advanced_deploy/otel"
+OTEL_PORT="${OTEL_COLLECTOR_PORT:-4318}"
 
 SERVER_PIDS=()
 LOG_DIR="$(mktemp -d)"
@@ -69,6 +87,9 @@ cleanup() {
   done
   (cd "$AUTH_DIR" && docker compose down -v) >/dev/null 2>&1
   (cd "$APP_DIR" && docker compose down -v) >/dev/null 2>&1
+  if [ "$TRACE" -eq 1 ]; then
+    (cd "$OTEL_DIR" && OTEL_COLLECTOR_OUT="$LOG_DIR/otel" docker compose down) >/dev/null 2>&1
+  fi
   rm -rf "$LOG_DIR"
 }
 trap cleanup EXIT
@@ -211,13 +232,28 @@ log "Resolving Dart dependencies"
 #    the app server's `jwtVerificationKeyFiles`, the payload pair both hold —
 #    and `installJwtSigning` will not use the framework's bundled sample keys
 #    outside a development environment.
+#    With --trace, the collector first, and both servers exporting to it.
+SERVER_ENV=()
+if [ "$TRACE" -eq 1 ]; then
+  log "Starting the OpenTelemetry Collector"
+  mkdir -p "$LOG_DIR/otel" && chmod 777 "$LOG_DIR/otel"
+  (cd "$OTEL_DIR" && OTEL_COLLECTOR_OUT="$LOG_DIR/otel" OTEL_COLLECTOR_PORT="$OTEL_PORT" docker compose up -d)
+  for _ in $(seq 1 60); do
+    # The receiver answers 405 to a GET once it is listening.
+    code="$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:$OTEL_PORT/v1/traces" || true)"
+    [ "$code" != "000" ] && break
+    sleep 1
+  done
+  SERVER_ENV=(TRACING=true "OTLP_ENDPOINT=http://127.0.0.1:$OTEL_PORT")
+fi
+
 log "Starting auth server"
-(cd "$AUTH_DIR" && exec dart run bin/auth_server_start.dart env=dev >"$LOG_DIR/auth.log" 2>&1) &
+(cd "$AUTH_DIR" && exec env ${SERVER_ENV[@]+"${SERVER_ENV[@]}"} dart run bin/auth_server_start.dart env=dev >"$LOG_DIR/auth.log" 2>&1) &
 SERVER_PIDS+=($!)
 wait_auth_up
 
 log "Starting app server"
-(cd "$APP_DIR" && exec dart run bin/app_server_start.dart env=dev >"$LOG_DIR/app.log" 2>&1) &
+(cd "$APP_DIR" && exec env ${SERVER_ENV[@]+"${SERVER_ENV[@]}"} dart run bin/app_server_start.dart env=dev >"$LOG_DIR/app.log" 2>&1) &
 SERVER_PIDS+=($!)
 wait_app_health
 fi
@@ -312,6 +348,42 @@ run_live_suite "the live admin API client smoke suite" \
   test/admin_api_client_integration_test.dart || result=1
 run_live_suite "the generated OpenAPI clients against both servers" \
   test/generated_client_integration_test.dart "$OPENAPI_CLIENT" || result=1
+
+# 5. With --trace: what the collector received. The servers export a batch
+#    every five seconds; waiting for two intervals lets the last suite's spans
+#    arrive. Each server must have exported request spans named after their
+#    routes, and the app server its SQL statements inside a request's trace.
+if [ "$TRACE" -eq 1 ]; then
+  log "Checking the spans the collector received"
+  sleep 11
+  python3 - "$LOG_DIR/otel/traces.json" <<'PY' || result=1
+import json, sys
+spans = {}
+with open(sys.argv[1]) as f:
+    for line in f:
+        if not line.strip():
+            continue
+        for rs in json.loads(line).get('resourceSpans', []):
+            service = next((a['value'].get('stringValue') for a in rs['resource']['attributes']
+                            if a['key'] == 'service.name'), None)
+            for ss in rs.get('scopeSpans', []):
+                spans.setdefault(service, []).extend(ss.get('spans', []))
+def attrs(span):
+    return {a['key'] for a in span.get('attributes', [])}
+ok = True
+for service in ('auth', 'app'):
+    found = spans.get(service, [])
+    routed = [s for s in found if s.get('kind') == 2 and 'http.route' in attrs(s)]
+    sql = [s for s in found if 'db.system.name' in attrs(s)]
+    traced_sql = {s['traceId'] for s in sql} & {s['traceId'] for s in routed}
+    print(f"{service}: {len(found)} spans, {len(routed)} routed requests, "
+          f"{len(sql)} SQL statements, {len(traced_sql)} requests with SQL")
+    if not routed or (service == 'app' and not traced_sql):
+        print(f"{service}: the expected spans did not arrive", file=sys.stderr)
+        ok = False
+sys.exit(0 if ok else 1)
+PY
+fi
 
 # Server logs are dumped by the EXIT trap (cleanup) whenever the run exits
 # non-zero, so a test failure here surfaces them without an explicit dump.

@@ -70,7 +70,7 @@ class _QuickStart {
       p.join('lib', 'src', 'tomserver', module, 'readme.md');
 }
 
-/// The triage. Eighteen programs, seven explanations.
+/// The triage. Twenty programs, seven explanations.
 const _quickStarts = <_QuickStart>[
   _QuickStart.runnable('authentication', prints: ['alice', 'TomPrincipal']),
   _QuickStart.runnable('cache', prints: ['hello']),
@@ -97,6 +97,7 @@ const _quickStarts = <_QuickStart>[
     'metrics',
     prints: ['401', '200', 'route="unmatched",status="404"} 1'],
   ),
+  _QuickStart.runnable('tracing', prints: ['parse', '3']),
 
   _QuickStart.notRunnable(
     'authorization',

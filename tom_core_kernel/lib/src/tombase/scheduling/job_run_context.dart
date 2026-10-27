@@ -160,9 +160,12 @@ class TomJobRunCommand extends TomCommand {
   /// Runs [inner] as work of its own ([TomRequestId.runRoot]): every attempt
   /// starts a new trace and its log lines carry that trace's id as
   /// `request_id`, whichever zone the scheduler ticked in and whichever isolate
-  /// the attempt runs on.
+  /// the attempt runs on. With a tracer installed the attempt is that trace's
+  /// first span, `job <jobName>`.
   @override
   Future<Object?> execute() => TomRequestId.runRoot(
+    spanName: 'job $jobName',
+    spanAttributes: {'tom.job.name': jobName, 'tom.job.run_id': runId},
     () => runZoned(
       inner.execute,
       zoneValues: {
