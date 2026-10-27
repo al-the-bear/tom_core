@@ -12,6 +12,7 @@ method, and converts the result (or any error) into a `Response`.
 - [Declaring an Endpoint](#declaring-an-endpoint)
   - [Which Methods May Be Declared](#which-methods-may-be-declared)
   - [Declared Response Headers](#declared-response-headers)
+- [Versioned APIs](#versioned-apis)
 - [Resolving the Implementation Instance](#resolving-the-implementation-instance)
 - [The Request Pipeline](#the-request-pipeline)
 - [Parameter Binding](#parameter-binding)
@@ -43,6 +44,7 @@ method, and converts the result (or any error) into a `Response`.
 - [Request Logging](#request-logging)
   - [Who writes the line](#who-writes-the-line)
 - [Error Handling](#error-handling)
+  - [Error Formats and problem+json](#error-formats-and-problemjson)
 - [Building the Router](#building-the-router)
   - [The Routing Table](#the-routing-table)
 - [Not Yet Implemented](#not-yet-implemented)
@@ -59,11 +61,11 @@ method, and converts the result (or any error) into a `Response`.
 | `TomEndpoint` | class | Declares an HTTP endpoint inline on a method (route, methods, mime types, CORS, …) |
 | `TomApiEndpointImplementation` | class | Binds a method to an endpoint defined in the remote-API registry |
 | `TomEndpointBase` | abstract class | What the two annotations above share: each can produce the concrete `TomEndpoint` the pipeline routes |
-| `TomService` / `tomService` | class / const TomService | Marks a class as an interface-based service to scan |
+| `TomService` / `tomService` | class / const TomService | Marks a class as an interface-based service to scan; `version:` serves its inline endpoints under a `/v<version>` segment, `problemJson:` answers their errors as problem documents |
 | `TomApiImplementation` | class | Marks a class as the implementation of a registry-defined API |
 | `TomComponentReference` | class | Points a service at its implementation bean (by name or type) |
 | `TomTransactional` | class | Requests transaction wrapping for an endpoint method |
-| `TomErrorHandler` / `TomStatusMappingErrorHandler` / `TomDefaultErrorHandler` | abstract classes / class | Turns an error into a `Response`: the framework envelope, at the status the error key is declared to mean (default: `500` for every key) |
+| `TomErrorHandler` / `TomStatusMappingErrorHandler` / `TomDefaultErrorHandler` | abstract classes / class | Turns an error into a `Response`: the framework envelope — or an RFC 9457 problem document when the request asks for one — at the status the error key is declared to mean (default: `500` for every key) |
 | `TomEndpointRouting` | class | Scans the annotated classes and builds the `Router` |
 | `TomEndpointHandler` | class | Serves one endpoint (the per-request pipeline) |
 | `TomMethodMetadata` / `TomClassScanResult` | class | Collected metadata / scan partitions |
@@ -110,7 +112,7 @@ and served as a file:
 | Type | Kind | Purpose |
 | ---- | ---- | ------- |
 | `TomOpenApiService` | abstract class | The public route contract: `GET /openapi.json` |
-| `TomOpenApiServer` | class | Serves the file `globalSettingDocumentPath` names, read on every request; `404` with the error envelope when none is configured or the file is missing |
+| `TomOpenApiServer` | class | Serves the file `globalSettingDocumentPath` names, read on every request; `404` with the error envelope (or a problem document, when asked) when none is configured or the file is missing |
 
 **Idempotency keys** — a retried request answered with the first one's stored
 response instead of running again:
@@ -259,6 +261,57 @@ response that echoes the caller's own obligations back at it looks like a
 deliberate acknowledgement rather than a mistake. So the two declaration styles
 are held to the same statement — whichever way an endpoint is declared, its
 response carries what was declared *for the response*, and nothing else.
+
+## Versioned APIs
+
+An API carries a **major version as a path segment**: version 2 of `/orders` is
+served at `/v2/orders`. A path segment rather than a header or a media type,
+because it is what a log line, a cache key and an OpenAPI document all show.
+Two versions of one API are therefore two APIs, mounted side by side, each with
+its own endpoints — a client that has not moved on keeps calling the old one.
+
+For an inline service the version is on the class annotation:
+
+```dart
+@tomReflector
+@TomService(version: 2, problemJson: true)
+abstract class OrderApi {
+  @TomPublicAccess()
+  @TomEndpoint(uri: '/orders')
+  Future<Map<String, Object>> orders();
+}
+```
+
+It is paired with a `@tomComponent` implementation like any service.
+`initializeRouter` mounts `GET /v2/orders`; a second service declared
+`@TomService(version: 1)` with the same `@TomEndpoint(uri: '/orders')` mounts
+`GET /v1/orders` beside it, and nothing is mounted at `/orders`. The declared `uri` stays unversioned, and the scan places
+each endpoint under its segment (`TomEndpoint.withUri`), so the route table
+(`TomEndpointRouting.routingInfo`) is keyed by the mounted route,
+`/v2/orders`. A service without a version keeps its URIs as declared.
+
+A registry-backed API is versioned where it is declared, by `TomApi.version`:
+its `TomApi.path` is `/v<version>` followed by its `uri`, and every endpoint's
+`TomApiEndpoint.path` — the route `convertToTomEndpoint` mounts and the address
+`resolveUri` builds for a client — starts with it. The client and the server
+read one declaration, so they cannot disagree about the segment. Such a class's
+`@TomApiImplementation` therefore takes no version of its own.
+
+Both mistakes abort the build with `TomEndpointPipelineException` under
+`endpoint_pipeline.get_class_method_metadata.invalid_api_version` (parameters
+`service` and `version`): a version below 1 on a `@TomService`, and any version
+on a `TomApiImplementation` — which `@TomApiImplementation` cannot express, but a
+subclass of it could. A registry `TomApi` with a version below 1 is refused when
+it is constructed, with `apis.version.invalid`.
+
+`problemJson: true` on either annotation answers the errors of the service's
+endpoints as RFC 9457 problem documents whatever the request's `Accept` says —
+see [Error Formats and problem+json](#error-formats-and-problemjson). It changes
+nothing about a successful answer.
+
+> The pair is `FixtureOrdersV1` / `FixtureOrdersV2` in
+> `test/fixtures/reflection_fixture.dart`, which `test/api_versioning_test.dart`
+> mounts side by side and serves.
 
 ## Resolving the Implementation Instance
 
@@ -1334,7 +1387,9 @@ serialise raises `endpoint_pipeline.handle_method_call.result_conversion_failed_
 The default handler, `TomDefaultErrorHandler`, answers **the framework
 envelope** at a `500` — `tomErrorEnvelope(error)` under `x-tom-error: true` and
 declared `application/json`, the same shape `TomServer.errorHandler` answers one
-layer out and the same shape every module handler answers. No detail leaks: the
+layer out and the same shape every module handler answers — or, when the request
+asks for one, the same fields as a problem document (see
+[Error Formats and problem+json](#error-formats-and-problemjson)). No detail leaks: the
 envelope reports `errorKey` for a client to resolve against its own resources
 and never `defaultUserMessage`. What it does carry is the `uuid`, which is what
 makes an otherwise unexplainable `500` traceable to a log line.
@@ -1376,6 +1431,49 @@ a `catch (error, stacktrace)`, so a looser `Object` bought nothing and cost each
 implementation a cast before it could call anything a trace offers — a cost paid
 once per implementation and then forever.
 
+### Error Formats and problem+json
+
+Every framework error response is built by `tomErrorResponse` (in
+[little_things](little_things.md#the-problem-document)), which answers in one of
+two formats carrying the same fields:
+
+| Request | Body | `Content-Type` |
+| ------- | ---- | -------------- |
+| `Accept` lists `application/problem+json` (with a `q` above 0) | `tomProblemDetails` — an RFC 9457 problem document | `application/problem+json` |
+| served by an endpoint of a service declared with `problemJson: true` | `tomProblemDetails` | `application/problem+json` |
+| anything else | `tomErrorEnvelope` | `application/json` |
+
+A wildcard (`*/*`, `application/*`) does not select problem+json: a client that
+has not named the format is one written against the envelope.
+
+```http
+GET /v1/fixture/orders/failing HTTP/1.1
+Accept: application/problem+json
+
+HTTP/1.1 500 Internal Server Error
+Content-Type: application/problem+json
+x-tom-error: true
+
+{"type": "urn:tom:error:fixture.orders.failed", "title": "Internal Server Error",
+ "status": 500, "instance": "urn:tom:request:…",
+ "errorType": "TomServerException", "errorKey": "fixture.orders.failed", ...}
+```
+
+`type` is `urn:tom:error:<errorKey>` (or `about:blank` for an error without a
+key), so the key stays the thing a client branches on; `title` is the status's
+reason phrase; `instance` names the request when the error does. Every envelope
+field follows as an extension member, and there is no `detail` — neither format
+carries a message.
+
+For an endpoint of a `problemJson` service, `handleMethodCall` puts
+`tomProblemJsonContextKey: true` on the request context before anything else
+runs, so every error handler the endpoint reaches — the default, a
+`TomStatusMappingErrorHandler` subclass, or a deployment's own handler that
+calls `tomErrorResponse` — answers a problem document. A handler that builds its
+own `Response` decides its own format; the flag is for handlers that delegate.
+`TomServer.errorHandler`, one layer out, follows the request's `Accept` only: it
+runs outside the endpoint, for a request that may have reached none.
+
 ## Building the Router
 
 `TomEndpointRouting().initializeRouter()` (called by `TomServer`) scans the
@@ -1393,6 +1491,7 @@ with `TomEndpointPipelineException`:
 | `endpoint_pipeline.get_class_method_metadata.multiple_idempotent_tags` | a method carries two `@TomIdempotent` |
 | `endpoint_pipeline.get_class_method_metadata.multiple_tom_api_implementation_tags` | a class carries two `@TomApiImplementation` |
 | `endpoint_pipeline.get_class_method_metadata.no_tom_api_implementation_found` | a registry endpoint's class has no `@TomApiImplementation` |
+| `endpoint_pipeline.get_class_method_metadata.invalid_api_version` | a `@TomService` declares a version below 1, or a `TomApiImplementation` declares one at all (see [Versioned APIs](#versioned-apis)) |
 
 An [undeclarable HTTP method](#which-methods-may-be-declared) and two access
 controls on one method are refused the same way, under the keys their sections
@@ -1539,7 +1638,7 @@ it means "nothing a caller can see", not "nothing at all".
 
 ## Verification
 
-Seven suites cover this module, split by what each needs.
+Eight suites cover this module, split by what each needs.
 
 `test/endpoints_error_keys_test.dart` pins the module's error vocabulary: each case reaches a raise with a real input and asserts the exact key, so a key the module stops raising, or raises for a different condition, fails by name. None needs a database.
 
@@ -1567,6 +1666,13 @@ the HTTP ones and served over a loopback server.
 
 `test/endpoints_serialization_roundtrip_test.dart` asserts the one property a
 DTO has to have: it crosses both directions identically.
+
+`test/api_versioning_test.dart` mounts two versions of one service side by side
+(`FixtureOrdersV1` at `/v1`, `FixtureOrdersV2` at `/v2`) and serves both,
+asserting that the unversioned path is not mounted, and covers the error
+formats: the envelope for a request that does not ask, a problem document for
+one that does, the envelope for `q=0`, and a problem document whatever the
+request asks for from the `problemJson` service — plus `TomEndpoint.withUri`.
 
 `test/idempotency_test.dart` covers idempotency keys: `TomIdempotency.handle`
 over the memory store — a retry run once and answered with the first response,
@@ -1604,7 +1710,8 @@ record — checking each answer; `test/examples_test.dart` runs it too.
 ## Core Components
 
 - **Annotations** (`endpoint_annotation.dart`) — `TomEndpoint`,
-  `TomApiEndpointImplementation`, `TomService` / `tomService`,
+  `TomApiEndpointImplementation`, `TomService` / `tomService` (with its
+  `version` and `problemJson`),
   `TomApiImplementation`, `TomComponentReference`, `TomTransactional`,
   `TomErrorHandler` / `TomDefaultErrorHandler`, and the `TomEndpointBase`
   contract.
@@ -1661,7 +1768,7 @@ record — checking each answer; `test/examples_test.dart` runs it too.
 | ---------- | ---- | ----------- | --- |
 | `dart:async` | dart | `endpoint_pipeline.dart`, `file_endpoint.dart`, `idempotency.dart`, `web_socket_endpoint.dart` | `Future`, `Stream`, `StreamController`, `StreamSubscription`, `Zone`, `unawaited` |
 | `dart:collection` | dart | `endpoint_pipeline.dart` | `UnmodifiableListView`, `UnmodifiableMapView` — the read-only views of the routing tables |
-| `dart:convert` | dart | `endpoint_annotation.dart`, `endpoint_pipeline.dart`, `file_endpoint.dart`, `idempotency.dart`, `openapi_document_endpoint.dart` | `Encoding`, `json`, `jsonDecode`, `jsonEncode`, `utf8`, `base64Encode` / `base64Decode` (a stored response body) |
+| `dart:convert` | dart | `endpoint_pipeline.dart`, `file_endpoint.dart`, `idempotency.dart` | `Encoding`, `json`, `jsonDecode`, `jsonEncode`, `utf8`, `base64Encode` / `base64Decode` (a stored response body) |
 | `dart:io` | dart | `openapi_document_endpoint.dart` | `File` — the generated document is read from disk |
 | `dart:typed_data` | dart | `form_binding.dart` | `Uint8List` |
 | `crypto` | package | `idempotency.dart` | `sha256`, the fingerprint telling a retry from a different request under the same key |
@@ -1674,7 +1781,7 @@ record — checking each answer; `test/examples_test.dart` runs it too.
 | [audit](audit.md) | module | `endpoint_pipeline.dart` | `TomAuditAction`, `TomAuditOutcome`, `TomAuditTrail`, `TomAudited` |
 | [datasources](datasources.md) | module | `endpoint_pipeline.dart`, `idempotency.dart`, `idempotency_sql.dart` | `TomReplicaRouting` (a `GET` or `HEAD` request runs as read-only work), `TomFrameworkTable` / `TomFrameworkColumn` / `TomFrameworkKey` (the table's declaration), `TomDataSourceInfo` (the store's data source, resolved by name per call), `TomSchemaProvisioning`, `sqlInstant` / `parseSqlInstant` |
 | [file_storage](file_storage.md) | module | `file_endpoint.dart` | `TomBlobRange`, `TomStorageException`, `TomStoredBlob` |
-| [little_things](little_things.md) | module | 7 of 9 files | `TomServerException`, `tomErrorEnvelope` |
+| [little_things](little_things.md) | module | 7 of 9 files | `TomServerException`, `tomErrorEnvelope`, and `tomErrorResponse` / `tomProblemJsonContextKey` — the error response in the format the request asks for |
 | [object_persistence](object_persistence.md) | module | `file_endpoint.dart`, `idempotency.dart` | `TomAnnotationAnalyzer`, `TomColumnAuthorizationException`, `TomColumnInformation`, `TomDataScopeAuthorizationException`, `TomDbTable`, `TomDbColumn` (on `TomIdempotencyRow`), `TomFileReference` |
 | [server](server.md) | module | `endpoint_pipeline.dart` | `TomRequestLogInfo` |
 | [transactions](transactions.md) | module | `endpoint_pipeline.dart` | `TomTransactionManager` / `TomTransaction` |

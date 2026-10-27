@@ -317,6 +317,7 @@ TomApi({
   String? name,
   String? description,
   String? uri,
+  int? version,
   required List<TomApiEndpoint> endpoints,
   Encoding? requestEncoding,
   Encoding? responseEncoding,
@@ -332,6 +333,8 @@ TomApi({
 | `name` | `String?` | Human-readable name for this API. |
 | `description` | `String?` | Description of what this API does. |
 | `uri` | `String?` | Base URI path for all endpoints in this API. |
+| `version` | `int?` | The major version of this API, or `null` for an unversioned one. A versioned API is served under a `/v<version>` path segment ahead of `uri`, so two versions of one API are two APIs mounted side by side. 1 or higher; a lower value throws `TomEndpointException` with `apis.version.invalid` at construction. |
+| `path` | `String` | *(getter)* The path every endpoint of this API is served under: `/v<version>` when the API is versioned, then `uri`. |
 | `requestEncoding` | `Encoding?` | Default encoding for request bodies. |
 | `responseEncoding` | `Encoding?` | Default encoding for response bodies. |
 | `statusCodeResponseTypes` | `Map<int, Type>?` | Maps HTTP status codes to response types for error handling. |
@@ -414,6 +417,7 @@ TomApiEndpoint({
 | `urlParameterMapping` | `Map<String, String>` | Binds URL parameters — path captures *and* query-string parameters — to request-DTO field names. Keys are the name as it appears on the URL, values the field it is injected under. **The key decides which kind an entry is:** a key that appears as a `{capture}` in the endpoint's `uri` substitutes into the path; every other key is emitted as a query parameter, unless the path already carried its field — a path capture wins over a query parameter mapped to the same field, so two keys pointing at one field put the value in the path only. The two bind asymmetrically on purpose — a path capture that is *not* listed still binds under its own name, so an empty map suffices for an endpoint whose captures already match its field names, whereas a query parameter binds *only* when named here. There is no identity fallback for query parameters: a query string is whatever a caller chose to append, so an identity fallback would let any caller write any field of the request DTO. |
 | `access` | `TomAccessControl?` | The contract-side access policy the endpoint is served under (`null` = fall back to the server default or a handler annotation). |
 | `api` | `TomApi` | The parent API; throws `TomEndpointException` if the endpoint has not been added to an API. |
+| `path` | `String` | *(getter)* The route this endpoint is served at: its API's `path`, then `uri`. Throws like `api` when the endpoint has no parent API. |
 
 ##### Methods
 
@@ -434,7 +438,8 @@ read.resolveUri(
 ); // https://api.example.com/preferences/tom.theme
 ```
 
-The template is the API's `uri` followed by the endpoint's. `parameters` are
+The template is `path` — the API's `path` (its `/v<version>` segment when it is
+versioned, then its `uri`) followed by the endpoint's `uri`. `parameters` are
 keyed by **request-DTO field name**, the right-hand side of
 `urlParameterMapping` — so one map answers both halves of the address:
 
@@ -1102,8 +1107,8 @@ The address comes from `TomApiEndpoint.resolveUri`, so the endpoint addresses
 the route its declaration describes: `parameters` — keyed by request-DTO field
 name — fill the path captures and the mapped query parameters, and a capture
 with no value throws rather than travelling as literal `{name}` text. The
-template it resolves, `(api.uri ?? '') + (uri ?? '')`, is the same expression
-the server pipeline mounts the route from, so both ends of a call are derived
+template it resolves, `TomApiEndpoint.path`, is the same value the server
+pipeline mounts the route from, so both ends of a call are derived
 from one declaration. Supplying `specs` bypasses resolution entirely — the
 caller has then named the address outright, and `parameters` is unused.
 

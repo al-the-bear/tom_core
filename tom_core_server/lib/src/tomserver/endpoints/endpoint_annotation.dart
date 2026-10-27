@@ -1,8 +1,7 @@
-import 'dart:convert';
-
 import 'package:shelf/shelf.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../little_things/error_response.dart';
 import '../little_things/server_exception.dart';
 
 /// Turns an error raised while serving an endpoint into a shelf [Response].
@@ -140,14 +139,7 @@ abstract class TomStatusMappingErrorHandler extends TomErrorHandler {
     StackTrace stacktrace,
     Request r,
     Object? result,
-  ) => Response(
-    statusFor(error),
-    body: jsonEncode(tomErrorEnvelope(error)),
-    headers: {
-      'x-tom-error': 'true',
-      TomHeader.contentType: TomMimeType.json.toHeaderValue(),
-    },
-  );
+  ) => tomErrorResponse(error, status: statusFor(error), request: r);
 }
 
 /// The default [TomErrorHandler]: the framework envelope with a `500`.
@@ -170,9 +162,32 @@ const _tomDefaultErrorHandler = TomDefaultErrorHandler();
 ///
 /// Use the [tomService] constant to annotate a class. A class may be a
 /// `@tomService` *or* a [TomApiImplementation], never both.
+///
+/// ## Versions and error format
+///
+/// `@TomService(version: 2)` serves every inline endpoint of the service under
+/// a `/v2` path segment ahead of its declared URI, so `@TomEndpoint(uri:
+/// '/orders')` answers at `/v2/orders`. Two versions of one API are two
+/// services — one with `version: 1`, one with `version: 2` — mounted side by
+/// side; an unversioned service keeps its URIs as declared. A registry-backed
+/// API takes its version from `TomApi.version` instead, which the client reads
+/// too.
+///
+/// `problemJson: true` answers the errors of the service's endpoints as RFC
+/// 9457 problem documents whatever the request's `Accept` says; without it a
+/// request receives one only when it asks (see `tomErrorResponse`).
 class TomService {
-  /// Const constructor so the annotation can be applied as `@tomService`.
-  const TomService();
+  /// A service, versioned when [version] is set, answering its errors as
+  /// problem+json when [problemJson] is set.
+  const TomService({this.version, this.problemJson = false});
+
+  /// The major version the service's inline endpoints are served under, as a
+  /// `/v<version>` path segment; `null` for none. 1 or higher.
+  final int? version;
+
+  /// Whether the errors of the service's endpoints are always problem
+  /// documents.
+  final bool problemJson;
 }
 
 /// The annotation instance to mark a class with [TomService].
@@ -195,11 +210,13 @@ class TomApiImplementation extends TomService {
   /// overrides it.
   final bool logRequestsDefault;
 
-  /// Binds this implementation to the API [apiId].
+  /// Binds this implementation to the API [apiId]; [problemJson] as for
+  /// [TomService]. The version is the API's own (`TomApi.version`).
   const TomApiImplementation({
     required this.apiId,
     this.errorHandler,
     this.logRequestsDefault = true,
+    super.problemJson,
   });
 }
 
@@ -285,7 +302,7 @@ class TomApiEndpointImplementation<
     return TomEndpoint<requestType, resultType>(
       methods: endpoint.methods ?? [endpoint.method],
       formFields: endpoint.formFields,
-      uri: (endpoint.api.uri ?? "") + (endpoint.uri ?? ""),
+      uri: endpoint.path,
       consumes: endpoint.consumes,
       produces: endpoint.produces,
       contentDisposition: endpoint.contentDisposition,
@@ -440,6 +457,25 @@ class TomEndpoint<requestType extends Object, resultType extends Object>
   ]) {
     return this;
   }
+
+  /// This endpoint mounted at [uri] instead — how a versioned service places
+  /// its endpoints under their version segment.
+  TomEndpoint<requestType, resultType> withUri(String uri) =>
+      TomEndpoint<requestType, resultType>(
+        methods: methods,
+        formFields: formFields,
+        uri: uri,
+        consumes: consumes,
+        produces: produces,
+        contentDisposition: contentDisposition,
+        errorHandler: errorHandler,
+        logRequests: logRequests,
+        headers: headers,
+        corsAllowedOrigins: corsAllowedOrigins,
+        corsAllowedMethods: corsAllowedMethods,
+        corsAllowedHeaders: corsAllowedHeaders,
+        urlParameterMapping: urlParameterMapping,
+      );
 
   @override
   String toString() =>

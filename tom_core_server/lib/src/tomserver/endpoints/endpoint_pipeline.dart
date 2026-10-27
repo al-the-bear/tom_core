@@ -11,6 +11,7 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 import '../audit/audit_record.dart';
 import '../datasources/read_replicas.dart';
 import '../audit/audit_trail.dart';
+import '../little_things/error_response.dart';
 import '../little_things/server_exception.dart';
 import '../server/server.dart';
 import '../transactions/transaction_manager.dart';
@@ -1030,6 +1031,13 @@ class TomEndpointHandler {
   /// A WebSocket endpoint takes the sibling path, [handleWebSocketCall], which
   /// shares the first two stages and replaces the rest with a socket lifetime.
   Future<Response> handleMethodCall(Request req) {
+    // An API answering its errors as problem+json says so on the request every
+    // error handler of this endpoint receives — see tomWantsProblemJson.
+    if (metadata.problemJson) {
+      req = req.change(
+        context: {...req.context, tomProblemJsonContextKey: true},
+      );
+    }
     // The current transaction is scoped to the flow that opened it, and the
     // server's authentication middleware normally establishes that scope for the
     // whole request. That middleware is replaceable
@@ -2143,7 +2151,18 @@ class TomEndpointRouting {
             // errorHandler / logRequestsDefault for anything it does not
             // override. For an inline TomEndpoint, `ai` is null and the class
             // annotation is ignored.
-            final TomEndpoint tep = tepTag!.convertToTomEndpoint(ai);
+            TomEndpoint tep = tepTag!.convertToTomEndpoint(ai);
+            // The class-level service annotation (`@TomService`, or the
+            // `@TomApiImplementation` that extends it) carries the API-wide
+            // version and error format. A registry endpoint is versioned by its
+            // `TomApi` — already in `tep.uri` through `TomApiEndpoint.path` — so
+            // only an inline endpoint takes the service's version segment.
+            final service = _serviceAnnotationOf(classMirror);
+            if (aei == null) {
+              tep = tep.withUri(
+                versionedUri(tep.uri, service, classMirror.simpleName),
+              );
+            }
             // C-12 / G-API-3: a handler-side `TomAccessControl` annotation (`tea`)
             // is a local override and wins; otherwise the endpoint's
             // contract-declared policy (`ae.access`, from the registry entry) is
@@ -2167,6 +2186,7 @@ class TomEndpointRouting {
                 apiEndpoint: ae,
                 api: a,
                 apiImplementation: ai,
+                problemJson: service?.problemJson ?? false,
               ),
             );
             continue nextDeclaration;
@@ -2175,6 +2195,39 @@ class TomEndpointRouting {
       }
     }
     return methodMetadata;
+  }
+
+  /// [uri] of an inline endpoint of the service [serviceName], under the
+  /// `/v<version>` segment its [service] annotation declares; [uri] itself for
+  /// an unversioned service.
+  ///
+  /// Throws `endpoint_pipeline.get_class_method_metadata.invalid_api_version`
+  /// for a version below 1. A registry API is versioned by `TomApi.version`,
+  /// whose route already carries it, so this is for inline endpoints only.
+  static String versionedUri(
+    String uri,
+    TomService? service,
+    String serviceName,
+  ) {
+    final version = service?.version;
+    if (version == null) return uri;
+    if (version < 1) {
+      throw TomEndpointPipelineException(
+        "endpoint_pipeline.get_class_method_metadata.invalid_api_version",
+        "$serviceName declares version $version; a version is 1 or higher.",
+        parameters: {'service': serviceName, 'version': version},
+      );
+    }
+    return '/v$version$uri';
+  }
+
+  /// The class-level [TomService] of [classMirror] — a `@TomService` or the
+  /// `@TomApiImplementation` that extends it — or `null`.
+  static TomService? _serviceAnnotationOf(ClassMirror classMirror) {
+    for (final annotation in classMirror.metadata) {
+      if (annotation is TomService) return annotation;
+    }
+    return null;
   }
 
   /// Fallback resolution for an interface-based service: finds a component
@@ -2293,6 +2346,10 @@ class TomMethodMetadata {
   /// The resolved remote-API endpoint, for registry-based endpoints.
   TomApiEndpoint? apiEndpoint;
 
+  /// Whether the endpoint answers its errors as RFC 9457 problem documents
+  /// whatever the request asks for — its service's `problemJson`.
+  bool problemJson;
+
   /// Bundles the metadata for one endpoint method.
   TomMethodMetadata({
     required this.endpoint,
@@ -2306,6 +2363,7 @@ class TomMethodMetadata {
     this.apiImplementation,
     this.api,
     this.apiEndpoint,
+    this.problemJson = false,
   });
 }
 

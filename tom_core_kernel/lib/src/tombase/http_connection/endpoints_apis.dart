@@ -180,6 +180,19 @@ class TomApi {
   /// Base URI path for all endpoints in this API.
   final String? uri;
 
+  /// The major version of this API, or `null` for an unversioned one.
+  ///
+  /// A versioned API is served under a `/v<version>` path segment ahead of
+  /// [uri] — see [path] — so two versions of one API are two APIs, mounted side
+  /// by side, each with its own endpoints. A path segment rather than a header
+  /// or a media type, because it is what a log line, a cache key and an
+  /// OpenAPI document all show.
+  final int? version;
+
+  /// The path every endpoint of this API is served under: `/v<version>` when
+  /// the API is versioned, then [uri].
+  String get path => '${version == null ? '' : '/v$version'}${uri ?? ''}';
+
   /// Default encoding for request bodies.
   final Encoding? requestEncoding;
 
@@ -200,11 +213,18 @@ class TomApi {
     this.name,
     this.description,
     this.uri,
+    this.version,
     required List<TomApiEndpoint> endpoints,
     this.requestEncoding,
     this.responseEncoding,
     this.statusCodeResponseTypes,
   }) {
+    if (version != null && version! < 1) {
+      throw TomEndpointException(
+        'apis.version.invalid',
+        "API '$id' declares version $version; a version is 1 or higher.",
+      );
+    }
     for (var endpoint in endpoints) {
       this.endpoints[endpoint.id] = endpoint;
       endpoint._api = this;
@@ -455,7 +475,7 @@ class TomApiEndpoint<ReturnType, RequestType> {
   /// Throws [TomEndpointException] when the endpoint has no parent API, or when
   /// a path capture has no answering parameter.
   Uri resolveUri(Uri baseUri, {Map<String, Object?> parameters = const {}}) {
-    final template = '${api.uri ?? ''}${uri ?? ''}';
+    final template = path;
     // The *fields* the path already carries, not the URL names that spelled
     // them: capture-wins is a rule about the value, so a second URL name for an
     // already-captured field must not re-emit it as a query parameter.
@@ -519,4 +539,8 @@ class TomApiEndpoint<ReturnType, RequestType> {
     }
     return _api!;
   }
+
+  /// The route this endpoint is served at: its API's [TomApi.path], then
+  /// [uri]. Throws like [api] when the endpoint has no parent API.
+  String get path => '${api.path}${uri ?? ''}';
 }

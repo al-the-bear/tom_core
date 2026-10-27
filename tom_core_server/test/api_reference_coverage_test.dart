@@ -8141,6 +8141,7 @@ class After {}
           'apiImplementation',
           'api',
           'apiEndpoint',
+          'problemJson',
         ],
       );
       final metadata = _classSections.singleWhere(
@@ -9812,11 +9813,11 @@ _ServerLimitations _serverLimitationsOf(List<String> lines) {
   final joined = lines.join('\n');
 
   return (
-    // The default handler is a field initialiser, and `internalServerError` is
-    // the constructor that fixes the status at 500. A handler that chose one
-    // would call `Response(status, ...)` instead.
+    // The default handler is a field initialiser that hands its status to
+    // `tomErrorResponse` as a literal 500. A handler that chose one would pass
+    // a status it computed instead.
     defaultErrorHandlerAlwaysFails: joined.contains(
-      'return Response.internalServerError(',
+      'tomErrorResponse(error, status: 500, request: request)',
     ),
   );
 }

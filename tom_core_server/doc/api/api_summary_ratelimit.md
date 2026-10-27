@@ -276,7 +276,7 @@ TomRateLimits({
 | `bucketOf` | `String? bucketOf(TomRateLimitRule rule, Request request)` | The counter key of `request` under `rule` — `<rule>\|<tenant>/<username>` for `principal`, `<rule>\|<keyId>` for `apiKey`, `<rule>\|<address>` for `address` — or `null` when the rule does not count it. Reads the principal and `TomApiKeyIdentity` from the request zone. |
 | `check` | `Future<(TomRateLimitDecision?, TomRateLimitRule?)> check(Request request)` | Counts `request` against every rule that covers it, in order: the refusal of the first rule it exceeds, or, when none refuses, the decision with the fewest requests remaining. `(null, null)` when no rule counted it. |
 | `headersOf` | `static Map<String, String> headersOf(TomRateLimitDecision decision)` | The `RateLimit-Limit`, `RateLimit-Remaining` and `RateLimit-Reset` headers describing `decision`; the reset in whole seconds, at least one. |
-| `tooManyRequests` | `static Response tooManyRequests(TomRateLimitDecision decision, TomRateLimitRule rule)` | The `429` refusing a request: the error envelope of `rate_limit.exceeded` (`clientThrow: true`), with `Retry-After` and the `RateLimit-*` headers. |
+| `tooManyRequests` | `static Response tooManyRequests(TomRateLimitDecision decision, TomRateLimitRule rule, [Request? request])` | The `429` refusing a request: `rate_limit.exceeded` (`clientThrow: true`) in the error format `request` asks for (`tomErrorResponse` — the envelope, or a problem document for an `Accept` naming `application/problem+json`), with `Retry-After` and the `RateLimit-*` headers. Without a request it is the envelope. |
 
 ### TomSqlRateLimiter
 
@@ -354,7 +354,7 @@ What a rule counts requests by.
 
 | Name | Signature | Description |
 | ---- | --------- | ----------- |
-| `tomRateLimitMiddleware` | `Middleware tomRateLimitMiddleware()` | The rate-limiting middleware `TomServer` installs inside the authentication middleware, where the principal and the API key are in the zone. A no-op while no limits are installed and for an `OPTIONS` request. A refused request is answered with `TomRateLimits.tooManyRequests` and logged at info level with the rule's name; an admitted one runs and its response gains `TomRateLimits.headersOf` the tightest decision. |
+| `tomRateLimitMiddleware` | `Middleware tomRateLimitMiddleware()` | The rate-limiting middleware `TomServer` installs inside the authentication middleware, where the principal and the API key are in the zone. A no-op while no limits are installed and for an `OPTIONS` request. A refused request is answered with `TomRateLimits.tooManyRequests`, passed the request so the refusal takes the error format it asks for, and logged at info level with the rule's name; an admitted one runs and its response gains `TomRateLimits.headersOf` the tightest decision. |
 | `tomRateLimitRefusalsMetric` | `const String` | `'tom_rate_limit_refusals'` — the counter `tomRateLimitMiddleware` adds one to for every refused request, labelled `rule` (the refusing rule's name) and `tenant`. See [metrics.md](../metrics.md#caches-and-rate-limits). |
 | `tomNoTenantLabel` | `const String` | `'none'` — the `tenant` label of a series recorded outside any tenant's context. |
 | `defaultRateLimitTable` | `const String` | `'tom_rate_limit'` — the counter table's default name. |

@@ -12,12 +12,12 @@
 /// is the same on every node, and is what a client generator reads anyway.
 library;
 
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:shelf/shelf.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../little_things/error_response.dart';
 import '../little_things/server_exception.dart';
 import 'endpoint_annotation.dart';
 
@@ -87,10 +87,9 @@ class TomOpenApiServer implements TomOpenApiService {
     );
   }
 
-  static Response _notFound(String key, String message) => Response.notFound(
-    jsonEncode(
-      tomErrorEnvelope(TomServerException(key, message, clientThrow: true)),
-    ),
-    headers: {'content-type': TomMimeType.json.toHeaderValue()},
+  static Response _notFound(String key, String message) => tomErrorResponse(
+    TomServerException(key, message, clientThrow: true),
+    status: 404,
+    request: getFromCurrentZone<Request>(),
   );
 }

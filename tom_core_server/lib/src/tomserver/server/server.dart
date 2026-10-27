@@ -10,6 +10,7 @@ import '../authentication/api_keys.dart';
 import '../authentication/jwt_signing.dart';
 import '../authentication/server_self_login.dart';
 import '../little_things/server_exception.dart';
+import '../little_things/error_response.dart';
 import '../configuration/base_server_configuration.dart';
 import '../configuration/runtime_environment.dart';
 import '../endpoints/endpoint_pipeline.dart';
@@ -621,9 +622,11 @@ class TomServer {
   /// Maps a thrown error to a JSON error response (HTTP 500).
   ///
   /// The body is [tomErrorEnvelope] — the package's single definition of the
-  /// wire error shape, which this handler renders and does not define. Every
-  /// response carries the `x-tom-error: true` header and declares
-  /// `application/json`. Overridden by
+  /// wire error shape, which this handler renders and does not define — or,
+  /// for a request whose `Accept` names `application/problem+json`, the same
+  /// fields as an RFC 9457 problem document ([tomErrorResponse]). Every
+  /// response carries the `x-tom-error: true` header and declares its media
+  /// type. Overridden by
   /// `TomBaseServerConfiguration.errorHandler` when provided.
   ///
   /// It carries **no message**, which is also what makes it safe: the envelope
@@ -633,20 +636,12 @@ class TomServer {
   /// avoids, and must read it through [TomServerException.clientMessage] rather
   /// than from the field — `clientThrow` binds the value, not the handler.
   Response? Function(Request, Object, StackTrace) errorHandler =
-      (request, error, stacktrace) {
-        // The media type is part of the contract, not decoration: the body is
-        // an envelope a client is expected to decode and branch on, so it has
-        // to be declared as one. Shelf adds no default here, and an undeclared
-        // body leaves a client with only `x-tom-error` to guess from.
-        Map<String, String> headers = {
-          "x-tom-error": "true",
-          TomHeader.contentType: TomMimeType.json.toHeaderValue(),
-        };
-        return Response.internalServerError(
-          body: jsonEncode(tomErrorEnvelope(error)),
-          headers: headers,
-        );
-      };
+      (request, error, stacktrace) =>
+          // The media type is part of the contract, not decoration: the body
+          // is an envelope (or, when the caller asked for one, a problem
+          // document) a client is expected to decode and branch on, so it is
+          // declared as one — see tomErrorResponse.
+          tomErrorResponse(error, status: 500, request: request);
 
   /// Error handler applied by the outer pipeline layer (authentication phase).
   ///

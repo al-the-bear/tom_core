@@ -17,7 +17,7 @@ every outgoing call runs under.
 | `TomHttpMethod` | Typed HTTP verbs — `TomHttpMethod.get`, `.post`, `.put`, `.delete`, … |
 | `TomHeader` | A typed HTTP header. |
 | `TomMimeType` / `StaticFileMimetypeMapping` | MIME type values and extension→type mapping. |
-| `TomRemoteApis` / `TomApi` / `TomApiEndpoint` | Declarative API + endpoint descriptors. `TomApiEndpoint.resolveUri` builds a call's address from the declaration, so a client names no URI of its own. |
+| `TomRemoteApis` / `TomApi` / `TomApiEndpoint` | Declarative API + endpoint descriptors. `TomApi.version` puts an API under a `/v<version>` path segment (`TomApi.path`, `TomApiEndpoint.path`); `TomApiEndpoint.resolveUri` builds a call's address from the declaration, so a client names no URI of its own. |
 | `TomServerCall` / `TomServerCallSpecs` / `TomServerCallLoad` / `TomServerCallError` | A remote call, its spec, payload, and error. `TomServerCallSpecs.timeout` (also declarable per `TomApiEndpoint`) bounds the exchange; without one a call waits indefinitely. |
 | `TomRequestAbortedException` / `TomRequestTimeoutException` | Why a call ended early — cancelled by this application, or unanswered past its deadline. Kept as siblings rather than as a subtype, because only the second is worth retrying. |
 | `TomServerChannel` / `TomServerEndpoint` | Channel and endpoint abstractions. `TomServerEndpoint.createApiServerEndpoint` turns a declaration into a callable endpoint, resolving its address through `resolveUri` — so the declarative half of the contract is reachable through the factory, not only by hand. |

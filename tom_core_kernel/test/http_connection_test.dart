@@ -1390,6 +1390,37 @@ void main() {
         ],
       );
 
+      test('a versioned API is served under its /v<version> segment', () {
+        final v2 = TomApi(
+          id: 'orders-v2',
+          uri: '/orders',
+          version: 2,
+          endpoints: [
+            TomApiEndpoint(id: 'list', uri: '/all', method: TomHttpMethod.get),
+          ],
+        );
+        expect(v2.path, '/v2/orders');
+        expect(v2['list'].path, '/v2/orders/all');
+        expect(
+          v2['list']
+              .resolveUri(Uri.parse('https://api.example.com'))
+              .toString(),
+          'https://api.example.com/v2/orders/all',
+        );
+        // Unversioned, the path is the URI as declared.
+        expect(itemsApi().path, '/api/items');
+        expect(
+          () => TomApi(id: 'bad', version: 0, endpoints: const []),
+          throwsA(
+            isA<TomEndpointException>().having(
+              (e) => e.key,
+              'key',
+              'apis.version.invalid',
+            ),
+          ),
+        );
+      });
+
       test('joins the API base, the endpoint path and the host base', () {
         final endpoint = endpointIn(itemsApi(endpointUri: ''), 'byId');
 

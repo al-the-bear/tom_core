@@ -223,9 +223,11 @@ const TomErrorHandler()
 
 ### TomStatusMappingErrorHandler
 
-A `TomErrorHandler` that answers with the framework's error envelope
-(`tomErrorEnvelope` under `x-tom-error: true`, declared `application/json`) and
-with the status an error key is declared to mean. A subclass overrides
+A `TomErrorHandler` that answers with the framework's error response
+(`tomErrorResponse`: the `tomErrorEnvelope` declared `application/json`, or the
+RFC 9457 problem document declared `application/problem+json` when the request
+asks for one, always under `x-tom-error: true`) and with the status an error key
+is declared to mean. A subclass overrides
 `statusByErrorKey`; every key it does not name is a `500`. It maps no status of
 its own — the framework cannot know an application's keys, and the two
 classifications it does make are made elsewhere and differently (an access
@@ -251,7 +253,7 @@ const TomStatusMappingErrorHandler()
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `statusFor` | `int statusFor(Object error)` | The status `error` answers with: `statusByErrorKey`'s entry for a `TomException`'s key, else `500`. Overridable for a rule a map cannot express — a whole key family, say — calling `super.statusFor(error)` for the rest. |
-| `handleErrorDefault` | `Response handleErrorDefault(Object error, StackTrace stacktrace, Request r, Object? result)` | *(override)* The envelope at `statusFor(error)`. |
+| `handleErrorDefault` | `Response handleErrorDefault(Object error, StackTrace stacktrace, Request r, Object? result)` | *(override)* `tomErrorResponse(error, status: statusFor(error), request: r)` — the envelope, or the problem document the request asks for, at `statusFor(error)`. |
 
 ### TomDefaultErrorHandler
 
@@ -273,18 +275,38 @@ Class-level annotation marking a class as a service whose endpoint-annotated
 methods should be scanned and routed. Applied via the `tomService` constant. A
 class may be a `@tomService` *or* a `TomApiImplementation`, never both.
 
+`@TomService(version: 2)` serves every inline endpoint of the service under a
+`/v2` path segment ahead of its declared URI, so `@TomEndpoint(uri: '/orders')`
+answers at `/v2/orders`. Two versions of one API are two services mounted side
+by side; an unversioned service keeps its URIs as declared. A version below 1 —
+or any version on a `TomApiImplementation`, whose version is its
+`TomApi.version` — is refused at scan time with
+`endpoint_pipeline.get_class_method_metadata.invalid_api_version`.
+`problemJson: true` answers the errors of the service's endpoints as RFC 9457
+problem documents whatever the request's `Accept` says (see
+[`tomErrorResponse`](api_summary_little_things.md#tomerrorresponse)).
+
 #### Constructors
 
 ```dart
-const TomService()
+const TomService({int? version, bool problemJson = false})
 ```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `version` | `int?` | The major version the service's inline endpoints are served under, as a `/v<version>` path segment; `null` for none. 1 or higher. |
+| `problemJson` | `bool` | Whether the errors of the service's endpoints are always problem documents. |
 
 ### TomApiImplementation
 
 Class-level annotation marking a class as the implementation of a remote API (an
 API defined in the `tomRemoteApis` registry, keyed by `apiId`). Supplies the
 API-wide `errorHandler` and `logRequestsDefault` used when an endpoint does not
-override them.
+override them, and `problemJson` as for `TomService`. Its version is the API's
+own, `TomApi.version`, already part of every registry endpoint's
+`TomApiEndpoint.path`; the inherited `version` stays `null`.
 
 - **Extends:** `TomService`
 
@@ -295,6 +317,7 @@ const TomApiImplementation({
   required String apiId,
   TomErrorHandler? errorHandler,
   bool logRequestsDefault = true,
+  bool problemJson = false,
 })
 ```
 
@@ -360,7 +383,7 @@ const TomApiEndpointImplementation({
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `convertToTomEndpoint` | `TomEndpoint<requestType, resultType> convertToTomEndpoint([TomApiImplementation? apiImplementation])` | *(override)* Reads the registry entry and merges it with this annotation's overrides and the API-wide defaults into a `TomEndpoint`. The entry's `responseHeaders` become `TomEndpoint.headers`; its `requestHeaders` are a client-side instruction and are not read here. |
+| `convertToTomEndpoint` | `TomEndpoint<requestType, resultType> convertToTomEndpoint([TomApiImplementation? apiImplementation])` | *(override)* Reads the registry entry and merges it with this annotation's overrides and the API-wide defaults into a `TomEndpoint` mounted at the entry's `TomApiEndpoint.path` — the API's `/v<version>` segment when it is versioned, its `uri`, then the endpoint's. The entry's `responseHeaders` become `TomEndpoint.headers`; its `requestHeaders` are a client-side instruction and are not read here. |
 
 ### TomEndpoint&lt;requestType, resultType&gt;
 
@@ -417,6 +440,7 @@ const TomEndpoint({
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `convertToTomEndpoint` | `TomEndpoint<requestType, resultType> convertToTomEndpoint([TomApiImplementation? apiImplementation])` | *(override)* Returns `this`. |
+| `withUri` | `TomEndpoint<requestType, resultType> withUri(String uri)` | This endpoint mounted at `uri` instead, every other field kept — how a versioned `@TomService` places an inline endpoint under its `/v<version>` segment. |
 | `toString` | `String toString()` | *(override)* Compact description of the endpoint's route/mime/handler fields. |
 
 ### TomComponentReference
@@ -622,6 +646,7 @@ TomEndpointRouting()
 | ------ | --------- | ----------- |
 | `shelfRoutePath` | `static String shelfRoutePath(String uri)` | Translates a Tom route template (`{name}`) into the `shelf_router` path syntax (`<name>`). |
 | `resetRoutes` | `static void resetRoutes()` | Forgets every mounted route, so the next mount starts from an empty table. `initializeRouter` calls it, which is what makes `handlers` answer for the *last* run rather than every run since the process started. Public for a test that mounts routes directly, without a router; there is no other caller. |
+| `versionedUri` | `static String versionedUri(String uri, TomService? service, String serviceName)` | The route of an inline endpoint of `serviceName`: `uri` under the `/v<version>` segment its `TomService` declares, or `uri` itself for an unversioned service. Throws `endpoint_pipeline.get_class_method_metadata.invalid_api_version` for a version below 1. A registry API is versioned by `TomApi.version`, whose route already carries it. |
 
 #### Properties
 
@@ -665,6 +690,7 @@ TomMethodMetadata({
   TomApi? api,
   TomApiEndpoint? apiEndpoint,
   TomWebSocketEndpoint? webSocket,
+  bool problemJson = false,
 })
 ```
 
@@ -683,6 +709,7 @@ TomMethodMetadata({
 | `apiImplementation` | `TomApiImplementation?` | The class's `@TomApiImplementation` tag, for registry-based endpoints. |
 | `api` | `TomApi?` | The resolved remote API, for registry-based endpoints. |
 | `apiEndpoint` | `TomApiEndpoint?` | The resolved remote-API endpoint, for registry-based endpoints. |
+| `problemJson` | `bool` | Whether the endpoint answers its errors as RFC 9457 problem documents whatever the request asks for — its service's `problemJson`. `TomEndpointHandler.handleMethodCall` then puts `tomProblemJsonContextKey: true` on the request context every error handler of the endpoint receives. |
 
 ### TomClassScanResult
 
@@ -1124,7 +1151,8 @@ The `TomOpenApiService` implementation: serves the file
 The file is read on every request rather than cached: it is small, it is
 replaced by a deployment rather than at run time, and a cached copy would go on
 serving a document the deployment had already replaced. Both refusals are a
-`404` carrying the framework error envelope — `openapi.document.not_served`
+`404` built by `tomErrorResponse` — the framework error envelope, or a problem
+document for a request that asks for one — `openapi.document.not_served`
 when no path is configured, `openapi.document.missing` (with a logged warning)
 when the configured path names no file.
 

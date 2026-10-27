@@ -20,10 +20,10 @@ replicas.
 | Type | Responsibility |
 | ---- | -------------- |
 | `TomEndpoint` | The method annotation: `methods`, `uri`, `formFields`, `consumes`/`produces`, `headers` (response direction only), CORS, `errorHandler`. |
-| `tomService` (`TomService`) · `TomApiImplementation` | Class **annotations**, not base classes — nothing is subclassed. `@tomService` marks a class whose `@TomEndpoint` methods *are* the declaration; `@TomApiImplementation(apiId: …)` marks a class serving an API declared in the `tomRemoteApis` registry. The scan reads a class's own metadata and never its supertypes, so an annotation is the only thing that puts a class on the route table. |
+| `tomService` (`TomService`) · `TomApiImplementation` | Class **annotations**, not base classes — nothing is subclassed. `@tomService` marks a class whose `@TomEndpoint` methods *are* the declaration; `@TomApiImplementation(apiId: …)` marks a class serving an API declared in the `tomRemoteApis` registry. The scan reads a class's own metadata and never its supertypes, so an annotation is the only thing that puts a class on the route table. `@TomService(version: 2)` serves the service's inline endpoints under a `/v2` segment ahead of their URIs, so two versions of an API are two services mounted side by side (a registry API is versioned by `TomApi.version` instead); `problemJson: true` answers the errors of its endpoints as RFC 9457 problem documents whatever the request asks for. |
 | `TomEndpointRouting` | Scans annotations and assembles the request router; `TomEndpointRoutingInfo` (keyed by `TomEndpointRouteKey` — route *and* method) / `TomClassScanResult` / `TomMethodMetadata` hold the scan results. |
 | `TomEndpointHandler` | Runs one request through the decode/authorize/invoke/encode pipeline. |
-| `TomErrorHandler` · `TomDefaultErrorHandler` | Map a thrown error to a response. |
+| `TomErrorHandler` · `TomDefaultErrorHandler` | Map a thrown error to a response — through `tomErrorResponse` (little_things), so the body is the error envelope, or a problem document for a request whose `Accept` names `application/problem+json`. |
 | `TomTransactional` | Annotation that runs the call inside a `TomTransaction`. |
 | `TomRedirect` | Returned from an endpoint to answer with a 3xx and a `Location` rather than a body — the one result type that is not the endpoint's own return value encoded. |
 | `TomMultipartForm` · `TomFormFile` · `tomConsumesForm` | HTML form bodies, both `multipart/form-data` and URL-encoded, decoded into the parameters an endpoint declares. A `TomFormFile` streams: `openRead()`, never a whole buffer. |
@@ -111,7 +111,8 @@ them and the scan can see their annotations.
 `test/endpoints_test.dart` covers the route table,
 `test/endpoints_pipeline_test.dart` serves it over a real socket,
 `test/endpoints_transport_test.dart` the transport and
-`test/endpoints_serialization_roundtrip_test.dart` the wire shapes;
+`test/endpoints_serialization_roundtrip_test.dart` the wire shapes,
+`test/api_versioning_test.dart` versioned services and the two error formats;
 `test/examples_test.dart` runs the example. Idempotency keys are described in
 [`doc/endpoints.md`](../../../../doc/endpoints.md#idempotency-keys), shown by
 `example/endpoints/idempotency_example.dart` and covered by

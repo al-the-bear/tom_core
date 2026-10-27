@@ -3317,3 +3317,73 @@ class FixtureRelatedTag {
   )
   List<FixtureTag> related = [];
 }
+
+/// Version 1 of an orders API, served under `/v1` — see
+/// `api_versioning_test.dart`, which mounts it beside [FixtureOrdersV2].
+@tomReflector
+@TomService(version: 1)
+abstract class FixtureOrdersV1 {
+  /// The orders of version 1.
+  @TomPublicAccess()
+  @TomEndpoint(uri: '/fixture/orders')
+  Future<Map<String, Object>> orders();
+
+  /// An endpoint that always fails with a keyed, client-visible error.
+  @TomPublicAccess()
+  @TomEndpoint(uri: '/fixture/orders/failing')
+  Future<Map<String, Object>> failing();
+}
+
+/// The implementation of [FixtureOrdersV1].
+@tomReflector
+@tomComponent
+class FixtureOrdersV1Server implements FixtureOrdersV1 {
+  @override
+  Future<Map<String, Object>> orders() async => {
+    'version': 1,
+    'orders': ['A-1'],
+  };
+
+  @override
+  Future<Map<String, Object>> failing() async => throw TomServerException(
+    'fixture.orders.failed',
+    'The orders could not be read.',
+    clientThrow: true,
+  );
+}
+
+/// Version 2 of the orders API, served under `/v2` beside [FixtureOrdersV1],
+/// and answering its errors as problem+json whatever the request asks for.
+@tomReflector
+@TomService(version: 2, problemJson: true)
+abstract class FixtureOrdersV2 {
+  /// The orders of version 2, in a different shape.
+  @TomPublicAccess()
+  @TomEndpoint(uri: '/fixture/orders')
+  Future<Map<String, Object>> orders();
+
+  /// An endpoint that always fails with a keyed, client-visible error.
+  @TomPublicAccess()
+  @TomEndpoint(uri: '/fixture/orders/failing')
+  Future<Map<String, Object>> failing();
+}
+
+/// The implementation of [FixtureOrdersV2].
+@tomReflector
+@tomComponent
+class FixtureOrdersV2Server implements FixtureOrdersV2 {
+  @override
+  Future<Map<String, Object>> orders() async => {
+    'version': 2,
+    'items': [
+      {'id': 'A-1'},
+    ],
+  };
+
+  @override
+  Future<Map<String, Object>> failing() async => throw TomServerException(
+    'fixture.orders.failed',
+    'The orders could not be read.',
+    clientThrow: true,
+  );
+}

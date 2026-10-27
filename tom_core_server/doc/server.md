@@ -510,9 +510,11 @@ multi-tenant deployment has to establish the tenant the same way.
 
 ## Error Mapping
 
-`TomServer.errorHandler` turns a thrown error into an HTTP 500 JSON response
-carrying the `x-tom-error: true` header and
-`Content-Type: application/json;charset=UTF-8`. Provide
+`TomServer.errorHandler` turns a thrown error into an HTTP 500 response
+carrying the `x-tom-error: true` header, built by `tomErrorResponse`: the error
+envelope declared `Content-Type: application/json;charset=UTF-8`, or — for a
+request whose `Accept` names `application/problem+json` — the same fields as an
+RFC 9457 problem document declared `application/problem+json`. Provide
 `TomBaseServerConfiguration.errorHandler` / `authenticationErrorHandler` to
 override the mapping.
 
@@ -523,9 +525,10 @@ includes `errorType`; a `TomException` additionally contributes `errorKey`,
 `clientThrow`. The builder lives in `little_things`, beside the exception base
 that decides that last field; see [little_things.md](little_things.md#the-error-envelope)
 for what each field means and why one is absent rather than null when the error
-does not carry it.
+does not carry it, and [little_things.md](little_things.md#the-problem-document) for the
+problem document and the rule choosing between the two.
 
-Every other JSON-envelope handler in the package calls the same builder —
+Every other error handler in the package calls the same builders —
 including `TomUserPreferencesErrorHandler`, whose translated `404`/`400` carry
 the same fields, the same header and the same media type. A handler that
 translates a status chooses the *status*, not the shape. A body a client is
@@ -903,7 +906,8 @@ somewhere other than the call site.
   endpoint pipeline's fallback, answers `500` too. Choosing the status is a
   handler's job, and `TomUserPreferencesErrorHandler` is the worked example — an
   `errorKey`-to-status map, the same `tomErrorEnvelope` body, and only the
-  *status* contributed. See [Error Mapping](#error-mapping).
+  *status* contributed. A problem document does not lift this: its `status`
+  member and `title` repeat the `500`. See [Error Mapping](#error-mapping).
   <!-- pinned: test/api_reference_coverage_test.dart › the server guide's Not Yet Implemented section matches the module -->
 
 `extractAuthentication` reports every way a credential can fail — by a named

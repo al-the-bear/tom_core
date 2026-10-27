@@ -31,7 +31,6 @@
 /// `TomSqlRateLimiter`, which counts in a table every node shares.
 library;
 
-import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
@@ -42,6 +41,7 @@ import '../authentication/api_keys.dart';
 import '../configuration/base_server_configuration.dart';
 import '../datasources/datasource_initialization.dart';
 import '../little_things/server_exception.dart';
+import '../little_things/error_response.dart';
 import 'sql_rate_limiter.dart';
 
 /// A failure of rate limiting or its configuration, keyed
@@ -504,25 +504,23 @@ class TomRateLimits {
         '${max(1, (decision.reset.inMilliseconds / 1000).ceil())}',
   };
 
-  /// The `429` refusing a request [rule] does not admit.
+  /// The `429` refusing a request [rule] does not admit, in the error format
+  /// [request] asks for ([tomErrorResponse]).
   static Response tooManyRequests(
     TomRateLimitDecision decision,
-    TomRateLimitRule rule,
-  ) => Response(
-    429,
-    body: jsonEncode(
-      tomErrorEnvelope(
-        TomRateLimitException(
-          'rate_limit.exceeded',
-          'Too many requests; try again in ${decision.retryAfterSeconds} '
-              'seconds.',
-          parameters: {'rule': rule.name},
-          clientThrow: true,
-        ),
-      ),
+    TomRateLimitRule rule, [
+    Request? request,
+  ]) => tomErrorResponse(
+    TomRateLimitException(
+      'rate_limit.exceeded',
+      'Too many requests; try again in ${decision.retryAfterSeconds} '
+          'seconds.',
+      parameters: {'rule': rule.name},
+      clientThrow: true,
     ),
+    status: 429,
+    request: request,
     headers: {
-      TomHeader.contentType: TomMimeType.json.toHeaderValue(),
       'Retry-After': '${decision.retryAfterSeconds}',
       ...headersOf(decision),
     },
@@ -565,7 +563,7 @@ Middleware tomRateLimitMiddleware() =>
           '${request.requestedUri.path}; retry after '
           '${decision.retryAfterSeconds}s.',
         );
-        return TomRateLimits.tooManyRequests(decision, rule);
+        return TomRateLimits.tooManyRequests(decision, rule, request);
       }
       final response = await innerHandler(request);
       return response.change(headers: TomRateLimits.headersOf(decision));

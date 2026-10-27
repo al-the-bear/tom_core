@@ -12,6 +12,7 @@ The HTTP Connection module provides a comprehensive infrastructure for making HT
 - [Core Components](#core-components)
   - [TomRemoteApis](#tomremoteapis)
   - [TomApi](#tomapi)
+    - [Versioning an API](#versioning-an-api)
   - [TomApiEndpoint](#tomapiendpoint)
   - [TomHttpMethod](#tomhttpmethod)
   - [TomMimeType](#tommimetype)
@@ -230,6 +231,40 @@ final api = TomApi(
 );
 ```
 
+#### Versioning an API
+
+`version` gives an API a major version, carried as a path segment ahead of its
+`uri`: `TomApi.path` is `/v<version>` followed by `uri`, and every endpoint's
+`TomApiEndpoint.path` — its API's `path`, then its own `uri` — starts with it.
+`resolveUri` builds a client's address from `path`, and the server mounts the
+registry endpoint at the same value, so both ends move to a new version by
+editing one declaration.
+
+```dart
+final ordersV2 = TomApi(
+  id: 'orders.v2',
+  uri: '/orders',
+  version: 2,
+  endpoints: [
+    TomApiEndpoint<OrderResponse, void>(
+      id: 'list',
+      uri: '/list',
+      method: TomHttpMethod.get,
+    ),
+  ],
+);
+
+ordersV2.path;          // /v2/orders
+ordersV2['list'].path;  // /v2/orders/list
+```
+
+Two versions of one API are two `TomApi`s, each with its own id and endpoints,
+registered side by side; an API without a `version` has `path == uri`. A version
+is 1 or higher: `TomApi(version: 0, ...)` throws `TomEndpointException` with
+`apis.version.invalid` at construction. A path segment rather than a header or a
+media type, because it is what a log line, a cache key and an OpenAPI document
+all show.
+
 ### TomApiEndpoint
 
 Defines a single API endpoint with full configuration:
@@ -353,8 +388,9 @@ final endpoint = TomServerEndpoint.createApiServerEndpoint<
 //   https://api.example.com/api/v1/users/42?include_deleted=true
 ```
 
-The template both sides resolve, `(api.uri ?? '') + (uri ?? '')`, is the same
-expression the server pipeline mounts the route from — so client and server
+The template both sides resolve, `TomApiEndpoint.path` — the API's `path`
+(`/v<version>` when it is versioned, then its `uri`) followed by the endpoint's
+`uri` — is the same value the server pipeline mounts the route from — so client and server
 addresses are two readings of one declaration rather than two spellings that
 have to be kept in step.
 

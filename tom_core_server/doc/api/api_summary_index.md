@@ -22,7 +22,7 @@ surface documented here.
 | File Storage | [api_summary_file_storage.md](api_summary_file_storage.md) | Streaming blob storage: one put/get contract over memory, directory, database and S3 backends, and a deduplicating store with a per-owner quota in front of any of them. |
 | Health Check | [api_summary_healthcheck.md](api_summary_healthcheck.md) | Health analyzer and health-check service/server — process-wide or per instance, with cooperative cancellation of a timed-out analysis — and the framework readiness checks `/ready` answers with by default — or `503 shutting down` once a graceful shutdown has begun. |
 | Item Authorization | [api_summary_item_authorization.md](api_summary_item_authorization.md) | Item authorizations kept by an external authority: the port to it, a caching client for checks, accessible items and the user's sharing acts, and the row scope it feeds. |
-| Little Things | [api_summary_little_things.md](api_summary_little_things.md) | The server-side base exception `TomServerException`, the `TomLoginFailure` reason its login subclass carries — correlated with the kernel's request id — and `tomErrorEnvelope`, the wire shape every error response uses. |
+| Little Things | [api_summary_little_things.md](api_summary_little_things.md) | The server-side base exception `TomServerException`, the `TomLoginFailure` reason its login subclass carries — correlated with the kernel's request id — `tomErrorEnvelope`, the wire shape every error response uses, and `tomErrorResponse`, which answers it as the envelope or as an RFC 9457 problem document. |
 | Messaging | [api_summary_messaging.md](api_summary_messaging.md) | Channel-neutral messages, delivery transports (SMTP, HTTP SMS gateway and stand-ins), MIME encoding, the durable outbox, resource-keyed email and SMS, and the idempotent receiver (inbox) for consuming a broker's messages once. |
 | Metrics | [api_summary_metrics.md](api_summary_metrics.md) | The request series, the Prometheus scrape endpoint answered ahead of authentication, and the OTLP/HTTP transport and metrics exporter. |
 | Object Persistence | [api_summary_object_persistence.md](api_summary_object_persistence.md) | Persistence annotations, repositories, query builder, operators/expressions, subqueries and association filters, grouped queries and their aggregates, paging and sorting, file-reference columns, data scoping, column authorization, field-level encryption with its keys, rotation and re-encryption, and the entity lifecycle: soft delete, history tables, lifecycle hooks and change events. |
@@ -453,7 +453,7 @@ surface documented here.
 
 | Type | Kind | Description |
 | ---- | ---- | ----------- |
-| `TomService` | class | Service annotation (`@tomService`). |
+| `TomService` | class | Service annotation (`@tomService`, or `@TomService(version:, problemJson:)` for a versioned service or one answering problem+json). |
 | `tomService` | top-level | The `@tomService` const instance. |
 | `TomApiImplementation` | class | API-implementation annotation. |
 | `TomComponentReference` | class | Component-reference annotation. |
@@ -615,6 +615,12 @@ surface documented here.
 | ---- | ---- | ----------- |
 | `TomServerException` | class | Server-side base exception (extends `TomException`). |
 | `tomErrorEnvelope` | function | Renders any error into the package's wire error body — the shape every error response uses. |
+| `tomProblemJsonMediaType` | constant | `application/problem+json`, the media type of an RFC 9457 problem document. |
+| `tomProblemJsonContextKey` | constant | `tom.problemJson`, the request context key that answers an endpoint's errors as problem+json. |
+| `tomWantsProblemJson` | function | Whether a request is answered with a problem document (context key, or `Accept`). |
+| `tomProblemDetails` | function | An error as an RFC 9457 problem document: the envelope plus `type`, `title`, `status`, `instance`. |
+| `tomErrorResponse` | function | The error response in the format the request asks for — every framework error response is built here. |
+| `tomReasonPhrase` | function | The reason phrase of an HTTP status, a problem document's `title`. |
 
 ### Messaging (`lib/src/tomserver/messaging/`)
 
@@ -1391,6 +1397,7 @@ surface documented here.
 | `TomErasureReport` | Privacy |
 | `tomErrorEnvelope` | Little Things |
 | `TomErrorHandler` | Endpoints |
+| `tomErrorResponse` | Little Things |
 | `TomEventInstants` | Scheduling |
 | `TomExclusiveCanonicalizer` | Authentication |
 | `TomExists` | Object Persistence |
@@ -1612,6 +1619,9 @@ surface documented here.
 | `TomPrivacy` | Privacy |
 | `TomPrivacyException` | Privacy |
 | `tomProbePaths` | Server |
+| `tomProblemDetails` | Little Things |
+| `tomProblemJsonContextKey` | Little Things |
+| `tomProblemJsonMediaType` | Little Things |
 | `TomPushCredential` | Messaging |
 | `TomPushExchange` | Messaging |
 | `TomPushGatewayAnswer` | Messaging |
@@ -1635,6 +1645,7 @@ surface documented here.
 | `TomRateLimits` | Rate Limiting |
 | `TomRateLimitScope` | Rate Limiting |
 | `TomReadinessCheck` | Health Check |
+| `tomReasonPhrase` | Little Things |
 | `TomRecipient` | Messaging |
 | `TomRecipientKind` | Messaging |
 | `TomRecoveryReport` | Transactions |
@@ -1870,6 +1881,7 @@ surface documented here.
 | `TomUserTwoFactorEnrolmentRepository` | Authentication |
 | `tomVendorValueAt` | Messaging |
 | `TomVersion` | Object Persistence |
+| `tomWantsProblemJson` | Little Things |
 | `TomWebAuthn2FAService` | Authentication |
 | `TomWebAuthnRegisteredCredential` | Authentication |
 | `TomWebAuthnSoftwareAuthenticator` | Authentication |

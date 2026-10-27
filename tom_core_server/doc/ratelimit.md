@@ -294,8 +294,12 @@ RateLimit-Reset: 12
 ```
 
 The body is the framework error envelope (`tomErrorEnvelope`) of a
-`TomRateLimitException` keyed `rate_limit.exceeded`, with `clientThrow: true`.
-The envelope does not name the rule, so a caller learns when to come back and
+`TomRateLimitException` keyed `rate_limit.exceeded`, with `clientThrow: true` —
+or, for a request whose `Accept` names `application/problem+json`, the same
+fields as an RFC 9457 problem document (`"type":
+"urn:tom:error:rate_limit.exceeded", "title": "Too Many Requests", "status":
+429`) declared `application/problem+json`; `tomErrorResponse` picks the format.
+Neither body names the rule, so a caller learns when to come back and
 not which limit it met; the server's log names the rule. `Retry-After` is whole
 seconds and at least one.
 
@@ -438,13 +442,12 @@ runs it.
 
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
-| `dart:convert` | dart | `rate_limit.dart` | `jsonEncode`, the body of a `429` |
 | `dart:io` | dart | `rate_limit.dart` | `HttpConnectionInfo`, the socket peer shelf's adapter records |
 | `dart:math` | dart | `rate_limit.dart` | `max`, for the remaining count and the whole-second headers |
 | `shelf` | package | `rate_limit.dart` | `Request`, `Response` and `Middleware` |
-| `tom_core_kernel` | package | every file | `getFromCurrentZone`, `TomPrincipal`, `tomLog`, `TomHeader`, `TomMimeType` and `tomReflector` |
+| `tom_core_kernel` | package | every file | `getFromCurrentZone`, `TomPrincipal`, `tomLog` and `tomReflector` |
 | [authentication](authentication.md) | module | `rate_limit.dart` | `TomApiKeyIdentity`, the key a request authenticated with |
 | [configuration](configuration.md) | module | `rate_limit.dart` | `TomServerConfigResourceProvider`, which `fromConfiguration` reads the `rateLimits` key from |
 | [datasources](datasources.md) | module | every file | `TomDataSourceInfo` (the `datasource` a configured `sql` limiter names), and `TomDataSource`, `TomFrameworkTable`, `TomSchemaProvisioning` and `TomLiteralSelect` for the shared counter table |
-| [little_things](little_things.md) | module | `rate_limit.dart` | `TomServerException`, the base of `TomRateLimitException`, and `tomErrorEnvelope`, the body of a `429` |
+| [little_things](little_things.md) | module | `rate_limit.dart` | `TomServerException`, the base of `TomRateLimitException`, and `tomErrorResponse`, which answers a `429` with the envelope or a problem document |
 | [object_persistence](object_persistence.md) | module | `sql_rate_limiter.dart` | `TomDbTable` and `TomDbColumn`, mapping `TomRateLimitRow` |

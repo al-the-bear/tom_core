@@ -4,8 +4,10 @@ The server-side base exception and the wire shape it is rendered into. This
 module contributes two types — `TomServerException`, which every other
 `tom_core_server` exception extends, and `TomLoginException`, the one subclass
 declared here rather than beside the module that raises it, with a closed-set
-`TomLoginFailure` reason (a kernel type) — plus one function,
-`tomErrorEnvelope`, which turns any error into the body a client receives. The
+`TomLoginFailure` reason (a kernel type) — plus `tomErrorEnvelope`, which turns
+any error into the body a client receives, and `tomErrorResponse`, which answers
+that body as the response — or, when the caller asks for one, the same fields as
+an RFC 9457 problem document. The
 request id the exception constructor recovers from the zone is the kernel's
 `TomRequestId` (see [Request Correlation](#request-correlation)).
 
@@ -23,6 +25,8 @@ request id the exception constructor recovers from the zone is the kernel's
   - [The five values, and the three that are missing](#the-five-values-and-the-three-that-are-missing)
   - [Consistency is enforced, not reviewed](#consistency-is-enforced-not-reviewed)
 - [The Error Envelope](#the-error-envelope)
+- [The Problem Document](#the-problem-document)
+  - [Which format a response takes](#which-format-a-response-takes)
 - [Not Yet Implemented](#not-yet-implemented)
 - [Verification](#verification)
 - [Core Components](#core-components)
@@ -37,6 +41,12 @@ request id the exception constructor recovers from the zone is the kernel's
 | `TomServerException` | class | Base class for all server-raised exceptions; extends the kernel's `TomException` |
 | `TomLoginException` | class | A failed login, raised by the authentication services; extends `TomServerException` and adds a `TomLoginFailure` reason |
 | `tomErrorEnvelope` | function | Renders any error into the package's wire error body — the shape every error response uses |
+| `tomErrorResponse` | function | The error response for an error and a status, in the format the request asks for — every framework error response is built here |
+| `tomProblemDetails` | function | An error as an RFC 9457 problem document: the envelope plus `type`, `title`, `status` and `instance` |
+| `tomWantsProblemJson` | function | Whether a request is answered with a problem document: the context key, or an `Accept` naming `application/problem+json` |
+| `tomReasonPhrase` | function | The reason phrase of an HTTP status — a problem document's `title` |
+| `tomProblemJsonMediaType` | const String | `application/problem+json` |
+| `tomProblemJsonContextKey` | const String | `tom.problemJson` — the request context key that answers an endpoint's errors as problem+json |
 
 The kernel already provides `TomException` (UUID tracking, parameters,
 auto-logging, request UUID). `TomServerException` layers two server-specific
@@ -380,7 +390,9 @@ wherever it is raised (one condition, one remedy), and every key belongs to the
 
 `tomErrorEnvelope(error)` is the single definition of what a Tom error looks
 like on the wire. Every error response body the package produces comes from
-here: `TomServer.errorHandler` sends it as the `500` body, and
+here — through `tomErrorResponse`, which sends it as is or as the fields of a
+problem document (see [The Problem Document](#the-problem-document)):
+`TomServer.errorHandler` sends it as the `500` body, and
 `TomUserPreferencesErrorHandler` sends the same body under a `404` or a `400`,
 so a client decodes one shape rather than one shape per endpoint.
 
@@ -431,12 +443,75 @@ The function is declared here because `TomServerException` decides the one
 conditional field, and this is the module every other one already depends on —
 so both error handlers reach the builder without either reaching the other.
 
+## The Problem Document
+
+`tomErrorResponse(error, status: ..., request: ...)` builds every framework
+error response: `TomServer.errorHandler`, `TomStatusMappingErrorHandler` and so
+`TomDefaultErrorHandler` and `TomUserPreferencesErrorHandler`,
+`TomRateLimits.tooManyRequests`, and the OpenAPI document endpoint's `404`. It
+answers with the envelope, or with `tomProblemDetails(error, status)` — the
+same fields as an RFC 9457 problem document — and always adds
+`x-tom-error: true`.
+
+```dart
+tomProblemDetails(
+  TomServerException('order.not-found', 'No such order.'),
+  404,
+);
+// {
+//   type:        'urn:tom:error:order.not-found',
+//   title:       'Not Found',
+//   status:      404,
+//   instance:    'urn:tom:request:…',   // only inside a request
+//   errorType:   'TomServerException',
+//   errorKey:    'order.not-found',
+//   uuid:        '…',
+//   autoLog:     false,
+//   requestUuid: '…',
+//   clientThrow: true,
+// }
+```
+
+RFC 9457's members come first:
+
+- **`type`** — `urn:tom:error:<errorKey>` for an error with a key, so the key is
+  the problem type a client branches on; `about:blank` for an error without one.
+- **`title`** — `tomReasonPhrase(status)`, the HTTP reason phrase (`Error` for a
+  status with none registered).
+- **`status`** — the status the response is answered with.
+- **`instance`** — `urn:tom:request:<requestUuid>` when the error names the
+  request it was raised in, absent otherwise.
+
+Then every envelope field, as an extension member, so a client reads
+`errorKey`, `clientThrow` or `loginFailure` the same way in both formats. There
+is no `detail`: the envelope carries no message, and the problem document does
+not either, so switching format reveals nothing the other hides.
+
+### Which format a response takes
+
+| Request | Body | `Content-Type` |
+| ------- | ---- | -------------- |
+| `Accept` lists `application/problem+json` (with a `q` above 0) | `tomProblemDetails` | `application/problem+json` |
+| served by an endpoint of a service declared with `problemJson: true` | `tomProblemDetails` | `application/problem+json` |
+| anything else | `tomErrorEnvelope` | `application/json` |
+
+`tomWantsProblemJson(request)` decides it. A wildcard (`*/*`,
+`application/*`) does not select problem+json: a client that has not named the
+format is one written against the envelope. A `null` request — a response built
+outside a request — is the envelope. An endpoint of a `@TomService(problemJson:
+true)` service (or a `TomApiImplementation` with `problemJson: true`) carries
+`tomProblemJsonContextKey: true` on the request every error handler of it
+receives, so a deployment's own handler that calls `tomErrorResponse` follows
+the service's choice too — see
+[endpoints.md](endpoints.md#error-formats-and-problemjson).
+
 ## Not Yet Implemented
 
 - **The error envelope carries no message.** `tomErrorEnvelope` reports
   `errorType`, `errorKey`, `uuid`, `autoLog`, `requestUuid` and `clientThrow`,
   and never the exception's `defaultUserMessage` — see
-  [The Error Envelope](#the-error-envelope). A client shows text by resolving
+  [The Error Envelope](#the-error-envelope). A problem document has no `detail`
+  for the same reason. A client shows text by resolving
   `errorKey` against its own resources, which is what makes the message
   translatable; a client that does not recognise the key has the type and the
   id, and nothing to display.
@@ -462,6 +537,15 @@ one subclass declared beside it (`TomLoginException`) with its `TomLoginFailure`
 reason and the values that set deliberately omits, and `tomErrorEnvelope` — the
 wire shape every error response uses, including the `loginFailure` field a login
 failure adds and everything else omits.
+
+`test/api_versioning_test.dart` covers `error_response.dart` through a served
+endpoint: the envelope for a request that does not ask (no `Accept`,
+`application/json`, and both wildcards), a problem document for one that does
+(case and quality parameters included) with its members and the envelope fields
+it carries and no `detail`, the envelope again for `q=0`, a problem document
+whatever the request asks for from a `problemJson` service, and — directly —
+`tomProblemDetails` for an error without a key, an unregistered status's `Error`
+title, and `tomErrorResponse` keeping the headers it is given.
 
 `test/server_exception_family_test.dart` holds the classification itself. Its
 rules read every `throw TomLoginException(` under `lib/src/tomserver/` from
@@ -506,6 +590,12 @@ transcript; `test/examples_test.dart` runs it, which is what keeps that true.
   `clientThrow` for a server one. Used by `TomServer.errorHandler` and
   `TomUserPreferencesErrorHandler`; a handler that translates a status chooses
   the status and not the shape.
+- **`tomErrorResponse`** — the error response itself: the envelope declared
+  `application/json`, or `tomProblemDetails` declared `application/problem+json`
+  when `tomWantsProblemJson` says the request asks for it, always under
+  `x-tom-error: true`. `tomReasonPhrase` supplies the document's `title`;
+  `tomProblemJsonMediaType` and `tomProblemJsonContextKey` name the media type
+  and the context key the rule reads.
 
 `TomLoginException` is declared here, next to the base class, rather than beside
 the authentication server that consumes it, so that the 2FA subsystem can throw
@@ -517,8 +607,10 @@ one.
 
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
+| `dart:convert` | dart | `error_response.dart` | `jsonEncode`, the response body |
 | `dart:isolate` | dart | `server_exception.dart` | `Isolate.current` for the worker's debug name |
-| `tom_core_kernel` | package | `server_exception.dart` | `TomException` (the base class), `getFromCurrentZone`, and `TomRequestId`, the request id the constructor correlates with |
+| `shelf` | package | `error_response.dart` | `Request` and `Response` |
+| `tom_core_kernel` | package | `server_exception.dart`, `error_response.dart` | `TomException` (the base class), `getFromCurrentZone`, and `TomRequestId`, the request id the constructor correlates with; `TomHeader` and `TomMimeType` for the response's `Content-Type` |
 
 The module imports no other module of this package, which is the point: it sits
 at the bottom of the dependency graph and everything else may depend on it.
