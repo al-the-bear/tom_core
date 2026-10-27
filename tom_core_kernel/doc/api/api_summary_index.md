@@ -1,7 +1,7 @@
 # Tom Core Kernel API Reference: Index
 
 Per-module API summaries for `tom_core_kernel` — the foundational layer of Tom
-Core. The package barrel (`lib/tom_core_kernel.dart`) exports the eighteen
+Core. The package barrel (`lib/tom_core_kernel.dart`) exports the nineteen
 modules documented here and re-exports `tom_basics`, `tom_crypto`, and
 `tom_reflection` (see those packages' docs for their APIs — notably the runtime
 and platform-detection types, which live in `tom_basics`).
@@ -24,6 +24,7 @@ declarations are omitted.
 | Logging | [api_summary_logging.md](api_summary_logging.md) | Cross-isolate and remote log transport, outputs, and log servers, and the structured JSON line output with its zone-read context fields. |
 | Metrics | [api_summary_metrics.md](api_summary_metrics.md) | Counters, gauges, histograms and observed gauges in a per-isolate registry, and the Prometheus text rendering of its snapshot. |
 | Observable | [api_summary_observable.md](api_summary_observable.md) | Observable base, observers, and the boxed `TomObject<T>` value/collection hierarchy. |
+| Offline | [api_summary_offline.md](api_summary_offline.md) | Server entities cached on the device: the storage-engine contract, the device-side repository with its queue of pending changes, the sync protocol, the sync engine with conflict resolution, and the protocol's in-memory reference server. |
 | Preferences | [api_summary_preferences.md](api_summary_preferences.md) | Well-known preference keys, wire DTOs, the value codec, and the `/preferences` API declaration; the notification-preference keys and the `/notification-preferences` API declaration. |
 | Reflection | [api_summary_reflection.md](api_summary_reflection.md) | The kernel reflector, reflection info, and JSON (de)serialization via mirrors. |
 | Resources | [api_summary_resources.md](api_summary_resources.md) | Text and config resource providers over a JSON tree. |
@@ -242,6 +243,30 @@ declarations are omitted.
 | `TomEnumResourceSegment` | abstract interface class | Implemented by an enum that overrides `toString()`, to declare its key segment explicitly. |
 | `tomNull` | final | The shared, read-only null-object `TomObject<String>`; writing to it throws. |
 | `TomObservableObservation` | extension | Adds the observation operator `>>` to every `TomObservable`. |
+
+### Offline (`lib/src/tombase/offline/`)
+
+| Type | Kind | Description |
+| ---- | ---- | ----------- |
+| `TomOfflineException` | class | An offline-store failure, `offline.*` keys (extends `TomException`). |
+| `TomLocalStoreEngine` | abstract class | The device database contract an application implements: JSON documents in named collections, and all-or-nothing transactions. |
+| `TomMemoryLocalStoreEngine` | class | `TomLocalStoreEngine` in memory, for tests and session caches. |
+| `TomOfflineStore` | class | The device's copy of server entities with their versions, the queue of pending changes, and the sync cursors. |
+| `TomLocalEntityCodec<T>` | class | How a repository turns an entity into JSON and back, and which id it has. |
+| `TomLocalRepository<T>` | class | The device-side counterpart of the server's `TomRepository`; every write is queued for the server. |
+| `TomChangeOperation` | enum | What a pending change does: `save`, `delete`. |
+| `TomPendingChange` | class | A local change waiting to reach the server, with the version it was based on. |
+| `TomPushOutcome` | enum | How the server took a pushed change: `applied`, `conflict`, `rejected`. |
+| `TomPushResult` | class | The server's answer to one pushed change. |
+| `TomPulledChange` | class | One change the server applied, as a device pulls it. |
+| `TomPullBatch` | class | The changes after a cursor, the next cursor, and whether more follow. |
+| `TomSyncTransport` | abstract class | How a device reaches the server's sync endpoint: `push`, `pull`. |
+| `TomSyncConflict` | class | A pushed change the server did not apply, with what the server holds. |
+| `TomConflictResolution` | sealed class | What to do about a conflict: `keepServer`, `keepLocal`, `merge`. |
+| `TomConflictResolver` | typedef | Decides a conflict; the application's to supply. |
+| `TomSyncReport` | class | What one sync did: applied, conflicts, discarded, rejected, pulled, still pending. |
+| `TomSyncEngine` | class | Pushes the queued changes, resolves conflicts, pulls the server's changes. |
+| `TomMemorySyncServer` | class | The sync protocol's server side in memory: the reference semantics, and a transport for tests. |
 
 ### Preferences (`lib/src/tombase/preferences/`)
 

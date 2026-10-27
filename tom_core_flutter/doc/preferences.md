@@ -13,7 +13,7 @@ reached over the kernel's `/preferences/*` contract by a typed client.
 - [The Same Shape as the Server Store](#the-same-shape-as-the-server-store)
 - [Choosing a Backend](#choosing-a-backend)
 - [How Big the Device Store Can Get](#how-big-the-device-store-can-get)
-  - [There is no on-device database, by decision](#there-is-no-on-device-database-by-decision)
+  - [Entities on the device belong to the offline module](#entities-on-the-device-belong-to-the-offline-module)
 - [Two Writers Over One Location](#two-writers-over-one-location)
 - [When the Platform Refuses](#when-the-platform-refuses)
 - [What the Store Does Not Protect](#what-the-store-does-not-protect)
@@ -274,25 +274,33 @@ a preference that belongs in a store of its own — a preference **per document*
 or **per project** is the usual case, and it is exactly the shape that makes
 every read of any preference decode all of them.
 
-For that data: a table in the application's own database on the server, or a
-file the application manages itself on the device. Not this store, and not the
-account store either — the same two ceilings apply there, for the same reasons.
+For that data: a table in the application's own database on the server, kept on
+the device through the kernel's offline module when the client needs it there.
+Not this store, and not the account store either — the same two ceilings apply
+there, for the same reasons.
 
-### There is no on-device database, by decision
+### Entities on the device belong to the offline module
 
-Tom Core ships no relational or document store for the device, and does not
-wrap one. The boundary is that **the server owns persistence**: entities live in
-the server's datasources, reached through its endpoints, and the client holds a
-settings bag here and nothing more.
+This store holds a settings bag and nothing more. The boundary is that **the
+server owns persistence**: entities live in the server's datasources, reached
+through its endpoints.
 
-A client that has to work offline against more than settings — cached entity
-tables, local queries, a schema that migrates as the app version moves — picks a
-database package itself and keeps it in its own layer. That choice is an
-architectural commitment with a platform matrix behind it (which platforms, web
-or not, encrypted or not, how migrations run), and the framework has no consumer
-whose answer it could generalise. Owning one would make every Tom application
-carry that commitment to spare the few that need it a dependency they can add
-themselves.
+A client that has to work offline against entities uses the kernel's
+[offline module](../../tom_core_kernel/doc/offline/offline.md). A
+`TomLocalRepository` reads and writes the device's copy of server entities with
+the operations of the server's `TomRepository`, queues every change with the
+server version it was based on, and a `TomSyncEngine` pushes the queue, hands
+conflicts to the application's resolver and pulls what changed on the server.
+The server stays authoritative.
+
+The device database itself is the application's. The offline module asks for a
+`TomLocalStoreEngine` — JSON documents in named collections, and transactions —
+and the application implements it over the database package it chose. That
+choice is an architectural commitment with a platform matrix behind it (which
+platforms, web or not, encrypted or not, how its files migrate), and the
+framework has no consumer whose answer it could generalise. Owning one would
+make every Tom application carry that commitment to spare the few that need it
+a dependency they can add themselves.
 
 ## Two Writers Over One Location
 

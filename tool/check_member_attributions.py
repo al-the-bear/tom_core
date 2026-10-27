@@ -297,7 +297,9 @@ MEMBER = re.compile(
     r"(?:(?:get|set)\s+)?"
     r"(?:(?:[\w<>,\[\]?.$ ]|" + _BALANCED + r")+\s+)?"
     r"(?:get\s+|set\s+)?"
-    r"(?!(?:async|sync)\b)(\w+)\s*(?:[(<=;]|=>|\{)",
+    # `async` / `sync` as the body modifier (`async {`, `sync* =>`) are not
+    # names; a method *called* `sync` (`sync()`) is.
+    r"(?!(?:async|sync)\b\s*\*?\s*(?:\{|=>))(\w+)\s*(?:[(<=;]|=>|\{)",
     re.MULTILINE,
 )
 

@@ -709,16 +709,14 @@ package barrel that `server_connection.dart` imports — so it compiles and is
 not a defect to be fixed casually. It is worth knowing about before moving
 either type: `TomServerCallError` cannot be pushed *down* into this module
 without dragging the HTTP types with it, and `TomException` cannot be pushed
-*up* into `http_connection` because seventeen classes across eight other
-modules extend it.
+*up* into `http_connection` because the exceptions of nearly every other module
+extend it.
 
 ### Consumers are not listed here
 
-Twelve of the package's modules import this one — `beanlocator`, `context`,
-`http_connection`, `isolate_pooling`, `logging`, `observable`, `preferences`,
-`reflection`, `scheduling`, `scope_ids`, `security` and `timezoned`. Each
-records that edge in its **own** `## Dependencies` section, and this section
-deliberately does not repeat them.
+Every other module of the package imports this one. Each records that edge in
+its **own** `## Dependencies` section, and this section deliberately does not
+repeat them.
 
 The reason is that a consumer list kept here has no mechanism holding it to the
 code: adding a module that uses `TomException` does not touch this file, so the

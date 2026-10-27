@@ -44,6 +44,9 @@ serialized without hand-written boilerplate. Conceptually it provides five thing
   and OTLP, the canonical success-or-error result
   envelope, JSON tree helpers, resource providers, settings, feature
   flags, timezone-aware timestamps, and ordered shutdown.
+- **Offline data** — server entities kept on the device, every change queued
+  with the version it was based on, and a sync that pushes, settles conflicts
+  and pulls; the application supplies the device database.
 
 ## Installation
 
@@ -131,6 +134,7 @@ handle declared so far so a missing binding fails at start-up.
 | `json` | map-merge, pretty-print helpers | JSON tree merge/serialization utilities |
 | `resources` | `TomTextResourceProvider`, `TomConfigResourceProvider` | Text and configuration resource resolution |
 | `settings` | `TomGetSettingsMessage`, `TomGetSettingsResult`, `TomFeatureFlags`, `TomRuleFlagProvider`, `TomFeatureFlagsClient` | The client-settings exchange, and feature flags: rules by tenant, role and stable percentage, read through an OpenFeature-shaped provider, and the `/feature-flags` API a client fetches its evaluated flags from |
+| `offline` | `TomLocalStoreEngine`, `TomLocalRepository`, `TomOfflineStore`, `TomSyncEngine`, `TomSyncTransport`, `TomMemorySyncServer` | Server entities cached on the device: a repository whose every write is queued with its base version, and a sync that pushes under optimistic locking, hands conflicts to the application's resolver and pulls by the server's change sequence. The device database is the application's, behind `TomLocalStoreEngine` |
 | `preferences` | `TomUserPreferenceKeys`, `TomUserPreferenceDto`, `TomUserPreferenceCodec`, `tomUserPreferencesApi` | The contract both preference stores bind to: well-known keys, wire DTOs, the value codec, and the `/preferences` API |
 | `shutdown_cleanup` | `TomShutdownCleanup`, `TomDisposable`, `TomClosable` | Ordered shutdown / cleanup hooks |
 | `timezoned` | `DateTimestamp`, timezone tables | Timezone-aware date/time |
@@ -182,6 +186,7 @@ so anything listed below is executed on every run.
 | [`example/samples/resources/`](example/samples/resources/) | Text & config resource providers |
 | [`example/samples/preferences/`](example/samples/preferences/) | The preference codec's scalar, `DateTime` and reflected round-trips, and the `/preferences` contract |
 | [`example/samples/metrics/`](example/samples/metrics/) | The three instruments and every misuse refused, the exact Prometheus text of a snapshot, and the `tom_job_*` series a scheduler records |
+| [`example/samples/offline/`](example/samples/offline/) | A save offline, read back and queued; the push and its version; another client's change pulled; a deletion; a conflict settled by the application's merge |
 | [`example/samples/scheduling/`](example/samples/scheduling/) | The in-memory substrate, `@TomScheduledJob` discovery, every schedule kind against the missed-window policies, what at-least-once asks of a job body, the file store across a restart, and priority, pausing and checkpoints |
 | [`example/samples/json/`](example/samples/json/) · [`example/samples/timezoned/`](example/samples/timezoned/) · [`example/samples/settings/`](example/samples/settings/) · [`example/samples/shutdown_cleanup/`](example/samples/shutdown_cleanup/) · [`example/samples/http_connection/`](example/samples/http_connection/) · [`example/samples/little_things/`](example/samples/little_things/) · [`example/samples/reflection/`](example/samples/reflection/) | The remaining utility modules |
 
@@ -339,7 +344,7 @@ tears them down in a deterministic order on process exit.
 observable  context  security  resources   runtime utils
  (TomObject) (scope) (TomAuth*) (providers) (logging, isolates,
                                              json, settings, metrics,
-                                             shutdown, timezoned)
+                                             offline, shutdown, timezoned)
                       │
               tom_reflection  ← introspection / serialization
               tom_basics · tom_crypto
@@ -388,6 +393,9 @@ the common dependency of the server and Flutter layers. See the
 - [`doc/metrics/metrics.md`](doc/metrics/metrics.md) — counters, gauges,
   histograms and observed gauges, the snapshot both exporters read, and the
   series the framework records.
+- [`doc/offline/offline.md`](doc/offline/offline.md) — the device-side
+  repository, the queue of pending changes, the sync flow and conflict
+  resolution, the protocol's server side, and writing an engine adapter.
 - Per-module API reference under [`doc/api/`](doc/api/) —
   one summary per barrel-exported module plus a cross-module type index; start at
   [`api_summary_index.md`](doc/api/api_summary_index.md).
