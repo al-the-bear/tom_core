@@ -7,3 +7,10 @@ app:
   # line. Keep it different from the default title.
   title: "Tom Core — Todo API (DEV)"
 logLevel: "development"
+# The Flutter web clients of the samples run on a local port of their own,
+# a different origin: the CORS allow-list admits any local port in
+# development. A deployment lists its real client origins instead.
+cors:
+  allowedOrigins:
+    - "http://localhost:*"
+    - "http://127.0.0.1:*"

@@ -62,9 +62,10 @@ TomEndpointRoutingInfo _routeInfo(String path, [String method = 'GET']) =>
 /// request context (the pipeline casts it unconditionally, so it must be
 /// present). No principal/token is placed in the zone — the fixture endpoints
 /// are anonymous.
-Request _get(String path) => Request(
+Request _get(String path, {String? origin}) => Request(
   'GET',
   Uri.parse('http://localhost$path'),
+  headers: {'origin': ?origin},
   context: {TomRequestLogInfo.contextName: TomRequestLogInfo()},
 );
 
@@ -81,9 +82,10 @@ Request _delete(String path) => Request(
 /// `Access-Control-*` headers off the answer. It carries no principal and no
 /// body, which is the point: the pipeline must answer it before it asks who is
 /// calling.
-Request _options(String path) => Request(
+Request _options(String path, {String? origin}) => Request(
   'OPTIONS',
   Uri.parse('http://localhost$path'),
+  headers: {'origin': ?origin},
   context: {TomRequestLogInfo.contextName: TomRequestLogInfo()},
 );
 
@@ -476,7 +478,7 @@ void main() {
   // endpoint and the defaults resolve to.
   group('CORS preflight', () {
     late Router router;
-    late String originalOrigin;
+    late TomCors originalCors;
 
     setUp(() {
       TomBean.resetBeanContext();
@@ -484,92 +486,93 @@ void main() {
       TomBean.withType<TomHealthServer>(TomHealthServer());
       TomBean.withType<FixtureAccessApiService>(FixtureAccessApiService());
       router = TomEndpointRouting().initializeRouter();
-      // The defaults are mutable statics, so one test changing one would
-      // otherwise leak into every test after it — including the default-case
-      // assertions, which would then be checking a value this file set.
-      originalOrigin =
-          TomEndpointHandler.globalSettingCorsAllowedOriginsDefault;
+      // The policy is read per request from a mutable static, so one test
+      // changing it would otherwise leak into every test after it.
+      originalCors = TomCors.current;
+      TomCors.current = const TomCors(
+        allowedOrigins: ['https://app.example.com'],
+      );
     });
 
     tearDown(() {
-      TomEndpointHandler.globalSettingCorsAllowedOriginsDefault =
-          originalOrigin;
+      TomCors.current = originalCors;
       TomBean.resetBeanContext();
     });
 
-    test('the three headers carry the global defaults', () async {
-      // `/fixture/health` overrides none of the three, so a preflight on it is
-      // the defaults as a browser sees them — the values are read off the
-      // response rather than restated, so the statics and the wire agree by
-      // construction rather than by a copy in this file going stale.
-      final response = await router.call(_options('/fixture/health'));
-      expect(response.statusCode, 200);
+    test('an admitted origin gets the policy\'s three headers', () async {
+      final response = await router.call(
+        _options('/fixture/health', origin: 'https://app.example.com'),
+      );
+      expect(response.statusCode, 204);
       expect(
         response.headers['access-control-allow-origin'],
-        TomEndpointHandler.globalSettingCorsAllowedOriginsDefault,
+        'https://app.example.com',
       );
+      expect(response.headers['vary'], 'Origin');
       expect(
         response.headers['access-control-allow-methods'],
-        TomEndpointHandler.globalSettingCorsAllowedMethodsDefault,
+        TomCors.defaultAllowedMethods,
       );
       expect(
         response.headers['access-control-allow-headers'],
-        TomEndpointHandler.globalSettingCorsAllowedHeadersDefault,
+        TomCors.defaultAllowedHeaders,
+      );
+      expect(response.headers['access-control-max-age'], '600');
+    });
+
+    test('an origin the policy does not list gets no CORS header', () async {
+      final response = await router.call(
+        _options('/fixture/health', origin: 'https://evil.example.com'),
+      );
+      expect(response.statusCode, 204);
+      expect(
+        response.headers.keys.where((k) => k.startsWith('access-control-')),
+        isEmpty,
       );
     });
 
-    test('the shipped defaults are open, and say so', () async {
-      // The values themselves, once, so that a change to the *package's* posture
-      // is a deliberate edit here rather than something the assertions above
-      // would follow silently. `*` is the permissive default a framework ships
-      // to keep first contact working; narrowing it is a deployment's job.
-      final response = await router.call(_options('/fixture/health'));
-      expect(response.headers['access-control-allow-origin'], '*');
-      expect(
-        response.headers['access-control-allow-methods'],
-        'GET, POST, PUT, DELETE, TRACE, PATCH, HEAD, CONNECT',
+    test('the shipped default admits no origin', () async {
+      // The package's posture, stated once: no cross-origin page may read a
+      // response until the deployment lists its client origins.
+      TomCors.current = const TomCors();
+      final response = await router.call(
+        _options('/fixture/health', origin: 'https://app.example.com'),
       );
-      expect(
-        response.headers['access-control-allow-headers'],
-        'Origin, Content-Type, Accept, Authorization, Referer, User-Agent',
-      );
+      expect(response.headers['access-control-allow-origin'], isNull);
     });
 
     test('the endpoint method is not invoked', () async {
-      // What the old test's caption claimed. `/fixture/health` returns a JSON
-      // body when invoked, so an empty body is the observable difference
-      // between answering the preflight and running the endpoint — a status
-      // code cannot tell the two apart, because both are 200.
-      final response = await router.call(_options('/fixture/health'));
+      final response = await router.call(
+        _options('/fixture/health', origin: 'https://app.example.com'),
+      );
       expect(await response.readAsString(), isEmpty);
     });
 
     test('an endpoint override replaces only the value it states', () async {
-      // `/fixture/cors_origin` states an origin and nothing else. Each header
-      // falls back on its own, so the other two must still be the defaults:
-      // an implementation that treated "has any override" as "use the
-      // endpoint's three values" would answer null for both.
-      final response = await router.call(_options('/fixture/cors_origin'));
+      // `/fixture/cors_origin` states an origin list and nothing else: the
+      // policy's own origin is not admitted there, and the methods and
+      // headers still fall back to the policy.
+      final own = await router.call(
+        _options('/fixture/cors_origin', origin: 'https://origin.example.com'),
+      );
       expect(
-        response.headers['access-control-allow-origin'],
+        own.headers['access-control-allow-origin'],
         'https://origin.example.com',
       );
       expect(
-        response.headers['access-control-allow-methods'],
-        TomEndpointHandler.globalSettingCorsAllowedMethodsDefault,
+        own.headers['access-control-allow-methods'],
+        TomCors.defaultAllowedMethods,
       );
-      expect(
-        response.headers['access-control-allow-headers'],
-        TomEndpointHandler.globalSettingCorsAllowedHeadersDefault,
+      final policy = await router.call(
+        _options('/fixture/cors_origin', origin: 'https://app.example.com'),
       );
+      expect(policy.headers['access-control-allow-origin'], isNull);
     });
 
     test('all three values are overridable', () async {
-      // `/fixture/cors_full` narrows all three. The methods and headers
-      // overrides have no other exercise in the package: with no endpoint
-      // stating them, dropping their `??` and always answering the default
-      // would leave every other test in this group green.
-      final response = await router.call(_options('/fixture/cors_full'));
+      final response = await router.call(
+        _options('/fixture/cors_full', origin: 'https://full.example.com'),
+      );
       expect(
         response.headers['access-control-allow-origin'],
         'https://full.example.com',
@@ -578,48 +581,42 @@ void main() {
       expect(response.headers['access-control-allow-headers'], 'Authorization');
     });
 
-    test('a changed default reaches an already-mounted route', () async {
-      // What makes these `globalSetting*` rather than constants. The routes
-      // were mounted in setUp, before this assignment, so an implementation
-      // that read the default once at mount time — or copied it into the
-      // handler — would keep answering `*` here. That is the shape of the
-      // mistake that matters: an operator locks the origin down at startup,
-      // the log says nothing, and the server keeps advertising `*`.
-      TomEndpointHandler.globalSettingCorsAllowedOriginsDefault =
-          'https://locked-down.example.com';
-      final response = await router.call(_options('/fixture/health'));
+    test('a changed policy reaches an already-mounted route', () async {
+      TomCors.current = const TomCors(allowedOrigins: ['http://localhost:*']);
+      final response = await router.call(
+        _options('/fixture/health', origin: 'http://localhost:5173'),
+      );
       expect(
         response.headers['access-control-allow-origin'],
-        'https://locked-down.example.com',
+        'http://localhost:5173',
       );
     });
 
     test('a gated endpoint answers preflight with no principal', () async {
-      // A browser sends a preflight *unauthenticated* — no cookie, no
-      // Authorization header — and treats anything but a success as "this
-      // request is not allowed". So preflight has to be answered before access
-      // control, not after it. `/fixture-access/contract-gated` requires a role
-      // and is called here from a zone with no principal at all: moving the
-      // preflight check below `enforceAccess` would 401 here while leaving
-      // every direct-call test of that endpoint untouched, and the endpoint
-      // would work everywhere except in a browser.
+      // A browser sends a preflight unauthenticated, and treats anything but a
+      // success as "not allowed": preflight is answered before access control.
       final response = await router.call(
-        _options('/fixture-access/contract-gated'),
+        _options(
+          '/fixture-access/contract-gated',
+          origin: 'https://app.example.com',
+        ),
       );
-      expect(response.statusCode, 200);
-      expect(response.headers['access-control-allow-origin'], '*');
+      expect(response.statusCode, 204);
+      expect(
+        response.headers['access-control-allow-origin'],
+        'https://app.example.com',
+      );
     });
 
     test('a socket route answers preflight like any other', () async {
-      // `createRoutesForEndpoint` mounts OPTIONS beside the handshake GET so
-      // that "a browser can discover the route the same way it discovers any
-      // other" — the source says so, and nothing checked it. A socket route is
-      // the one place where the preflight registration is written separately
-      // from the ordinary path, so it is also the one that can be dropped on
-      // its own.
-      final response = await router.call(_options('/fixture/socket'));
-      expect(response.statusCode, 200);
-      expect(response.headers['access-control-allow-origin'], '*');
+      final response = await router.call(
+        _options('/fixture/socket', origin: 'https://app.example.com'),
+      );
+      expect(response.statusCode, 204);
+      expect(
+        response.headers['access-control-allow-origin'],
+        'https://app.example.com',
+      );
     });
   });
 
@@ -635,7 +632,7 @@ void main() {
   // from the page. These assert the second half.
   group('CORS on the response itself', () {
     late Router router;
-    late String originalOrigin;
+    late TomCors originalCors;
 
     setUp(() {
       TomBean.resetBeanContext();
@@ -643,28 +640,48 @@ void main() {
       TomBean.withType<TomHealthServer>(TomHealthServer());
       TomBean.withType<FixtureAccessApiService>(FixtureAccessApiService());
       router = TomEndpointRouting().initializeRouter();
-      originalOrigin =
-          TomEndpointHandler.globalSettingCorsAllowedOriginsDefault;
+      originalCors = TomCors.current;
+      TomCors.current = const TomCors(
+        allowedOrigins: ['https://app.example.com'],
+      );
     });
 
     tearDown(() {
-      TomEndpointHandler.globalSettingCorsAllowedOriginsDefault =
-          originalOrigin;
+      TomCors.current = originalCors;
       TomBean.resetBeanContext();
     });
 
-    test('a successful call carries the default allowed origin', () async {
-      final response = await router.call(_get('/fixture/health'));
+    test('a successful call carries the admitted origin', () async {
+      final response = await router.call(
+        _get('/fixture/health', origin: 'https://app.example.com'),
+      );
       expect(response.statusCode, 200);
       expect(
         response.headers['access-control-allow-origin'],
-        TomEndpointHandler.globalSettingCorsAllowedOriginsDefault,
+        'https://app.example.com',
       );
+    });
+
+    test('a call without an Origin, or from an unlisted one, carries '
+        'none', () async {
+      for (final origin in [null, 'https://evil.example.com']) {
+        final response = await router.call(
+          _get('/fixture/health', origin: origin),
+        );
+        expect(response.statusCode, 200);
+        expect(
+          response.headers['access-control-allow-origin'],
+          isNull,
+          reason: '$origin',
+        );
+      }
     });
 
     test('an endpoint override reaches its responses as well as its '
         'preflight', () async {
-      final response = await router.call(_get('/fixture/cors_origin'));
+      final response = await router.call(
+        _get('/fixture/cors_origin', origin: 'https://origin.example.com'),
+      );
       expect(
         response.headers['access-control-allow-origin'],
         'https://origin.example.com',
@@ -673,30 +690,29 @@ void main() {
 
     test('a refused call carries it too, so the browser can read the '
         'refusal', () async {
-      // An error the page cannot read is a network error to the user: a
-      // login refused with a reason would surface as "could not connect".
       final response = await router.call(
-        _get('/fixture-access/contract-gated'),
+        _get(
+          '/fixture-access/contract-gated',
+          origin: 'https://app.example.com',
+        ),
       );
       expect(response.statusCode, 404);
       expect(
         response.headers['access-control-allow-origin'],
-        TomEndpointHandler.globalSettingCorsAllowedOriginsDefault,
+        'https://app.example.com',
       );
     });
 
-    test(
-      'a changed default reaches the responses of a mounted route',
-      () async {
-        TomEndpointHandler.globalSettingCorsAllowedOriginsDefault =
-            'http://localhost:8090';
-        final response = await router.call(_get('/fixture/health'));
-        expect(
-          response.headers['access-control-allow-origin'],
-          'http://localhost:8090',
-        );
-      },
-    );
+    test('credentials are allowed only when the policy says so', () async {
+      TomCors.current = const TomCors(
+        allowedOrigins: ['https://app.example.com'],
+        allowCredentials: true,
+      );
+      final response = await router.call(
+        _get('/fixture/health', origin: 'https://app.example.com'),
+      );
+      expect(response.headers['access-control-allow-credentials'], 'true');
+    });
   });
   group('routingInfo is keyed by route and method', () {
     setUp(() {

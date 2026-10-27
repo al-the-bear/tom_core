@@ -34,6 +34,7 @@ store before the configuration is built.
 - [Log Format and Readiness](#log-format-and-readiness)
 - [Graceful Shutdown](#graceful-shutdown)
 - [Outgoing HTTP Calls](#outgoing-http-calls)
+- [Browser and Transport Security](#browser-and-transport-security)
 - [Request Ids](#request-ids)
 - [Idempotency Keys](#idempotency-keys)
 - [Field-Level Encryption](#field-level-encryption)
@@ -939,6 +940,41 @@ The policies and the circuit and bulkhead state are per isolate. `httpClient`
 is not a field of the configuration base, so the startup warning about
 [unknown keys](#unknown-keys-in-the-configuration-resources) names it.
 
+## Browser and Transport Security
+
+Four keys of the configuration resources protect what a browser and a calling
+service can do with the server. Like `httpClient` each is a nested map read
+through `TomServerConfigResourceProvider`, not a field of the configuration
+base: `TomServer.start` hands each one that is present to its module's
+`configure` through `TomServer.configureSecurity`.
+
+| Key | Configures | Without it | Described in |
+| --- | ---------- | ---------- | ------------ |
+| `securityHeaders` | `TomSecurityHeaders`: HSTS, `Content-Security-Policy`, `X-Frame-Options`, `Referrer-Policy`, or none | The headers are sent with their defaults | [server.md](server.md#security-headers) |
+| `cors` | `TomCors`: the browser origins that may read a response, the methods and headers a preflight admits, credentials, the preflight's cache time | No cross-origin page may read a response | [endpoints.md](endpoints.md#cors) |
+| `sessionCookie` | `TomSessionCookie`: the cookie names, the CSRF header, `Path`, `Domain`, `SameSite`, `Secure` | No request is authenticated by a cookie | [authentication.md](authentication.md#browser-sessions-in-a-cookie) |
+| `mutualTls` | `TomMutualTls`: the client CA, the certificates that name service principals, the paths only services may call, this service's own client certificate | No client certificate is asked for | [server.md](server.md#mutual-tls) |
+
+```yaml
+# assets/config-resources_dev.yaml of the sample servers
+cors:
+  allowedOrigins:
+    - "http://localhost:*"
+    - "http://127.0.0.1:*"
+```
+
+**A value of the wrong shape stops the start**, with the key of the setting it
+belongs to — `server.security_headers.config.invalid`,
+`endpoint.cors.config.invalid`, `authentication.session_cookie.config.invalid`
+or `server.mutual_tls.config.invalid` — before anything of that setting is
+applied.
+
+**When it applies.** `start()` applies the four keys right after `httpClient`,
+before `requestIds`. The settings are per isolate. None of them is a field of
+the configuration base, so the startup warning about
+[unknown keys](#unknown-keys-in-the-configuration-resources) names each one a
+deployment sets.
+
 ## Request Ids
 
 Every request runs under a request id: the trace id of its W3C trace — the
@@ -972,7 +1008,8 @@ keyed `server.request_ids.config.invalid` before anything is applied. A request
 id the trusted proxy sends that is not a valid id (8 to 128 characters of ASCII
 letters, digits and `._:-`) is ignored per request, never refused.
 
-**When it applies.** `start()` applies the key right after `httpClient`. The
+**When it applies.** `start()` applies the key right after the
+[browser- and transport-security keys](#browser-and-transport-security). The
 setting is per isolate. `requestIds` is not a field of the configuration base,
 so the startup warning about
 [unknown keys](#unknown-keys-in-the-configuration-resources) names it.

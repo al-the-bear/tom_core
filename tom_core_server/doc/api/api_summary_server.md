@@ -4,7 +4,9 @@ The HTTP entry point of a Tom server application: the `TomServer` that assembles
 a shelf pipeline (context setup, error handling, authentication, logging) in
 front of the endpoint router and binds it to a socket, plus the middleware,
 helpers, and per-request state that make up that pipeline, and the graceful
-shutdown that stops it on SIGTERM.
+shutdown that stops it on SIGTERM; the security headers every response
+carries; and mutual TLS, by which a client certificate authenticates a calling
+service.
 
 ## Table of Contents
 
@@ -17,6 +19,13 @@ shutdown that stops it on SIGTERM.
   - [TomGracefulShutdown](#tomgracefulshutdown)
   - [TomRequestIdPolicy](#tomrequestidpolicy)
   - [TomRequestIdException](#tomrequestidexception)
+  - [TomSecurityHeaders](#tomsecurityheaders)
+  - [TomContentSecurityPolicyHook](#tomcontentsecuritypolicyhook)
+  - [TomSecurityHeadersException](#tomsecurityheadersexception)
+  - [TomMutualTls](#tommutualtls)
+  - [TomTlsConnectionInfo](#tomtlsconnectioninfo)
+  - [TomMutualTlsClientFactory](#tommutualtlsclientfactory)
+  - [TomMutualTlsException](#tommutualtlsexception)
 - [Enums](#enums)
 - [Global Functions and Constants](#global-functions-and-constants)
 
@@ -24,11 +33,15 @@ shutdown that stops it on SIGTERM.
 
 Sources: `lib/src/tomserver/server/server.dart`,
 `lib/src/tomserver/server/graceful_shutdown.dart`,
-`lib/src/tomserver/server/request_ids.dart`.
+`lib/src/tomserver/server/request_ids.dart`,
+`lib/src/tomserver/server/security_headers.dart`,
+`lib/src/tomserver/server/mutual_tls.dart`.
 
 `TomServer` is built from a `TomBaseServerConfiguration`. Its `start` method
 first applies the `httpClient` configuration key to the framework's outgoing
-HTTP calls (`configureHttpClients`), the `requestIds` key to the request-id
+HTTP calls (`configureHttpClients`), the browser- and transport-security keys
+`securityHeaders`, `cors`, `sessionCookie` and `mutualTls`
+(`configureSecurity`), the `requestIds` key to the request-id
 policy (`configureRequestIds`) and the `idempotency` key to the
 idempotency-key store (`configureIdempotency`), installs the field-encryption
 keyring from the `fieldEncryption` key (`configureFieldEncryption`) and the
@@ -44,10 +57,13 @@ shelf `Pipeline` — the shutdown gate (`TomGracefulShutdown.middleware`),
 `TomRequestLogInfo` per request), the metrics module's
 `tomMetricsEndpointMiddleware` (when `metricsEndpoint` is on) and
 `tomRequestContextMiddleware` (continues or starts the W3C trace and takes the
-request id `TomRequestIdPolicy.current` chooses), `tomRequestMetricsMiddleware`, `tomLoggingMiddleware`, an outer
+request id `TomRequestIdPolicy.current` chooses), `tomSecurityHeadersMiddleware`
+(the security headers, on error responses too), `tomRequestMetricsMiddleware`, `tomLoggingMiddleware`, an outer
 error layer,
 `tomDefaultAuthenticationMiddleware`, `tomRateLimitMiddleware` (the ratelimit module's) and an inner error layer — optionally wraps the router in a `Cascade` with
-pre/post handlers, binds the socket (with TLS unless `noSsl`), and registers
+pre/post handlers, binds the socket (with TLS unless `noSsl`; through
+`TomMutualTls.serve`, asking every client for a certificate, when `mutualTls`
+is configured), and registers
 the server's graceful shutdown for SIGTERM and SIGINT.
 
 `TomGracefulShutdown` is what the server does between SIGTERM and exiting:
@@ -82,6 +98,30 @@ sets the policy from the `requestIds` key and throws a `TomRequestIdException`
 keyed `server.request_ids.config.invalid` for a value of the wrong shape. See
 [server.md](../server.md#request-ids).
 
+`TomSecurityHeaders` is the set of security headers every response carries
+unless it sets its own: `Strict-Transport-Security` on an HTTPS request, a
+`Content-Security-Policy` of `default-src 'none'; frame-ancestors 'none'`,
+`X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY` and
+`Referrer-Policy: no-referrer`. `tomSecurityHeadersMiddleware` applies
+`TomSecurityHeaders.current`, which `configure` sets from the `securityHeaders`
+key (`server.security_headers.config.invalid` for a value of the wrong shape);
+a `TomContentSecurityPolicyHook` chooses the policy per request. See
+[server.md](../server.md#security-headers).
+
+`TomMutualTls` lets a client certificate authenticate a calling service. The
+server asks every TLS client for a certificate and verifies it against the
+configured client CA; a verified certificate whose SHA-256 fingerprint is
+listed in `services` names a service principal, which
+`tomDefaultAuthenticationMiddleware` uses for a request that carries no other
+credential — and, on a path under `requiredPaths`, as the only one it accepts,
+answering `401` with `server.mutual_tls.required` when no listed certificate
+was presented. `TomMutualTls.serve` binds the socket so each request carries
+its certificate in a `TomTlsConnectionInfo`; `TomMutualTlsClientFactory` is the
+outgoing half, presenting this service's own certificate on framework calls.
+`TomMutualTls.configure` sets `current` from the `mutualTls` key and throws a
+`TomMutualTlsException` keyed `server.mutual_tls.config.invalid` for a value of
+the wrong shape. See [server.md](../server.md#mutual-tls).
+
 ## Class Hierarchy
 
 ```text
@@ -90,11 +130,19 @@ TomServer                (standalone)
 TomEndpointCredentials   (abstract final, statics only)
 TomGracefulShutdown      (standalone)
 TomRequestIdPolicy       (final, standalone)
+TomSecurityHeaders       (final, standalone)
+TomMutualTls             (final, standalone)
+TomTlsConnectionInfo     (implements HttpConnectionInfo)
+TomMutualTlsClientFactory (implements TomHttpClientAbstractFactory, kernel)
 TomServerException  (little_things)
-    └── TomRequestIdException
+    ├── TomRequestIdException
+    ├── TomSecurityHeadersException
+    └── TomMutualTlsException
+
+TomContentSecurityPolicyHook  (typedef)
 ```
 
-All classes but `TomRequestIdException` are standalone (no Tom base class).
+All classes but the three exceptions are standalone (no Tom base class).
 
 ## Classes
 
@@ -159,14 +207,15 @@ TomServer(TomBaseServerConfiguration configuration)
 | ------ | --------- | ----------- |
 | `warnOnDevelopmentTlsMaterial` | `void warnOnDevelopmentTlsMaterial()` | Warns when this server is about to serve TLS with the checked-in development pair, naming which half is still at its default. Called by `start` before it builds the `SecurityContext`. Silent when `noSsl` is set, since nothing is served over TLS. Nothing refuses to start: an opt-in flag would cost every local TLS run an extra setting. Public and separate from `start` because `start` binds a socket and returns nothing, so a property of the boot is otherwise unobservable. |
 | `warnOnUnenforcedResourceKeys` | `void warnOnUnenforcedResourceKeys()` | Warns when this server is about to serve with resource-key grants unenforced (`tom.protection.resourceKeys` off, the default) outside a development or test environment, naming the setting that changes it. Called by `start` before the socket is bound. Silent when enforcement is on or the environment is development or test. Nothing refuses to start: the default stays off because enforcing refuses every undeclared endpoint of an application with no grants configured. |
-| `start` | `Future<HttpServer> start()` | Applies the `httpClient` configuration key to the outgoing HTTP calls (`configureHttpClients`), the `requestIds` key to the request-id policy (`configureRequestIds`) and the `idempotency` key to the idempotency-key store (`configureIdempotency`) before anything else, so the deployment's own login runs under the configured policies, awaits the keyring the `fieldEncryption` key describes (`configureFieldEncryption`), installs the subject keys the `privacy` key describes (`configurePrivacy`), and applies the `transactions` key — the decision log, and with `recoverOnStart` a recovery of the prepared branches a dead process left (`recoverTransactions`); then logs the deployment in as itself (`TomServerSelfLogin.loginAndInstall`), warns if the TLS material is still the development pair, installs the rate limits the `rateLimits` configuration key describes when none were installed (`TomRateLimits.fromConfiguration`), starts `metricsExporter` when `otlpEndpoint` is set, applies `logFormat` (`applyLogFormat`), installs a `TomFrameworkReadinessAnalyzer` on `GET /ready` when `frameworkReadiness` is on and the readiness analyzer is still the default one, initialises the router, composes the pipeline, builds TLS, resolves the listen address, and binds the socket. The future completes **when the socket is listening**, with the bound `HttpServer` — so a bind failure rejects it rather than surfacing as an unhandled asynchronous error, and the socket can be closed by its opener. A deployment that configured a service credential and cannot log in has the error rethrown and **no socket is bound**; one that configured none is unaffected. Awaiting is optional: the bound socket keeps the isolate alive on its own. Once bound, the socket is handed to `gracefulShutdown`, which is registered for SIGTERM and SIGINT. |
+| `start` | `Future<HttpServer> start()` | Applies the `httpClient` configuration key to the outgoing HTTP calls (`configureHttpClients`), the `securityHeaders`, `cors`, `sessionCookie` and `mutualTls` keys (`configureSecurity`), the `requestIds` key to the request-id policy (`configureRequestIds`) and the `idempotency` key to the idempotency-key store (`configureIdempotency`) before anything else, so the deployment's own login runs under the configured policies, awaits the keyring the `fieldEncryption` key describes (`configureFieldEncryption`), installs the subject keys the `privacy` key describes (`configurePrivacy`), and applies the `transactions` key — the decision log, and with `recoverOnStart` a recovery of the prepared branches a dead process left (`recoverTransactions`); then logs the deployment in as itself (`TomServerSelfLogin.loginAndInstall`), warns if the TLS material is still the development pair, installs the rate limits the `rateLimits` configuration key describes when none were installed (`TomRateLimits.fromConfiguration`), starts `metricsExporter` when `otlpEndpoint` is set, applies `logFormat` (`applyLogFormat`), installs a `TomFrameworkReadinessAnalyzer` on `GET /ready` when `frameworkReadiness` is on and the readiness analyzer is still the default one, initialises the router, composes the pipeline, builds TLS, resolves the listen address, and binds the socket — through `TomMutualTls.serve` when mutual TLS is configured, warning that every path it requires answers `401` when the server serves plain HTTP (`noSsl`). The future completes **when the socket is listening**, with the bound `HttpServer` — so a bind failure rejects it rather than surfacing as an unhandled asynchronous error, and the socket can be closed by its opener. A deployment that configured a service credential and cannot log in has the error rethrown and **no socket is bound**; one that configured none is unaffected. Awaiting is optional: the bound socket keeps the isolate alive on its own. Once bound, the socket is handed to `gracefulShutdown`, which is registered for SIGTERM and SIGINT. |
 | `shutdown` | `Future<void> shutdown()` | Shuts this server down gracefully — `gracefulShutdown.shutdown()`: readiness off, no new requests, the requests and scheduled work in flight finished within the grace period, leases released and pools closed. Idempotent. A signal runs it through `tomShutdownCleanup`; calling it directly never ends the process. |
 | `configureHttpClients` | `static void configureHttpClients([TomServerConfigResourceProvider? config])` | Applies the `httpClientConfigurationKey` map of `config` — the server configuration (`TomServerConfigResourceProvider.getServerConfig()`) when omitted — to the kernel's `TomHttpResilience.configure`: the timeout, retry, circuit-breaker and bulkhead defaults of every outgoing framework call, and the policies of the destinations it names. Without the key nothing changes and the kernel's defaults stand, a 30-second timeout among them. Throws a `TomHttpResilienceException` keyed `http.client.config.invalid` when the value is not a map or a setting has the wrong shape, before anything is applied. Called by `start`; public and static so a boot can apply the settings before `TomSecrets.load` reaches a secret store. See [configuration.md](../configuration.md#outgoing-http-calls). |
-| `configureRequestIds` | `static void configureRequestIds([TomServerConfigResourceProvider? config])` | Applies the `TomRequestIdPolicy.configurationKey` (`requestIds`) map of `config` — the server configuration when omitted — with `TomRequestIdPolicy.configure`: the request-id header and the proxies it is believed from. Without the key nothing changes, so `X-Request-Id` is echoed and believed from no one and every request runs under its trace id. Throws a `TomRequestIdException` keyed `server.request_ids.config.invalid` for a value of the wrong shape, before anything is applied. Called by `start`, right after `configureHttpClients`. See [server.md](../server.md#request-ids). |
+| `configureRequestIds` | `static void configureRequestIds([TomServerConfigResourceProvider? config])` | Applies the `TomRequestIdPolicy.configurationKey` (`requestIds`) map of `config` — the server configuration when omitted — with `TomRequestIdPolicy.configure`: the request-id header and the proxies it is believed from. Without the key nothing changes, so `X-Request-Id` is echoed and believed from no one and every request runs under its trace id. Throws a `TomRequestIdException` keyed `server.request_ids.config.invalid` for a value of the wrong shape, before anything is applied. Called by `start`, right after `configureSecurity`. See [server.md](../server.md#request-ids). |
 | `configureIdempotency` | `static void configureIdempotency([TomServerConfigResourceProvider? config])` | Applies the `idempotencyConfigurationKey` map of `config` — the server configuration when omitted — with `TomIdempotency.configure`: a `datasource` installs a `TomSqlIdempotencyStore` over the data source of that name (`table`, `createSchema`), `retentionMinutes` sets `TomIdempotency.defaultRetention`, `inProgressTimeoutSeconds` sets `TomIdempotency.inProgressTimeout`. Without the key nothing changes, and the in-memory store with a 24-hour retention stands — which holds on one process only. Throws a `TomIdempotencyException` keyed `endpoint.idempotency.config.invalid` when the value is not a map or a duration is not a positive whole number, before anything is applied. Called by `start`. See [configuration.md](../configuration.md#idempotency-keys). |
 | `configureFieldEncryption` | `static Future<void> configureFieldEncryption([TomServerConfigResourceProvider? config])` | Applies the `TomFieldEncryption.configurationKey` (`fieldEncryption`) map of `config` — the server configuration when omitted — with `TomFieldEncryption.configure`: installs a `TomFieldKeyring` over a `TomSqlDataKeyStore` of the named data source (`table`, `createSchema`) with the listed key-encryption keys (`keys`, primary first), `refreshSeconds` and `acceptPlaintext`, and loads its keys. Without the key nothing is installed, and an encrypted column fails its first write with `field_encryption.not_configured` rather than storing plaintext. Throws a `TomFieldEncryptionException` keyed `field_encryption.config.invalid` for a value of the wrong shape and `field_encryption.invalid_kek` for a bad key, before anything is installed. A `secret:` reference in a key is resolved by `TomFieldEncryption.configure` through the registered secrets providers. Called by `start`, after `configureIdempotency`. See [configuration.md](../configuration.md#field-level-encryption). |
 | `configurePrivacy` | `static void configurePrivacy([TomServerConfigResourceProvider? config])` | Applies the `TomPrivacy.configurationKey` (`privacy`) map of `config` — the server configuration when omitted — with `TomPrivacy.configure`: installs `TomSubjectKeys` over a `TomSqlSubjectKeyStore` of the named data source (`table`, `createSchema`), wrapped under the installed field-encryption keyring's key-encryption keys, which makes the audit trail seal `@TomPersonal` values per data subject so an erasure reaches them there. Without the key nothing is installed and personal values are recorded as they are. Throws a `TomPrivacyException` keyed `privacy.config.invalid` for a value of the wrong shape. Called by `start`, after `configureFieldEncryption`, whose keys wrap the subject keys. See [configuration.md](../configuration.md#privacy). |
 | `recoverTransactions` | `static Future<TomRecoveryReport?> recoverTransactions([TomServerConfigResourceProvider? config])` | Applies the `TomTransactionRecovery.configurationKey` (`transactions`) map of `config` — the server configuration when omitted — with `TomTransactionRecovery.configure`, which installs a `TomSqlDecisionLog` as `TomTransactionManager.decisionLog` when `decisionLog` names a data source; with `recoverOnStart` it then runs `TomTransactionRecovery.recover()` over every registered two-phase data source, logs the report and returns it. Returns `null` when there is no key or no recovery ran. Throws a `TomTransactionRecoveryException` keyed `transactions.recovery.config.invalid` for a value of the wrong shape. Called by `start`, after `configurePrivacy` and before the deployment's own login, so the prepared branches are resolved before a request can meet their locks. See [configuration.md](../configuration.md#transaction-recovery). |
+| `configureSecurity` | `static void configureSecurity([TomServerConfigResourceProvider? config])` | Applies the browser- and transport-security settings of `config` — the server configuration when omitted — each when its key is present: `securityHeaders` (`TomSecurityHeaders.configure`), `cors` (`TomCors.configure`), `sessionCookie` (`TomSessionCookie.configure`) and `mutualTls` (`TomMutualTls.configure`). Without them the security headers are sent with their defaults, no cross-origin page may read a response, no request is authenticated by a cookie, and no client certificate is asked for. A malformed value stops the start with the key of the setting it belongs to — `server.security_headers.config.invalid`, `endpoint.cors.config.invalid`, `authentication.session_cookie.config.invalid` or `server.mutual_tls.config.invalid` — before anything of that setting is applied. Called by `start`, right after `configureHttpClients`. See [server.md](../server.md#browser-and-transport-security). |
 | `applyLogFormat` | `static bool applyLogFormat(String format)` | Applies a `logFormat` setting and answers whether it was recognised. `json` replaces the default console output (`TomConsoleLogOutput`) with a kernel `TomJsonLogOutput` — one JSON object per line carrying `trace_id`, `span_id`, `request_id` and `tenant` — and keeps an output the application installed itself; `text` or empty changes nothing; any other value is logged as an error, changes nothing and answers `false`. Called by `start`; public and static so a boot step that logs before the server starts can apply the same setting earlier. |
 
 ### TomEndpointCredentials
@@ -303,6 +352,245 @@ TomRequestIdException(
 })
 ```
 
+### TomSecurityHeaders
+
+The security headers a server sends. Every response gains each configured
+header it does not carry already, so an endpoint that serves a page sets its
+own `Content-Security-Policy`; a setting configured as `""` is not sent.
+
+| Header | Default | Why |
+| ------ | ------- | --- |
+| `Strict-Transport-Security` | `max-age=31536000; includeSubDomains`, on HTTPS requests only | keeps a browser from reaching the host over plain HTTP again |
+| `Content-Security-Policy` | `default-src 'none'; frame-ancestors 'none'` | an API answers data, not documents: nothing it returns may load, run or be framed |
+| `X-Content-Type-Options` | `nosniff` | a browser takes the declared media type, never a guessed one |
+| `X-Frame-Options` | `DENY` | the same framing refusal for browsers that predate CSP |
+| `Referrer-Policy` | `no-referrer` | no URL of this server leaks into another's logs |
+
+- **Kind:** final class.
+- **Extends:** none
+
+#### Constructors
+
+```dart
+const TomSecurityHeaders({
+  bool enabled = true,
+  int hstsMaxAgeSeconds = 31536000,
+  bool hstsIncludeSubDomains = true,
+  bool hstsPreload = false,
+  String contentSecurityPolicy = "default-src 'none'; frame-ancestors 'none'",
+  TomContentSecurityPolicyHook? contentSecurityPolicyFor,
+  String frameOptions = 'DENY',
+  String referrerPolicy = 'no-referrer',
+})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `enabled` | `bool` | Whether any security header is sent (final). |
+| `hstsMaxAgeSeconds` | `int` | The HSTS `max-age`; `0` sends no `Strict-Transport-Security` (final). |
+| `hstsIncludeSubDomains` | `bool` | Whether HSTS covers subdomains (final). |
+| `hstsPreload` | `bool` | Whether HSTS asks to be preloaded into browsers (final). |
+| `contentSecurityPolicy` | `String` | The default `Content-Security-Policy` (final). |
+| `contentSecurityPolicyFor` | `TomContentSecurityPolicyHook?` | The per-request policy hook, or `null` (final). |
+| `frameOptions` | `String` | `X-Frame-Options` (final). |
+| `referrerPolicy` | `String` | `Referrer-Policy` (final). |
+
+#### Static Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `configurationKey` | `String` | `'securityHeaders'`, the configuration key `configure` reads (const). |
+| `current` | `TomSecurityHeaders` | The settings `tomSecurityHeadersMiddleware` applies, read per request; set by `configure`. Defaults to `const TomSecurityHeaders()`. |
+
+#### Static Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `configure` | `static void configure(Object? config)` | Sets `current` from the `securityHeaders` map — `enabled`, `hstsMaxAgeSeconds`, `hstsIncludeSubDomains`, `hstsPreload`, `contentSecurityPolicy`, `frameOptions`, `referrerPolicy`, each optional and defaulting as the constructor does — keeping `current`'s `contentSecurityPolicyFor` hook. Throws `server.security_headers.config.invalid` for a value that is not a map, an unknown key, a value of the wrong type or a negative `hstsMaxAgeSeconds`, before anything is applied. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `headersFor` | `Map<String, String> headersFor(Request request, Response response)` | The headers `response` to `request` gains: every configured one it does not carry already. None when `enabled` is off; `Strict-Transport-Security` only when the request's scheme is `https` and `hstsMaxAgeSeconds` is positive; the CSP from `contentSecurityPolicyFor` when it answers, else `contentSecurityPolicy`; an empty value is left out. |
+
+### TomContentSecurityPolicyHook
+
+Chooses the `Content-Security-Policy` of one response — for a deployment that
+serves documents under some paths. `null` falls back to
+`TomSecurityHeaders.contentSecurityPolicy`. Installed as
+`TomSecurityHeaders.current`'s `contentSecurityPolicyFor`; `configure` keeps it.
+
+```dart
+typedef TomContentSecurityPolicyHook = String? Function(Request request, Response response)
+```
+
+### TomSecurityHeadersException
+
+Thrown when the security-header settings cannot be applied.
+
+| Key | Meaning |
+| --- | ------- |
+| `server.security_headers.config.invalid` | The `securityHeaders` configuration has a value of the wrong shape; thrown by `TomSecurityHeaders.configure`. |
+
+- **Extends:** `TomServerException`
+
+#### Constructors
+
+```dart
+TomSecurityHeadersException(
+  String key,
+  String defaultUserMessage, {
+  Map<String, Object?>? parameters,
+  StackTrace? stack,
+  Object? rootException,
+  bool autoLog = false,
+})
+```
+
+### TomMutualTls
+
+The mutual-TLS configuration: the client CA, the certificates that name service
+principals, and the paths only services may call. A certificate the CA did not
+issue fails the handshake; a verified one is looked up by the SHA-256
+fingerprint of its DER encoding in `services`, because being signed by the CA is
+not by itself a grant. `tomDefaultAuthenticationMiddleware` uses the principal
+a listed certificate names for a request that carries no bearer token, no API
+key and no session cookie, and on a path under `requiredPaths` uses only that
+principal, answering `401` (`server.mutual_tls.required`) without it.
+
+- **Kind:** final class.
+- **Extends:** none
+
+#### Constructors
+
+```dart
+TomMutualTls({
+  required String clientAuthoritiesPem,
+  Map<String, TomPrincipal> services = const {},
+  List<String> requiredPaths = const [],
+})
+```
+
+The keys of `services` are normalised with `normalizeFingerprint`, so any
+fingerprint spelling may be passed.
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `clientAuthoritiesPem` | `String` | The PEM certificates of the CAs client certificates are verified against (final). |
+| `services` | `Map<String, TomPrincipal>` | The service principal each listed certificate names, by its normalised SHA-256 fingerprint (final). |
+| `requiredPaths` | `List<String>` | The path prefixes a request may only reach with a listed certificate (final). |
+
+#### Static Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `configurationKey` | `String` | `'mutualTls'`, the configuration key `configure` reads (const). |
+| `current` | `TomMutualTls?` | The installed configuration, or `null` when mutual TLS is off; set by `configure`. |
+
+#### Static Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `configure` | `static void configure(Object? config)` | Installs `current` from the `mutualTls` map: `clientCa` (required, PEM), `services` (fingerprint → `{id, username?, roles?}`), `requiredPaths` (a list of path prefixes) and `client` (`certificateChain`, `privateKey`, optional `trustedCa`) — the last also installing a `TomMutualTlsClientFactory` over `clientContext` as the kernel's global HTTP client factory. Throws `server.mutual_tls.config.invalid` for a value that is not a map, an unknown key, a `clientCa` that is no PEM certificate, a key of `services` that is not a SHA-256 fingerprint, a service without an `id`, or a `client` without its chain and key, before anything is applied. |
+| `servicePrincipal` | `static TomPrincipal servicePrincipal(String id, {String? username, List<String> roles = const []})` | A service principal: authenticated, holding `roles`, named `id` (`username` defaults to `id`). |
+| `normalizeFingerprint` | `static String normalizeFingerprint(String fingerprint)` | `fingerprint` in the form `services` is keyed by: lower-case hex, no separators — so `16:41:54:9C:...` from `openssl x509 -fingerprint` and `1641549c...` name the same certificate. |
+| `fingerprintOf` | `static String fingerprintOf(X509Certificate certificate)` | The SHA-256 fingerprint of `certificate`'s DER encoding. |
+| `fingerprintOfPem` | `static String fingerprintOfPem(String pem)` | The SHA-256 fingerprint of the first certificate in `pem` — what to list in `services` for a client certificate file. Throws `server.mutual_tls.config.invalid` when `pem` holds no certificate. |
+| `certificateOf` | `static X509Certificate? certificateOf(Request request)` | The verified client certificate `request` presented, read from its `TomTlsConnectionInfo`, or `null`. |
+| `certificateRequired` | `static TomMutualTlsException certificateRequired(Request request)` | The error a request to a `requires` path without a listed certificate is refused with: `server.mutual_tls.required`, carrying the path, `clientThrow: true`. |
+| `clientContext` | `static SecurityContext clientContext({required String certificateChainPem, required String privateKeyPem, String? trustedCaPem})` | A client TLS context presenting `certificateChainPem` (with `privateKeyPem`) and, when `trustedCaPem` is given, trusting the servers that CA issued in addition to the platform's roots. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `principalFor` | `TomPrincipal? principalFor(Request request)` | The service principal `request`'s certificate names, or `null` — no certificate, or one `services` does not list. |
+| `requires` | `bool requires(Request request)` | Whether `request`'s path is one only a listed certificate may reach: equal to a prefix of `requiredPaths` or below it. |
+| `applyTo` | `void applyTo(SecurityContext context)` | `context`, the server's TLS context, also asking for and verifying client certificates against `clientAuthoritiesPem`. |
+| `serve` | `Future<HttpServer> serve(Handler handler, Object address, int port, {required SecurityContext securityContext, bool shared = false, String? poweredByHeader})` | Binds a TLS server on `address`:`port` that asks every client for a certificate (`applyTo` on `securityContext`) and serves `handler`, each request carrying its certificate in a `TomTlsConnectionInfo` under `TomClientAddress.connectionInfoKey`. `TomServer.start` binds through it when `current` is set. |
+
+### TomTlsConnectionInfo
+
+The connection of a TLS request, with the client certificate it presented.
+`TomMutualTls.serve` puts it on every request in place of the plain connection
+information, under `TomClientAddress.connectionInfoKey`, so everything that
+reads the peer address keeps working.
+
+- **Implements:** `HttpConnectionInfo` (`dart:io`)
+
+#### Constructors
+
+```dart
+TomTlsConnectionInfo(HttpConnectionInfo info, X509Certificate? certificate)
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `remoteAddress` | `InternetAddress` | *(override)* The peer's address, from `info` (final). |
+| `remotePort` | `int` | *(override)* The peer's port, from `info` (final). |
+| `localPort` | `int` | *(override)* The local port, from `info` (final). |
+| `certificate` | `X509Certificate?` | The verified client certificate, or `null` when none was presented (final). |
+
+### TomMutualTlsClientFactory
+
+The outgoing framework client presenting this service's certificate: a kernel
+`TomResilientClient` over an `HttpClient` with `context`.
+`TomMutualTls.configure` installs it as the global client factory when the
+settings carry a `client` section.
+
+- **Implements:** `TomHttpClientAbstractFactory` (kernel)
+
+#### Constructors
+
+```dart
+TomMutualTlsClientFactory(SecurityContext context)
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `context` | `SecurityContext` | The client TLS context — see `TomMutualTls.clientContext` (final). |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `getClient` | `http.Client getClient()` | *(override)* A `TomResilientClient` over an `IOClient` whose `HttpClient` uses `context`. |
+
+### TomMutualTlsException
+
+Thrown when the mutual-TLS settings cannot be applied, and when a request to a
+path that requires a client certificate presents none.
+
+| Key | Meaning |
+| --- | ------- |
+| `server.mutual_tls.config.invalid` | The `mutualTls` configuration has a value of the wrong shape, or a PEM text holds no certificate; thrown by `TomMutualTls.configure` and `TomMutualTls.fingerprintOfPem`. |
+| `server.mutual_tls.required` | A request reached a path under `requiredPaths` without a listed client certificate; answered `401` by `tomDefaultAuthenticationMiddleware` (`TomMutualTls.certificateRequired`). |
+
+- **Extends:** `TomServerException`
+
+#### Constructors
+
+```dart
+TomMutualTlsException(
+  String key,
+  String defaultUserMessage, {
+  Map<String, Object?>? parameters,
+  StackTrace? stack,
+  Object? rootException,
+  bool autoLog = false,
+  bool clientThrow = true,
+})
+```
+
 ## Enums
 
 ### TomCredentialOutcome
@@ -342,7 +630,8 @@ installed `TomApiKeys`.
 | `tomRequestIdHeader` | `const String tomRequestIdHeader = 'X-Request-Id'` | The default request-id header: the one a server echoes the request id in, so a caller can quote it to support, and the one it believes from a trusted proxy. |
 | `tomRequestContextMiddleware` | `Middleware tomRequestContextMiddleware({TomRequestIdPolicy? policy})` | Gives every request its correlation ids before anything else runs: the W3C trace context its `traceparent` header continues — a child span of the caller's trace, its valid `tracestate` kept, or a new trace (`TomTraceContext.newRoot`) when the header is missing or invalid — and the `TomRequestId` that `policy` (by default `TomRequestIdPolicy.current`, read per request) chooses: a trusted proxy's id, else the trace id. Runs the rest of the pipeline in a zone carrying both, so the access-log line, an error logged during authentication and every line a handler writes share the same `request_id`, `trace_id` and `span_id`. Answers with the request id in the policy's header and the server span as `traceparent`. `TomServer.start` installs it after the metrics endpoint and before the request metrics. |
 | `extractAuthentication` | `(TomPrincipal?, TomClientJwtToken?, TomCredentialOutcome) extractAuthentication(Request req)` | Extracts bearer credentials from the `Authorization` header, returning `(principal, token, outcome)`. A header on a path claimed in `TomEndpointCredentials` is not read: the answer is `(null, null, endpointCredential)`. The first two elements are `null` whenever the request is not authenticated; [`TomCredentialOutcome`](#tomcredentialoutcome) says which of the five ways that happened, because `(null, null)` is the answer to all five and an operator cannot act on it. Never raises and never refuses — a public endpoint is served through this same pipeline — but every refusal is recorded at warning level, and never with the credential in it. The scheme is matched case-insensitively, as RFC 7235 requires. |
-| `tomDefaultAuthenticationMiddleware` | `Middleware tomDefaultAuthenticationMiddleware(String id, [Map<String, Object>? context])` | The default authentication middleware: resolves the effective `TomPrincipal` — from the bearer token, or, when the request carries no `Authorization` header, from an `X-API-Key` the installed `TomApiKeys` accepts (ignored with a warning when none is installed) — and runs the inner handler in a zone exposing the request, execution context, principal, token, the `TomApiKeyIdentity` of an accepted key, and the `TomRequestId` — the one `tomRequestContextMiddleware` set when it ran outside, a new random one otherwise — and inside a `TomTransactionManager.runInTransactionScope`, so the current transaction is per-request rather than per-isolate. A replacement must establish both. |
+| `tomDefaultAuthenticationMiddleware` | `Middleware tomDefaultAuthenticationMiddleware(String id, [Map<String, Object>? context])` | The default authentication middleware: resolves the effective `TomPrincipal` — from the bearer token; when the request carries no `Authorization` header, from the access token in the session cookie when `TomSessionCookie.current` is installed, a cookie-authenticated request being held to `TomSessionCookie.checkCsrf` and refused `403` (`authentication.csrf.rejected`) when it fails; or from an `X-API-Key` the installed `TomApiKeys` accepts (ignored with a warning when none is installed); with `TomMutualTls.current` installed, from the client certificate when nothing else authenticated the request, and from it alone on a path the mutual TLS requires, answering `401` (`server.mutual_tls.required`) without it — and runs the inner handler in a zone exposing the request, execution context, principal, token, the `TomApiKeyIdentity` of an accepted key, and the `TomRequestId` — the one `tomRequestContextMiddleware` set when it ran outside, a new random one otherwise — and inside a `TomTransactionManager.runInTransactionScope`, so the current transaction is per-request rather than per-isolate. A replacement must establish both. |
+| `tomSecurityHeadersMiddleware` | `Middleware tomSecurityHeadersMiddleware()` | Adds `TomSecurityHeaders.current`'s headers — read per request — to every response, error responses included, leaving a header the response carries already. `TomServer.start` installs it directly inside `tomRequestContextMiddleware`, outside both error layers. |
 | `tomLoggingMiddleware` | `Middleware tomLoggingMiddleware()` | The default request-logging middleware: emits one access-log line per request, guarded by the request's `TomRequestLogInfo`. Both guards are the reason shelf's `logRequests()` is not the default — it reads no request context, so it can honour neither. |
 | `noopHandler` | `Handler noopHandler(String id, int statusCode)` | A `Handler` that ignores the request and always replies with `statusCode` (`id` labels it for tracing). |
 | `tomProbePaths` | `const Set<String> tomProbePaths = {'health', 'ready'}` | The paths a draining server keeps answering — the liveness and readiness probes — so an orchestrator sees an alive, unready process rather than a dead one. `TomGracefulShutdown.middleware` passes them through while it refuses everything else. |

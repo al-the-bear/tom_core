@@ -297,7 +297,8 @@ The end-user app builds for the web, and in a browser `erin`'s enrolment offer
 includes a **passkey** the browser itself creates. One run exercises everything
 the suites prove only in parts — the web build, the browser's WebAuthn, the
 live auth server's relying party (`localhost`, origin `http://localhost:8090`)
-and its CORS:
+and its CORS — the `env=dev` overlay admits any local port
+(`cors.allowedOrigins` in `assets/config-resources_dev.yaml`):
 
 ```sh
 # from advanced_auth_server/ and advanced_app_server/: fresh databases, both servers

@@ -96,6 +96,12 @@ access rules as a user.
   - [Authenticating a request](#authenticating-a-request)
   - [Where accounts and keys live](#where-accounts-and-keys-live)
   - [API key failure keys](#api-key-failure-keys)
+- [Browser Sessions in a Cookie](#browser-sessions-in-a-cookie)
+  - [The cookies](#the-cookies)
+  - [Setting and clearing them](#setting-and-clearing-them)
+  - [The CSRF check](#the-csrf-check)
+  - [The `sessionCookie` key](#the-sessioncookie-key)
+  - [Session cookie failure keys](#session-cookie-failure-keys)
 - [Verification](#verification)
 - [Core Components](#core-components)
   - [`TomAuthenticationServer`](#tomauthenticationserver)
@@ -138,6 +144,7 @@ access rules as a user.
   - [`TomScimException`](#tomscimexception)
   - [`TomApiKeys` / `TomServiceAccount` / `TomApiKey`](#tomapikeys--tomserviceaccount--tomapikey)
   - [`TomApiKeyStore` / `TomMemoryApiKeyStore` / `TomSqlApiKeyStore`](#tomapikeystore--tommemoryapikeystore--tomsqlapikeystore)
+  - [`TomSessionCookie` / `TomSameSite` / `TomSessionCookieException`](#tomsessioncookie--tomsamesite--tomsessioncookieexception)
 - [Status and Limitations](#status-and-limitations)
 - [Dependencies](#dependencies)
 
@@ -300,6 +307,9 @@ access rules as a user.
 | `serviceAccountTable` / `apiKeyTable` | function | The two tables' declarations, from which the store's DDL derives |
 | `TomApiKeys` | class | Issues, rotates, revokes and checks API keys; `install` makes it the one the request pipeline reads `X-API-Key` with |
 | `TomApiKeyException` | class | An API-key operation that cannot be done: an unknown account or key, or a role the account does not hold |
+| `TomSessionCookie` | final class | A browser session's access token in an `HttpOnly` cookie, with a page-readable CSRF token beside it; `current` is installed by `configure` from the `sessionCookie` key, and the request pipeline reads the cookie and holds a cookie-authenticated request to `checkCsrf` |
+| `TomSameSite` | enum | The `SameSite` attribute of the session cookies: `strict`, `lax`, `none` |
+| `TomSessionCookieException` | class | The `sessionCookie` settings cannot be applied, or a cookie-authenticated request failed the CSRF check |
 
 One type every service in the list throws lives in `little_things`, with the
 rest of the package's exception hierarchy:
@@ -3626,6 +3636,116 @@ Each is a `TomApiKeyException`, which extends `TomServerException`. A presented
 key that authenticates nothing raises nothing: the request proceeds
 unauthenticated, and a protected endpoint refuses it downstream.
 
+## Browser Sessions in a Cookie
+
+A browser client can keep its access token in an `HttpOnly` cookie instead of
+script-readable storage, where any script that runs in the page — an injected
+one included — can read it. `TomSessionCookie` sets the cookie on the response
+that hands out the token, and the request pipeline reads it back. A cookie
+travels with every request the browser sends to the server — including one a
+hostile page triggers — so a request authenticated by the cookie is held to a
+CSRF check before it may change anything.
+
+Nothing of it is active until `TomSessionCookie.current` is installed: without
+it no request is authenticated by a cookie, whatever cookies it carries.
+
+### The cookies
+
+| Cookie | Holds | Attributes |
+| ------ | ----- | ---------- |
+| `name` (`tom_session`) | the access token | `HttpOnly; Secure; SameSite=Strict; Path=/` |
+| `csrfCookieName` (`tom_csrf`) | a random CSRF token, 32 bytes base64url | `Secure; SameSite=Strict; Path=/` — readable by the page, which copies it into the `X-CSRF-Token` header |
+
+`Secure`, `SameSite` (`TomSameSite.strict`, `lax` or `none`), `Path` and
+`Domain` are configured once and apply to both cookies. `SameSite=Strict` is the
+default: the browser sends neither cookie on a request another site starts, so
+the CSRF check is a second line rather than the only one.
+
+### Setting and clearing them
+
+`attach` sets both cookies on the response that hands out the token — a login, a
+refresh — and `clear` deletes both, which is a logout. Both append to the
+`Set-Cookie` headers the response already carries:
+
+```dart
+final response = TomSessionCookie.current!.attach(
+  Response.ok('signed in'),
+  accessToken,                          // the token the login handed out
+  maxAge: const Duration(hours: 1),     // a browser session when omitted
+);
+// Set-Cookie: tom_session=<token>; Path=/; Max-Age=3600; Secure; HttpOnly; SameSite=Strict
+// Set-Cookie: tom_csrf=<random>; Path=/; Max-Age=3600; Secure; SameSite=Strict
+
+final loggedOut = TomSessionCookie.current!.clear(Response.ok(''));
+```
+
+The calls and the two headers are those `test/web_security_test.dart` asserts.
+
+Each `attach` draws a fresh CSRF token. `tokenOf(request)` reads the access
+token back, `TomSessionCookie.cookiesOf(request)` every cookie of the request by
+name.
+
+When a request carries **no `Authorization` header**,
+`tomDefaultAuthenticationMiddleware` takes the session cookie's token as its
+bearer token: it is verified, and the principal resolved, exactly as a token in
+the header would be. A request presenting a header is answered as the bearer it
+presented, and the cookie is not read. A substitute authentication middleware
+that should admit cookie sessions has to read the cookie and run the CSRF check
+the same way (see [server.md](server.md#cors-and-session-cookies)).
+
+### The CSRF check
+
+A cookie-authenticated request with a method other than `GET`, `HEAD`,
+`OPTIONS` and `TRACE` must pass a double-submit check
+(`TomSessionCookie.checkCsrf`):
+
+- it carries the `X-CSRF-Token` header (`csrfHeader`) equal to the `tom_csrf`
+  cookie, compared in constant time — a page of another origin can neither read
+  that cookie nor set it; and
+- when it carries an `Origin`, that origin is the server's own or one the CORS
+  policy admits (`TomCors.current.admits`; see
+  [endpoints.md](endpoints.md#cors)).
+
+Otherwise the middleware answers `403` with `authentication.csrf.rejected`,
+whose `reason` parameter names the failure — `missing_token`, `token_mismatch`
+or `foreign_origin` — and logs a warning naming the method, the path and the
+reason. A safe method always passes, which is why it must not change anything.
+A request authenticated by an `Authorization` header or an API key is not
+checked: a browser never attaches those by itself.
+
+A web client of another origin needs `allowCredentials` in the `cors` settings
+before its browser sends the cookies at all, and its origin on the allow-list.
+
+### The `sessionCookie` key
+
+The settings are the `sessionCookie` key of the server configuration
+(`TomSessionCookie.configurationKey`), applied at start by
+`TomServer.configureSecurity`:
+
+```yaml
+sessionCookie:
+  name: tom_session
+  csrfCookieName: tom_csrf
+  csrfHeader: X-CSRF-Token
+  path: /
+  domain: example.com        # optional; the host alone when absent
+  sameSite: Strict           # Strict | Lax | None
+  secure: true
+```
+
+Every setting is optional and defaults as shown; the key being present — an
+empty map included — is what switches cookie sessions on. A test or an
+embedding application installs `TomSessionCookie.current` directly.
+
+### Session cookie failure keys
+
+| Key | Raised by | Meaning |
+| --- | --------- | ------- |
+| `authentication.session_cookie.config.invalid` | `TomSessionCookie.configure` | The value is not a map, has an unknown key, a name or header that is not a token, a `path` not starting with `/`, a `domain` that is not a host name, a `sameSite` other than `Strict`, `Lax` or `None`, a `secure` that is not a boolean, or `SameSite=None` without `Secure`. Stops the start. |
+| `authentication.csrf.rejected` | `TomSessionCookie.checkCsrf` | A cookie-authenticated request with an unsafe method failed the CSRF check; answered `403`. |
+
+Each is a `TomSessionCookieException`, which extends `TomServerException`.
+
 ## Verification
 
 `test/authentication_test.dart` covers the module's own contract:
@@ -3675,6 +3795,14 @@ and `ratelimit_test.dart`'s group `the middleware` reads a key through the
 request pipeline. `example/ratelimit/rate_limit_example.dart` walks a service
 account from issuing to revocation; it is the rate-limiting module's example,
 because a key is what an `apiKey` limit counts by.
+[Browser sessions in a cookie](#browser-sessions-in-a-cookie) are
+`web_security_test.dart`'s group `a browser session in a cookie`: `attach`
+setting the token `HttpOnly` beside a readable CSRF token, a request carrying
+only the cookie authenticated, an unsafe method refused with
+`authentication.csrf.rejected` without a matching CSRF header, a foreign
+`Origin` refused unless the CORS policy admits it, a bearer header not held to
+the check, and the `sessionCookie` key read from the server configuration and
+refused with `authentication.session_cookie.config.invalid` when malformed.
 
 ```bash
 dart run example/authentication/authentication_example.dart
@@ -4058,6 +4186,15 @@ store keeps them in `tom_service_account` and `tom_api_key`, declared by
 `TomServiceAccountRow` and `TomApiKeyRow`. See
 [Where accounts and keys live](#where-accounts-and-keys-live).
 
+### `TomSessionCookie` / `TomSameSite` / `TomSessionCookieException`
+
+Browser sessions in a cookie. `TomSessionCookie` — `configure`, `current`,
+`configurationKey`; `attach`, `clear`, `tokenOf`, `cookiesOf` and `checkCsrf`;
+the settings `name`, `csrfCookieName`, `csrfHeader`, `path`, `domain`,
+`sameSite` and `secure`. `TomSameSite` is the cookies' `SameSite` attribute,
+and `TomSessionCookieException` both refusals. See
+[Browser Sessions in a Cookie](#browser-sessions-in-a-cookie).
+
 ## Status and Limitations
 
 - **`TomDummyAuthenticationService` is for scaffolding only** — it grants any
@@ -4226,23 +4363,23 @@ store keeps them in `tom_service_account` and `tom_api_key`, declared by
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
 | `dart:async` | dart | `server_self_login.dart`, `two_factor.dart` | `Future`, `FutureOr`, and the `Timer` the server principal's renewal is scheduled on |
-| `dart:convert` | dart | 22 of 37 files | `base64`, `base64Url`, `json`, `jsonDecode`, `jsonEncode`, `utf8` |
+| `dart:convert` | dart | 23 of 38 files | `base64`, `base64Url`, `json`, `jsonDecode`, `jsonEncode`, `utf8` |
 | `dart:io` | dart | `jwt_keys.dart`, `saml_flow.dart`, `saml_provider.dart` | `File`, reading the configured key and certificate files; `ZLibCodec`, deflating a SAML `AuthnRequest` for the redirect binding |
-| `dart:math` | dart | `api_keys.dart`, `jwt_signing.dart`, `oauth_flow.dart`, `two_factor_send_limit.dart`, `webauthn_software_authenticator.dart` | `Random`, `exp`, and `pow` / `min` for the send pace's doubling interval; `Random.secure` for the unusable signing key a verify-only server holds and for an API key's id and secret |
+| `dart:math` | dart | `api_keys.dart`, `jwt_signing.dart`, `oauth_flow.dart`, `session_cookie.dart`, `two_factor_send_limit.dart`, `webauthn_software_authenticator.dart` | `Random`, `exp`, and `pow` / `min` for the send pace's doubling interval; `Random.secure` for the unusable signing key a verify-only server holds, for an API key's id and secret, and for a session's CSRF token |
 | `dart:typed_data` | dart | `saml_xml_signature.dart`, `two_factor_delivered_code.dart`, `two_factor_webauthn.dart`, `webauthn_software_authenticator.dart` | `Uint8List`, `ByteData`, `BytesBuilder` |
-| `crypto` | package | 10 of 37 files | `sha256` and `sha512`, for the JWK thumbprint a key id is, the API-key secret digest, the SCIM bearer-secret digests, the PKCE code challenge, the SAML handoff-code digest and XML Signature digests, the interim-token fingerprint an attempt store keys on, the delivered-code digest, and the WebAuthn RP id hash, client-data hash and user handle |
+| `crypto` | package | 10 of 38 files | `sha256` and `sha512`, for the JWK thumbprint a key id is, the API-key secret digest, the SCIM bearer-secret digests, the PKCE code challenge, the SAML handoff-code digest and XML Signature digests, the interim-token fingerprint an attempt store keys on, the delivered-code digest, and the WebAuthn RP id hash, client-data hash and user handle |
 | `dart_jsonwebtoken` | package | `jwt_keys.dart`, `jwt_signing.dart`, `saml_provider.dart` | `jwt.JWT.verify`, `jwt.JWTAlgorithm`, `jwt.RSAPrivateKey` / `jwt.RSAPublicKey`, `jwt.ECPrivateKey` / `jwt.ECPublicKey`, `jwt.SecretKey`, and `toJWK` for the published set |
 | `http` | package | `oauth_flow.dart` | `http.dart`, `http.get`, `http.post` |
 | `pointycastle` | package | `jwt_keys.dart`, `saml_provider.dart`, `saml_xml_signature.dart`, `two_factor_webauthn.dart`, `webauthn_software_authenticator.dart` | RSA PKCS#1 v1.5 signing and verification for XML Signature, ECDSA P-256 and RSA PKCS#1 v1.5 signature verification for passkeys, and the software authenticator's key generation and signing; deriving a signing key's public half |
-| `shelf` | package | `jwks_endpoint.dart`, `saml_endpoints.dart`, `scim_endpoints.dart` | `Request` and `Response` — the SCIM endpoints read the raw request and answer in `application/scim+json`; `Response`, which the JSON Web Key Set and SAML metadata endpoints answer with directly to set their content type — and, for the key set, its cache header |
-| `tom_core_kernel` | package | 32 of 37 files | `TomPrincipal`, `TomAccessControlDefinition`, `TomBearerAuthentication`, `TomServerJwtToken`, the 2FA wire types `Tom2FAChallenge` / `Tom2FAClaims` / `Tom2FAPendingEnrolment` / `Tom2FAEnrolmentClaims`, the `Tom2FAMethodDescriptor` every adaptor describes itself with, the `TomTotp` derivation primitives, `TomServerPrincipal` (the holder server self-login installs into), the wire types `TomAuthenticationMessage` / `TomAuthenticationResult`, and `TomResilientClient` (the OAuth transport's client). The 2FA types live there and not here because the server writes them and the client reads them |
+| `shelf` | package | `jwks_endpoint.dart`, `saml_endpoints.dart`, `scim_endpoints.dart`, `session_cookie.dart` | `Request` and `Response` — the SCIM endpoints read the raw request and answer in `application/scim+json`; `Response`, which the JSON Web Key Set and SAML metadata endpoints answer with directly to set their content type — and, for the key set, its cache header; the session cookie reads a request's `Cookie` header and adds `Set-Cookie` to a response |
+| `tom_core_kernel` | package | 32 of 38 files | `TomPrincipal`, `TomAccessControlDefinition`, `TomBearerAuthentication`, `TomServerJwtToken`, the 2FA wire types `Tom2FAChallenge` / `Tom2FAClaims` / `Tom2FAPendingEnrolment` / `Tom2FAEnrolmentClaims`, the `Tom2FAMethodDescriptor` every adaptor describes itself with, the `TomTotp` derivation primitives, `TomServerPrincipal` (the holder server self-login installs into), the wire types `TomAuthenticationMessage` / `TomAuthenticationResult`, and `TomResilientClient` (the OAuth transport's client). The 2FA types live there and not here because the server writes them and the client reads them |
 | `xml` | package | `saml_flow.dart`, `saml_provider.dart`, `saml_xml_signature.dart` | `XmlDocument`, `XmlElement`, parsing SAML responses and metadata, and the node walk exclusive canonicalization is written over |
 | [audit](audit.md) | module | `authentication_server.dart` | `TomAuditTrail.recordAction`, `TomAuditAction` and `TomAuditOutcome` — the record of a switch of the sign-in organization (`session.organizationSwitched`) |
 | [cache](cache.md) | module | `api_keys.dart`, `scim_service.dart` | `TomCacheInvalidator.revokePrincipal`, the default revocation a SCIM deprovisioning change calls; `TomCache` and `TomCacheManager` for the node's API-key lookup cache, and `TomCacheInvalidator.invalidateCacheEntry`, which drops a revoked or rotated key from it |
 | [configuration](configuration.md) | module | `jwt_signing.dart`, `oauth_provider.dart`, `saml_provider.dart`, `scim_endpoints.dart`, `server_self_login.dart`, `sql_oauth_state_store.dart` | `TomBaseServerConfiguration` supplies the JWT fields `installJwtSigning` reads and the service-account fields `TomServiceCredential.fromConfiguration` reads; `isDevelopmentOrTestRuntime` decides whether the sample-key fallback is permitted |
-| [datasources](datasources.md) | module | 8 of 37 files | `TomPrimaryReads` (on the external-identity link and token and the second-factor enrolment, whose reads stay on the primary; `oauth_identity.dart`, `oauth_tokens.dart`, `two_factor_enrolment.dart`), `TomDataSource`, `TomDataSourceInfo`, `TomFrameworkTable` (the single declaration of `tom_oauth_state`, `tom_scim_resource`, `tom_service_account` and `tom_api_key`), `TomSchemaProvisioning` and `sqlInstant` / `parseSqlInstant` |
-| [endpoints](endpoints.md) | module | `jwks_endpoint.dart`, `oauth_endpoints.dart`, `saml_endpoints.dart`, `scim_endpoints.dart` | `TomScimApi` declares its seventeen routes with `@TomEndpoint` and `@TomPublicAccess`; `TomSamlService` binds the identity provider's form post as a `TomMultipartForm` and answers it with a `TomRedirect`; `TomOAuthServer` implements the kernel's `tomOAuthApi` through `@TomApiImplementation`, and `registerFrameworkApis()` registers the contract; `TomJwksService` declares its route with `@TomEndpoint` and `@TomPublicAccess` |
-| [little_things](little_things.md) | module | 18 of 37 files | `TomServerException`, the base of `TomLoginException`, `Tom2FAException`, `TomServerSelfLoginException`, `TomOAuthException`, `TomSamlException`, `TomScimException`, `TomSigningKeyException`, `TomJwtKeyException` and `TomApiKeyException` |
+| [datasources](datasources.md) | module | 8 of 38 files | `TomPrimaryReads` (on the external-identity link and token and the second-factor enrolment, whose reads stay on the primary; `oauth_identity.dart`, `oauth_tokens.dart`, `two_factor_enrolment.dart`), `TomDataSource`, `TomDataSourceInfo`, `TomFrameworkTable` (the single declaration of `tom_oauth_state`, `tom_scim_resource`, `tom_service_account` and `tom_api_key`), `TomSchemaProvisioning` and `sqlInstant` / `parseSqlInstant` |
+| [endpoints](endpoints.md) | module | `jwks_endpoint.dart`, `oauth_endpoints.dart`, `saml_endpoints.dart`, `scim_endpoints.dart`, `session_cookie.dart` | `TomScimApi` declares its seventeen routes with `@TomEndpoint` and `@TomPublicAccess`; `TomSamlService` binds the identity provider's form post as a `TomMultipartForm` and answers it with a `TomRedirect`; `TomOAuthServer` implements the kernel's `tomOAuthApi` through `@TomApiImplementation`, and `registerFrameworkApis()` registers the contract; `TomJwksService` declares its route with `@TomEndpoint` and `@TomPublicAccess`; the CSRF check admits an origin `TomCors` admits |
+| [little_things](little_things.md) | module | 19 of 38 files | `TomServerException`, the base of `TomLoginException`, `Tom2FAException`, `TomServerSelfLoginException`, `TomOAuthException`, `TomSamlException`, `TomScimException`, `TomSigningKeyException`, `TomJwtKeyException`, `TomApiKeyException` and `TomSessionCookieException` |
 | [messaging](messaging.md) | module | `two_factor_delivered_code.dart` | `TomEmailService` and `TomSmsService` deliver the one-time codes, through `TomTemplatedMessageService.deliverNow` rather than the outbox. A deployment that registers neither can still run TOTP |
 | [object_persistence](object_persistence.md) | module | `oauth_identity.dart`, `oauth_tokens.dart`, `sql_api_key_store.dart`, `sql_oauth_state_store.dart`, `sql_scim_store.dart`, `two_factor_enrolment.dart` | `TomExternalIdentityLink` and `TomUserTwoFactorEnrolment` are ordinary entities over `TomSqlDatasourceRepository`. Neither table is created by the framework; each entity carries its own `createTableSql` for a deployment's migration to run |
 | [preferences](preferences.md) | module | `authentication_server.dart` | `TomUserPreferences` |
@@ -4251,7 +4388,10 @@ store keeps them in `tom_service_account` and `tom_api_key`, declared by
 | [server](server.md) | module | `scim_endpoints.dart` | `TomEndpointCredentials`, which `TomScimProvisioning.install` claims `/scim/v2/` in |
 
 - **Server** (this package): `TomServerChannel` carries the default self-login
-  transport, and `TomServer` calls `loginAndInstall` before binding its socket.
+  transport, and `TomServer` calls `loginAndInstall` before binding its socket;
+  `TomServer.configureSecurity` installs `TomSessionCookie.current` from the
+  `sessionCookie` key, and `tomDefaultAuthenticationMiddleware` reads the cookie
+  and runs the CSRF check.
 - **Bean Locator** (kernel): `Tom2FAPolicy` and `Tom2FAEnrolmentStore` are
   resolved by type through `TomBean`, which is what makes both of them
   swappable without a configuration key.

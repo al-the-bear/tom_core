@@ -329,6 +329,7 @@ account's roles, and rotates and revokes it; `TomSqlApiKeyStore`
 | `TomServiceAccount` · `TomApiKey` · `TomIssuedApiKey` · `TomApiKeyIdentity` | The account, a key's stored record (the hash of its secret, never the secret), a key as issued — the one time its value is visible — and the key a request authenticated with, in the request zone. In `api_keys.dart`. |
 | `TomApiKeyStore` · `TomMemoryApiKeyStore` · `TomSqlApiKeyStore` · `TomServiceAccountRow` · `TomApiKeyRow` | Where accounts and key records live: per process, or rows of `tom_service_account` and `tom_api_key` every node shares. In `api_keys.dart` and `sql_api_key_store.dart`. |
 | `serviceAccountTable` · `apiKeyTable` · `defaultServiceAccountTable` · `defaultApiKeyTable` | The two tables' declarations and default names. In `sql_api_key_store.dart`. |
+| `TomSessionCookie` · `TomSameSite` · `TomSessionCookieException` | A browser session's access token in an `HttpOnly` cookie (`attach`, `clear`), with a page-readable CSRF token beside it. Once `TomSessionCookie.current` is installed from the `sessionCookie` key, the request pipeline reads the cookie from a request without an `Authorization` header and holds an unsafe method to the double-submit check (`checkCsrf`), answering `403` otherwise. In `session_cookie.dart`. |
 
 ### Error keys raised by the token signing
 
@@ -374,6 +375,13 @@ account's roles, and rotates and revokes it; `TomSqlApiKeyStore`
 | `api_key.issue.role_not_held` | `TomApiKeyException` | `issue` asks for a role the account does not hold. |
 | `api_key.rotate.unknown_key` · `api_key.revoke.unknown_key` | `TomApiKeyException` | `rotate` or `revoke` names a key that does not exist. |
 
+### Error keys raised by session cookies
+
+| Key | Exception | Meaning |
+| --- | --------- | ------- |
+| `authentication.session_cookie.config.invalid` | `TomSessionCookieException` | The `sessionCookie` settings have a value of the wrong shape, or `SameSite=None` without `Secure`. |
+| `authentication.csrf.rejected` | `TomSessionCookieException` (403) | A cookie-authenticated request with an unsafe method failed the CSRF check: no or a mismatched `X-CSRF-Token`, or a foreign `Origin` the CORS policy does not admit. |
+
 ## Quick start
 
 ```dart
@@ -404,7 +412,8 @@ Future<void> main() async {
 
 See [`doc/authentication.md`](../../../../doc/authentication.md) for the two
 authentication passes, the 2FA handshake, the external-identity path, SCIM
-provisioning and service accounts with API keys. Five examples split the module along the seam described above:
+provisioning, service accounts with API keys and browser sessions in a cookie.
+Five examples split the module along the seam described above:
 `example/authentication/authentication_example.dart` is the local login,
 `two_factor_enrolment_example.dart` and `two_factor_login_example.dart` the
 second factor either side of enrolment, `oauth_login_example.dart` the
@@ -414,7 +423,8 @@ five connection-free and checking their own results.
 `test/authentication_test.dart`, `test/two_factor_test.dart`,
 `test/oauth_test.dart`, `test/saml_test.dart`, `test/scim_test.dart`,
 `test/jwt_signing_test.dart`, `test/jwt_keys_test.dart` and
-`test/api_keys_test.dart` cover the module,
+`test/api_keys_test.dart` cover the module, `test/web_security_test.dart` the
+session cookie and its CSRF check,
 `test/scim_store_db_test.dart` and `test/ratelimit_api_keys_db_test.dart`
 (tag `db`) run the relational SCIM and API-key stores, and
 `test/sso_keycloak_test.dart` (tag `sso`, started by `tool/run_sso_tests.sh`)

@@ -319,7 +319,7 @@ core_server_sample/
 ├── assets/
 │   ├── datasources_default.yaml         # todo_db + main datasources
 │   ├── config-resources_default.yaml
-│   └── config-resources_dev.yaml
+│   └── config-resources_dev.yaml        # DEV title; CORS for local web clients
 ├── docker-compose.yaml                  # bundled MariaDB
 ├── .env.example                         # copy to .env; read by compose and the boot
 ├── build.yaml                           # reflection generate_for: bin/server_start.dart

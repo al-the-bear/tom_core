@@ -22,6 +22,10 @@ method, and converts the result (or any error) into a `Response`.
   - [A Denial Answers 404, and Says Nothing Else](#a-denial-answers-404-and-says-nothing-else)
   - [Which control to annotate with](#which-control-to-annotate-with)
   - [Automatic endpoint protection](#automatic-endpoint-protection)
+- [CORS](#cors)
+  - [Which origins may read a response](#which-origins-may-read-a-response)
+  - [An endpoint's own origins](#an-endpoints-own-origins)
+  - [The `cors` key](#the-cors-key)
 - [Transactions](#transactions)
 - [Idempotency Keys](#idempotency-keys)
   - [Opting in](#opting-in)
@@ -73,6 +77,8 @@ method, and converts the result (or any error) into a `Response`.
 | `TomEndpointRoutingInfo` | class | What is mounted at one such key: the handler, the endpoint it was built from, and the method this mount answers |
 | `TomRedirect` | class | An endpoint result that answers `307` or `308`; `301`/`302` are omitted because their method-rewriting is ambiguous across clients |
 | `TomEndpointHandlerException` / `TomEndpointPipelineException` | class | Serving-time / build-time failures |
+| `TomCors` | final class | Which browser origins may read a response: an allow-list, empty by default. `current` is the one the pipeline applies, set by `configure` from the `cors` key |
+| `TomCorsException` | class | The `cors` settings cannot be applied — `endpoint.cors.config.invalid` |
 
 Five concerns live in this module because each is a way of *serving a request*
 rather than a subject of its own.
@@ -210,8 +216,8 @@ That is a `TomEndpointPipelineException` from `initializeRouter()`, so it aborts
 **startup** rather than one request — the whole route table is absent, not one
 route. To vary what a preflight answers, use the three CORS fields on the
 endpoint (`corsAllowedOrigins`, `corsAllowedMethods`, `corsAllowedHeaders`); to
-change it globally, the `globalSettingCors…Default` statics. Declaring an
-`OPTIONS` handler is not the way in.
+change it for every endpoint, the `cors` configuration key (see [CORS](#cors)).
+Declaring an `OPTIONS` handler is not the way in.
 
 Two consequences that are easy to meet by accident:
 
@@ -343,22 +349,25 @@ rather than failing a null check.
 
 `TomEndpointHandler.handleMethodCall` runs, in order:
 
-1. answer CORS preflight (`OPTIONS`) early;
+1. answer CORS preflight (`OPTIONS`) early — `204` with the headers
+   [`TomCors`](#cors) grants the request's origin;
 2. resolve principal/token/request-id from the current zone and run
    [access control](#access-control);
 3. [bind the method parameters](#parameter-binding) by reflection;
 4. optionally [start a transaction](#transactions);
 5. invoke the method (awaiting a `Future` result);
 6. commit (or roll back on error) and convert the result to a `Response`;
-7. add the endpoint's `Access-Control-Allow-Origin` to that response, unless the
-   handler set one itself.
+7. add the `Access-Control-Allow-Origin` `TomCors` grants the request's origin
+   to that response, unless the handler set one itself — none for an origin it
+   does not admit.
 
 Step 7 is the half of CORS a preflight cannot do. A preflight tells the browser
 it may *send* the request; the browser then hands the response to the page only
 if that response names the allowed origin too. So every response an endpoint
 returns carries the same origin its preflight announced — an error response
 included, since a refusal the page cannot read reaches the user as a network
-error rather than as the reason.
+error rather than as the reason. See [CORS](#cors) for which origins are
+admitted.
 
 **A `GET` or `HEAD` request is read-only work.** Such a request runs through
 the pipeline inside `TomReplicaRouting.readOnly`, so the repository reads it
@@ -687,6 +696,106 @@ Note the polarity of the revocation. Every key a principal holds is a *grant*,
 the principal has been issued, not a negation of a test. Holding the container
 key grants every member of it **unless** the matching `-<container>.<member>` is
 also held.
+
+## CORS
+
+### Which origins may read a response
+
+`TomCors` decides which browser origins may call the server. It is an
+allow-list, and **empty by default**: until a deployment lists its client
+origins, no cross-origin page may read a response. A request from the server's
+own origin, or from a client that is not a browser — another server, a mobile
+app, `curl` — is unaffected either way, because the restriction is the browser's
+and only a browser enforces it.
+
+A request whose `Origin` is on `TomCors.current`'s `allowedOrigins` is answered
+with `Access-Control-Allow-Origin: <that origin>` and `Vary: Origin`; any other
+origin gets no such header, and the browser withholds the response from the
+page. The pipeline applies the policy in two places: `handlePreflight` answers
+an `OPTIONS` preflight `204` with `Access-Control-Allow-Origin`, the
+`Access-Control-Allow-Methods` and `Access-Control-Allow-Headers` the policy
+admits and `Access-Control-Max-Age`, and `withAllowedOrigin` puts the origin on
+every response the endpoint returns, an error included (see
+[The Request Pipeline](#the-request-pipeline)). Both read `TomCors.current` per
+request, so a changed policy reaches routes that are already mounted.
+
+An entry of `allowedOrigins` takes one of three forms:
+
+| Entry | Admits |
+| ----- | ------ |
+| `https://app.example.com` | exactly that origin |
+| `http://localhost:*` | that scheme and host on any port — what a development client on a port of its own needs |
+| `*` | every origin, answered as `*` rather than as the caller's origin |
+
+`*` cannot be combined with `allowCredentials`: browsers refuse credentials
+with `*` anyway, so the combination is refused when it is configured rather than
+when a browser meets it. With `allowCredentials` on, an admitted origin is
+answered with `Access-Control-Allow-Credentials: true`, which a browser needs
+before it sends cookies cross-origin — the session cookie among them (see
+[authentication.md](authentication.md#browser-sessions-in-a-cookie)).
+
+`TomCors.admits(origin)` answers the same question for other callers: the
+session cookie's CSRF check accepts a cookie-authenticated request from an
+origin the policy admits.
+
+### An endpoint's own origins
+
+An endpoint may state its own policy with the three fields every endpoint
+annotation carries. `corsAllowedOrigins` is a comma-separated list in the same
+three forms and **replaces** the configured list for that endpoint — the
+configured origins are not admitted there; `corsAllowedMethods` and
+`corsAllowedHeaders` replace what its preflight answers. A field left `null`
+falls back to the policy:
+
+```dart
+@TomPublicAccess()
+@TomEndpoint(
+  methods: [TomHttpMethod.get],
+  uri: '/fixture/cors_origin',
+  produces: TomMimeType.json,
+  corsAllowedOrigins: 'https://origin.example.com',
+  logRequests: false,
+)
+Future<Map<String, Object>> corsOrigin();
+```
+
+The declaration is `corsOrigin` in `test/fixtures/reflection_fixture.dart`,
+which `test/endpoints_pipeline_test.dart` serves: the origin it names is
+admitted there, the policy's own origin is not, and its preflight still answers
+the policy's methods and headers.
+
+### The `cors` key
+
+The policy is the `cors` key of the server configuration
+(`TomCors.configurationKey`), applied at start by `TomServer.configureSecurity`:
+
+```yaml
+cors:
+  allowedOrigins: [https://app.example.com, http://localhost:*]
+  allowedMethods: GET, POST, PUT, PATCH, DELETE, HEAD
+  allowedHeaders: Origin, Content-Type, Accept, Authorization
+  allowCredentials: false
+  maxAgeSeconds: 600
+```
+
+| Setting | Default | Effect |
+| ------- | ------- | ------ |
+| `allowedOrigins` | none | The origins admitted, in the forms above |
+| `allowedMethods` | `GET, POST, PUT, PATCH, DELETE, HEAD` (`TomCors.defaultAllowedMethods`) | The methods a preflight admits |
+| `allowedHeaders` | `Origin, Content-Type, Accept, Authorization, X-API-Key, X-CSRF-Token, X-Request-Id, Idempotency-Key, traceparent, tracestate` (`TomCors.defaultAllowedHeaders`) | The request headers a preflight admits — by default what the framework's own clients send |
+| `allowCredentials` | `false` | Whether a browser may send cookies cross-origin |
+| `maxAgeSeconds` | `600` | How long a browser may cache a preflight answer |
+
+`TomCors.configure` checks the whole value before applying any of it:
+
+| Key | Raised when |
+| --- | ----------- |
+| `endpoint.cors.config.invalid` | The value is not a map, has an unknown key, an origin that is neither `*` nor `scheme://host` (optionally with `:port` or `:*`), `*` together with `allowCredentials`, a negative or non-integer `maxAgeSeconds`, or methods or headers that are not a comma-separated string. Raised by `TomCors.configure` as a `TomCorsException`; it stops the start. |
+
+The sample servers list `http://localhost:*` and `http://127.0.0.1:*` in their
+development configuration, because their Flutter web clients run on a local port
+of their own — a different origin. A deployment lists its real client origins
+instead. A test or an embedding application sets `TomCors.current` directly.
 
 ## Transactions
 
@@ -1650,8 +1759,13 @@ types, `shelfRoutePath`, and the four parameter injectors with
 
 `test/endpoints_pipeline_test.dart` runs the reflected pipeline for real:
 scanning annotated classes, resolving access through `getClassMethodMetadata`
-(C-12 / G-API-3), a contract-declared policy gating a live request, CORS
-preflight, the HTTP methods an endpoint may declare, declared response headers,
+(C-12 / G-API-3), a contract-declared policy gating a live request, CORS —
+in the groups `CORS preflight` (an admitted origin given the policy's three
+headers, an unlisted one none, the shipped default admitting no origin, an
+endpoint override replacing only what it states, a changed policy reaching a
+mounted route) and `CORS on the response itself` (the admitted origin on a
+successful call and on a refused one, none without an `Origin` or from an
+unlisted one) — the HTTP methods an endpoint may declare, declared response headers,
 the readme's own Quick start, the resource-key socket endpoint, a `GET`
 request run as read-only work for read-replica routing while a `POST` — and a
 `GET` with `TomReplicaRouting.routeSafeRequests` off — is not, and the
@@ -1758,6 +1872,9 @@ record — checking each answer; `test/examples_test.dart` runs it too.
   `TomIdempotencyRow`, `TomIdempotencyException`; and the table's declaration,
   `idempotencyTable`, `idempotencyTableDdl` and `defaultIdempotencyTable`. See
   [Idempotency Keys](#idempotency-keys).
+- **CORS** (`cors.dart`) — `TomCors`, the allow-list of browser origins the
+  pipeline answers preflights and responses from, and `TomCorsException`; see
+  [CORS](#cors).
 - **OpenAPI document** (`openapi_document_endpoint.dart`) — `TomOpenApiService`
   and `TomOpenApiServer`, serving the build-generated document at
   `GET /openapi.json`; see [The OpenAPI Document](#the-openapi-document).
@@ -1772,16 +1889,16 @@ record — checking each answer; `test/examples_test.dart` runs it too.
 | `dart:io` | dart | `openapi_document_endpoint.dart` | `File` — the generated document is read from disk |
 | `dart:typed_data` | dart | `form_binding.dart` | `Uint8List` |
 | `crypto` | package | `idempotency.dart` | `sha256`, the fingerprint telling a retry from a different request under the same key |
-| `shelf` | package | 7 of 9 files | the HTTP `Request` / `Response` / `Router` types |
+| `shelf` | package | 8 of 10 files | the HTTP `Request` / `Response` / `Router` types |
 | `shelf_multipart` | package | `form_binding.dart` | decoding a `multipart/form-data` body into its parts |
 | `shelf_router` | package | `endpoint_pipeline.dart`, `file_endpoint.dart` | the HTTP `Request` / `Response` / `Router` types |
 | `shelf_web_socket` | package | `endpoint_pipeline.dart` | the handshake upgrade and the channel a socket handler talks through |
-| `tom_core_kernel` | package | 8 of 9 files | `tomReflector` and the mirror types (annotation discovery, parameter binding, result conversion), `TomHttpMethod`, `TomMimeType`, `TomHeader`, `TomPrincipal`, `TomClientJwtToken`, `TomAccessControl`, `TomResourceKeyProtection`, `TomComponent`, `TomBean`, `tomRemoteApis` / `TomApi` / `TomApiEndpoint`, `TomExecutionContext`, `TomTenantContext` (the tenant an idempotency key is scoped to), `TomRequestId` (the request id the pipeline logs; `TomRequestId.runChild` for each message `serve` reads), `tomLog` |
+| `tom_core_kernel` | package | 8 of 10 files | `tomReflector` and the mirror types (annotation discovery, parameter binding, result conversion), `TomHttpMethod`, `TomMimeType`, `TomHeader`, `TomPrincipal`, `TomClientJwtToken`, `TomAccessControl`, `TomResourceKeyProtection`, `TomComponent`, `TomBean`, `tomRemoteApis` / `TomApi` / `TomApiEndpoint`, `TomExecutionContext`, `TomTenantContext` (the tenant an idempotency key is scoped to), `TomRequestId` (the request id the pipeline logs; `TomRequestId.runChild` for each message `serve` reads), `tomLog` |
 | `web_socket_channel` | package | `endpoint_pipeline.dart`, `web_socket_endpoint.dart` | the handshake upgrade and the channel a socket handler talks through |
 | [audit](audit.md) | module | `endpoint_pipeline.dart` | `TomAuditAction`, `TomAuditOutcome`, `TomAuditTrail`, `TomAudited` |
 | [datasources](datasources.md) | module | `endpoint_pipeline.dart`, `idempotency.dart`, `idempotency_sql.dart` | `TomReplicaRouting` (a `GET` or `HEAD` request runs as read-only work), `TomFrameworkTable` / `TomFrameworkColumn` / `TomFrameworkKey` (the table's declaration), `TomDataSourceInfo` (the store's data source, resolved by name per call), `TomSchemaProvisioning`, `sqlInstant` / `parseSqlInstant` |
 | [file_storage](file_storage.md) | module | `file_endpoint.dart` | `TomBlobRange`, `TomStorageException`, `TomStoredBlob` |
-| [little_things](little_things.md) | module | 7 of 9 files | `TomServerException`, `tomErrorEnvelope`, and `tomErrorResponse` / `tomProblemJsonContextKey` — the error response in the format the request asks for |
+| [little_things](little_things.md) | module | 8 of 10 files | `TomServerException`, `tomErrorEnvelope`, and `tomErrorResponse` / `tomProblemJsonContextKey` — the error response in the format the request asks for |
 | [object_persistence](object_persistence.md) | module | `file_endpoint.dart`, `idempotency.dart` | `TomAnnotationAnalyzer`, `TomColumnAuthorizationException`, `TomColumnInformation`, `TomDataScopeAuthorizationException`, `TomDbTable`, `TomDbColumn` (on `TomIdempotencyRow`), `TomFileReference` |
 | [server](server.md) | module | `endpoint_pipeline.dart` | `TomRequestLogInfo` |
 | [transactions](transactions.md) | module | `endpoint_pipeline.dart` | `TomTransactionManager` / `TomTransaction` |

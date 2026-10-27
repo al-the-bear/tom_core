@@ -6,8 +6,9 @@ two-pass second-factor flow, the JWT-issuing `TomAuthenticationServer`, the
 token signing and verification keys with the JSON Web Key Set that publishes
 them, the server's own self-login against an auth server, and single sign-on
 against external identity providers over OAuth 2.0 / OpenID Connect and SAML
-2.0, user provisioning over SCIM 2.0, and service accounts authenticating with
-API keys.
+2.0, user provisioning over SCIM 2.0, service accounts authenticating with
+API keys, and browser sessions held in an `HttpOnly` cookie with the CSRF check
+they are held to.
 
 ## Table of Contents
 
@@ -160,6 +161,9 @@ API keys.
   - [TomSqlApiKeyStore](#tomsqlapikeystore)
   - [TomServiceAccountRow](#tomserviceaccountrow)
   - [TomApiKeyRow](#tomapikeyrow)
+  - [TomSessionCookie](#tomsessioncookie)
+  - [TomSameSite](#tomsamesite)
+  - [TomSessionCookieException](#tomsessioncookieexception)
 - [Global Functions and Constants](#global-functions-and-constants)
 
 ## Overview
@@ -200,7 +204,8 @@ Sources: `lib/src/tomserver/authentication/authentication_server.dart`,
 `lib/src/tomserver/authentication/scim_endpoints.dart`,
 `lib/src/tomserver/authentication/scim_directory.dart`,
 `lib/src/tomserver/authentication/api_keys.dart`,
-`lib/src/tomserver/authentication/sql_api_key_store.dart`.
+`lib/src/tomserver/authentication/sql_api_key_store.dart`,
+`lib/src/tomserver/authentication/session_cookie.dart`.
 
 The module orchestrates the server-side login flow. `TomAuthenticationServer`
 receives a `TomAuthenticationMessage`, builds a `TomAuthenticationData` from it,
@@ -331,6 +336,20 @@ records live in a `TomApiKeyStore`: `TomMemoryApiKeyStore`, or
 `TomSqlApiKeyStore` over the `tom_service_account` and `tom_api_key` tables
 `serviceAccountTable` and `apiKeyTable` declare. Failures are
 `TomApiKeyException`.
+
+A browser client can keep its access token in an `HttpOnly` cookie instead of
+script-readable storage. `TomSessionCookie.attach` sets it — with a CSRF token
+in a second, page-readable cookie — on the response that hands out the token,
+and `clear` deletes both. When `TomSessionCookie.current` is installed, the
+server's authentication middleware reads the token from a request that carries
+no `Authorization` header and holds such a request to `checkCsrf`: a method
+other than `GET`, `HEAD`, `OPTIONS` and `TRACE` must echo the CSRF cookie in
+`X-CSRF-Token` and, when it carries an `Origin`, come from the server's own
+origin or one `TomCors.current` admits — else `403`,
+`authentication.csrf.rejected`. `TomSameSite` is the cookies' `SameSite`
+attribute. `TomSessionCookie.configure` sets `current` from the `sessionCookie`
+key and throws a `TomSessionCookieException` keyed
+`authentication.session_cookie.config.invalid` for a value of the wrong shape.
 
 ## Class Hierarchy
 
@@ -513,6 +532,11 @@ TomApiKeyIdentity          (standalone, immutable)
 TomApiKeys                 (standalone, statics hold the installed one)
 TomServiceAccountRow       (@tomReflector, @TomDbTable row type)
 TomApiKeyRow               (@tomReflector, @TomDbTable row type)
+
+TomSessionCookie           (final, statics hold the installed one)
+TomSameSite                (enum)
+TomServerException  (little_things)
+    └── TomSessionCookieException
 ```
 
 ## Classes
@@ -4780,6 +4804,114 @@ fields read back through `parseSqlInstant`.
 | `expiresAt` | `String?` | `expires_at` | When it expires, or `null`. |
 | `revokedAt` | `String?` | `revoked_at` | When it was revoked, or `null`. |
 | `lastUsedAt` | `String?` | `last_used_at` | When it last authenticated a request, or `null`. |
+
+### TomSessionCookie
+
+The session cookies and their CSRF check. A cookie travels with every request
+the browser sends to the server — including one a hostile page triggers — so a
+request authenticated by the cookie is held to a CSRF check before it may
+change anything. In `authentication/session_cookie.dart`.
+
+| Cookie | Holds | Attributes |
+| ------ | ----- | ---------- |
+| `name` (`tom_session`) | the access token | `HttpOnly; Secure; SameSite=Strict; Path=/` |
+| `csrfCookieName` (`tom_csrf`) | a random CSRF token | `Secure; SameSite=Strict; Path=/` — readable by the page, which copies it into `csrfHeader` |
+
+`Secure`, `SameSite`, `Path` and `Domain` are configured once and apply to both.
+
+- **Kind:** final class.
+- **Extends:** none
+
+#### Constructors
+
+```dart
+const TomSessionCookie({
+  String name = 'tom_session',
+  String csrfCookieName = 'tom_csrf',
+  String csrfHeader = 'X-CSRF-Token',
+  String path = '/',
+  String? domain,
+  TomSameSite sameSite = TomSameSite.strict,
+  bool secure = true,
+})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `name` | `String` | The cookie holding the access token (final). |
+| `csrfCookieName` | `String` | The cookie holding the CSRF token (final). |
+| `csrfHeader` | `String` | The request header the CSRF token is echoed in (final). |
+| `path` | `String` | The `Path` of both cookies (final). |
+| `domain` | `String?` | The `Domain` of both cookies, or `null` for the host alone (final). |
+| `sameSite` | `TomSameSite` | The `SameSite` of both cookies (final). |
+| `secure` | `bool` | Whether both cookies are `Secure`, sent over HTTPS only (final). |
+
+#### Static Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `configurationKey` | `String` | `'sessionCookie'`, the configuration key `configure` reads (const). |
+| `current` | `TomSessionCookie?` | The installed settings, or `null` when no request is authenticated by a cookie — the default; set by `configure`. |
+
+#### Static Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `configure` | `static void configure(Object? config)` | Installs `current` from the `sessionCookie` map — `name`, `csrfCookieName`, `csrfHeader` (cookie or header tokens), `path` (starting with `/`), `domain` (a host name), `sameSite` (`Strict`, `Lax` or `None`, any case) and `secure`, each optional and defaulting as the constructor does. Throws `authentication.session_cookie.config.invalid` for a value that is not a map, an unknown key, a value of the wrong shape, or `SameSite=None` without `Secure`, before anything is applied. |
+| `cookiesOf` | `static Map<String, String> cookiesOf(Request request)` | The cookies of `request`'s `Cookie` header, by name; empty without one. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `attach` | `Response attach(Response response, String accessToken, {Duration? maxAge})` | `response` setting the session cookie to `accessToken` and the CSRF cookie to a fresh random token (32 bytes, base64url), both expiring after `maxAge` — a browser session when `null`. Appends to the `Set-Cookie` headers the response carries. |
+| `clear` | `Response clear(Response response)` | `response` deleting both cookies (`Max-Age=0`) — a logout. |
+| `tokenOf` | `String? tokenOf(Request request)` | The access token `request`'s session cookie holds, or `null`. |
+| `checkCsrf` | `void checkCsrf(Request request)` | Throws `authentication.csrf.rejected` (`clientThrow: true`, its `reason` parameter `missing_token`, `token_mismatch` or `foreign_origin`) unless the cookie-authenticated `request` passes the double-submit check: the `csrfHeader` value equal to the CSRF cookie, compared in constant time, and an `Origin`, when present, that is the server's own or one `TomCors.current` admits. A safe method — `GET`, `HEAD`, `OPTIONS`, `TRACE` — always passes. |
+
+### TomSameSite
+
+The `SameSite` attribute of the session cookies.
+
+| Value | Meaning |
+| ----- | ------- |
+| `strict` | Sent only on requests from the server's own site — the default. |
+| `lax` | Also sent on top-level navigations from other sites. |
+| `none` | Sent on every request; requires `Secure`. |
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `attribute` | `String` | The attribute value as written in `Set-Cookie`: `Strict`, `Lax`, `None`. |
+
+### TomSessionCookieException
+
+Thrown when the session-cookie settings cannot be applied, and when a
+cookie-authenticated request fails the CSRF check.
+
+| Key | Meaning |
+| --- | ------- |
+| `authentication.session_cookie.config.invalid` | The `sessionCookie` configuration has a value of the wrong shape; thrown by `TomSessionCookie.configure`. |
+| `authentication.csrf.rejected` | A cookie-authenticated request with an unsafe method failed the CSRF check; thrown by `TomSessionCookie.checkCsrf` and answered `403` by the server's authentication middleware. |
+
+- **Extends:** `TomServerException`
+
+#### Constructors
+
+```dart
+TomSessionCookieException(
+  String key,
+  String defaultUserMessage, {
+  Map<String, Object?>? parameters,
+  StackTrace? stack,
+  Object? rootException,
+  bool autoLog = false,
+  bool clientThrow = true,
+})
+```
 
 ## Global Functions and Constants
 

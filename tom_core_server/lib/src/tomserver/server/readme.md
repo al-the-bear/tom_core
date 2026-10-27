@@ -36,6 +36,8 @@ shape stops the start with `server.request_ids.config.invalid`
 | `tomRequestContextMiddleware` · `tomRequestIdHeader` | Continues or starts the trace (keeping a valid `tracestate`), takes the request id the policy chooses, runs the rest of the pipeline in a zone carrying both, and answers with the policy's request-id header and `traceparent`. |
 | `TomRequestIdPolicy` · `TomRequestIdException` | Which request id a request runs under: the request-id `header` believed from the `trustedProxies`, else the trace id (`resolve`). `TomRequestIdPolicy.current` is the policy the pipeline applies, set by `configure` from the `requestIds` key; a malformed value throws `server.request_ids.config.invalid`. |
 | `TomGracefulShutdown` · `tomProbePaths` | What the server does between SIGTERM and exiting: readiness off, the listener closed, new requests refused with `503` while the probe paths pass, the requests and scheduled runs in flight finished within the grace period, leases released and pools closed. `TomServer.gracefulShutdown` holds the server's; `TomServer.shutdown()` runs it without a signal. |
+| `TomSecurityHeaders` · `TomContentSecurityPolicyHook` · `tomSecurityHeadersMiddleware` · `TomSecurityHeadersException` | The security headers every response carries unless it sets its own: HSTS on an HTTPS request, a deny-all `Content-Security-Policy`, `nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`. The middleware applies `TomSecurityHeaders.current`, set by `configure` from the `securityHeaders` key; a hook may choose the CSP per request; a malformed value throws `server.security_headers.config.invalid`. |
+| `TomMutualTls` · `TomTlsConnectionInfo` · `TomMutualTlsClientFactory` · `TomMutualTlsException` | Mutual TLS between services: a client certificate verified against the client CA and listed by its SHA-256 fingerprint names a service principal; `requiredPaths` only such a caller may reach (`401`, `server.mutual_tls.required`, without one). `serve` binds the socket so each request carries its certificate; the client factory presents this service's own certificate on outgoing calls. Set by `configure` from the `mutualTls` key; a malformed value throws `server.mutual_tls.config.invalid`. |
 | `TomEndpointCredentials` | The path prefixes whose `Authorization` header belongs to the endpoint rather than the framework — the SCIM endpoints, whose identity provider presents a static secret. `extractAuthentication` leaves such a header unread and reports `TomCredentialOutcome.endpointCredential`; the endpoint checks it. |
 
 ## Quick start
@@ -84,6 +86,16 @@ the timeout, retry, circuit-breaker and bulkhead policies every framework call
 to another service runs under, overall and per destination. A value of the
 wrong shape stops the start with `http.client.config.invalid` — see
 [`doc/configuration.md`](../../../../doc/configuration.md#outgoing-http-calls).
+
+**Browser and transport security.** Right after, `start` applies the
+`securityHeaders`, `cors`, `sessionCookie` and `mutualTls` keys
+(`TomServer.configureSecurity`), each when present: the security headers every
+response carries, the CORS allow-list of browser origins (empty by default, so
+no cross-origin page may read a response until its origin is listed), a browser
+session's `HttpOnly` cookie with its CSRF check, and the client CA and service
+certificates of mutual TLS, with which `start` binds through
+`TomMutualTls.serve` — see
+[`doc/server.md`](../../../../doc/server.md#browser-and-transport-security).
 
 **Request ids.** Next `start` applies the `requestIds` key
 (`TomServer.configureRequestIds`, `TomRequestIdPolicy.configurationKey`): the
@@ -154,7 +166,8 @@ replacing the one JSON POST rather than running an auth server;
 `test/structured_logs_readiness_test.dart` covers the correlation ids and the
 log format, `test/request_ids_test.dart` the request-id rule and its
 configuration; `test/graceful_shutdown_test.dart` the graceful shutdown, with a real
-SIGTERM sent to a server process;
+SIGTERM sent to a server process; `test/web_security_test.dart` the security
+headers, mutual TLS over a real TLS socket, and `configureSecurity`;
 `test/examples_test.dart` runs the example.
 
 ---

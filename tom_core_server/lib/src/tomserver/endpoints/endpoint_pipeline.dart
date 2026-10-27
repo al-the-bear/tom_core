@@ -16,6 +16,7 @@ import '../little_things/server_exception.dart';
 import '../server/server.dart';
 import '../transactions/transaction_manager.dart';
 
+import 'cors.dart';
 import 'endpoint_annotation.dart';
 import 'idempotency.dart';
 import 'endpoint_results.dart';
@@ -482,41 +483,26 @@ class TomEndpointHandler {
   /// `logRequests`.
   static bool globalSettingLogRequestsDefault = true;
 
-  /// Default `Access-Control-Allow-Origin` when an endpoint does not override it.
-  static String globalSettingCorsAllowedOriginsDefault = "*";
-
-  /// Default `Access-Control-Allow-Methods` when an endpoint does not override it.
-  static String globalSettingCorsAllowedMethodsDefault =
-      "GET, POST, PUT, DELETE, TRACE, PATCH, HEAD, CONNECT";
-
-  /// Default `Access-Control-Allow-Headers` when an endpoint does not override it.
-  static String globalSettingCorsAllowedHeadersDefault =
-      "Origin, Content-Type, Accept, Authorization, Referer, User-Agent";
-
   /// When true, logs the request context for each call (debugging aid).
   static bool debugPrintContext = false;
 
   /// When true, logs the resolved principal/token for each call (debugging aid).
   static bool debugPrintAuthentication = false;
 
-  /// Answers a CORS preflight (`OPTIONS`) request with the endpoint's (or the
-  /// global default) allowed origins/methods/headers.
-  Response handlePreflight(Request req) {
-    return Response.ok(
-      '',
-      headers: {
-        'Access-Control-Allow-Origin':
-            metadata.endpoint.corsAllowedOrigins ??
-            globalSettingCorsAllowedOriginsDefault,
-        'Access-Control-Allow-Methods':
-            metadata.endpoint.corsAllowedMethods ??
-            globalSettingCorsAllowedMethodsDefault,
-        'Access-Control-Allow-Headers':
-            metadata.endpoint.corsAllowedHeaders ??
-            globalSettingCorsAllowedHeadersDefault,
-      },
-    );
-  }
+  /// Answers a CORS preflight (`OPTIONS`) request: `204` with the
+  /// `Access-Control-Allow-*` headers [TomCors.current] grants its origin —
+  /// this endpoint's own `cors*` settings first — and none for an origin it
+  /// does not admit, which the browser then refuses.
+  Response handlePreflight(Request req) => Response(
+    204,
+    headers: TomCors.current.headersFor(
+      req,
+      endpointOrigins: metadata.endpoint.corsAllowedOrigins,
+      endpointMethods: metadata.endpoint.corsAllowedMethods,
+      endpointHeaders: metadata.endpoint.corsAllowedHeaders,
+      preflight: true,
+    ),
+  );
 
   /// Records this endpoint's invocation in the audit trail, when the method
   /// declared `@TomAudited` (CE-LG).
@@ -1064,11 +1050,12 @@ class TomEndpointHandler {
             idempotent,
             call,
           );
-    return response.then(withAllowedOrigin);
+    return response.then((answer) => withAllowedOrigin(req, answer));
   }
 
-  /// [response] carrying this endpoint's `Access-Control-Allow-Origin`, unless
-  /// a handler set one itself.
+  /// [response] to [request] carrying the `Access-Control-Allow-Origin`
+  /// [TomCors.current] grants the request's origin (with this endpoint's own
+  /// `corsAllowedOrigins` first), unless a handler set one itself.
   ///
   /// The preflight is only half of CORS: it tells a browser it may *send* the
   /// request, and the response to the request itself must carry the allowed
@@ -1076,17 +1063,15 @@ class TomEndpointHandler {
   /// succeeded on the server reads, in the browser, as a network error. So
   /// every response an endpoint returns, an error included, carries the same
   /// origin [handlePreflight] announced.
-  Response withAllowedOrigin(Response response) {
+  Response withAllowedOrigin(Request request, Response response) {
     if (response.headers.containsKey('access-control-allow-origin')) {
       return response;
     }
-    return response.change(
-      headers: {
-        'Access-Control-Allow-Origin':
-            metadata.endpoint.corsAllowedOrigins ??
-            globalSettingCorsAllowedOriginsDefault,
-      },
+    final headers = TomCors.current.headersFor(
+      request,
+      endpointOrigins: metadata.endpoint.corsAllowedOrigins,
     );
+    return headers.isEmpty ? response : response.change(headers: headers);
   }
 
   Future<Response> _handleMethodCallInScope(Request req) async {

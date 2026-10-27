@@ -3,7 +3,8 @@
 Annotation-driven HTTP endpoint framework: class- and method-level annotations
 that describe services, routes, error handling, and transactions, plus the
 reflection-based pipeline that scans them, mounts one shelf route per endpoint
-method, and runs the per-request handling.
+method, and runs the per-request handling — including the CORS allow-list that
+decides which browser origins may read a response.
 
 ## Table of Contents
 
@@ -54,6 +55,8 @@ method, and runs the per-request handling.
   - [TomSqlIdempotencyStore](#tomsqlidempotencystore)
   - [TomIdempotencyRow](#tomidempotencyrow)
   - [TomIdempotency](#tomidempotency)
+  - [TomCors](#tomcors)
+  - [TomCorsException](#tomcorsexception)
 - [Global Functions and Constants](#global-functions-and-constants)
 
 ## Overview
@@ -66,7 +69,8 @@ Source: `lib/src/tomserver/endpoints/endpoint_annotation.dart`,
 `lib/src/tomserver/endpoints/file_endpoint.dart`,
 `lib/src/tomserver/endpoints/openapi_document_endpoint.dart`,
 `lib/src/tomserver/endpoints/idempotency.dart`,
-`lib/src/tomserver/endpoints/idempotency_sql.dart`.
+`lib/src/tomserver/endpoints/idempotency_sql.dart`,
+`lib/src/tomserver/endpoints/cors.dart`.
 
 `endpoint_annotation.dart` defines the declarative surface: `@tomService` /
 `@TomApiImplementation` mark a class as a routable service, `@TomEndpoint`
@@ -135,6 +139,22 @@ cannot be used and a configuration of the wrong shape. `idempotency_sql.dart`
 declares the table once (`idempotencyTable`, `idempotencyTableDdl`,
 `defaultIdempotencyTable`), listed by `frameworkOwnedTables`.
 
+`cors.dart` decides which browser origins may call the server. `TomCors` is an
+allow-list, **empty by default**: a request whose `Origin` is on
+`TomCors.allowedOrigins` is answered with `Access-Control-Allow-Origin: <that
+origin>` and `Vary: Origin`, any other origin with no such header, so the
+browser withholds the response from the page. With the empty default no
+cross-origin page may read anything; a same-origin request and a client that is
+not a browser are unaffected. An entry is an exact origin
+(`https://app.example.com`), an origin with any port (`http://localhost:*`), or
+`*`, answered as `*` and refused together with `allowCredentials`. An endpoint's
+`corsAllowedOrigins` replaces the list for that endpoint.
+`TomEndpointHandler.handlePreflight` answers a preflight `204` with the headers
+`TomCors.current` grants, and `withAllowedOrigin` puts the origin on every
+response. `TomCors.configure` sets `current` from the `cors` configuration key
+(`TomServer.configureSecurity`) and throws a `TomCorsException` keyed
+`endpoint.cors.config.invalid` for a value of the wrong shape.
+
 ## Class Hierarchy
 
 ```
@@ -160,7 +180,8 @@ TomServerException  (little_things)
     ├── TomFormBindingException
     ├── TomWebSocketException
     ├── TomFileSlotException
-    └── TomIdempotencyException
+    ├── TomIdempotencyException
+    └── TomCorsException
 
 TomFileSlot  (abstract)
 
@@ -175,6 +196,7 @@ TomIdempotencyStore  (abstract)
     └── TomSqlIdempotencyStore     (implements)
 
 TomIdempotency  (abstract final)
+TomCors         (final)
 
 TomEndpointHandler
 TomEndpointRoutingInfo
@@ -375,9 +397,9 @@ const TomApiEndpointImplementation({
 | `endpointId` | `String` | The id of the endpoint within the API. |
 | `errorHandler` | `TomErrorHandler?` | Implementation-side error handler override. |
 | `logRequests` | `bool?` | Implementation-side request-logging override (`null` = use the default). |
-| `corsAllowedOrigins` | `String?` | `Access-Control-Allow-Origin` override for this endpoint. |
-| `corsAllowedMethods` | `String?` | `Access-Control-Allow-Methods` override for this endpoint. |
-| `corsAllowedHeaders` | `String?` | `Access-Control-Allow-Headers` override for this endpoint. |
+| `corsAllowedOrigins` | `String?` | The origins admitted for this endpoint, comma-separated in `TomCors`'s forms; replaces `TomCors.allowedOrigins` for it. |
+| `corsAllowedMethods` | `String?` | `Access-Control-Allow-Methods` a preflight of this endpoint answers, instead of `TomCors.allowedMethods`. |
+| `corsAllowedHeaders` | `String?` | `Access-Control-Allow-Headers` a preflight of this endpoint answers, instead of `TomCors.allowedHeaders`. |
 
 #### Methods
 
@@ -430,9 +452,9 @@ const TomEndpoint({
 | `errorHandler` | `TomErrorHandler?` | Per-endpoint error handler (defaults to `TomDefaultErrorHandler`). |
 | `logRequests` | `bool?` | Whether to log requests (`null` = use the global default). |
 | `headers` | `Map<String, String>` | Fixed headers the server adds to every **response** this endpoint produces. Outbound only — an endpoint cannot declare headers it requires of a request. A registry-backed endpoint fills this from `TomApiEndpoint.responseHeaders`; that entry's `requestHeaders` instruct a *client* and reach nothing on the server. |
-| `corsAllowedOrigins` | `String?` | `Access-Control-Allow-Origin` override for this endpoint. |
-| `corsAllowedMethods` | `String?` | `Access-Control-Allow-Methods` override for this endpoint. |
-| `corsAllowedHeaders` | `String?` | `Access-Control-Allow-Headers` override for this endpoint. |
+| `corsAllowedOrigins` | `String?` | The origins admitted for this endpoint, comma-separated in `TomCors`'s forms; replaces `TomCors.allowedOrigins` for it. |
+| `corsAllowedMethods` | `String?` | `Access-Control-Allow-Methods` a preflight of this endpoint answers, instead of `TomCors.allowedMethods`. |
+| `corsAllowedHeaders` | `String?` | `Access-Control-Allow-Headers` a preflight of this endpoint answers, instead of `TomCors.allowedHeaders`. |
 | `urlParameterMapping` | `Map<String, String>` | Binds URL parameters — path captures **and** query-string parameters — to typed request-DTO field names. The two are not symmetric. A path capture the map does not name binds under its own name, so an **empty map still binds every path parameter** and the map is needed only to rename one. A query parameter binds **only** when the map names it, with no identity fallback, so this map is the per-parameter opt-in to query binding and an endpoint that leaves it empty receives nothing at all from the query string. See `TomEndpointHandler.injectPathParameters` and `injectQueryParameters`. |
 
 #### Methods
@@ -574,9 +596,6 @@ TomEndpointHandler({
 | `shouldLogRequests` | `bool` | *(getter)* Whether this route logs. `TomEndpoint.logRequests` is three-state and `null` — the value for an endpoint that says nothing — defers to `globalSettingLogRequestsDefault`. Every logging decision in the pipeline reads this rather than the annotation, because reading the annotation collapses the third state into `false` and leaves the global setting governing nothing. |
 | `automaticProtectionKeys` | `(String container, String member)` | *(getter)* The resource-key pair an endpoint without an explicit key is protected under. Keyed on `interface` when the method is routed through one and on the contract's `implementation` when it is not; non-nullable, because there is no unprotectable endpoint. |
 | `globalSettingLogRequestsDefault` | `static bool` | Whether requests are logged when an endpoint does not specify `logRequests`. |
-| `globalSettingCorsAllowedOriginsDefault` | `static String` | Default `Access-Control-Allow-Origin` when an endpoint does not override it. |
-| `globalSettingCorsAllowedMethodsDefault` | `static String` | Default `Access-Control-Allow-Methods` when an endpoint does not override it. |
-| `globalSettingCorsAllowedHeadersDefault` | `static String` | Default `Access-Control-Allow-Headers` when an endpoint does not override it. |
 | `debugPrintContext` | `static bool` | When true, logs the request context for each call (debugging aid). |
 | `debugPrintAuthentication` | `static bool` | When true, logs the resolved principal/token for each call (debugging aid). |
 
@@ -584,9 +603,9 @@ TomEndpointHandler({
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `handlePreflight` | `Response handlePreflight(Request req)` | Answers a CORS preflight (`OPTIONS`) request with the endpoint's (or global default) allowed origins/methods/headers. |
+| `handlePreflight` | `Response handlePreflight(Request req)` | Answers a CORS preflight (`OPTIONS`) request: `204` with the `Access-Control-Allow-*` headers `TomCors.current` grants its origin — this endpoint's own `corsAllowedOrigins`, `corsAllowedMethods` and `corsAllowedHeaders` first — and none for an origin it does not admit, which the browser then refuses. |
 | `handleMethodCall` | `Future<Response> handleMethodCall(Request req)` | Runs the full request pipeline for this endpoint and returns the response. For an `@TomIdempotent` endpoint every request but the `OPTIONS` preflight goes through `TomIdempotency.handle` first, with the operation `"<METHOD> <uri>"`. |
-| `withAllowedOrigin` | `Response withAllowedOrigin(Response response)` | `response` carrying this endpoint's `Access-Control-Allow-Origin` (its `corsAllowedOrigins`, else the global default) unless a handler set one. `handleMethodCall` applies it to every response, an error included, so the browser hands the page what the preflight allowed it to send. |
+| `withAllowedOrigin` | `Response withAllowedOrigin(Request request, Response response)` | `response` to `request` carrying the `Access-Control-Allow-Origin` (with `Vary: Origin`) `TomCors.current` grants the request's origin — this endpoint's `corsAllowedOrigins` first — unless a handler set one; unchanged when the origin is not admitted. `handleMethodCall` applies it to every response, an error included, so the browser hands the page what the preflight allowed it to send. |
 | `handleWebSocketCall` | `Future<Response> handleWebSocketCall(Request req)` | Serves a WebSocket handshake: enforces access, binds parameters *before* the upgrade, and runs the handler inside the captured request zone. Logs both outcomes and does so from two places, because they leave by two routes: a refused upgrade returns a response and is logged with its status, while an accepted one ends in `Request.hijack` — which throws `HijackException` by contract — so its line is written from the `catch` and the exception is rethrown. Catching it would leave shelf writing an ordinary reply over a socket the handshake has already claimed. |
 | `enforceAccess` | `Future<void> enforceAccess()` | Runs the access check and its denial audit; shared by the HTTP and WebSocket paths. Throws `tomEndpointAccessDeniedErrorKey` on a denial — an exception that does not leave the pipeline, since both callers turn it into `accessDeniedResponse`. |
 | `accessDeniedResponse` | `static Response accessDeniedResponse()` | The response a denied caller receives: a bare `404`, indistinguishable from a route that does not exist, with no error envelope and no error key. A `403` would hand an unauthorized caller a working oracle — walk the id space, and the ids answering `403` are the rows that exist — and the contract arm leaks the same way at the level of the route. The diagnosis moves to the audit record and the server log, where the operator has it and the caller does not. Deliberately not routed through `TomEndpoint.errorHandler`: those hooks are for errors *of the invocation*, and one written to map a domain exception would be handed a security decision it was not written for. |
@@ -1454,6 +1473,90 @@ configuration key.
 | `configure` | `static void configure(Object? config)` | Applies an `idempotency` configuration map: `datasource` installs a `TomSqlIdempotencyStore` over it (`table`, `createSchema`), `retentionMinutes` and `inProgressTimeoutSeconds` set the two durations. Throws `endpoint.idempotency.config.invalid` when `config` is not a map or a duration is not a positive whole number, before anything is applied. See [configuration.md](../configuration.md#idempotency-keys). |
 | `reset` | `static void reset()` | Restores the defaults: a fresh memory store, 24 hours, five minutes, the system clock. For tests. |
 | `handle` | `static Future<Response> handle(Request request, String operation, TomIdempotent annotation, Future<Response> Function(Request request) next)` | Answers `request` for `operation` through `next`, applying its `Idempotency-Key`. A request without the header, or without an authenticated principal in the zone, goes straight to `next`. Otherwise: `400` for an empty or over-long key; a claim on the scope (tenant, principal, `operation`, key) with the request's SHA-256; for a record already there, `422` when its hash differs, `409` with `Retry-After: 1` while it runs, else its stored response with `Idempotent-Replayed: true`. A won claim runs `next` with the buffered body; a `5xx`, a status in `notStoredStatuses` or a throw releases the key, any other response is stored — without `set-cookie` and the hop-by-hop headers — and returned. |
+
+### TomCors
+
+The cross-origin policy: which browser origins may read a response. An
+allow-list, **empty by default** — until origins are listed, no cross-origin
+page may read anything. A request from the server's own origin, or from a
+client that is not a browser, is unaffected either way.
+
+An entry of `allowedOrigins` is an exact origin (`https://app.example.com`), an
+origin with any port (`http://localhost:*`), or `*` for every origin. `*` is
+answered as `*` — never as the caller's origin — and so cannot be combined with
+`allowCredentials`, which browsers refuse with `*` anyway. An endpoint's
+`corsAllowedOrigins` replaces the list for that endpoint; it is a
+comma-separated list in the same forms.
+
+- **Kind:** final class.
+- **Extends:** none
+
+#### Constructors
+
+```dart
+const TomCors({
+  List<String> allowedOrigins = const [],
+  String allowedMethods = defaultAllowedMethods,
+  String allowedHeaders = defaultAllowedHeaders,
+  bool allowCredentials = false,
+  int maxAgeSeconds = 600,
+})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `allowedOrigins` | `List<String>` | The origins admitted, in the forms above (final). |
+| `allowedMethods` | `String` | The methods a preflight admits, comma-separated (final). |
+| `allowedHeaders` | `String` | The request headers a preflight admits, comma-separated (final). |
+| `allowCredentials` | `bool` | Whether a browser may send cookies cross-origin — `Access-Control-Allow-Credentials: true` (final). |
+| `maxAgeSeconds` | `int` | How long a browser may cache a preflight answer (`Access-Control-Max-Age`) (final). |
+
+#### Static Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `defaultAllowedMethods` | `String` | `'GET, POST, PUT, PATCH, DELETE, HEAD'`, the `Access-Control-Allow-Methods` a preflight answers by default (const). |
+| `defaultAllowedHeaders` | `String` | `'Origin, Content-Type, Accept, Authorization, X-API-Key, X-CSRF-Token, X-Request-Id, Idempotency-Key, traceparent, tracestate'`, the `Access-Control-Allow-Headers` a preflight answers by default: what the framework's own clients send (const). |
+| `configurationKey` | `String` | `'cors'`, the configuration key `configure` reads (const). |
+| `current` | `TomCors` | The policy the endpoint pipeline applies, read per request; set by `configure`. Defaults to `const TomCors()`, which admits no origin. |
+
+#### Static Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `configure` | `static void configure(Object? config)` | Sets `current` from the `cors` map — `allowedOrigins` (a list), `allowedMethods` and `allowedHeaders` (comma-separated strings), `allowCredentials` and `maxAgeSeconds`, each optional and defaulting as the constructor does. Throws `endpoint.cors.config.invalid` for a value that is not a map, an unknown key, an entry that is neither `*` nor an origin (`scheme://host`, optionally with `:port` or `:*`), `*` together with `allowCredentials`, or a negative or non-integer `maxAgeSeconds`, before anything is applied. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `admits` | `bool admits(String origin, [List<String>? patterns])` | Whether `origin` is admitted by `patterns` (by default `allowedOrigins`): `*`, an exact match, or a `:*` entry whose scheme and host match with any numeric port, or none. The session cookie's CSRF check asks it too. |
+| `headersFor` | `Map<String, String> headersFor(Request request, {String? endpointOrigins, String? endpointMethods, String? endpointHeaders, bool preflight = false})` | The `Access-Control-Allow-*` headers `request` is answered with: none unless its `Origin` is admitted. `endpointOrigins` is an endpoint's own comma-separated list, replacing `allowedOrigins`. An admitted origin gets `Access-Control-Allow-Origin` (`*` when the list holds `*`, else the origin with `Vary: Origin`) and, with `allowCredentials`, `Access-Control-Allow-Credentials: true`; `preflight` adds the methods (`endpointMethods`, else `allowedMethods`), the headers (`endpointHeaders`, else `allowedHeaders`) and `Access-Control-Max-Age`. |
+
+### TomCorsException
+
+Thrown when the CORS settings cannot be applied.
+
+| Key | Meaning |
+| --- | ------- |
+| `endpoint.cors.config.invalid` | The `cors` configuration has a value of the wrong shape; thrown by `TomCors.configure`. |
+
+- **Extends:** `TomServerException`
+
+#### Constructors
+
+```dart
+TomCorsException(
+  String key,
+  String defaultUserMessage, {
+  Map<String, Object?>? parameters,
+  StackTrace? stack,
+  Object? rootException,
+  bool autoLog = false,
+})
+```
 
 ## Global Functions and Constants
 

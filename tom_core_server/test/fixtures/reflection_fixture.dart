@@ -547,7 +547,7 @@ abstract class FixtureApiService {
   /// An endpoint overriding **only** the CORS origin.
   ///
   /// The three `Access-Control-*` values are resolved independently — each is
-  /// its own `endpoint.corsAllowedX ?? globalSettingCorsAllowedXDefault` — and
+  /// its own `endpoint.corsAllowedX`, else `TomCors.current`'s — and
   /// no fixture overrode any of them, so a preflight could only ever be
   /// observed answering with the defaults. This one narrows the origin and
   /// leaves methods and headers unstated, which is the shape a real deployment

@@ -9,10 +9,12 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 import '../authentication/api_keys.dart';
 import '../authentication/jwt_signing.dart';
 import '../authentication/server_self_login.dart';
+import '../authentication/session_cookie.dart';
 import '../little_things/server_exception.dart';
 import '../little_things/error_response.dart';
 import '../configuration/base_server_configuration.dart';
 import '../configuration/runtime_environment.dart';
+import '../endpoints/cors.dart';
 import '../endpoints/endpoint_pipeline.dart';
 import '../endpoints/idempotency.dart';
 import '../endpoints/openapi_document_endpoint.dart';
@@ -21,7 +23,9 @@ import '../object_persistence/field_encryption.dart';
 import '../privacy/privacy.dart';
 import '../healthcheck/health_check.dart';
 import 'graceful_shutdown.dart';
+import 'mutual_tls.dart';
 import 'request_ids.dart';
+import 'security_headers.dart';
 import '../metrics/metrics_middleware.dart';
 import '../metrics/otlp_exporter.dart';
 import '../authorization/authorization_cache.dart';
@@ -387,13 +391,35 @@ Middleware tomDefaultAuthenticationMiddleware(
       newRequest = request.change(context: newContext);
     }
     return Future<Response>.sync(() async {
+      // A browser session keeps its token in a cookie (TomSessionCookie): with
+      // no Authorization header, the cookie's token is read as the bearer, and
+      // the request is held to the CSRF check below.
+      final session = TomSessionCookie.current;
+      final cookieToken = request.headers['authorization'] == null
+          ? session?.tokenOf(request)
+          : null;
+      final fromCookie = cookieToken != null && cookieToken.isNotEmpty;
       var (
         TomPrincipal? callPrincipal,
         TomClientJwtToken? clientToken,
         TomCredentialOutcome outcome,
       ) = extractAuthentication(
-        request,
+        fromCookie
+            ? request.change(headers: {'authorization': 'Bearer $cookieToken'})
+            : request,
       );
+      if (fromCookie && callPrincipal != null) {
+        try {
+          session!.checkCsrf(request);
+        } on TomSessionCookieException catch (refused) {
+          tomLog.warn(
+            'Refused a cookie-authenticated ${request.method} to '
+            '${request.requestedUri.path}: CSRF check failed '
+            '(${refused.parameters?['reason']}).',
+          );
+          return tomErrorResponse(refused, status: 403, request: request);
+        }
+      }
       // The outcome leads, because it is the part the other two cannot express:
       // an anonymous request and one whose token this deployment could not read
       // both interpolate as "null and null".
@@ -427,6 +453,28 @@ Middleware tomDefaultAuthenticationMiddleware(
           } else {
             (principal, apiKey) = accepted;
           }
+        }
+      }
+      // Mutual TLS: a listed client certificate names a service principal. It
+      // is the request's principal when nothing else authenticated it, and
+      // the only one accepted on a path reserved for services.
+      final mutualTls = TomMutualTls.current;
+      if (mutualTls != null) {
+        final service = mutualTls.principalFor(request);
+        if (mutualTls.requires(request)) {
+          if (service == null) {
+            return tomErrorResponse(
+              TomMutualTls.certificateRequired(request),
+              status: 401,
+              request: request,
+            );
+          }
+          (principal, clientToken, apiKey) = (service, null, null);
+        } else if (service != null &&
+            outcome == TomCredentialOutcome.noCredentials &&
+            !fromCookie &&
+            apiKey == null) {
+          principal = service;
         }
       }
       // The tenant, when the deployment has tenancy: the verified token's
@@ -699,6 +747,7 @@ class TomServer {
     // First, so every outgoing call the start makes — the deployment's own
     // login included — runs under the configured policies.
     configureHttpClients();
+    configureSecurity();
     configureRequestIds();
     configureIdempotency();
     await configureFieldEncryption();
@@ -801,6 +850,9 @@ class TomServer {
               : (inner) => inner,
         )
         .addMiddleware(tomRequestContextMiddleware())
+        // Outside both error layers, so an error response carries the
+        // security headers too.
+        .addMiddleware(tomSecurityHeadersMiddleware())
         .addMiddleware(tomRequestMetricsMiddleware())
         .addMiddleware(loggingMiddleware)
         .addMiddleware(
@@ -831,15 +883,34 @@ class TomServer {
         poweredByHeader: poweredByHeader,
         shared: configuration.isolateCount > 1,
       ),
-      false => await serve(
-        handler,
-        ip,
-        port,
-        securityContext: securityContext,
-        poweredByHeader: poweredByHeader,
-        shared: configuration.isolateCount > 1,
-      ),
+      false => switch (TomMutualTls.current) {
+        // Mutual TLS: the socket asks every client for a certificate, and
+        // each request carries the one it presented.
+        final TomMutualTls mutualTls => await mutualTls.serve(
+          handler,
+          ip,
+          port,
+          securityContext: securityContext!,
+          poweredByHeader: poweredByHeader,
+          shared: configuration.isolateCount > 1,
+        ),
+        null => await serve(
+          handler,
+          ip,
+          port,
+          securityContext: securityContext,
+          poweredByHeader: poweredByHeader,
+          shared: configuration.isolateCount > 1,
+        ),
+      },
     };
+    if (configuration.noSsl && TomMutualTls.current != null) {
+      tomLog.warn(
+        'Mutual TLS is configured but the server serves plain HTTP '
+        '(noSsl): no client certificate can be presented, so every path '
+        'mutual TLS requires answers 401.',
+      );
+    }
 
     if (configuration.autoCompress) {
       server.autoCompress = true;
@@ -932,6 +1003,30 @@ class TomServer {
     TomRequestIdPolicy.configure(
       provider.get(TomRequestIdPolicy.configurationKey),
     );
+  }
+
+  /// Applies the browser- and transport-security settings of [config] (the
+  /// server configuration unless given), each when its key is present:
+  /// [TomSecurityHeaders.configurationKey] (`securityHeaders`),
+  /// [TomCors.configurationKey] (`cors`),
+  /// [TomSessionCookie.configurationKey] (`sessionCookie`) and
+  /// [TomMutualTls.configurationKey] (`mutualTls`). Called by [start].
+  ///
+  /// Without them the security headers are sent with their defaults, no
+  /// cross-origin page may read a response, no request is authenticated by a
+  /// cookie, and no client certificate is asked for. A malformed value stops
+  /// the start, with the key of the setting it belongs to.
+  static void configureSecurity([TomServerConfigResourceProvider? config]) {
+    final provider =
+        config ?? TomServerConfigResourceProvider.getServerConfig();
+    for (final (key, configure) in <(String, void Function(Object?))>[
+      (TomSecurityHeaders.configurationKey, TomSecurityHeaders.configure),
+      (TomCors.configurationKey, TomCors.configure),
+      (TomSessionCookie.configurationKey, TomSessionCookie.configure),
+      (TomMutualTls.configurationKey, TomMutualTls.configure),
+    ]) {
+      if (provider.exists(key)) configure(provider.get(key));
+    }
   }
 
   /// The configuration key holding the idempotency-key settings — see

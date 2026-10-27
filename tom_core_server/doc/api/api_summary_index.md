@@ -10,14 +10,14 @@ surface documented here.
 | Module | Summary | What it provides |
 | ------ | ------- | ---------------- |
 | Audit | [api_summary_audit.md](api_summary_audit.md) | Attributable, tamper-evident records: the hash-chained trail, its sinks, and signed anchors. |
-| Authentication | [api_summary_authentication.md](api_summary_authentication.md) | Login and two-factor services, adaptors, the policy deciding who owes a factor, enrolment and its stores, the authentication server, the server's own self-login, and external identity: the OAuth / OpenID Connect handshake and SAML 2.0 single sign-on, their pending-authorization stores, role mapping, and the linking table; and user provisioning over SCIM 2.0 — the service, its stores and endpoints, and the directory that resolves single sign-on to provisioned accounts; and service accounts with their API keys and stores. |
+| Authentication | [api_summary_authentication.md](api_summary_authentication.md) | Login and two-factor services, adaptors, the policy deciding who owes a factor, enrolment and its stores, the authentication server, the server's own self-login, and external identity: the OAuth / OpenID Connect handshake and SAML 2.0 single sign-on, their pending-authorization stores, role mapping, and the linking table; and user provisioning over SCIM 2.0 — the service, its stores and endpoints, and the directory that resolves single sign-on to provisioned accounts; service accounts with their API keys and stores; and browser sessions held in an `HttpOnly` cookie, with the CSRF check they are held to. |
 | Authorization | [api_summary_authorization.md](api_summary_authorization.md) | Authorization cache, graded access, principal delegation and resource grants. |
 | Cache | [api_summary_cache.md](api_summary_cache.md) | Isolate-backed server cache, its command messages, cross-node invalidation and item-authorization answers. |
 | Command Line | [api_summary_cmdline.md](api_summary_cmdline.md) | CLI argument parsing (`TomArgs`) and `.env` file loading (`TomEnvFile`). |
 | Configuration | [api_summary_configuration.md](api_summary_configuration.md) | Server config provider, typed config values, YAML resources, and secret references resolved from a secret store. |
 | Datasources | [api_summary_datasources.md](api_summary_datasources.md) | DB type system, SQL dialects, queries, MariaDB datasource/prepared statements, read replicas. |
 | Database Migration | [api_summary_db_migration.md](api_summary_db_migration.md) | Migration runner, versioning, rollback with down scripts, the record of the last run readiness reads, and the MariaDB and PostgreSQL migration adaptors. |
-| Endpoints | [api_summary_endpoints.md](api_summary_endpoints.md) | Service/endpoint annotations, routing, handler pipeline, error handling, and the three transports over it: HTML form bodies, redirects and WebSockets — plus the HTTP surface of file columns, and idempotency keys that answer a retried request with the first one's response. |
+| Endpoints | [api_summary_endpoints.md](api_summary_endpoints.md) | Service/endpoint annotations, routing, handler pipeline, error handling, and the three transports over it: HTML form bodies, redirects and WebSockets — plus the HTTP surface of file columns, idempotency keys that answer a retried request with the first one's response, and the CORS allow-list deciding which browser origins may read a response. |
 | Export | [api_summary_export.md](api_summary_export.md) | Tabular results rendered to CSV, XLSX or PDF with charts, stored for later retrieval or sent by email, and the register of stored exports with a per-owner quota and a retention purge. |
 | File Storage | [api_summary_file_storage.md](api_summary_file_storage.md) | Streaming blob storage: one put/get contract over memory, directory, database and S3 backends, and a deduplicating store with a per-owner quota in front of any of them. |
 | Health Check | [api_summary_healthcheck.md](api_summary_healthcheck.md) | Health analyzer and health-check service/server — process-wide or per instance, with cooperative cancellation of a timed-out analysis — and the framework readiness checks `/ready` answers with by default — or `503 shutting down` once a graceful shutdown has begun. |
@@ -31,7 +31,7 @@ surface documented here.
 | Rate Limiting | [api_summary_ratelimit.md](api_summary_ratelimit.md) | Request rate limits per principal, API key or client address: the rules, the sliding-window arithmetic, the per-process and shared limiters, and the middleware answering `429` with `Retry-After`. |
 | Resources | [api_summary_resources.md](api_summary_resources.md) | Locale-aware text resolution: one bundle per locale, chosen by the recipient's language. |
 | Scheduling | [api_summary_scheduling.md](api_summary_scheduling.md) | The relational half of the job scheduler: the shared job queue, fencing leases, and the node roll call; and unique window instants for runs enqueued outside a schedule. |
-| Server | [api_summary_server.md](api_summary_server.md) | The HTTP server, per-request logging state and correlation ids, middleware, the log format, the paths whose credentials belong to the endpoint, and the graceful shutdown on SIGTERM. |
+| Server | [api_summary_server.md](api_summary_server.md) | The HTTP server, per-request logging state and correlation ids, middleware, the log format, the paths whose credentials belong to the endpoint, the security headers every response carries, mutual TLS between services, and the graceful shutdown on SIGTERM. |
 | Tenancy | [api_summary_tenancy.md](api_summary_tenancy.md) | Multi-tenancy: the deployment's tenants, the three isolation models chosen per tenant, data-source routing, and the resolution of a request's tenant from its token, host or header. |
 | Transactions | [api_summary_transactions.md](api_summary_transactions.md) | Distributed transaction manager and participants, the recovery of prepared branches a dead process left — the decision log and the recovery — and sagas: work across services as local transactions undone by compensations, their orchestrator, stores and table. |
 
@@ -247,6 +247,9 @@ surface documented here.
 | `defaultServiceAccountTable` / `defaultApiKeyTable` | constant | `tom_service_account` and `tom_api_key`. |
 | `TomApiKeys` | class | Issues, rotates, revokes and checks API keys; installed once per process. |
 | `TomApiKeyException` | class | An API-key operation that cannot be done (extends `TomServerException`). |
+| `TomSessionCookie` | final class | A browser session's access token in an `HttpOnly` cookie, and the double-submit CSRF check a cookie-authenticated request is held to; set from the `sessionCookie` key. |
+| `TomSameSite` | enum | The `SameSite` attribute of the session cookies: `strict`, `lax`, `none`. |
+| `TomSessionCookieException` | class | The `sessionCookie` settings cannot be applied, or a cookie-authenticated request failed the CSRF check (extends `TomServerException`). |
 
 ### Authorization (`lib/src/tomserver/authorization/`)
 
@@ -472,6 +475,8 @@ surface documented here.
 | `TomDefaultErrorHandler` | class | Default error handler: the envelope, always `500`. |
 | `TomEndpointHandlerException` | class | Handler error. |
 | `TomEndpointPipelineException` | class | Pipeline error. |
+| `TomCors` | final class | Which browser origins may read a response: an allow-list, empty by default; set from the `cors` key. |
+| `TomCorsException` | class | The `cors` settings cannot be applied (extends `TomServerException`). |
 | `TomMultipartForm` | class | A decoded HTML form body: its text fields and its uploaded files. |
 | `TomFormFile` | class | One uploaded file part: the bytes plus what the envelope claimed about them. |
 | `TomFormBindingException` | class | Form decode or bind failure; always caused by what the caller sent. |
@@ -916,6 +921,14 @@ surface documented here.
 | `tomRequestContextMiddleware` | function | Continues or starts the W3C trace, runs the request under the id its `TomRequestIdPolicy` chooses, answers with both. |
 | `TomRequestIdPolicy` | final class | Which request id a request runs under: a trusted proxy's request-id header, else the trace id; set from the `requestIds` key. |
 | `TomRequestIdException` | class | The `requestIds` settings cannot be applied (extends `TomServerException`). |
+| `TomSecurityHeaders` | final class | The security headers every response carries unless it sets its own — HSTS on HTTPS, a deny-all CSP, `nosniff`, `X-Frame-Options`, `Referrer-Policy`; set from the `securityHeaders` key. |
+| `TomContentSecurityPolicyHook` | typedef | Chooses the `Content-Security-Policy` of one response; `null` falls back to the configured one. |
+| `TomSecurityHeadersException` | class | The `securityHeaders` settings cannot be applied (extends `TomServerException`). |
+| `tomSecurityHeadersMiddleware` | function | Adds `TomSecurityHeaders.current`'s headers to every response, error responses included. |
+| `TomMutualTls` | final class | Mutual TLS: the client CA, the certificates that name service principals, and the paths only services may call; set from the `mutualTls` key. |
+| `TomTlsConnectionInfo` | class | The connection of a TLS request, with the client certificate it presented. |
+| `TomMutualTlsClientFactory` | class | The outgoing framework client presenting this service's certificate. |
+| `TomMutualTlsException` | class | The `mutualTls` settings cannot be applied, or a path that requires a client certificate was reached without one (extends `TomServerException`). |
 | `noopHandler` | function | A handler returning a fixed status. |
 | `TomGracefulShutdown` | class | What the server does between SIGTERM and exiting: readiness off, new requests refused, work in flight finished, leases released, pools closed. |
 | `tomProbePaths` | constant | `health` and `ready`, the paths a draining server keeps answering. |
@@ -1301,6 +1314,9 @@ surface documented here.
 | `TomConnectionPoolSettings` | Datasources |
 | `tomConsumesForm` | Endpoints |
 | `tomConsumesMultipartForm` | Endpoints |
+| `TomContentSecurityPolicyHook` | Server |
+| `TomCors` | Endpoints |
+| `TomCorsException` | Endpoints |
 | `TomCount` | Datasources |
 | `TomCountResult` | Object Persistence |
 | `TomCredentialOutcome` | Server |
@@ -1566,6 +1582,9 @@ surface documented here.
 | `tomMimeLineEnding` | Messaging |
 | `tomMimeMaxLineLength` | Messaging |
 | `TomMultipartForm` | Endpoints |
+| `TomMutualTls` | Server |
+| `TomMutualTlsClientFactory` | Server |
+| `TomMutualTlsException` | Server |
 | `TomNoOpMessageTransport` | Messaging |
 | `TomOAuthAuthenticationService` | Authentication |
 | `TomOAuthAuthorizationState` | Authentication |
@@ -1690,6 +1709,7 @@ surface documented here.
 | `TomSagaStep` | Transactions |
 | `TomSagaStore` | Transactions |
 | `TomSagaWork` | Transactions |
+| `TomSameSite` | Authentication |
 | `TomSamlCertificates` | Authentication |
 | `TomSamlException` | Authentication |
 | `TomSamlFlow` | Authentication |
@@ -1737,6 +1757,9 @@ surface documented here.
 | `TomSecretsProvider` | Configuration |
 | `TomSecretsRefresh` | Configuration |
 | `TomSecretSubscription` | Configuration |
+| `TomSecurityHeaders` | Server |
+| `TomSecurityHeadersException` | Server |
+| `tomSecurityHeadersMiddleware` | Server |
 | `TomSelect` | Datasources |
 | `TomServer` | Server |
 | `TomServerConfigResourceProvider` | Configuration |
@@ -1751,6 +1774,8 @@ surface documented here.
 | `TomServiceCredential` | Authentication |
 | `TomServiceLoginResponse` | Authentication |
 | `TomServiceLoginTransport` | Authentication |
+| `TomSessionCookie` | Authentication |
+| `TomSessionCookieException` | Authentication |
 | `TomSharedItemsPage` | Item Authorization |
 | `TomShareSubjectKind` | Item Authorization |
 | `TomSigningKeyException` | Authentication |
@@ -1853,6 +1878,7 @@ surface documented here.
 | `TomTenantResolution` | Tenancy |
 | `TomTenantResolver` | Tenancy |
 | `TomTextLocale` | Resources |
+| `TomTlsConnectionInfo` | Server |
 | `TomTotp2FAService` | Authentication |
 | `TomTotpSecretResolver` | Authentication |
 | `TomTransaction` | Transactions |

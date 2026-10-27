@@ -10,7 +10,11 @@ context. The request's correlation ids are set here too: the request-context
 middleware continues the caller's W3C trace (or starts one) and runs the request
 under the kernel's `TomRequestId` that `TomRequestIdPolicy` chooses — the trace
 id, or a trusted proxy's request-id header; see
-[Request ids](#request-ids).
+[Request ids](#request-ids). Browser- and transport-security belong here as
+well: every response carries the security headers `TomSecurityHeaders`
+describes, and with `TomMutualTls` configured a client certificate
+authenticates a calling service; see
+[Browser and Transport Security](#browser-and-transport-security).
 
 ## Table of Contents
 
@@ -25,6 +29,10 @@ id, or a trusted proxy's request-id header; see
   - [Endpoint-owned credentials](#endpoint-owned-credentials)
   - [A service account's API key](#a-service-accounts-api-key)
   - [The request's tenant](#the-requests-tenant)
+- [Browser and Transport Security](#browser-and-transport-security)
+  - [Security headers](#security-headers)
+  - [Mutual TLS](#mutual-tls)
+  - [CORS and session cookies](#cors-and-session-cookies)
 - [Error Mapping](#error-mapping)
 - [Extending the Pipeline](#extending-the-pipeline)
 - [Metrics](#metrics)
@@ -55,6 +63,14 @@ id, or a trusted proxy's request-id header; see
 | `tomRequestIdHeader` | const String | `X-Request-Id`, the default request-id header: echoed on every response, believed from a trusted proxy |
 | `TomRequestIdPolicy` | final class | Which request id a request runs under: the request-id header from a trusted proxy, else the trace id. `current` is the one the pipeline applies, set by `configure` from the `requestIds` key |
 | `TomRequestIdException` | class | The `requestIds` settings cannot be applied — `server.request_ids.config.invalid` |
+| `TomSecurityHeaders` | final class | The security headers every response carries unless it sets its own. `current` is the one the pipeline applies, set by `configure` from the `securityHeaders` key |
+| `TomContentSecurityPolicyHook` | typedef | Chooses the `Content-Security-Policy` of one response; `null` falls back to the configured one |
+| `TomSecurityHeadersException` | class | The `securityHeaders` settings cannot be applied — `server.security_headers.config.invalid` |
+| `tomSecurityHeadersMiddleware` | function | Adds `TomSecurityHeaders.current`'s headers to every response, error responses included |
+| `TomMutualTls` | final class | Mutual TLS: the client CA, the certificates that name service principals, the paths only services may call. `current` is set by `configure` from the `mutualTls` key |
+| `TomTlsConnectionInfo` | class | The connection of a TLS request, with the client certificate it presented |
+| `TomMutualTlsClientFactory` | class | The outgoing framework client presenting this service's own certificate |
+| `TomMutualTlsException` | class | The `mutualTls` settings cannot be applied — `server.mutual_tls.config.invalid` — or a path that requires a client certificate was reached without one — `server.mutual_tls.required` |
 | `tomDefaultAuthenticationMiddleware` | function | Extracts credentials and publishes request zone values |
 | `tomLoggingMiddleware` | function | Emits the one-shot access-log line, prefixed with the application id |
 | `extractAuthentication` | function | Reads bearer credentials from a request |
@@ -85,6 +101,11 @@ for all destinations and for named ones. A value of the wrong shape stops the
 start with `http.client.config.invalid`; without the key the kernel's defaults
 stand, a 30-second timeout among them (see
 [configuration.md](configuration.md#outgoing-http-calls)). Right after, it
+applies the browser- and transport-security keys `securityHeaders`, `cors`,
+`sessionCookie` and `mutualTls` (`TomServer.configureSecurity`), each when it is
+present; a value of the wrong shape stops the start with the key of the setting
+it belongs to (see
+[Browser and Transport Security](#browser-and-transport-security)). Then it
 applies the `requestIds` key (`TomServer.configureRequestIds`): the request-id
 header and the proxies it is believed from. A value of the wrong shape stops the
 start with `server.request_ids.config.invalid`; without the key `X-Request-Id`
@@ -203,13 +224,17 @@ order:
    writes for the request carries the same `request_id`, `trace_id` and
    `span_id`. A metrics scrape is answered above it and gets no ids. See
    [Correlation Ids and Structured Logs](#correlation-ids-and-structured-logs).
-5. **Request metrics** — `tomRequestMetricsMiddleware`, recording
+5. **Security headers** — `tomSecurityHeadersMiddleware`, adding the headers
+   `TomSecurityHeaders.current` describes to every response that does not set
+   them itself. Outside both error layers, so an error response carries them
+   too. See [Security headers](#security-headers).
+6. **Request metrics** — `tomRequestMetricsMiddleware`, recording
    `tom_http_server_requests` and `tom_http_server_request_duration_seconds`
    for every request, labelled by the route pattern the endpoint pipeline
    writes into `TomRequestLogInfo.route` (`unmatched` when no endpoint matched,
    which includes a request refused before routing). It sits outside both error
    layers, so a request is counted with the status the client received.
-6. **Logging middleware** — `loggingMiddleware` (defaults to
+7. **Logging middleware** — `loggingMiddleware` (defaults to
    `tomLoggingMiddleware`), which emits one line per served request:
 
    ```text
@@ -222,20 +247,28 @@ order:
    the requested URI carries a port, but that only separates them while they are
    separate ports on one host. A deployment that configures no `appId` sees the
    line without the prefix.
-7. **Outer error handler** — catches errors from the authentication phase using
+8. **Outer error handler** — catches errors from the authentication phase using
    the `authenticationErrorHandler`.
-8. **Authentication middleware** — the configuration's `authenticationMiddleware`
-   or `tomDefaultAuthenticationMiddleware`.
-9. **Rate-limiting middleware** — `tomRateLimitMiddleware()`, directly inside
-   authentication, where the request's principal and the API key it
-   authenticated with are in the zone. A no-op while no limits are installed;
-   otherwise a request over a limit is answered `429` here, before any handler
-   runs. `start()` installs the limits the `rateLimits` configuration key
-   describes when no limits were installed before it. See
-   [ratelimit.md](ratelimit.md).
-10. **Inner error handler** — catches errors from handling using `errorHandler`.
-11. **Router** — optionally wrapped in a `Cascade` with the configuration's
+9. **Authentication middleware** — the configuration's `authenticationMiddleware`
+   or `tomDefaultAuthenticationMiddleware`, which also reads a browser
+   session's cookie (and refuses a cookie-authenticated request that fails the
+   CSRF check with `403`) and a calling service's client certificate (refusing
+   a path only services may call with `401` without one).
+10. **Rate-limiting middleware** — `tomRateLimitMiddleware()`, directly inside
+    authentication, where the request's principal and the API key it
+    authenticated with are in the zone. A no-op while no limits are installed;
+    otherwise a request over a limit is answered `429` here, before any handler
+    runs. `start()` installs the limits the `rateLimits` configuration key
+    describes when no limits were installed before it. See
+    [ratelimit.md](ratelimit.md).
+11. **Inner error handler** — catches errors from handling using `errorHandler`.
+12. **Router** — optionally wrapped in a `Cascade` with the configuration's
     `preExecutionHandler` / `postExecutionHandler`.
+
+The pipeline is bound to a TLS socket unless `noSsl` is set; with mutual TLS
+configured, through `TomMutualTls.serve`, which asks every client for a
+certificate and puts the one presented on each request (see
+[Mutual TLS](#mutual-tls)).
 
 **Logging sits above both error layers**, and that is what makes the access log
 complete. A request that fails while its principal is being established — an
@@ -508,6 +541,153 @@ With no tenancy installed the middleware resolves no tenant and adds no tenant
 zone. A substitute authentication middleware that serves a
 multi-tenant deployment has to establish the tenant the same way.
 
+## Browser and Transport Security
+
+Four settings protect what a browser and a calling service can do with the
+server. `start()` applies all four through `TomServer.configureSecurity`, each
+when its key is present in the server configuration, right after the
+`httpClient` key; a value of the wrong shape stops the start with the key of the
+setting it belongs to, before anything of that setting is applied.
+
+| Key | Applied by | Without it |
+| --- | ---------- | ---------- |
+| `securityHeaders` | `TomSecurityHeaders.configure` | The security headers are sent with their defaults |
+| `cors` | `TomCors.configure` (endpoints) | No cross-origin page may read a response |
+| `sessionCookie` | `TomSessionCookie.configure` (authentication) | No request is authenticated by a cookie |
+| `mutualTls` | `TomMutualTls.configure` | No client certificate is asked for |
+
+`TomServer.configureSecurity(config)` takes a `TomServerConfigResourceProvider`
+of its own as well, so a test or a boot step can apply the settings without
+starting a server.
+
+### Security headers
+
+Every response carries these headers unless it sets its own:
+
+| Header | Default | Why |
+| ------ | ------- | --- |
+| `Strict-Transport-Security` | `max-age=31536000; includeSubDomains`, on HTTPS requests only | keeps a browser from reaching the host over plain HTTP again |
+| `Content-Security-Policy` | `default-src 'none'; frame-ancestors 'none'` | an API answers data, not documents: nothing it returns may load, run or be framed |
+| `X-Content-Type-Options` | `nosniff` | a browser takes the declared media type, never a guessed one |
+| `X-Frame-Options` | `DENY` | the same framing refusal for browsers that predate CSP |
+| `Referrer-Policy` | `no-referrer` | no URL of this server leaks into another's logs |
+
+`tomSecurityHeadersMiddleware` adds them, reading `TomSecurityHeaders.current`
+per request. It sits directly inside the request-context middleware and outside
+both error layers, so an error response carries them as well. A header the
+response already carries is left alone: an endpoint that serves a page sets its
+own `Content-Security-Policy`. For a deployment that serves documents under some
+paths, a `TomContentSecurityPolicyHook` chooses the policy per request instead:
+
+```dart
+TomSecurityHeaders.current = TomSecurityHeaders(
+  contentSecurityPolicyFor: (request, response) =>
+      request.requestedUri.path.startsWith('/docs')
+      ? "default-src 'self'"
+      : null, // null: the configured policy
+);
+```
+
+The settings are the `securityHeaders` key (`TomSecurityHeaders.configurationKey`):
+
+```yaml
+securityHeaders:
+  enabled: true                 # false sends none of them
+  hstsMaxAgeSeconds: 31536000   # 0 sends no Strict-Transport-Security
+  hstsIncludeSubDomains: true
+  hstsPreload: false
+  contentSecurityPolicy: "default-src 'none'; frame-ancestors 'none'"
+  frameOptions: DENY
+  referrerPolicy: no-referrer
+```
+
+Every setting is optional and defaults as shown; a string configured as `""` is
+not sent. `TomSecurityHeaders.configure` keeps the CSP hook already installed,
+since a function cannot be written in YAML. A value that is not a map, an
+unknown key, a value of the wrong type or a negative `hstsMaxAgeSeconds` throws
+`server.security_headers.config.invalid` (`TomSecurityHeadersException`) and
+stops the start.
+
+### Mutual TLS
+
+With mutual TLS a client certificate, verified against the deployment's client
+CA, authenticates its caller as a service principal:
+
+1. The server asks every TLS client for a certificate and verifies a presented
+   one against the configured client CA; a certificate the CA did not issue
+   fails the handshake.
+2. A verified certificate is looked up by the SHA-256 fingerprint of its DER
+   encoding in `TomMutualTls.services`. Only a listed certificate names a
+   principal: a CA can issue certificates for many purposes, and being signed by
+   it is not by itself a grant.
+3. `tomDefaultAuthenticationMiddleware` uses that principal for a request that
+   carries no bearer token, no API key and no session cookie. On a path under
+   one of `TomMutualTls.requiredPaths` it uses only that principal, and answers
+   `401` with `server.mutual_tls.required` when the request presented no listed
+   certificate — the paths only services may call. A bearer token outside those
+   paths wins over the certificate.
+
+The settings are the `mutualTls` key (`TomMutualTls.configurationKey`):
+
+```yaml
+mutualTls:
+  clientCa: |                # PEM of the CA(s) client certificates come from
+    -----BEGIN CERTIFICATE-----
+    ...
+  services:                  # SHA-256 fingerprint of a client certificate
+    "16:41:54:...:E4:A2":
+      id: orders-service
+      roles: [service]
+  requiredPaths: [/internal]
+  client:                    # this service's own certificate, presented on
+    certificateChain: |      # outgoing framework calls
+      -----BEGIN CERTIFICATE-----
+    privateKey: |
+      -----BEGIN PRIVATE KEY-----
+    trustedCa: |             # optional: the CA the callees' certificates come from
+      -----BEGIN CERTIFICATE-----
+```
+
+A fingerprint may be written in any spelling — `openssl x509 -fingerprint
+-sha256`'s upper-case, colon-separated one or plain hex —
+`TomMutualTls.normalizeFingerprint` reduces both to the same key, and
+`TomMutualTls.fingerprintOfPem` computes it for a certificate file. A service
+is `id`, an optional `username` and `roles`; `TomMutualTls.servicePrincipal`
+builds the authenticated principal it stands for. A value of the wrong shape —
+not a map, an unknown key, a `clientCa` that is no PEM certificate, a key of
+`services` that is not a SHA-256 fingerprint, a service without an `id`, a
+`client` without its chain and key — throws `server.mutual_tls.config.invalid`
+(`TomMutualTlsException`) and stops the start.
+
+With `TomMutualTls.current` set, `start()` binds through `TomMutualTls.serve`:
+the server's `SecurityContext` also asks for and verifies client certificates
+(`applyTo`), and every request carries the certificate it presented in a
+`TomTlsConnectionInfo`, put under `TomClientAddress.connectionInfoKey` in place
+of the plain connection information, so everything that reads the peer address
+keeps working. `TomMutualTls.certificateOf(request)` reads the certificate
+back, `principalFor(request)` the principal it names, `requires(request)` whether
+the path is reserved. A server with `noSsl` set serves plain HTTP, where no
+certificate can be presented: `start()` warns that every required path answers
+`401`.
+
+The `client` section is the outgoing half. `TomMutualTls.configure` builds a
+client `SecurityContext` from it (`TomMutualTls.clientContext`) and installs a
+`TomMutualTlsClientFactory` over it as the kernel's global HTTP client factory,
+so every outgoing framework call — a `TomResilientClient` over that context —
+presents this service's certificate to the service it calls.
+
+### CORS and session cookies
+
+The other two keys belong to other modules and are described there. `cors` is
+the endpoint pipeline's allow-list of browser origins, **empty by default**: no
+cross-origin page may read a response until its origin is listed (see
+[endpoints.md](endpoints.md#cors)). `sessionCookie` lets a browser keep its
+access token in an `HttpOnly` cookie; `tomDefaultAuthenticationMiddleware`
+reads the cookie from a request that carries no `Authorization` header and holds
+a cookie-authenticated request with an unsafe method to the CSRF check,
+answering `403` with `authentication.csrf.rejected` when it fails (see
+[authentication.md](authentication.md#browser-sessions-in-a-cookie)).
+
 ## Error Mapping
 
 `TomServer.errorHandler` turns a thrown error into an HTTP 500 response
@@ -766,7 +946,8 @@ Three suites cover this module, a fourth covers its endpoint-owned
 credentials, a fifth its tenant resolution, a sixth the API keys and rate
 limits it reads, a seventh the metrics middlewares it installs, an eighth
 its correlation ids and log format, a ninth the request-id rule, a tenth its
-graceful shutdown, and an eleventh the resilience of its outgoing HTTP calls.
+graceful shutdown, an eleventh the resilience of its outgoing HTTP calls, and a
+twelfth its browser- and transport-security settings.
 
 `test/server_test.dart` covers the pipeline as composed functions:
 `TomRequestLogInfo`, `extractAuthentication` reading a credential off a request
@@ -874,6 +1055,27 @@ retried through a `503`, and the OAuth transport retrying its user-info `GET`
 and sending its token `POST` once. The policies themselves are the kernel's and
 are tested there.
 
+`test/web_security_test.dart` covers the browser- and transport-security
+settings. The group `security headers` runs requests through
+`tomSecurityHeadersMiddleware`: every response carrying the defaults, HSTS only
+over HTTPS, a header the response sets itself left alone, the CSP hook choosing
+per request and `""` leaving a header out, and the `securityHeaders` key read
+from the server configuration. The group `mutual TLS` binds a real TLS server
+through `TomMutualTls.serve` with the certificates in `test/fixtures/mtls/` (see
+its README): a listed client certificate authenticating as its service, a
+required path refusing a request without a listed certificate with
+`server.mutual_tls.required`, a certificate from an untrusted CA refused at the
+handshake, a bearer token outside the required paths winning over the
+certificate, the configured client factory presenting this service's certificate
+on outgoing calls, and a configuration of the wrong shape refused with
+`server.mutual_tls.config.invalid`. The group is skipped, saying why, on a
+machine without `openssl`, which issues the server certificate on each run. The
+test `TomServer.configureSecurity applies each key it finds` reads all four keys
+from one configuration. Its groups `the CORS allow-list` and
+`a browser session in a cookie` cover the other two settings; see
+[endpoints.md](endpoints.md#verification) and
+[authentication.md](authentication.md#browser-sessions-in-a-cookie).
+
 ```bash
 dart run example/server/server_example.dart
 dart run example/server/graceful_shutdown_example.dart
@@ -938,23 +1140,26 @@ and an application that needs one builds it today rather than waiting:
 
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
-| `dart:async` | dart | `graceful_shutdown.dart`, `server.dart` | `Future`, `FutureOr`, `unawaited`, and the `Completer` and `TimeoutException` the shutdown waits with |
-| `dart:convert` | dart | `server.dart` | `json`, `jsonEncode`, `utf8` |
-| `dart:io` | dart | every file | `HttpServer`, `InternetAddress` (also a trusted proxy's address), `SecurityContext`, `ProcessSignal` (SIGTERM, SIGINT), `HttpHeaders`, `HttpConnectionInfo` (the peer a request-id header came from) |
-| `shelf` | package | every file | the HTTP pipeline, `Request`/`Response`/`Handler`/ `Middleware`/`Router`/`Cascade`, and `serve` |
+| `dart:async` | dart | `graceful_shutdown.dart`, `mutual_tls.dart`, `server.dart` | `Future`, `FutureOr`, `unawaited`, `StreamSubscription` (the certified request), and the `Completer` and `TimeoutException` the shutdown waits with |
+| `dart:convert` | dart | `mutual_tls.dart`, `server.dart` | `json`, `jsonEncode`, `utf8`, `base64` (a PEM certificate's body) |
+| `dart:io` | dart | `graceful_shutdown.dart`, `mutual_tls.dart`, `request_ids.dart`, `server.dart` | `HttpServer` (and `HttpServer.bindSecure`, asking for a client certificate), `HttpRequest`, `InternetAddress` (also a trusted proxy's address), `SecurityContext`, `X509Certificate`, `HttpClient`, `ProcessSignal` (SIGTERM, SIGINT), `HttpHeaders`, `HttpConnectionInfo` (the peer a request-id header came from, and the connection `TomTlsConnectionInfo` stands in for) |
+| `dart:typed_data` | dart | `mutual_tls.dart` | `Uint8List`, the body stream of a certified request |
+| `crypto` | package | `mutual_tls.dart` | `sha256`, a client certificate's fingerprint |
+| `http` | package | `mutual_tls.dart` | `http.Client` and `IOClient`, the outgoing client presenting this service's certificate |
+| `shelf` | package | every file | the HTTP pipeline, `Request`/`Response`/`Handler`/ `Middleware`/`Router`/`Cascade`, and `serve` / `serveRequests` |
 | `shelf_router` | package | `server.dart` | the HTTP pipeline, `Request`/`Response`/`Handler`/ `Middleware`/`Router`/`Cascade`, and `serve` |
-| `tom_core_kernel` | package | every file | `TomPrincipal`, `TomClientJwtToken`, `TomBearerAuthentication`, `TomExecutionContext`/`tomExecutionContext`, `TomZoneValues`, `tomLog`, `tomPrintStackTrace`, `TomException`, `TomTraceContext` and `TomRequestId` (the request's trace and request id), `TomLogContext`, `TomJsonLogOutput` / `TomConsoleLogOutput` (`logFormat`), `tomShutdownCleanup` (the signals the graceful shutdown runs on), `TomScheduler.started` (the schedulers it drains) and `TomHttpResilience` / `TomHttpResilienceException` (`configureHttpClients`) |
-| [authentication](authentication.md) | module | `server.dart` | `TomServerSelfLogin`, `TomServerSelfLoginException`, `TomApiKeys` and `TomApiKeyIdentity` (a service account's API key) |
+| `tom_core_kernel` | package | `graceful_shutdown.dart`, `mutual_tls.dart`, `request_ids.dart`, `server.dart` | `TomPrincipal`, `TomClientJwtToken`, `TomBearerAuthentication`, `TomExecutionContext`/`tomExecutionContext`, `TomZoneValues`, `tomLog`, `tomPrintStackTrace`, `TomException`, `TomTraceContext` and `TomRequestId` (the request's trace and request id), `TomLogContext`, `TomJsonLogOutput` / `TomConsoleLogOutput` (`logFormat`), `tomShutdownCleanup` (the signals the graceful shutdown runs on), `TomScheduler.started` (the schedulers it drains) and `TomHttpResilience` / `TomHttpResilienceException` (`configureHttpClients`), `TomHttpClientFactory`, `TomHttpClientAbstractFactory` and `TomResilientClient` (the mutual-TLS client), `TomUser` and `TomAccessControlInformation` (a service principal) |
+| [authentication](authentication.md) | module | `server.dart` | `TomServerSelfLogin`, `TomServerSelfLoginException`, `TomApiKeys` and `TomApiKeyIdentity` (a service account's API key), `TomSessionCookie` and `TomSessionCookieException` (a browser session's cookie and its CSRF check) |
 | [authorization](authorization.md) | module | `server.dart` | `TomAuthorizationCache` (principal resolution) |
 | [configuration](configuration.md) | module | `server.dart` | `TomBaseServerConfiguration` |
 | [datasources](datasources.md) | module | `graceful_shutdown.dart` | `TomDataSourceInfo.closeAll`, the graceful shutdown's last step |
-| [endpoints](endpoints.md) | module | `server.dart` | `TomEndpointRouting` (router initialisation), `TomOpenApiServer` (the OpenAPI document path, set from `openApiDocument`), `TomIdempotency` (`configureIdempotency` applies the `idempotency` key) |
+| [endpoints](endpoints.md) | module | `server.dart` | `TomEndpointRouting` (router initialisation), `TomOpenApiServer` (the OpenAPI document path, set from `openApiDocument`), `TomIdempotency` (`configureIdempotency` applies the `idempotency` key), `TomCors` (`configureSecurity` applies the `cors` key) |
 | [healthcheck](healthcheck.md) | module | `graceful_shutdown.dart`, `server.dart` | `TomFrameworkReadinessAnalyzer`, installed on `GET /ready` by `start()` when `frameworkReadiness` is on, `TomHealthServer` / `TomDefaultHealthAnalyzer` to see whether the application installed its own, and `TomHealthServer.markShuttingDown`, the graceful shutdown's first step |
-| [little_things](little_things.md) | module | `request_ids.dart`, `server.dart` | `TomServerException` (its `clientThrow` flag feeds the error response; the base of `TomRequestIdException`) |
+| [little_things](little_things.md) | module | `mutual_tls.dart`, `request_ids.dart`, `security_headers.dart`, `server.dart` | `TomServerException` (its `clientThrow` flag feeds the error response; the base of `TomRequestIdException`, `TomSecurityHeadersException` and `TomMutualTlsException`), `tomErrorResponse` (the `401` and `403` the authentication middleware answers) |
 | [messaging](messaging.md) | module | `graceful_shutdown.dart` | `TomMessageOutbox.started`, the outboxes the graceful shutdown closes |
 | [metrics](metrics.md) | module | `server.dart` | `tomMetricsEndpointMiddleware` and `tomRequestMetricsMiddleware` (the outer edge of the pipeline), `TomOtlpHttpTransport` and `TomOtlpMetricsExporter` (`metricsExporter`) |
 | [object_persistence](object_persistence.md) | module | `server.dart` | `TomFieldEncryption` (`configureFieldEncryption` applies the `fieldEncryption` key) |
 | [privacy](privacy.md) | module | `server.dart` | `TomPrivacy` (`configurePrivacy` applies the `privacy` key) |
-| [ratelimit](ratelimit.md) | module | `request_ids.dart`, `server.dart` | `TomRateLimits` (installed from configuration at start) and `tomRateLimitMiddleware`; `TomClientAddress.connectionInfoKey`, where the socket peer a request-id header came from is read |
+| [ratelimit](ratelimit.md) | module | `mutual_tls.dart`, `request_ids.dart`, `server.dart` | `TomRateLimits` (installed from configuration at start) and `tomRateLimitMiddleware`; `TomClientAddress.connectionInfoKey`, where the socket peer a request-id header came from is read, and where the client certificate rides |
 | [tenancy](tenancy.md) | module | `server.dart` | `TomTenancy` and `TomTenantResolution` — the request's tenant, or the refusal to answer it with |
 | [transactions](transactions.md) | module | `server.dart` | `TomTransactionManager`, and `TomTransactionRecovery` / `TomRecoveryReport` (`recoverTransactions` applies the `transactions` key and recovers at start) |

@@ -305,7 +305,11 @@ suite stops compiling. The command leaves `lib/`, `pubspec.yaml` and this README
 alone, and what it adds — the platform folder, `.metadata`, IDE files — is
 gitignored. The web is a target like the others: `advanced_client_core` talks
 HTTP through `package:http`, which is `fetch` in a browser, and the servers
-answer the browser's CORS with the allowed origin on every response.
+admit its origin: their development overlay (`assets/config-resources_dev.yaml`,
+selected by `env=dev`) puts `http://localhost:*` and `http://127.0.0.1:*` on
+the CORS allow-list, and every response carries the admitted origin. A server
+started without the overlay admits no origin, and the browser withholds every
+response from the page.
 
 On macOS the app is sandboxed, and the generated
 `macos/Runner/DebugProfile.entitlements` allows incoming connections only. The

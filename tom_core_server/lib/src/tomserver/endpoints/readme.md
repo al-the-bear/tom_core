@@ -31,6 +31,7 @@ replicas.
 | `TomFileEndpoint` · `TomFileSlot` · `TomFileSlots` · `TomFileServer` | The HTTP face of a `@TomFileReference` column — upload, download and describe for a named slot, gated by the same authorization as the row it hangs off. A download honours `Range`, so a resumed transfer or a seek costs the slice rather than the file, and serves the blob's digest as an `ETag` so a client that already holds the bytes is answered `304`. |
 | `TomIdempotent` · `TomIdempotency` | Idempotency keys. `@TomIdempotent()` on an endpoint lets a client send an `Idempotency-Key`: the first request runs and its response is stored, a retry with the same key gets that response (`Idempotent-Replayed: true`) without running again, the same key for a different request answers `422`, and one still running `409`. A key is scoped to the tenant, the authenticated principal and the operation. |
 | `TomIdempotencyStore` · `TomMemoryIdempotencyStore` · `TomSqlIdempotencyStore` | Where the records are kept: in memory by default (one process), or in `tom_idempotency_key` (`idempotencyTable`) for a cluster — installed by `TomServer.start` when the `idempotency` configuration names a data source, which is resolved per request, so under tenancy a tenant's keys live in its own data source. |
+| `TomCors` · `TomCorsException` | The CORS allow-list of browser origins, **empty by default**: no cross-origin page may read a response until its origin is listed — exactly, with any port (`http://localhost:*`), or `*`. The preflight is answered `204` and every response carries the admitted origin; an endpoint's `corsAllowedOrigins` replaces the list for it. `TomCors.current` is set by `configure` from the `cors` key; a malformed value throws `endpoint.cors.config.invalid`. |
 | `TomOpenApiService` · `TomOpenApiServer` | A framework endpoint: `GET /openapi.json`, public, serving the OpenAPI document the build generated with `tom_core_openapi`. The file comes from the `openApiDocument` setting; with none configured, or none on disk, the route answers `404` with the error envelope. |
 
 ## Quick start
@@ -117,7 +118,9 @@ them and the scan can see their annotations.
 [`doc/endpoints.md`](../../../../doc/endpoints.md#idempotency-keys), shown by
 `example/endpoints/idempotency_example.dart` and covered by
 `test/idempotency_test.dart` and, against a database,
-`test/idempotency_db_test.dart`.
+`test/idempotency_db_test.dart`. CORS is described in
+[`doc/endpoints.md`](../../../../doc/endpoints.md#cors) and covered by
+`test/endpoints_pipeline_test.dart` and `test/web_security_test.dart`.
 
 ---
 
