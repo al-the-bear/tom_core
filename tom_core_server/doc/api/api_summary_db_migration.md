@@ -1126,10 +1126,10 @@ here rather than on the dialect.
 
 | Name | Signature | Description |
 | ---- | --------- | ----------- |
-| `frameworkOwnedTables` | `List<TomFrameworkTable> frameworkOwnedTables({String jobRun = defaultJobRunTable, String lease = defaultLeaseTable, String schedulerNode = defaultSchedulerNodeTable, String jobPause = defaultJobPauseTable, String jobRunArchive = defaultJobRunArchiveTable, String blobManifest = defaultBlobManifestTable, String blobChunk = defaultBlobChunkTable, String auditTrail = defaultAuditTrailTable, String oauthState = defaultOAuthStateTable, String deliveryReport = defaultDeliveryReportTable, String invalidation = defaultInvalidationTable, String scimResource = defaultScimResourceTable, String inbox = defaultInboxTable, String idempotency = defaultIdempotencyTable, String saga = defaultSagaTable, String encryptionKey = defaultEncryptionKeyTable, String subjectKey = defaultSubjectKeyTable, String decision = defaultDecisionTable, String exportRegister = defaultExportRegisterTable})` | Every table the framework owns, at the names it uses when nothing overrides them — so that "all of them" is a thing a caller can name rather than a list each caller assembles and each forgets to extend. A deployment that renames a table passes the corresponding argument. The dependency runs one way: this module reads the descriptors of `scheduling/`, `file_storage/`, `audit/`, `authentication/`, `messaging/`, `cache/`, `endpoints/`, `transactions/`, `object_persistence/`, `privacy/` and `export/`, and none of them reads back, so the scheduler runs without loading a migration. |
+| `frameworkOwnedTables` | `List<TomFrameworkTable> frameworkOwnedTables({String jobRun = defaultJobRunTable, String lease = defaultLeaseTable, String schedulerNode = defaultSchedulerNodeTable, String jobPause = defaultJobPauseTable, String jobRunArchive = defaultJobRunArchiveTable, String blobManifest = defaultBlobManifestTable, String blobChunk = defaultBlobChunkTable, String blobLedger = defaultBlobLedgerTable, String blobContent = defaultBlobContentTable, String auditTrail = defaultAuditTrailTable, String oauthState = defaultOAuthStateTable, String deliveryReport = defaultDeliveryReportTable, String invalidation = defaultInvalidationTable, String scimResource = defaultScimResourceTable, String inbox = defaultInboxTable, String idempotency = defaultIdempotencyTable, String saga = defaultSagaTable, String encryptionKey = defaultEncryptionKeyTable, String subjectKey = defaultSubjectKeyTable, String decision = defaultDecisionTable, String exportRegister = defaultExportRegisterTable})` | Every table the framework owns, at the names it uses when nothing overrides them — so that "all of them" is a thing a caller can name rather than a list each caller assembles and each forgets to extend. A deployment that renames a table passes the corresponding argument. The dependency runs one way: this module reads the descriptors of `scheduling/`, `file_storage/`, `audit/`, `authentication/`, `messaging/`, `cache/`, `endpoints/`, `transactions/`, `object_persistence/`, `privacy/` and `export/`, and none of them reads back, so the scheduler runs without loading a migration. |
 
 The signature names the defaulting constants rather than their values, and each
-is declared by the module that owns the table — so the nineteen names the check
+is declared by the module that owns the table — so the twenty-one names the check
 actually covers in a deployment that renames nothing are spread across eleven other
 modules. They are, parameter → constant → table name (owner):
 
@@ -1140,6 +1140,8 @@ modules. They are, parameter → constant → table name (owner):
 - `jobRunArchive` → `defaultJobRunArchiveTable` → `tom_job_run_archive` (Scheduling)
 - `blobManifest` → `defaultBlobManifestTable` → `tom_blob` (File Storage)
 - `blobChunk` → `defaultBlobChunkTable` → `tom_blob_chunk` (File Storage)
+- `blobLedger` → `defaultBlobLedgerTable` → `tom_blob_ledger` (File Storage)
+- `blobContent` → `defaultBlobContentTable` → `tom_blob_content` (File Storage)
 - `auditTrail` → `defaultAuditTrailTable` → `tom_audit_trail` (Audit)
 - `oauthState` → `defaultOAuthStateTable` → `tom_oauth_state` (Authentication)
 - `deliveryReport` → `defaultDeliveryReportTable` → `tom_delivery_report` (Messaging)

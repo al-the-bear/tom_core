@@ -1,0 +1,25 @@
+-- Reference migration for the deduplicating blob store's ledger
+-- (`TomSqlBlobLedger`), content table.
+--
+-- Creates `tom_blob_content`: one row per distinct content — its SHA-256, the
+-- key its bytes are stored under in the content store, its size, and when a
+-- write or copy last claimed it. This file is the canonical DDL and is kept in
+-- sync with `blobContentTableDdl()` in
+-- `lib/src/tomserver/file_storage/blob_ledger_sql.dart`;
+-- `test/file_storage_schema_test.dart` fails if the two drift apart, and
+-- `test/framework_schema_test.dart` additionally replays this chain and
+-- compares the schema it builds against the descriptor.
+--
+-- `claimed_at` is what keeps content from being reclaimed while a write that
+-- will name it is in flight: the reclaim takes only content no ledger row
+-- names and nothing has claimed for the store's grace period, oldest first.
+--
+-- Instants are DATETIME(6) and are always written in UTC by the ledger.
+CREATE TABLE IF NOT EXISTS tom_blob_content (
+  content_digest CHAR(64)     NOT NULL,
+  content_key    VARCHAR(512) NOT NULL,
+  byte_count     BIGINT       NOT NULL,
+  claimed_at     DATETIME(6)  NOT NULL,
+  PRIMARY KEY (content_digest),
+  KEY ix_tom_blob_content_claimed (claimed_at)
+);

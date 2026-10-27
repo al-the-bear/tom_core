@@ -71,6 +71,11 @@ column-level access rights (C-4) and field-level encryption at rest.
   - [Migrating Blobs Between Backends](#migrating-blobs-between-backends)
     - [TomBlobMigration](#tomblobmigration)
     - [TomBlobMigrationReport](#tomblobmigrationreport)
+  - [Sweeping Files No Row Refers To](#sweeping-files-no-row-refers-to)
+    - [TomBlobReferenceSource](#tomblobreferencesource)
+    - [TomRepositoryBlobReferences&lt;T, K&gt;](#tomrepositoryblobreferencest-k)
+    - [TomBlobOrphanSweepReport](#tombloborphansweepreport)
+    - [TomBlobOrphanSweep](#tombloborphansweep)
   - [Field-Level Encryption](#field-level-encryption)
     - [TomDataKeyPurpose](#tomdatakeypurpose)
     - [TomDataKeyState](#tomdatakeystate)
@@ -104,6 +109,7 @@ column-level access rights (C-4) and field-level encryption at rest.
 Source:
 `lib/src/tomserver/object_persistence/annotation_analyzer.dart`,
 `lib/src/tomserver/object_persistence/blob_migration.dart`,
+`lib/src/tomserver/object_persistence/blob_orphan_sweep.dart`,
 `lib/src/tomserver/object_persistence/column_authorization.dart`,
 `lib/src/tomserver/object_persistence/composite_key.dart`,
 `lib/src/tomserver/object_persistence/crud_repository.dart`,
@@ -152,7 +158,10 @@ behind. `@TomSoftDelete` turns a repository delete into setting a timestamp and
 hides the rows that carry one, `@TomHistory` copies a row into a history table
 before every update, delete and restore, and `TomEntityLifecycle` registers the
 `TomEntityListener` hooks and change listeners every repository write of an
-entity runs, inside one transaction with it.
+entity runs, inside one transaction with it. `TomBlobOrphanSweep` deletes the
+keys of a `TomDeduplicatingBlobStore` that no row refers to — asking each
+`TomBlobReferenceSource`, typically a `TomRepositoryBlobReferences` over an
+entity's file columns — and reports a `TomBlobOrphanSweepReport`.
 
 ## Class Hierarchy
 
@@ -181,6 +190,12 @@ TomFileRepository<T, K>  (contract — the five methods the HTTP file
 
 TomResourceScopeSource  (hook — implemented in authorization by
                          TomResourceDataScope)
+
+TomBlobReferenceSource  (contract — which blob keys rows refer to)
+    └── TomRepositoryBlobReferences<T, K>
+
+TomBlobOrphanSweep
+TomBlobOrphanSweepReport  (plain value holder)
 
 TomTypedPersistenceBase  (queries)
     └── TomQuerySentenceCompiler  (with TomQueryBuilder)
@@ -1904,6 +1919,147 @@ the question an operator has afterwards.
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `toString` | `String toString()` | *(override)* Renders the five counts. |
+
+### Sweeping Files No Row Refers To
+
+`blob_orphan_sweep.dart` deletes stored files no row refers to. A plain blob
+store cannot find those, because it cannot list itself; a
+`TomDeduplicatingBlobStore` can, because its ledger records every key.
+`TomBlobOrphanSweep` walks that ledger and asks the rows, through one or more
+`TomBlobReferenceSource`s. Only keys written more than `grace` ago are
+considered, so an upload has that long to be attached; the sources are asked a
+second time immediately before a delete, which narrows the window in which a row
+saved during the sweep loses its file to the delete itself. The sweep's
+refusals are `TomStorageException`s (file_storage): `storage.sweep.scoped_run`,
+`storage.sweep.no_file_columns` and `storage.sweep.unknown_field`.
+
+#### TomBlobReferenceSource
+
+Something that knows which blob keys its rows refer to.
+
+- **Extends:** none (abstract)
+
+##### Constructors
+
+```dart
+const TomBlobReferenceSource()
+```
+
+##### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `referenced` | `Future<Set<String>> referenced(List<String> keys)` | *(abstract)* Which of `keys` a row refers to. |
+
+#### TomRepositoryBlobReferences&lt;T, K&gt;
+
+The `@TomFileReference` columns of a repository's entity, as a
+`TomBlobReferenceSource`. Soft-deleted rows count: a restore brings their files
+back into use.
+
+- **Extends:** `TomBlobReferenceSource`
+
+##### Constructors
+
+```dart
+TomRepositoryBlobReferences(
+  TomRepository<T, K> repository, {
+  Set<String> fields = const {},
+  int batchSize = 100,
+})
+```
+
+Reads the file columns of `T` — all of them, or those `fields` names by field or
+column name. Throws `storage.sweep.no_file_columns` when `T` stores no files,
+`storage.sweep.unknown_field` when `fields` names a field that is not one of its
+file columns, and an `ArgumentError` for a `batchSize` below one.
+
+##### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `repository` | `TomRepository<T, K>` | The repository the rows are read through (final). |
+| `batchSize` | `int` | How many keys one query asks about (final). |
+
+##### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `referenced` | `Future<Set<String>> referenced(List<String> keys)` | *(override)* Asks the keys in batches of `batchSize`, inside `TomSoftDelete.includingDeleted`: one `FIND BY <column> IS IN (…)` per file column and batch. A column graded with an `authKey` is counted key by key instead (`COUNT BY <column> = :key`), because a read outside a request may mask it to `null` — and a key the sweep cannot see is one it deletes — while a count is never masked. |
+
+#### TomBlobOrphanSweepReport
+
+What one `TomBlobOrphanSweep.sweep` did.
+
+##### Constructors
+
+```dart
+const TomBlobOrphanSweepReport({
+  required int scanned,
+  required List<String> deleted,
+  required int reclaimed,
+})
+```
+
+##### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `scanned` | `int` | How many keys were old enough, and under a configured prefix, to be considered (final). |
+| `deleted` | `List<String>` | The keys no row referred to, which were deleted (final). |
+| `reclaimed` | `int` | How many contents the reclaim after the sweep freed (final). |
+
+##### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `toString` | `String toString()` | *(override)* Renders `TomBlobOrphanSweepReport(<scanned> scanned, <n> deleted, <reclaimed> reclaimed)`. |
+
+#### TomBlobOrphanSweep
+
+Deletes the keys of a `TomDeduplicatingBlobStore` that no source refers to, once
+they are older than `grace`, and then reclaims the content they held.
+
+- **Extends:** none
+
+##### Constructors
+
+```dart
+TomBlobOrphanSweep({
+  required TomDeduplicatingBlobStore store,
+  required List<TomBlobReferenceSource> sources,
+  Duration grace = const Duration(days: 1),
+  List<String> prefixes = const [],
+  int batchSize = 500,
+  bool reclaim = true,
+  bool allowScopedRun = false,
+  DateTime Function()? clock,
+})
+```
+
+`prefixes` are validated as keys. An empty `sources` — every key would be
+unreferenced and the sweep would empty the store — a `grace` that is not
+positive, or a `batchSize` below one is an `ArgumentError`. `clock` (default
+`DateTime.now`) is the time a sweep run without `now` measures the grace from.
+
+##### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `store` | `TomDeduplicatingBlobStore` | The store swept (final). |
+| `sources` | `List<TomBlobReferenceSource>` | Everything that may refer to a key; unmodifiable (final). |
+| `grace` | `Duration` | How old a key must be to be considered — far longer than any upload-to-save delay a deployment allows (final). |
+| `prefixes` | `List<String>` | The key prefixes considered, matched by segment — the `keyPrefix`es of the file columns the sources read, when the store also holds files nothing here describes; empty for every key (final). |
+| `batchSize` | `int` | How many keys one page of the ledger holds (final). |
+| `reclaim` | `bool` | Whether to run `TomDeduplicatingBlobStore.reclaim` after the sweep (final). |
+| `allowScopedRun` | `bool` | Whether the sweep may run inside a request. `false` by default, because a request's data scope hides rows, and a row the sweep cannot see is a reference it deletes (final). |
+
+##### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `sweep` | `Future<TomBlobOrphanSweepReport> sweep({DateTime? now})` | Deletes every key written before `now` (default: the sweep's clock) minus `grace` that no source refers to: pages the ledger's keys in key order, keeps those under `prefixes`, asks the sources, asks again about the unreferenced ones immediately before deleting them, and then runs the store's `reclaim` at `now` unless `reclaim` is `false`. Throws `storage.sweep.scoped_run` when a principal is in the zone and `allowScopedRun` is unset. |
+| `jobDefinition` | `TomJobDefinition jobDefinition({String name = 'tom.storage.orphan_sweep', TomSchedule? schedule})` | A job running `sweep` on `schedule` (default: daily), missed windows run once, for a `TomScheduler` to run in its own isolate (`TomInlineJobDispatcher`), since its body holds this sweep. A run's result is the report's text. |
 
 ### Field-Level Encryption
 

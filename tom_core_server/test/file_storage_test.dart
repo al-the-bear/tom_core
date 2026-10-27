@@ -3649,20 +3649,25 @@ void main() {
       },
     );
 
-    test('the pass-through list is the five the module raises itself', () {
+    test('the pass-through list is the seven the module raises itself', () {
       // Pinned by name, because membership is a judgement — "raised by code
       // every backend shares, or by a rule every backend is held to" — and a
       // key added without that argument being made is the drift this guards.
       // `same_key` earns it on both counts: it is raised by the contract's own
       // key check, before any backend is reached, and every backend is held to
       // the rule. Wrapped as `copy_failed` instead, it would tell a caller the
-      // storage broke when what broke was their arithmetic.
+      // storage broke when what broke was their arithmetic. The two quota keys
+      // are raised by the deduplicating store's own quota, whatever content
+      // store is behind it, and a caller answers them (delete something, ask
+      // for more space) rather than reporting them as an outage.
       expect(TomBlobStore.passThroughErrorKeys, {
         'storage.blob.not_found',
         'storage.blob.invalid_key',
         'storage.blob.invalid_key_prefix',
         'storage.blob.missing_chunk',
         'storage.blob.same_key',
+        'storage.quota.count_exceeded',
+        'storage.quota.bytes_exceeded',
       });
       expect(
         TomBlobStore.passThroughErrorKeys.intersection({

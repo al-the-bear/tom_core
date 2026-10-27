@@ -47,6 +47,7 @@ import '../datasources/framework_table.dart';
 import '../datasources/mariadb_sql_dialect.dart';
 import '../datasources/sql_dialects.dart';
 import '../export/export_register_sql.dart';
+import '../file_storage/blob_ledger_sql.dart';
 import '../file_storage/database_blob_sql.dart';
 import '../messaging/delivery_report_sql.dart';
 import '../endpoints/idempotency_sql.dart';
@@ -84,6 +85,8 @@ List<TomFrameworkTable> frameworkOwnedTables({
   String jobRunArchive = defaultJobRunArchiveTable,
   String blobManifest = defaultBlobManifestTable,
   String blobChunk = defaultBlobChunkTable,
+  String blobLedger = defaultBlobLedgerTable,
+  String blobContent = defaultBlobContentTable,
   String auditTrail = defaultAuditTrailTable,
   String oauthState = defaultOAuthStateTable,
   String deliveryReport = defaultDeliveryReportTable,
@@ -104,6 +107,8 @@ List<TomFrameworkTable> frameworkOwnedTables({
   jobRunArchiveTable(jobRunArchive),
   blobManifestTable(blobManifest),
   blobChunkTable(blobChunk),
+  blobLedgerTable(blobLedger),
+  blobContentTable(blobContent),
   auditTrailTable(auditTrail),
   oauthStateTable(oauthState),
   deliveryReportTable(deliveryReport),

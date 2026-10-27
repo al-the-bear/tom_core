@@ -2094,10 +2094,10 @@ class TodoArchiveStore {
 }
 ```
 
-All eight framework stores provision their tables this way: `TomSqlJobStore`,
+Every framework store provisions its tables this way — `TomSqlJobStore`,
 `TomSqlLeaseLock`, `TomSqlSchedulerNodes`, `TomSqlDeliveryReportStore`,
-`TomSqlInvalidationChannel`, `TomSqlOAuthStateStore`, `TomSqlScimStore` and
-`TomDatabaseBlobStore`.
+`TomSqlInvalidationChannel`, `TomSqlOAuthStateStore`, `TomSqlScimStore`,
+`TomDatabaseBlobStore` and `TomSqlBlobLedger` among them.
 
 ## Verification
 

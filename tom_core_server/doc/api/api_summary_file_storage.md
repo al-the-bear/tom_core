@@ -25,6 +25,18 @@ named registry that selects one from configuration.
   - [The four built-in backends](#the-four-built-in-backends)
   - [TomBlobStoreBackendFactory](#tomblobstorebackendfactory)
   - [TomBlobStoreInfo](#tomblobstoreinfo)
+  - [TomDeduplicatingBlobStore](#tomdeduplicatingblobstore)
+  - [TomBlobQuota](#tomblobquota)
+  - [TomBlobUsage](#tomblobusage)
+  - [TomBlobLedger](#tomblobledger)
+  - [TomBlobLedgerEntry](#tomblobledgerentry)
+  - [TomBlobContent](#tomblobcontent)
+  - [TomMemoryBlobLedger](#tommemoryblobledger)
+  - [TomSqlBlobLedger](#tomsqlblobledger)
+  - [TomBlobLedgerEntryRow](#tomblobledgerentryrow)
+  - [TomBlobContentRow](#tomblobcontentrow)
+  - [TomBlobUsageRow](#tomblobusagerow)
+  - [TomBlobReferenceCountRow](#tomblobreferencecountrow)
 - [Global Functions and Constants](#global-functions-and-constants)
 
 ## Overview
@@ -36,7 +48,10 @@ Source: `lib/src/tomserver/file_storage/blob_store.dart`,
 `lib/src/tomserver/file_storage/s3_blob_store.dart`,
 `lib/src/tomserver/file_storage/aws_v4_signer.dart`,
 `lib/src/tomserver/file_storage/blob_store_backends.dart`,
-`lib/src/tomserver/file_storage/blob_store_registry.dart`.
+`lib/src/tomserver/file_storage/blob_store_registry.dart`,
+`lib/src/tomserver/file_storage/blob_ledger.dart`,
+`lib/src/tomserver/file_storage/blob_ledger_sql.dart`,
+`lib/src/tomserver/file_storage/deduplicating_blob_store.dart`.
 
 `TomBlobStore` is the contract: five operations — `put`, `get`, `describe`,
 `exists` and `delete` — over a key and a `Stream<List<int>>`. A *backend*
@@ -93,6 +108,23 @@ field is refused at start-up. An application registers its own backend through a
 `TomBlobStoreBackendFactory`, and a deployment then spells it in configuration
 exactly like a built-in one.
 
+`TomDeduplicatingBlobStore` is a `TomBlobStore` in front of any other one — the
+*content store* — and a `TomBlobLedger`, the record a plain store cannot keep of
+itself: one `TomBlobLedgerEntry` per logical key (owner, digest, content key,
+size) and one `TomBlobContent` per distinct SHA-256. A write streams into a
+staging key while the store hashes it, then becomes the content for that digest
+or is discarded when the content is already held, so every key naming the same
+bytes shares one stored copy and a copy moves no bytes. Each write and copy is
+charged to an owner — the principal in the zone, or the owner `runAs` names — and
+refused past a `TomBlobQuota`, measured in `TomBlobUsage`. Deleting a key removes
+its entry; `reclaim` deletes content no entry names once nothing has claimed it
+for `reclaimGrace`. `TomMemoryBlobLedger` keeps the record in memory and
+`TomSqlBlobLedger` in the framework-owned tables `tom_blob_ledger` and
+`tom_blob_content`, declared by `blobLedgerTable` and `blobContentTable`, with
+`TomBlobLedgerEntryRow`, `TomBlobContentRow`, `TomBlobUsageRow` and
+`TomBlobReferenceCountRow` as its reflected row types. Which keys no row refers
+to is the persistence module's `TomBlobOrphanSweep`, which walks the ledger.
+
 This module is the storage half only, and stops at the key. Nothing here is
 reachable over HTTP: the endpoint that serves a stored file —
 `TomFileService`/`TomFileServer` on `/files/{entity}/{id}/{column}`, and the
@@ -117,7 +149,22 @@ TomBlobStore  (abstract)
     ├── TomMemoryBlobStore
     ├── TomDirectoryBlobStore
     ├── TomDatabaseBlobStore
-    └── TomS3BlobStore
+    ├── TomS3BlobStore
+    └── TomDeduplicatingBlobStore
+
+TomBlobLedger  (abstract)
+    ├── TomMemoryBlobLedger
+    └── TomSqlBlobLedger
+
+TomBlobLedgerEntry
+TomBlobContent
+TomBlobUsage
+TomBlobQuota
+
+TomBlobLedgerEntryRow
+TomBlobContentRow
+TomBlobUsageRow
+TomBlobReferenceCountRow
 
 TomStoredBlob
 
@@ -339,7 +386,7 @@ const TomBlobStore()
 | -------- | ---- | ----------- |
 | `supportsPrefixDelete` | `bool` | *(getter)* Whether this backend can delete every blob under a key prefix. Asked at wire-up, because it decides whether a deployment's retention pass is one call per partition or one per blob. `false` by default: a backend that does not answer the question does not get to be assumed capable. |
 | `maxKeyLength` | `static const int` | The longest key any backend accepts (512) — comfortably under the shortest limit in play, so the database backend can declare a fixed-width indexed column and a filesystem is never handed a name the OS rejects. |
-| `passThroughErrorKeys` | `static const Set<String>` | The four keys that reach a caller as the backend raised them — `storage.blob.not_found`, `invalid_key`, `invalid_key_prefix` and `missing_chunk`. Everything else, *including a backend's own `TomStorageException`*, is wrapped under the operation's key with the original as `rootException`. The match is on the key rather than the type, which is what stops `storage.s3.request_failed` reaching a caller who is supposed to be backend-agnostic; the list is closed by a rule — every member is raised by shared code or enforces a limit every backend obeys — so a backend cannot add to it. |
+| `passThroughErrorKeys` | `static const Set<String>` | The seven keys that reach a caller as the backend raised them — `storage.blob.not_found`, `invalid_key`, `invalid_key_prefix`, `missing_chunk` and `same_key`, and `storage.quota.count_exceeded` and `bytes_exceeded`, the refusals of a `TomDeduplicatingBlobStore`'s quota. Everything else, *including a backend's own `TomStorageException`*, is wrapped under the operation's key with the original as `rootException`. The match is on the key rather than the type, which is what stops `storage.s3.request_failed` reaching a caller who is supposed to be backend-agnostic; the list is closed by a rule — every member is raised by shared code or enforces a limit every backend obeys — so a backend cannot add to it. |
 | `auxiliaryMarker` | `static const String` | A character no valid key can contain (`~`), for backends keeping bookkeeping files alongside the blobs. Suffixing with it makes that bookkeeping *unaddressable*, where the obvious `<key>.meta` is a key a caller may legitimately choose — so two callers picking ordinary keys destroyed each other's data. Lives on the contract because it is a fact about `isValidKey`, which `TomExportStore` shares; the suffixes themselves stay with each backend. |
 
 #### Static Methods
@@ -886,6 +933,398 @@ already in hand gets its entry through `register` instead.
 | `open` | `Future<void> open()` | Builds this entry's store and registers it. An entry made by `register` hands back its store. A configured entry creates the backend its `type` names (`storage.registry.unknown_backend` when none is registered, `storage.registry.backend_not_reflected` when its class is not in the application's reflection), removes `registryKeys`, refuses every remaining key the backend declares no field for (`storage.registry.unknown_setting`, naming the store and every offending key), binds the rest (`storage.registry.invalid_setting` for a value its field cannot take), and builds the store (`storage.registry.missing_setting` for a required setting left unset). |
 | `toString` | `String toString()` | *(override)* Renders `TomBlobStoreInfo <name> <type> <store>`, with `<unopened>` in the store's place while the entry has none. Three segments either way: an unopened entry is most often seen in a debugger or inside the error report about the `open` that failed, so it renders rather than throws. |
 
+### TomDeduplicatingBlobStore
+
+A blob store that keeps one copy of each distinct content, records whose every
+key is, and holds each owner to a quota. It sits in front of another store —
+the *content store*, any of the four backends — and a `TomBlobLedger`. A write
+streams into a staging key while its SHA-256 is computed, then becomes the
+content for that digest or is discarded when the content is already held; every
+logical key naming the same bytes shares one stored copy, and a copy is a
+ledger write that moves no bytes. Deleting a key removes its ledger entry;
+content no entry names is deleted by `reclaim`, never at the moment its last key
+goes, because that delete would race a concurrent write of the same bytes in
+another process.
+
+- **Extends:** `TomBlobStore`
+
+#### Constructors
+
+```dart
+TomDeduplicatingBlobStore({
+  required TomBlobStore content,
+  required TomBlobLedger ledger,
+  TomBlobQuota? quota,
+  String Function()? ownerOf,
+  String contentPrefix = defaultContentPrefix,
+  String stagingPrefix = defaultStagingPrefix,
+  Duration reclaimGrace = const Duration(hours: 1),
+  DateTime Function()? clock,
+})
+```
+
+`contentPrefix` and `stagingPrefix` are validated as keys and must not contain
+each other — staging inside the content area would make an in-flight write look
+like content — and `reclaimGrace` must not be negative; either fault is an
+`ArgumentError`. `ownerOf` defaults to `principalOwner`, `clock` to
+`DateTime.now`.
+
+#### Static Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `defaultContentPrefix` | `static const String` | The prefix content is stored under in the content store by default, `tom-content`. |
+| `defaultStagingPrefix` | `static const String` | The prefix in-flight writes are staged under by default, `tom-staging`. |
+
+#### Static Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `principalOwner` | `static String principalOwner()` | The owner the current zone's principal is: its qualified id, or `''` when no principal is set — the default `ownerOf`. |
+| `runAs` | `static Future<T> runAs<T>(String owner, Future<T> Function() body)` | Runs `body` with every write and copy it makes charged to `owner` — for work done on someone's behalf outside a request, and for a job that owns its own files. |
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `content` | `TomBlobStore` | Where the bytes are stored (final). |
+| `ledger` | `TomBlobLedger` | The record of keys, owners and contents (final). |
+| `quota` | `TomBlobQuota?` | How much one owner may hold, or `null` for no limit (final). |
+| `ownerOf` | `String Function()` | Who a write counts against when no `runAs` is in effect (final). |
+| `contentPrefix` | `String` | The key prefix content takes in `content` (final). Content keys are `<contentPrefix>/<first two hex digits>/<digest>-<12 random hex>`, so content reclaimed and stored again never reuses a key a late delete of the old bytes could still reach. |
+| `stagingPrefix` | `String` | The key prefix in-flight writes take in `content` (final). A staged write is moved or deleted before it returns; a process that dies mid-write leaves its staged bytes, which nothing records and so nothing reclaims — `deletePrefix` of this prefix on the content store, while no write is in flight, removes them. |
+| `reclaimGrace` | `Duration` | How long content no key names is kept before `reclaim` deletes it, counted from its last claim by a write or a copy (final). Longer than the longest write, since a write claims its content before it records its key. |
+| `supportsPrefixDelete` | `bool` | *(override)* `true` over any content store — a prefix delete removes ledger entries, matched by segment. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `currentOwner` | `String currentOwner()` | Who the write being made now counts against: the owner `runAs` named for the current zone, otherwise `ownerOf()`. |
+| `doPut` | `Future<TomStoredBlob> doPut({required String key, required Stream<List<int>> bytes, String mediaType = TomStoredBlob.defaultMediaType, String? fileName})` | *(override)* Checks the owner's count and bytes held against the quota, streams the bytes into a fresh staging key while hashing them, checks the bytes again with the written size, claims the content for the digest, moves the staged bytes to the content key — or deletes them when the content is already stored — and records the entry. When the ledger names content whose bytes are missing, the staged bytes are moved in, so the next write repairs the gap. A failure deletes the staged bytes and rethrows. |
+| `doGet` | `Stream<List<int>> doGet(String key)` | *(override)* Looks the key up in the ledger and reads its content key from the content store; `storage.blob.not_found` for an unknown key. |
+| `doGetRange` | `Stream<List<int>> doGetRange(String key, TomBlobRange range)` | *(override)* The same, passing the range to the content store, so its seek serves it. |
+| `doDescribe` | `Future<TomStoredBlob?> doDescribe(String key)` | *(override)* The ledger entry as a descriptor, digest included, or `null`. |
+| `doExists` | `Future<bool> doExists(String key)` | *(override)* Whether the ledger holds an entry for the key. |
+| `doDelete` | `Future<bool> doDelete(String key)` | *(override)* Removes the ledger entry and answers whether there was one; the content stays until `reclaim`. |
+| `doDeletePrefix` | `Future<int> doDeletePrefix(String prefix)` | *(override)* Removes the ledger entries under `prefix`, by segment, and answers how many went. |
+| `doCopy` | `Future<TomStoredBlob> doCopy(String fromKey, String toKey)` | *(override)* A ledger entry at `toKey` naming the source's content, charged to the current owner and checked against the quota with the source's size; the content is claimed first, so a reclaim cannot take it in between. No bytes move. |
+| `doMove` | `Future<TomStoredBlob> doMove(String fromKey, String toKey)` | *(override)* Records the entry at `toKey` with the source's owner, then removes `fromKey`. No bytes move. |
+| `reclaim` | `Future<int> reclaim({DateTime? now, int batchSize = 500})` | Deletes content no key has named, and nothing has claimed, for `reclaimGrace` before `now` (default: the clock), in batches of `batchSize`; answers how many contents went. A content's record goes before its bytes, and only while still unnamed and unclaimed, so a concurrent write either keeps it or gets new content under a new key. A failure deleting the bytes after the record went leaves them unreachable rather than referenced, and is reported, not retried. A `batchSize` below one is an `ArgumentError`. |
+| `reclaimJobDefinition` | `TomJobDefinition reclaimJobDefinition({String name = 'tom.storage.reclaim', TomSchedule? schedule})` | A job running `reclaim` on `schedule` (default: hourly), missed windows run once, for a `TomScheduler` to run in its own isolate (`TomInlineJobDispatcher`), since its body holds this store. |
+| `close` | `Future<void> close()` | *(override)* Closes the content store. |
+
+### TomBlobQuota
+
+How much one owner may hold in a `TomDeduplicatingBlobStore`: at most `maxCount`
+blobs and at most `maxBytes` in total; `null` leaves that dimension unbounded.
+Checked on every write and copy made for an owner. The count and the bytes
+already held are checked before anything is written, so a full owner costs no
+upload; a write that takes the owner past `maxBytes` is undone before it is
+recorded. The check reads the ledger and then writes it, so two writes racing
+for the last of an owner's space can both pass: the quota bounds an owner, it
+is not a reservation.
+
+#### Constructors
+
+```dart
+const TomBlobQuota({int? maxCount, int? maxBytes})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `maxCount` | `int?` | The most blobs one owner may hold (final). |
+| `maxBytes` | `int?` | The most bytes one owner's blobs may total (final). |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `check` | `void check(String owner, TomBlobUsage usage, {int addedBytes = 0, bool countingNew = true})` | Throws unless `owner`, holding `usage`, may hold one more blob: `storage.quota.count_exceeded` when the count is at `maxCount` and `countingNew` is set, `storage.quota.bytes_exceeded` when the bytes held plus `addedBytes` exceed `maxBytes` — or, before the write (`addedBytes` `0`), already reach it. Both carry the owner, the count or bytes and the limit. A caller replacing a blob the owner holds passes `countingNew: false` and takes the replaced blob's bytes out of `usage` first. |
+
+### TomBlobUsage
+
+How much an owner holds: `count` blobs of `bytes` in total. Logical bytes — an
+owner is charged for every blob it holds, whether or not another key shares the
+content, so what one owner may store never depends on what somebody else
+uploaded.
+
+#### Constructors
+
+```dart
+const TomBlobUsage({required int count, required int bytes})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `count` | `int` | How many blobs (final). |
+| `bytes` | `int` | Their total size (final). |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `toString` | `String toString()` | *(override)* Renders `TomBlobUsage(<count> blobs, <bytes> bytes)`. |
+
+### TomBlobLedger
+
+The record a `TomDeduplicatingBlobStore` keeps of its keys and contents: one
+`TomBlobLedgerEntry` per logical key and one `TomBlobContent` per distinct
+content. Many entries may name one content; that is the deduplication.
+
+- **Extends:** none (abstract)
+
+#### Constructors
+
+```dart
+const TomBlobLedger()
+```
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `find` | `Future<TomBlobLedgerEntry?> find(String key)` | *(abstract)* The entry under `key`, or `null`. |
+| `record` | `Future<void> record(TomBlobLedgerEntry entry)` | *(abstract)* Records `entry`, replacing any entry under its key. |
+| `remove` | `Future<TomBlobLedgerEntry?> remove(String key)` | *(abstract)* Removes the entry under `key` and answers it, or `null` when there was none. The content it named stays until a reclaim. |
+| `removePrefix` | `Future<int> removePrefix(String prefix)` | *(abstract)* Removes the entry `prefix` names and every entry below it, matched by segment as `TomBlobStore.deletePrefix` matches; answers how many went. |
+| `usageOf` | `Future<TomBlobUsage> usageOf(String owner)` | *(abstract)* What `owner` holds. |
+| `storedBefore` | `Future<List<TomBlobLedgerEntry>> storedBefore(DateTime before, {String after = '', int limit = 500})` | *(abstract)* Up to `limit` entries written before `before` whose key sorts after `after`, in key order — the page an orphan sweep walks. |
+| `referencesTo` | `Future<int> referencesTo(String digest)` | *(abstract)* How many entries name the content with `digest`. |
+| `claimContent` | `Future<TomBlobContent?> claimContent(String digest, {required int byteCount, required String contentKey, required DateTime now, bool create = true})` | *(abstract)* The content with `digest`, claimed at `now`; created under `contentKey` when there is none and `create` is set, otherwise `null` when there is none. A claim keeps content from being reclaimed while a write that will name it is in flight; content reclaimed and claimed again is created anew under the new `contentKey`, so old and new bytes never share a key. |
+| `reclaimable` | `Future<List<TomBlobContent>> reclaimable(DateTime claimedBefore, {int limit = 500})` | *(abstract)* Up to `limit` contents no entry names and nothing claimed since `claimedBefore`, oldest claim first. |
+| `dropContent` | `Future<bool> dropContent(TomBlobContent content, DateTime claimedBefore)` | *(abstract)* Removes `content`'s record if it is still unnamed and unclaimed since `claimedBefore`; answers whether it did, and so whether its bytes may go. |
+
+### TomBlobLedgerEntry
+
+One logical key of a `TomDeduplicatingBlobStore`.
+
+#### Constructors
+
+```dart
+TomBlobLedgerEntry({
+  required String key,
+  required String owner,
+  required String digest,
+  required String contentKey,
+  required int byteCount,
+  required String mediaType,
+  required DateTime storedAt,
+  String? fileName,
+})
+```
+
+`storedAt` is normalised to UTC.
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `key` | `String` | The logical key (final). |
+| `owner` | `String` | Who the blob counts against — a principal's qualified id, a tenant, a job; `''` for a blob of no one, which no quota counts (final). |
+| `digest` | `String` | The SHA-256 of the content, as lowercase hex (final). |
+| `contentKey` | `String` | The key the content's bytes are stored under in the content store, kept here so a read is one lookup (final). |
+| `byteCount` | `int` | The content's size (final). |
+| `mediaType` | `String` | The media type the blob was stored with (final). |
+| `fileName` | `String?` | The file name the blob was stored with, if any (final). |
+| `storedAt` | `DateTime` | When the key was written, in UTC (final). |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `toStoredBlob` | `TomStoredBlob toStoredBlob()` | This entry as the descriptor `describe` answers, digest included. |
+| `toString` | `String toString()` | *(override)* Renders `TomBlobLedgerEntry(<key>, <owner>, <byteCount> bytes)`. |
+
+### TomBlobContent
+
+One distinct content held by a `TomDeduplicatingBlobStore`.
+
+#### Constructors
+
+```dart
+TomBlobContent({
+  required String digest,
+  required String contentKey,
+  required int byteCount,
+  required DateTime claimedAt,
+})
+```
+
+`claimedAt` is normalised to UTC.
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `digest` | `String` | The SHA-256 of the content, as lowercase hex (final). |
+| `contentKey` | `String` | The key the bytes are stored under in the content store (final). |
+| `byteCount` | `int` | The content's size (final). |
+| `claimedAt` | `DateTime` | When a write or copy last claimed it, in UTC (final). |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `toString` | `String toString()` | *(override)* Renders `TomBlobContent(<digest> at <contentKey>)`. |
+
+### TomMemoryBlobLedger
+
+A `TomBlobLedger` in memory: right for tests and a single process whose content
+store is in memory too, wrong for anything that outlives the process.
+
+- **Extends:** `TomBlobLedger`
+
+#### Constructors
+
+```dart
+TomMemoryBlobLedger()
+```
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `find` | `Future<TomBlobLedgerEntry?> find(String key)` | *(override)* A map lookup. |
+| `record` | `Future<void> record(TomBlobLedgerEntry entry)` | *(override)* Stores the entry under its key. |
+| `remove` | `Future<TomBlobLedgerEntry?> remove(String key)` | *(override)* Removes and answers the entry. |
+| `removePrefix` | `Future<int> removePrefix(String prefix)` | *(override)* Removes every entry `tomBlobKeyUnder` puts under `prefix`. |
+| `usageOf` | `Future<TomBlobUsage> usageOf(String owner)` | *(override)* Counts and sums the owner's entries. |
+| `storedBefore` | `Future<List<TomBlobLedgerEntry>> storedBefore(DateTime before, {String after = '', int limit = 500})` | *(override)* Filters, sorts by key and takes `limit`. |
+| `referencesTo` | `Future<int> referencesTo(String digest)` | *(override)* Counts the entries naming `digest`. |
+| `claimContent` | `Future<TomBlobContent?> claimContent(String digest, {required int byteCount, required String contentKey, required DateTime now, bool create = true})` | *(override)* Re-stamps a held content with `now`, keeping its content key and size, or creates it when `create` is set. |
+| `reclaimable` | `Future<List<TomBlobContent>> reclaimable(DateTime claimedBefore, {int limit = 500})` | *(override)* The unnamed contents claimed before the cutoff, oldest claim first. |
+| `dropContent` | `Future<bool> dropContent(TomBlobContent content, DateTime claimedBefore)` | *(override)* Removes the content when it still has the same content key, is still unclaimed since the cutoff and no entry names it. |
+
+### TomSqlBlobLedger
+
+A `TomBlobLedger` whose entries and contents are rows of two framework-owned
+tables in a `TomDataSource`, `tom_blob_ledger` and `tom_blob_content` by
+default. Every check that guards content against a concurrent writer is one
+statement, so it holds across processes: `claimContent` stamps the claim before
+it reads, and `dropContent` deletes only while the content is still unnamed and
+unclaimed.
+
+- **Extends:** `TomBlobLedger`
+
+#### Constructors
+
+```dart
+TomSqlBlobLedger(
+  TomDataSource datasource, {
+  String ledgerTable = defaultBlobLedgerTable,
+  String contentTable = defaultBlobContentTable,
+  bool createSchema = true,
+})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `datasource` | `TomDataSource` | The data source the tables live in (final). |
+| `ledgerTable` | `String` | The key table (final). |
+| `contentTable` | `String` | The content table (final). |
+| `createSchema` | `bool` | Whether to create the tables on first use; `false` when the migration module owns them (final). |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `ensureSchema` | `Future<void> ensureSchema()` | Creates the tables if they do not exist; idempotent, and called by every operation. |
+| `find` | `Future<TomBlobLedgerEntry?> find(String key)` | *(override)* One `SELECT` by `blob_key`. |
+| `record` | `Future<void> record(TomBlobLedgerEntry entry)` | *(override)* A replacing write of the entry's row. |
+| `remove` | `Future<TomBlobLedgerEntry?> remove(String key)` | *(override)* Reads the entry, deletes its row, and answers it when the delete removed a row. |
+| `removePrefix` | `Future<int> removePrefix(String prefix)` | *(override)* One `DELETE` of the key and every key `LIKE` the escaped prefix plus `/%` (`ESCAPE '!'`, because `_` is both a wildcard and a key character). |
+| `usageOf` | `Future<TomBlobUsage> usageOf(String owner)` | *(override)* `COUNT(*)` and `SUM(byte_count)` over the owner's rows. |
+| `storedBefore` | `Future<List<TomBlobLedgerEntry>> storedBefore(DateTime before, {String after = '', int limit = 500})` | *(override)* Rows with `stored_at` before the cutoff and `blob_key` after `after`, ordered by key, limited. |
+| `referencesTo` | `Future<int> referencesTo(String digest)` | *(override)* `COUNT(*)` of rows with that `content_digest`. |
+| `claimContent` | `Future<TomBlobContent?> claimContent(String digest, {required int byteCount, required String contentKey, required DateTime now, bool create = true})` | *(override)* Stamps `claimed_at` first, then reads the row; when there is none and `create` is set, inserts it ignoring a conflict and reads the row a concurrent claim may have written instead. |
+| `reclaimable` | `Future<List<TomBlobContent>> reclaimable(DateTime claimedBefore, {int limit = 500})` | *(override)* Content rows claimed before the cutoff with no ledger row naming them, oldest claim first. |
+| `dropContent` | `Future<bool> dropContent(TomBlobContent content, DateTime claimedBefore)` | *(override)* One `DELETE` of the content row, guarded by its content key, its claim time and the absence of a ledger row naming it. |
+| `deleteAll` | `Future<void> deleteAll()` | Empties both tables — for provisioning and tests. |
+
+### TomBlobLedgerEntryRow
+
+One row of the ledger's key table, as the data source's row mapper materialises
+it. Reflected and `@TomDbTable`-annotated for the same reason as
+`TomBlobManifestRow`; the table values are placeholders.
+
+#### Constructors
+
+```dart
+TomBlobLedgerEntryRow()
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `key` | `String` | The logical key (column `blob_key`). |
+| `owner` | `String` | Who the blob counts against (column `owner`). |
+| `digest` | `String` | The content's SHA-256 (column `content_digest`). |
+| `contentKey` | `String` | Where the content's bytes are stored (column `content_key`). |
+| `byteCount` | `int` | The content's size (column `byte_count`). |
+| `mediaType` | `String` | The blob's media type (column `media_type`). |
+| `fileName` | `String?` | The blob's file name (column `file_name`). |
+| `storedAt` | `String` | When the key was written, as the stored text (column `stored_at`). |
+
+### TomBlobContentRow
+
+One row of the ledger's content table, as the row mapper materialises it.
+
+#### Constructors
+
+```dart
+TomBlobContentRow()
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `digest` | `String` | The content's SHA-256 (column `content_digest`). |
+| `contentKey` | `String` | Where the content's bytes are stored (column `content_key`). |
+| `byteCount` | `int` | The content's size (column `byte_count`). |
+| `claimedAt` | `String` | When it was last claimed, as the stored text (column `claimed_at`). |
+
+### TomBlobUsageRow
+
+The aggregate row `TomSqlBlobLedger.usageOf` reads.
+
+#### Constructors
+
+```dart
+TomBlobUsageRow()
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `blobCount` | `int` | How many blobs (column `blob_count`). |
+| `blobBytes` | `int` | Their total size (column `blob_bytes`). |
+
+### TomBlobReferenceCountRow
+
+The aggregate row `TomSqlBlobLedger.referencesTo` reads.
+
+#### Constructors
+
+```dart
+TomBlobReferenceCountRow()
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `referenceCount` | `int` | How many entries name the content (column `reference_count`). |
+
 ## Global Functions and Constants
 
 ### Constants
@@ -894,6 +1333,8 @@ already in hand gets its entry through `register` instead.
 | -------- | ---- | ----------- |
 | `defaultBlobManifestTable` | `String` | The default name of the blob manifest table, `tom_blob`. |
 | `defaultBlobChunkTable` | `String` | The default name of the blob chunk table, `tom_blob_chunk`. |
+| `defaultBlobLedgerTable` | `String` | The default name of the deduplicating store's key table, `tom_blob_ledger`. |
+| `defaultBlobContentTable` | `String` | The default name of the deduplicating store's content table, `tom_blob_content`. |
 
 ### Functions
 
@@ -903,3 +1344,8 @@ already in hand gets its entry through `register` instead.
 | `blobChunkTable` | `TomFrameworkTable blobChunkTable(String table)` | The one declaration of the many-rows-per-blob content table, keyed on `(upload_id, chunk_index)` so the chunks of an in-flight write are addressable before anything commits to them. `chunk_data` is `LONGTEXT` holding base64, because the driver decodes every column value into a Dart `String`. |
 | `blobManifestTableDdl` | `String blobManifestTableDdl(String table)` | The `CREATE TABLE` statement for the manifest table, derived from `blobManifestTable`. What a deployment applies by hand when its credential may not run DDL: for the default name that text is the shipped `[1]-create_tom_blob.sql`, and for a store constructed with `manifestTable:` there is no shipped file, so this is the only source. |
 | `blobChunkTableDdl` | `String blobChunkTableDdl(String table)` | The `CREATE TABLE` statement for the chunk table, derived from `blobChunkTable` — the `[2]-create_tom_blob_chunk.sql` counterpart of `blobManifestTableDdl`, and the same answer for a renamed `chunkTable:`. |
+| `blobLedgerTable` | `TomFrameworkTable blobLedgerTable(String table)` | The one declaration of the SQL ledger's key table: `blob_key` as the primary key, sized from `TomBlobStore.maxKeyLength`; `owner` (`VARCHAR(191) NOT NULL DEFAULT ''`), `content_digest` (`CHAR(64)`), `content_key`, `byte_count`, `media_type`, the nullable `file_name`, and `stored_at` as `DATETIME(6)`; indexed on `(owner, stored_at)` for a quota's sum, on `content_digest` for the reclaim's "does anything still name this content", and on `stored_at`. Listed by `frameworkOwnedTables` under `blobLedger`. |
+| `blobContentTable` | `TomFrameworkTable blobContentTable(String table)` | The one declaration of the SQL ledger's content table: `content_digest` as the primary key, `content_key`, `byte_count` and `claimed_at` (`DATETIME(6)`), indexed on `claimed_at`, which the reclaim reads oldest first. Listed by `frameworkOwnedTables` under `blobContent`. |
+| `blobLedgerTableDdl` | `String blobLedgerTableDdl(String table)` | The `CREATE TABLE` statement for the key table, derived from `blobLedgerTable`; for the default name that text is the shipped `[3]-create_tom_blob_ledger.sql`. |
+| `blobContentTableDdl` | `String blobContentTableDdl(String table)` | The `CREATE TABLE` statement for the content table, derived from `blobContentTable`; for the default name that text is the shipped `[4]-create_tom_blob_content.sql`. |
+| `tomBlobKeyUnder` | `bool tomBlobKeyUnder(String key, String prefix)` | Whether `key` is `prefix` or lies below it, segment by segment — so `2026/07` covers `2026/07/a` and never `2026/070`. The match every ledger's `removePrefix` and the orphan sweep's prefix filter use. |

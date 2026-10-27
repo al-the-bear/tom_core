@@ -19,7 +19,7 @@ surface documented here.
 | Database Migration | [api_summary_db_migration.md](api_summary_db_migration.md) | Migration runner, versioning, rollback with down scripts, the record of the last run readiness reads, and the MariaDB and PostgreSQL migration adaptors. |
 | Endpoints | [api_summary_endpoints.md](api_summary_endpoints.md) | Service/endpoint annotations, routing, handler pipeline, error handling, and the three transports over it: HTML form bodies, redirects and WebSockets — plus the HTTP surface of file columns, and idempotency keys that answer a retried request with the first one's response. |
 | Export | [api_summary_export.md](api_summary_export.md) | Tabular results rendered to CSV, XLSX or PDF with charts, stored for later retrieval or sent by email, and the register of stored exports with a per-owner quota and a retention purge. |
-| File Storage | [api_summary_file_storage.md](api_summary_file_storage.md) | Streaming blob storage: one put/get contract over memory, directory, database and S3 backends. |
+| File Storage | [api_summary_file_storage.md](api_summary_file_storage.md) | Streaming blob storage: one put/get contract over memory, directory, database and S3 backends, and a deduplicating store with a per-owner quota in front of any of them. |
 | Health Check | [api_summary_healthcheck.md](api_summary_healthcheck.md) | Health analyzer and health-check service/server — process-wide or per instance, with cooperative cancellation of a timed-out analysis — and the framework readiness checks `/ready` answers with by default — or `503 shutting down` once a graceful shutdown has begun. |
 | Item Authorization | [api_summary_item_authorization.md](api_summary_item_authorization.md) | Item authorizations kept by an external authority: the port to it, a caching client for checks, accessible items and the user's sharing acts, and the row scope it feeds. |
 | Little Things | [api_summary_little_things.md](api_summary_little_things.md) | The server-side base exception `TomServerException`, the `TomLoginFailure` reason its login subclass carries, the per-request correlation id `TomRequestId` it reads, and `tomErrorEnvelope`, the wire shape every error response uses. |
@@ -569,6 +569,16 @@ surface documented here.
 | `defaultBlobManifestTable` / `defaultBlobChunkTable` | top-level | Default table names. |
 | `blobManifestTable` / `blobChunkTable` | top-level | The table descriptors. |
 | `blobManifestTableDdl` / `blobChunkTableDdl` | top-level | The `CREATE TABLE` statements, for a deployment that applies its own schema. |
+| `TomDeduplicatingBlobStore` | class | A store in front of another keeping one copy per content, a quota per owner, and the reclaim of content no key names. |
+| `TomBlobLedger` | abstract class | The record of keys, owners and contents a deduplicating store keeps. |
+| `TomMemoryBlobLedger` / `TomSqlBlobLedger` | class | That record in memory / in `tom_blob_ledger` and `tom_blob_content`. |
+| `TomBlobLedgerEntry` / `TomBlobContent` | class | One logical key / one distinct content of the ledger. |
+| `TomBlobQuota` / `TomBlobUsage` | class | The most one owner may hold, and what it holds. |
+| `TomBlobLedgerEntryRow` / `TomBlobContentRow` / `TomBlobUsageRow` / `TomBlobReferenceCountRow` | class | The rows the SQL ledger reads. |
+| `defaultBlobLedgerTable` / `defaultBlobContentTable` | top-level | The ledger's default table names. |
+| `blobLedgerTable` / `blobContentTable` | top-level | The ledger's table descriptors. |
+| `blobLedgerTableDdl` / `blobContentTableDdl` | top-level | Their `CREATE TABLE` statements. |
+| `tomBlobKeyUnder` | top-level | Whether a key is a prefix or lies below it, by segment. |
 
 ### Health Check (`lib/src/tomserver/healthcheck/`)
 
@@ -749,6 +759,10 @@ surface documented here.
 | `TomBlobMigrationReport` | class | What one blob migration did. |
 | `TomBlobMigrationException` | class | A blob migration cannot proceed, or cannot be trusted. |
 | `TomFileRepository<T, K>` | abstract class | The subset of a repository the file surfaces need: load a row, move one column's bytes. |
+| `TomBlobOrphanSweep` | class | Deletes the keys of a deduplicating blob store no row refers to, then reclaims their content. |
+| `TomBlobOrphanSweepReport` | class | What one orphan sweep did. |
+| `TomBlobReferenceSource` | abstract class | Something that knows which blob keys its rows refer to. |
+| `TomRepositoryBlobReferences<T, K>` | class | A repository's file columns as a reference source. |
 | `TomDataScope` | class | Row-level data scoping (static). |
 | `TomDataScopeRegistry` / `TomDataScopePredicate` / `TomDataScopeBypass` | class | Data-scope machinery. |
 | `TomDataScopeResolver` / `TomAsyncDataScopeResolver` | typedef | Scope resolver signatures. |
@@ -970,6 +984,10 @@ surface documented here.
 | `Between` | Object Persistence |
 | `blobChunkTable` | File Storage |
 | `blobChunkTableDdl` | File Storage |
+| `blobContentTable` | File Storage |
+| `blobContentTableDdl` | File Storage |
+| `blobLedgerTable` | File Storage |
+| `blobLedgerTableDdl` | File Storage |
 | `blobManifestTable` | File Storage |
 | `blobManifestTableDdl` | File Storage |
 | `BoolCol` | Object Persistence |
@@ -988,6 +1006,8 @@ surface documented here.
 | `defaultApiKeyTable` | Authentication |
 | `defaultAuditTrailTable` | Audit |
 | `defaultBlobChunkTable` | File Storage |
+| `defaultBlobContentTable` | File Storage |
+| `defaultBlobLedgerTable` | File Storage |
 | `defaultBlobManifestTable` | File Storage |
 | `defaultDecisionTable` | Transactions |
 | `defaultDeliveryReportTable` | Messaging |
@@ -1217,18 +1237,31 @@ surface documented here.
 | `TomBlindIndex` | Object Persistence |
 | `TomBlindIndexNormalization` | Object Persistence |
 | `TomBlobChunkRow` | File Storage |
+| `TomBlobContent` | File Storage |
+| `TomBlobContentRow` | File Storage |
 | `TomBlobDigest` | File Storage |
 | `TomBlobExportStore` | Export |
+| `tomBlobKeyUnder` | File Storage |
+| `TomBlobLedger` | File Storage |
+| `TomBlobLedgerEntry` | File Storage |
+| `TomBlobLedgerEntryRow` | File Storage |
 | `TomBlobManifestRow` | File Storage |
 | `TomBlobMigration` | Object Persistence |
 | `TomBlobMigrationException` | Object Persistence |
 | `TomBlobMigrationReport` | Object Persistence |
+| `TomBlobOrphanSweep` | Object Persistence |
+| `TomBlobOrphanSweepReport` | Object Persistence |
+| `TomBlobQuota` | File Storage |
 | `TomBlobRange` | File Storage |
+| `TomBlobReferenceCountRow` | File Storage |
+| `TomBlobReferenceSource` | Object Persistence |
 | `TomBlobStore` | File Storage |
 | `TomBlobStoreBackend` | File Storage |
 | `TomBlobStoreBackendFactory` | File Storage |
 | `TomBlobStoreInfo` | File Storage |
 | `TomBlobStoreOperation` | File Storage |
+| `TomBlobUsage` | File Storage |
+| `TomBlobUsageRow` | File Storage |
 | `TomBoolConfig` | Configuration |
 | `TomCache` | Cache |
 | `TomCachedItemLevel` | Cache |
@@ -1304,6 +1337,7 @@ surface documented here.
 | `TomDdlReplayError` | Database Migration |
 | `TomDdlReplayResult` | Database Migration |
 | `TomDecisionRow` | Transactions |
+| `TomDeduplicatingBlobStore` | File Storage |
 | `tomDefaultAuthenticationMiddleware` | Server |
 | `TomDefaultErrorHandler` | Endpoints |
 | `TomDefaultHealthAnalyzer` | Health Check |
@@ -1488,6 +1522,7 @@ surface documented here.
 | `TomMemoryApiKeyStore` | Authentication |
 | `TomMemoryAuditAnchorStore` | Audit |
 | `TomMemoryAuditSink` | Audit |
+| `TomMemoryBlobLedger` | File Storage |
 | `TomMemoryBlobStore` | File Storage |
 | `TomMemoryBlobStoreBackend` | File Storage |
 | `TomMemoryDataKeyStore` | Object Persistence |
@@ -1608,6 +1643,7 @@ surface documented here.
 | `TomReference` | Object Persistence |
 | `TomReplicaRouting` | Datasources |
 | `TomRepository` | Object Persistence |
+| `TomRepositoryBlobReferences` | Object Persistence |
 | `TomRepositoryException` | Object Persistence |
 | `tomRequestContextMiddleware` | Server |
 | `TomRequestId` | Little Things |
@@ -1734,6 +1770,7 @@ surface documented here.
 | `TomSqlAuditSink` | Audit |
 | `tomSqlBindParams` | Datasources |
 | `tomSqlBindValue` | Datasources |
+| `TomSqlBlobLedger` | File Storage |
 | `TomSqlBranch` | Datasources |
 | `tomSqlBranchId` | Datasources |
 | `tomSqlBranchOpenedAt` | Datasources |

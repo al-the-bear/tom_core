@@ -169,6 +169,13 @@ final Map<String, String> _guardedElsewhere = {
   _migration('file_storage', '[2]-create_tom_blob_chunk.sql'):
       'descriptor table — framework_schema_test.dart converges the chain, and '
       'file_storage_schema_test.dart compares the file to blobChunkTableDdl',
+  _migration('file_storage', '[3]-create_tom_blob_ledger.sql'):
+      'descriptor table — framework_schema_test.dart converges the chain, and '
+      'file_storage_schema_test.dart compares the file to blobLedgerTableDdl',
+  _migration('file_storage', '[4]-create_tom_blob_content.sql'):
+      'descriptor table — framework_schema_test.dart converges the chain, and '
+      'file_storage_schema_test.dart compares the file to '
+      'blobContentTableDdl',
   _migration('scheduling', '[1]-create_tom_job_run.sql'):
       'descriptor table — framework_schema_test.dart converges the chain, and '
       'scheduling_schema_test.dart compares the file to jobRunTableDdl',

@@ -231,6 +231,11 @@ const List<TourStop> tour = [
         'infrastructure-free backends and the blob-backed export store',
   ),
   TourStop(
+    'example/file_storage/deduplicating_store_example.dart',
+    'One copy per content, a quota per owner, and the sweep of files no row '
+        'refers to',
+  ),
+  TourStop(
     'example/scheduling/scheduling_example.dart',
     'The relational job queue and lease lock: the schema, why each constraint '
         'is load-bearing, and the UTC instant encoding',

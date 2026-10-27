@@ -1284,7 +1284,8 @@ entry.
 
 The framework's tables — `tom_job_run`, `tom_lease`, `tom_scheduler_node`,
 `tom_job_pause`, `tom_job_run_archive`,
-`tom_blob`, `tom_blob_chunk`, `tom_audit_trail`, `tom_oauth_state`,
+`tom_blob`, `tom_blob_chunk`, `tom_blob_ledger`, `tom_blob_content`,
+`tom_audit_trail`, `tom_oauth_state`,
 `tom_scim_resource`, `tom_delivery_report`, `tom_message_inbox`,
 `tom_cache_invalidation`, `tom_idempotency_key`, `tom_saga`,
 `tom_encryption_key`, `tom_subject_key`, `tom_transaction_decision`,
@@ -1737,7 +1738,7 @@ here it cannot drift silently.
 | [datasources](datasources.md) | module | 8 of 8 files | `TomDataSourceInfo` (named data sources) and its `executeCommand` / `executeQuery`; `TomSqlLexer`, the statement splitter and quote scanner; the connected data source's dialect, which `verifyLive` classifies and queries the catalogue with; `TomSqlDatasource.withSessionLock`, which holds the migration lock |
 | [endpoints](endpoints.md) | module | `framework_convergence.dart` | `defaultIdempotencyTable`, `idempotencyTable` |
 | [export](export.md) | module | `framework_convergence.dart` | `defaultExportRegisterTable`, `exportRegisterTable` |
-| [file_storage](file_storage.md) | module | `framework_convergence.dart` | `blobChunkTable`, `blobManifestTable`, `defaultBlobChunkTable`, `defaultBlobManifestTable` |
+| [file_storage](file_storage.md) | module | `framework_convergence.dart` | `blobChunkTable`, `blobContentTable`, `blobLedgerTable`, `blobManifestTable`, `defaultBlobChunkTable`, `defaultBlobContentTable`, `defaultBlobLedgerTable`, `defaultBlobManifestTable` |
 | [little_things](little_things.md) | module | `db_migration.dart`, `mariadb_migration_adapter.dart`, `postgres_migration_adapter.dart`, `sql_migration_adaptor.dart` | `TomServerException` |
 | [messaging](messaging.md) | module | `framework_convergence.dart` | `defaultDeliveryReportTable`, `deliveryReportTable`, `defaultInboxTable`, `inboxTable` |
 | [object_persistence](object_persistence.md) | module | `framework_convergence.dart`, `sql_migration_adaptor.dart`, `schema_convergence.dart` | `TomDbTable` / `TomDbColumn` on `TomDbVersion`; `defaultEncryptionKeyTable` and `encryptionKeyTable`, the data-key table of field-level encryption |

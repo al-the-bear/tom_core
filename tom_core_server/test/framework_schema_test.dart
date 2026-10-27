@@ -136,6 +136,8 @@ void main() {
       converges('example/file_storage/migrations/main/tomcore', [
         blobManifestTable(defaultBlobManifestTable),
         blobChunkTable(defaultBlobChunkTable),
+        blobLedgerTable(defaultBlobLedgerTable),
+        blobContentTable(defaultBlobContentTable),
       ]);
     });
 
@@ -308,6 +310,11 @@ void main() {
       maps(blobChunkTable(defaultBlobChunkTable), [TomBlobChunkRow]);
     });
 
+    test('the blob ledger', () {
+      maps(blobLedgerTable(defaultBlobLedgerTable), [TomBlobLedgerEntryRow]);
+      maps(blobContentTable(defaultBlobContentTable), [TomBlobContentRow]);
+    });
+
     test('the audit trail', () {
       // `TomAuditTriggerRow` is deliberately absent: it reads
       // `information_schema.TRIGGERS`, not the trail, so measuring it against
@@ -464,6 +471,55 @@ void main() {
           await _issuing(() => register.storedBefore(DateTime.utc(2026)));
           await _issuing(() => register.remove('a.csv'));
           await _issuing(() => register.deleteAll());
+        },
+      );
+    });
+
+    test('the blob ledger', () async {
+      final datasource = _RecordingDataSource();
+      final ledger = TomSqlBlobLedger(datasource);
+      final now = DateTime.utc(2026);
+      final content = TomBlobContent(
+        digest: 'a' * 64,
+        contentKey: 'tom-content/aa/x',
+        byteCount: 3,
+        claimedAt: now,
+      );
+      await audit(
+        datasource,
+        [
+          blobLedgerTable(defaultBlobLedgerTable),
+          blobContentTable(defaultBlobContentTable),
+        ],
+        () async {
+          await _issuing(
+            () => ledger.record(
+              TomBlobLedgerEntry(
+                key: 'a.txt',
+                owner: 'ada',
+                digest: content.digest,
+                contentKey: content.contentKey,
+                byteCount: 3,
+                mediaType: 'text/plain',
+                storedAt: now,
+              ),
+            ),
+          );
+          await _issuing(() => ledger.find('a.txt'));
+          await _issuing(() => ledger.remove('a.txt'));
+          await _issuing(() => ledger.removePrefix('a'));
+          await _issuing(() => ledger.storedBefore(now));
+          await _issuing(
+            () => ledger.claimContent(
+              content.digest,
+              byteCount: 3,
+              contentKey: content.contentKey,
+              now: now,
+            ),
+          );
+          await _issuing(() => ledger.reclaimable(now));
+          await _issuing(() => ledger.dropContent(content, now));
+          await _issuing(() => ledger.deleteAll());
         },
       );
     });

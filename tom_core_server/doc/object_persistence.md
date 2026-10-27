@@ -66,6 +66,7 @@ be expressed three ways — a parsed *query sentence*, a programmatically built
   - [Moving the bytes](#moving-the-bytes)
   - [Authorization, by construction](#authorization-by-construction)
   - [Blobs that nothing references](#blobs-that-nothing-references)
+  - [Sweeping files no row refers to](#sweeping-files-no-row-refers-to)
 - [Field-Level Encryption](#field-level-encryption)
   - [Marking a field](#marking-a-field)
   - [What is stored](#what-is-stored)
@@ -144,6 +145,10 @@ be expressed three ways — a parsed *query sentence*, a programmatically built
 | `TomBlobMigrationReport` | class | What one migration did: rows read, blobs copied, keys claimed, references it could not satisfy |
 | `TomBlobMigrationException` | class | Raised when a migration cannot proceed, or cannot be trusted |
 | `TomFileRepository<T, K>` | abstract class | The five-method file surface the HTTP file endpoint depends on |
+| `TomBlobOrphanSweep` | class | Deletes the keys of a deduplicating blob store that no row refers to, once older than a grace, then reclaims their content; also as a scheduler job |
+| `TomBlobOrphanSweepReport` | class | What one sweep did: keys considered, keys deleted, contents reclaimed |
+| `TomBlobReferenceSource` | abstract class | Something that knows which blob keys its rows refer to |
+| `TomRepositoryBlobReferences<T, K>` | class | A repository's `@TomFileReference` columns as a reference source, soft-deleted rows included |
 | `TomEncrypted` | class | Marks a `String` field encrypted at rest: stored as ciphertext, read as plaintext |
 | `TomBlindIndex` / `TomBlindIndexNormalization` | class / enum | Makes a `String` column the blind index of an encrypted field — what a lookup by value compares — and how it normalises the value first |
 | `TomFieldEncryption` | abstract final class | The isolate's field encryption: the installed keyring, the cipher, blind indexes and lookups, raw reads, audit redaction. Statics only |
@@ -2068,8 +2073,9 @@ Future<T> clearFile(T entity, String fieldName);
 whose failure mode is survivable. Saving first would leave a row pointing at a
 key that reads back `not_found` — a dangling reference, visible to users and
 repairable only by hand. Uploading first can at worst leave an orphaned blob,
-which nothing references and a sweep can collect; and even that is cleaned up
-when the save throws.
+which nothing references and a sweep can collect
+([Sweeping files no row refers to](#sweeping-files-no-row-refers-to)); and even
+that is cleaned up when the save throws.
 
 `describeFile` is the metadata read that precedes a download — a caller needs the
 `Content-Type` and `Content-Length` before it starts streaming. `clearFile` is
@@ -2127,6 +2133,81 @@ Grades here are resolved **per row** where a resolver is registered — see
 
 An entity with no `@TomFileReference` column short-circuits every path above, so
 the feature costs nothing to the entities that do not use it.
+
+### Sweeping files no row refers to
+
+A file is uploaded and then attached: the upload writes the blob, a later save
+writes the row naming it. An upload whose row never comes — the form abandoned,
+the request failing after the upload — leaves a blob nothing serves and nothing
+deletes. A plain blob store cannot find those, because it cannot list itself. A
+`TomDeduplicatingBlobStore`
+([Deduplication, Quota and Reclaim](file_storage.md#deduplication-quota-and-reclaim))
+can, because its ledger records every key, and `TomBlobOrphanSweep` walks that
+ledger and asks the rows:
+
+```dart
+final sweep = TomBlobOrphanSweep(
+  store: store, // a TomDeduplicatingBlobStore
+  sources: [
+    TomRepositoryBlobReferences(contracts),
+    TomRepositoryBlobReferences(avatars, fields: {'imageKey'}),
+  ],
+  prefixes: const ['contracts', 'avatars'],
+);
+final report = await sweep.sweep();
+```
+
+One `sweep` pages through the ledger's keys written before `now - grace`, in key
+order, `batchSize` (default 500) at a time. A key under none of `prefixes` is
+left alone — give them when the store also holds files no source describes; with
+none, every key is considered. Each `TomBlobReferenceSource` is asked which of
+the page's keys a row refers to, and the keys no source names are asked about a
+**second time** immediately before they are deleted, so a row saved while the
+page was being checked keeps its file. The keys still unreferenced are deleted
+from the store, and then — unless `reclaim: false` — the store's `reclaim` runs,
+freeing content no key names any more. The `TomBlobOrphanSweepReport` says how
+many keys were considered (`scanned`), which were deleted (`deleted`) and how
+many contents the reclaim freed (`reclaimed`).
+
+**The grace is the attach window.** Only keys written more than `grace` ago
+(default one day) are considered, so an upload has that long to be attached. A
+row saved *after* the sweep's second question, naming a key older than the
+grace, can still lose its file — the second question narrows that window to the
+delete itself, it does not close it. Choose a grace far longer than any
+upload-to-save delay a deployment allows. `now` defaults to the sweep's `clock`
+(`DateTime.now` unless one is given).
+
+**`TomRepositoryBlobReferences` reads the rows the way a sweep needs.** It
+covers every `@TomFileReference` column of the entity, or those `fields` names
+(by field or column name), and asks them in batches of `batchSize` (default
+100) — one `FIND BY <column> IS IN (…)` per column and batch. Soft-deleted rows
+count, because a restore brings their files back into use. A column graded with
+an `authKey` is counted key by key instead (`COUNT BY <column> = :key`): a read
+outside a request may mask such a column to `null`, and a key the sweep cannot
+see is a key it deletes, whereas a count is never masked. Any other source —
+rows in another database, a document store, a fixed list — implements
+`TomBlobReferenceSource.referenced`.
+
+**It refuses to run inside a request.** A request's data scope hides rows, and a
+row the sweep cannot see is a reference it deletes, so `sweep` throws
+`storage.sweep.scoped_run` when a principal is in the zone, unless the sweep was
+built with `allowScopedRun: true`. A sweep with no sources, a grace that is not
+positive or a batch size below one is refused at construction with an
+`ArgumentError`: the first would empty the store, the others never make
+progress.
+
+`jobDefinition()` is the sweep as a `TomJobDefinition` named
+`tom.storage.orphan_sweep`, daily by default, for a `TomScheduler` to run in its
+own isolate (`TomInlineJobDispatcher`), since its body holds the sweep; a run's
+result is the report's text.
+
+`TomStorageException` covers the sweep under `storage.sweep.*` keys:
+
+| Key | Raised when |
+| --- | ----------- |
+| `storage.sweep.scoped_run` | `sweep` was called with a request principal in the zone and `allowScopedRun` unset. Raised before a single key is read. |
+| `storage.sweep.no_file_columns` | `TomRepositoryBlobReferences` was built for an entity that declares no `@TomFileReference` column. |
+| `storage.sweep.unknown_field` | `fields` names a field that is not one of the entity's file columns. |
 
 ## Field-Level Encryption
 
@@ -2869,6 +2950,14 @@ reading generated SQL — including the one claim in
 [Matching literal text](#matching-literal-text) that is about what the
 *database* does with a pattern rather than about what the query says.
 
+The orphan sweep is covered beside the store it sweeps.
+`test/deduplicating_blob_store_test.dart` runs it over three content stores, with
+the second question before a delete, its refusals and `TomRepositoryBlobReferences`
+asking a plain column in batches and a graded one key by key;
+`test/deduplicating_blob_store_db_test.dart`, tagged `db`, runs it over a real
+repository's file columns. `example/file_storage/deduplicating_store_example.dart`
+shows a sweep deleting the one key no row names.
+
 `test/query_sentence_options_test.dart` asserts the matrix in
 [Which kind takes which option](#which-kind-takes-which-option) cell by cell —
 each permitted option reaches the rendered SQL, each refused one raises its
@@ -3048,6 +3137,11 @@ table, in each tenant's schema or in each tenant's database.
   file-column declaration, the store resolution and key scheme it implies, and
   the five-method surface (`findById`, `saveFile`, `openFile`, `describeFile`,
   `clearFile`) that moves the bytes.
+- **`TomBlobOrphanSweep` + `TomRepositoryBlobReferences`** — the sweep deleting
+  the keys of a deduplicating blob store that no row refers to, and the reading
+  of a repository's file columns it asks (`TomBlobReferenceSource`), reporting a
+  `TomBlobOrphanSweepReport`. See
+  [Sweeping files no row refers to](#sweeping-files-no-row-refers-to).
 - **`TomEncrypted` + `TomBlindIndex` + `TomFieldEncryption`** — the encrypted
   field, its blind index, and the cipher, the lookup
   (`blindIndexCondition`), raw reads and audit redaction the repository and the
@@ -3088,7 +3182,7 @@ The first three entries are about [Field-Level Encryption](#field-level-encrypti
   deleted key no longer reads.
   <!-- unpinned: absence — no retirement of data keys exists -->
 
-The last two are about [Entity Lifecycle](#entity-lifecycle).
+The next two are about [Entity Lifecycle](#entity-lifecycle).
 
 - **There is no after-commit hook.** Every `TomEntityListener` hook and change
   listener runs inside the write's transaction, before it commits. Work that
@@ -3101,6 +3195,20 @@ The last two are about [Entity Lifecycle](#entity-lifecycle).
   [messaging](messaging.md), are the application's.
   <!-- unpinned: absence — no outbox table or relay exists -->
 
+The last two are about
+[Sweeping files no row refers to](#sweeping-files-no-row-refers-to).
+
+- **Only a deduplicating store can be swept.** `TomBlobOrphanSweep` walks the
+  ledger of a `TomDeduplicatingBlobStore`; a plain backend records no keys, so a
+  blob uploaded into one and never attached is found by nothing in this
+  package.
+  <!-- unpinned: absence — a plain store keeps no record of its keys -->
+- **A row saved during the delete can lose its file.** The sweep asks the
+  sources a second time immediately before deleting, which narrows the window to
+  the delete itself: a row naming a key older than the grace, saved between that
+  question and the delete, is left pointing at nothing.
+  <!-- unpinned: untestable — a race between the sweep and a concurrent save -->
+
 What is *not* listed here is a vocabulary of word-operators — *After*,
 *Containing*, *StartsWith* and their siblings. They are set in italics because
 none of them is code: they are not missing but declined, since a query sentence
@@ -3111,19 +3219,19 @@ is a string and `>` and `%` are directly writable in one. See
 
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
-| `dart:async` | dart | `blob_migration.dart`, `data_scope.dart`, `entity_lifecycle.dart`, `field_encryption.dart` | `Future` and `FutureOr`; `runZoned` and `Zone`, which carry a raw read and `TomSoftDelete.includingDeleted` |
+| `dart:async` | dart | `blob_migration.dart`, `blob_orphan_sweep.dart`, `data_scope.dart`, `entity_lifecycle.dart`, `field_encryption.dart` | `Future` and `FutureOr`; `runZoned` and `Zone`, which carry a raw read and `TomSoftDelete.includingDeleted` |
 | `dart:convert` | dart | `field_encryption.dart` | `utf8`, `base64` and `base64Url`: a value's bytes, a wrapped key, the stored ciphertext and a blind index |
 | `dart:math` | dart | `field_encryption.dart` | `Random.secure`, for nonces and data keys |
 | `dart:typed_data` | dart | `field_encryption.dart` | `Uint8List`, the bytes the cipher works on |
 | `crypto` | package | `field_encryption.dart` | `Hmac` and `sha256`, the blind index |
 | `pointycastle` | package | `field_encryption.dart` | `GCMBlockCipher` over `AESEngine`, the AES-256-GCM cipher values and data keys are sealed with |
-| `tom_core_kernel` | package | 9 of 18 files | `tomReflector` (mirrors), the `TomZoned*` date/time types, and `TomJobDefinition` / `TomSchedule` / `TomCommand` / `TomTenantContext` for the re-encryption job and its run in every tenant; `getFromCurrentZone` / `TomPrincipal` and `TomTenantContext` for the principal and tenant a change and a history row record |
+| `tom_core_kernel` | package | 10 of 19 files | `tomReflector` (mirrors), the `TomZoned*` date/time types, and `TomJobDefinition` / `TomSchedule` / `TomCommand` / `TomTenantContext` for the re-encryption job and its run in every tenant, and for the orphan-sweep job; `getFromCurrentZone` / `TomPrincipal` and `TomTenantContext` for the principal and tenant a change and a history row record |
 | `uuid` | package | `field_encryption.dart`, `file_reference.dart` | `Uuid.v4`, for the file name in a blob key; `UuidV4`, for a data key's id |
 | [audit](audit.md) | module | `crud_repository.dart` | `TomAuditAction`, `TomAuditTrail` |
 | [configuration](configuration.md) | module | `field_encryption.dart` | `TomSecrets.resolve` and `TomSecretReference.isReference`, which resolve a `secret:` reference to a key-encryption key in `configure` |
-| [datasources](datasources.md) | module | 12 of 18 files | `TomDbType`/`TomOperator`/`SqlString`, `TomStandardSqlDialect` / `MariadbSqlDialect` (including the `aggregate`, `aliased`, `groupByClause` and `havingClause` fragments, the `exists`, `inSubquery` and `subquery` fragments, and the `upsert` fragment), `TomQuery` family (`TomSelect` / `TomCount` / `TomDelete` / `TomUpdate` / `TomLiteralSelect`), `TomAggregateFunction`, `TomTypedPersistenceBase`, `TomTypePersistenceInfo`, `TomDataSourceInfo`, `TomPreparedStatement`; `TomFrameworkTable`, `TomSchemaProvisioning` and `sqlInstant` / `parseSqlInstant` for the data-key table |
-| [file_storage](file_storage.md) | module | `blob_migration.dart`, `crud_repository.dart`, `file_reference.dart` | `TomBlobStore`, `TomBlobStoreInfo`, `TomStorageException`, `TomStoredBlob` |
-| [little_things](little_things.md) | module | 8 of 18 files | `TomServerException` (base of the module's exceptions) |
+| [datasources](datasources.md) | module | 12 of 19 files | `TomDbType`/`TomOperator`/`SqlString`, `TomStandardSqlDialect` / `MariadbSqlDialect` (including the `aggregate`, `aliased`, `groupByClause` and `havingClause` fragments, the `exists`, `inSubquery` and `subquery` fragments, and the `upsert` fragment), `TomQuery` family (`TomSelect` / `TomCount` / `TomDelete` / `TomUpdate` / `TomLiteralSelect`), `TomAggregateFunction`, `TomTypedPersistenceBase`, `TomTypePersistenceInfo`, `TomDataSourceInfo`, `TomPreparedStatement`; `TomFrameworkTable`, `TomSchemaProvisioning` and `sqlInstant` / `parseSqlInstant` for the data-key table |
+| [file_storage](file_storage.md) | module | `blob_migration.dart`, `blob_orphan_sweep.dart`, `crud_repository.dart`, `file_reference.dart` | `TomBlobStore`, `TomBlobStoreInfo`, `TomStorageException`, `TomStoredBlob`; `TomDeduplicatingBlobStore` and `tomBlobKeyUnder` for the orphan sweep |
+| [little_things](little_things.md) | module | 8 of 19 files | `TomServerException` (base of the module's exceptions) |
 | [privacy](privacy.md) | module | `crud_repository.dart` | `TomPersonalDataModel.sealingSubjects`, which names the data subject each `@TomPersonal` value of an audit record is sealed for |
 | [tenancy](tenancy.md) | module | `field_encryption.dart` | `TomTenancy.current` and its tenants, which the re-encryption pass runs in |
 | [transactions](transactions.md) | module | `crud_repository.dart` | `TomTransactionManager.runInTransaction`, the transaction an observed entity's write runs in |

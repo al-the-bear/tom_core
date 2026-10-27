@@ -926,11 +926,11 @@ abstract class TomBlobStore {
   /// The error keys that reach a caller as the backend raised them.
   ///
   /// Everything a store can go wrong at is reported under one of the four
-  /// [TomBlobStoreOperation] keys, whichever backend is configured. These four
-  /// are the exceptions, and they are exceptions because they are *answers*
-  /// rather than failures: the key held nothing, the key was not a key, the
+  /// [TomBlobStoreOperation] keys, whichever backend is configured. These are
+  /// the exceptions, and they are exceptions because they are *answers* rather
+  /// than failures: the key held nothing, the key was not a key, the
   /// deployment's prefix leaves no room for one, the blob's chunks do not add
-  /// up. A caller branches on them — `TomBlobExportStore` on `not_found`, the
+  /// up, the key was copied onto itself, the owner's quota is full. A caller branches on them — `TomBlobExportStore` on `not_found`, the
   /// file endpoint on its 404 — so translating them would turn a decision the
   /// caller can make into a failure it can only report.
   ///
@@ -955,6 +955,8 @@ abstract class TomBlobStore {
     'storage.blob.invalid_key_prefix',
     'storage.blob.missing_chunk',
     'storage.blob.same_key',
+    'storage.quota.count_exceeded',
+    'storage.quota.bytes_exceeded',
   };
 
   /// The error raised when [key] holds nothing — one spelling, so a caller can

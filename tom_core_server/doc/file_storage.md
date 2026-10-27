@@ -1,8 +1,10 @@
 # File Storage Module
 
 Files that are too large to live in a row: a streaming put/get contract, four
-backends behind it, configuration that selects one, and a persistence-layer
-column kind that lets an entity own a file without carrying its bytes.
+backends behind it, configuration that selects one, a store in front of any of
+them that keeps each distinct content once and holds each owner to a quota, and
+a persistence-layer column kind that lets an entity own a file without carrying
+its bytes.
 
 The module has **two halves that are usable independently**. The blob store is
 storage by key — an export, a generated document, a cached artefact. The
@@ -31,6 +33,12 @@ without the second; the second is built entirely on the first.
   - [Directory](#directory)
   - [Database](#database)
   - [S3](#s3)
+- [Deduplication, Quota and Reclaim](#deduplication-quota-and-reclaim)
+  - [One Copy per Content](#one-copy-per-content)
+  - [The Ledger](#the-ledger)
+  - [Quota per Owner](#quota-per-owner)
+  - [Reclaim](#reclaim)
+  - [Sweeping Keys No Row Names](#sweeping-keys-no-row-names)
 - [A Failure Is a Storage Error, Not the Backend's](#a-failure-is-a-storage-error-not-the-backends)
   - [`key` Is the Caller's Key, on Every Error](#key-is-the-callers-key-on-every-error)
 - [Configuration Selects the Backend](#configuration-selects-the-backend)
@@ -79,6 +87,17 @@ without the second; the second is built entirely on the first.
 | `TomBlobStoreBackend` | abstract class | A backend: its settings as fields, and the store they build |
 | `TomMemoryBlobStoreBackend` / `TomDirectoryBlobStoreBackend` / `TomDatabaseBlobStoreBackend` / `TomS3BlobStoreBackend` | class | The four built-in backends — `memory`, `directory`, `database`, `s3` |
 | `TomBlobStoreBackendFactory` | typedef | Creates a fresh backend of one type, for `registerBackend` |
+| `TomDeduplicatingBlobStore` | class | A store in front of another that keeps one copy of each distinct content, charges each owner against a quota, and reclaims content no key names |
+| `TomBlobLedger` | abstract class | The record a deduplicating store keeps beside the bytes: its keys, their owners and the contents they name |
+| `TomMemoryBlobLedger` / `TomSqlBlobLedger` | class | That record in memory / in two tables of a data source |
+| `TomBlobLedgerEntry` / `TomBlobContent` | class | One logical key of the ledger / one distinct content |
+| `TomBlobUsage` | class | How many blobs and bytes an owner holds |
+| `TomBlobQuota` | class | The most blobs and bytes one owner may hold |
+| `blobLedgerTable` / `blobContentTable` | function | The SQL ledger's two table declarations |
+| `blobLedgerTableDdl` / `blobContentTableDdl` | function | The `CREATE TABLE` text of those two |
+| `defaultBlobLedgerTable` / `defaultBlobContentTable` | const String | Their default names — `tom_blob_ledger` and `tom_blob_content` |
+| `TomBlobLedgerEntryRow` / `TomBlobContentRow` / `TomBlobUsageRow` / `TomBlobReferenceCountRow` | class | The reflected row types the SQL ledger reads |
+| `tomBlobKeyUnder` | function | Whether a key is a prefix or lies below it, segment by segment |
 
 This module is the bottom of a stack, and the rest of the file story is not in
 it. Everything above the blob contract lives where its *other* concern lives —
@@ -91,6 +110,8 @@ file" needs the whole route, not one layer of it:
 | `TomFileReference` | `object_persistence` | Marks a column as holding a storage key |
 | `TomFileReferenceKeys` | `object_persistence` | Key generation and store resolution for that annotation |
 | `TomBlobMigration` | `object_persistence` | Moving a deployment's blobs between backends, driven by the rows that name them |
+| `TomBlobOrphanSweep` / `TomBlobOrphanSweepReport` | `object_persistence` | Deleting the keys of a deduplicating store that no row refers to, and what one sweep did |
+| `TomBlobReferenceSource` / `TomRepositoryBlobReferences` | `object_persistence` | What the sweep asks which keys are referenced — a repository's `@TomFileReference` columns, or anything else |
 | `TomSqlDatasourceRepository.saveFile` / `.openFile` / `.describeFile` / `.clearFile` | `object_persistence` | The entity-level file API |
 | `TomFileRepository` | `object_persistence` | The five-method file contract — `findById`, `saveFile`, `openFile`, `describeFile`, `clearFile` — independent of SQL |
 | `TomFileSlots` / `TomFileSlot` | `endpoints` | Reflection-derived `<table>/<column>` slot registry |
@@ -247,7 +268,9 @@ about. What it buys once it is always there:
 - **Integrity.** A transfer that completes is not a transfer that arrived
   intact. A caller that hashes what it received has something to compare it to.
 - **Deduplication.** A caller can ask whether the bytes it is about to send are
-  already stored, before sending them.
+  already stored, before sending them, and `TomDeduplicatingBlobStore` stores
+  each distinct digest once — see
+  [Deduplication, Quota and Reclaim](#deduplication-quota-and-reclaim).
 - **A validator.** The file endpoint serves it as an `ETag` and answers
   `If-None-Match` with `304`, so a client that already holds the bytes is not
   sent them again.
@@ -289,13 +312,14 @@ and an accidental `''` would then read as a hash.
 
 ### Quota and Expiry
 
-A store grew without limit and forgot nothing: no per-tenant ceiling, no total
-ceiling, no retention, and nothing that would notice a caller uploading until
-the volume filled. The database backend is the sharpest case, because its blobs
+A backend on its own has no limit and forgets nothing: no per-tenant ceiling,
+no total ceiling, no retention, and nothing that would notice a caller
+uploading until the volume filled. The database backend is the sharpest case, because its blobs
 sit on the same disk as the rows they belong to — an unbounded blob store there
 is an unbounded outage for everything else in that database.
 
-**The deployment owns both, and the module owns one primitive.** A quota is a
+**For a plain store the deployment owns both, and the module owns one
+primitive.** A quota is a
 question about *whose* data — a tenant, an account, a plan — and expiry is a
 question about *what kind* of file and *how long* it is worth keeping. Storage
 knows neither, and a store that tried to answer them would need a schema for
@@ -305,8 +329,13 @@ likely has already: `TomStoredBlob` is that row — key, media type, size, time
 and the content digest — so the quota is a `SUM(byte_count)` and the expiry is a
 `WHERE stored_at <`.
 
-**The one thing that record cannot assemble from outside is the reclaim**, and
-that is what the module adds:
+One ceiling needs no schema beyond the store: how much **one owner** — a
+principal, a tenant, a job — holds. `TomDeduplicatingBlobStore` keeps that
+record itself and refuses a write past a `TomBlobQuota`; see
+[Deduplication, Quota and Reclaim](#deduplication-quota-and-reclaim).
+
+**The one thing a deployment's record cannot assemble from outside is the
+reclaim**, and that is what the module adds:
 
 ```dart
 // Everything stored on 8 July, in one call.
@@ -346,10 +375,13 @@ a prefix delete run against a key space something is still writing to can leave
 one behind. Retention runs against partitions nothing is still writing to, which
 is what the date in a key is for.
 
-**The schedule is the deployment's.** Nothing here runs on a timer. A nightly
-purge belongs in the back-office tier beside the other passes that tidy up after
-the day — the scheduling module already provides the machinery, and a second
-copy of it here would give this module two reasons to change.
+**The schedule is the deployment's.** Nothing here runs on a timer by itself.
+A nightly purge belongs in the back-office tier beside the other passes that
+tidy up after the day — the scheduling module already provides the machinery,
+and a second copy of it here would give this module two reasons to change. The
+deduplicating store's reclaim and the orphan sweep each describe their job
+(`reclaimJobDefinition`, `TomBlobOrphanSweep.jobDefinition`); registering it
+with a scheduler is the deployment's call.
 
 #### Sweeping the database backend's residue
 
@@ -751,6 +783,161 @@ storage API can supply one.
 them: an object appearing between the probe and the request, and two concurrent
 deletes both reporting success.
 
+## Deduplication, Quota and Reclaim
+
+`TomDeduplicatingBlobStore` is a `TomBlobStore` in front of another one — any of
+the four backends, called the **content store** — and a `TomBlobLedger`, the
+record of every logical key it holds. Callers use it like any store; underneath
+it keeps each distinct content once, charges each write to an owner, and deletes
+content only once nothing has wanted it for a while.
+
+```dart
+final store = TomDeduplicatingBlobStore(
+  content: TomDirectoryBlobStore.at('/var/lib/app/files'),
+  ledger: TomSqlBlobLedger(datasource),
+  quota: const TomBlobQuota(maxCount: 1000, maxBytes: 512 * 1024 * 1024),
+);
+
+await TomDeduplicatingBlobStore.runAs('job:import', () async {
+  await store.putBytes(key: 'imports/2026/10/a.csv', bytes: csv);
+  await store.putBytes(key: 'imports/2026/10/b.csv', bytes: csv); // same bytes
+});
+```
+
+The two keys above name one stored copy. The ledger is what a plain store does
+not have — a store cannot list itself — and every other part of this section is
+a question asked of it: who holds how much, which contents are still named,
+which keys are older than a week.
+
+### One Copy per Content
+
+A write streams into a fresh **staging key** under `stagingPrefix` (default
+`tom-staging`) of the content store while the store computes the SHA-256 itself,
+so a content store that records no digest still deduplicates. Once the bytes are
+in, the ledger is asked for the content with that digest:
+
+- **Not held yet**: the content is created under a fresh **content key**,
+  `<contentPrefix>/<first two hex digits>/<digest>-<12 random hex>` (default
+  prefix `tom-content`), and the staged bytes are moved there — a rename on
+  every backend that has one.
+- **Already held**: the staged bytes are deleted. When the ledger names content
+  whose bytes are missing — a write that died between creating the content and
+  moving its bytes in — this write's bytes are moved in instead, so the next
+  write of the same content repairs the gap.
+
+Then the key's `TomBlobLedgerEntry` is recorded: its owner, digest, content key,
+size, media type, file name and write time. A failure at any point deletes the
+staged bytes and rethrows, so a refused or broken write leaves neither a key nor
+stored bytes behind.
+
+Every other operation is answered by the ledger first:
+
+| Operation | What happens |
+| --------- | ------------ |
+| `get` | One ledger lookup, then the content store's read of the content key; a byte range is passed through, so the content store's seek serves it |
+| `describe` / `exists` | The ledger entry alone; `describe` always carries the digest |
+| `copy` | A second ledger entry naming the same content, charged to the current owner — no bytes move |
+| `move` | The entry renamed; its owner stays, and no bytes move |
+| `delete` / `deletePrefix` | The ledger entries go; the content stays until a reclaim. `supportsPrefixDelete` is `true` over any content store, because the prefix is matched in the ledger (`tomBlobKeyUnder`, segment by segment) |
+
+The two prefixes belong to the store: nothing else may write under them in the
+content store, and they must not contain each other, which the constructor
+refuses with an `ArgumentError` — staging inside the content area would make an
+in-flight write look like content.
+
+### The Ledger
+
+| Part | One per | Holds |
+| ---- | ------- | ----- |
+| `TomBlobLedgerEntry` | logical key | its owner, content digest and content key, size, media type, file name, write time |
+| `TomBlobContent` | distinct content (SHA-256) | the key the bytes are stored under, their size, when it was last claimed |
+
+Many entries may name one content; that is the deduplication.
+`TomMemoryBlobLedger` keeps both in memory — right for tests and a single
+process whose content store is in memory too. `TomSqlBlobLedger` keeps them as
+rows of two framework-owned tables in a `TomDataSource`:
+
+| Table | Declared by | Key | Indexes |
+| ----- | ----------- | --- | ------- |
+| `tom_blob_ledger` | `blobLedgerTable` | `blob_key` | `(owner, stored_at)` for a quota's sum, `content_digest` for "does anything still name this content", `stored_at` for the orphan sweep |
+| `tom_blob_content` | `blobContentTable` | `content_digest` | `claimed_at`, which the reclaim reads oldest first |
+
+With `createSchema: true` (the default) the ledger creates both on first use;
+otherwise the migration module owns them, and the reference migrations are
+`example/file_storage/migrations/main/tomcore/[3]-create_tom_blob_ledger.sql`
+and `[4]-create_tom_blob_content.sql` (PostgreSQL forms under
+`migrations_postgresql/`). Both tables are listed by `frameworkOwnedTables`
+(`blobLedger`, `blobContent`), so the framework schema check covers them.
+
+Every check that protects content from a concurrent writer is **one statement**,
+so it holds across processes sharing the database: a claim stamps
+`claimed_at` before it reads the content row, and a drop deletes the row only
+while no entry names it and nothing claimed it since the cutoff.
+
+### Quota per Owner
+
+Every write and copy is charged to an **owner**: the owner `runAs` names for the
+work inside it, otherwise `ownerOf()` — by default `principalOwner`, the
+qualified id of the principal in the current zone, or `''` when there is none.
+`currentOwner()` answers which applies. A blob of owner `''` is no one's, and no
+quota counts it.
+
+A `TomBlobQuota` bounds each owner to `maxCount` blobs and `maxBytes` bytes;
+either may be `null` for no bound. Usage is in **logical bytes**: an owner is
+charged for every blob it holds, whether or not another key shares the content,
+so what one owner may store never depends on what somebody else uploaded.
+
+| When | What is checked |
+| ---- | --------------- |
+| Before a write | The count, and the bytes already held — so a full owner costs no upload |
+| After the bytes have arrived | The bytes held plus the written size; past `maxBytes`, the staged bytes are deleted and nothing is recorded |
+| Before a copy | The count, and the bytes held plus the source's size |
+
+A write over a key the owner already holds replaces it, so it adds nothing to the
+count and only the difference in size to the bytes. A refusal is
+`storage.quota.count_exceeded` or `storage.quota.bytes_exceeded`, carrying the
+owner, the count or bytes and the limit; both reach the caller as raised (see
+[A Failure Is a Storage Error, Not the Backend's](#a-failure-is-a-storage-error-not-the-backends)).
+
+The quota bounds an owner; it is not a reservation. The check reads the ledger
+and then writes it, so two writes racing for the last of an owner's space can
+both pass.
+
+### Reclaim
+
+Deleting a key removes its ledger entry and nothing else. Content no entry names
+is deleted by `reclaim`, and only once nothing has **claimed** it — a write or a
+copy naming it — for `reclaimGrace` (default one hour). The grace counts from the
+content's last claim, not from the delete of its last key.
+
+The reason is a race: a write of the same bytes in another process claims the
+content before it records its key, so content deleted the moment its last key
+went could be deleted under that write. With the grace, `reclaim` drops a
+content's record first — only while it is still unnamed and unclaimed since the
+cutoff — and deletes its bytes after, so a concurrent write either keeps the
+content or, when the record is already gone, creates it anew under a **new**
+content key, which a late delete of the old bytes cannot reach. Choose a grace
+longer than the longest write.
+
+`reclaim({now, batchSize})` works in batches of `batchSize` (default 500) and
+answers how many contents it deleted. `reclaimJobDefinition()` is the same as a
+`TomJobDefinition` named `tom.storage.reclaim`, hourly by default, for a
+`TomScheduler` to run in its own isolate (`TomInlineJobDispatcher`), since its
+body holds the store.
+
+### Sweeping Keys No Row Names
+
+A file is uploaded and then attached: the upload writes the blob, a later save
+writes the row naming it. An upload whose row never comes leaves a key nothing
+serves and nothing deletes. Over a plain store nothing can find those keys; over
+a deduplicating store the ledger records every key, and the object-persistence
+module's `TomBlobOrphanSweep` walks it, asks each `TomBlobReferenceSource` —
+typically a `TomRepositoryBlobReferences` over an entity's `@TomFileReference`
+columns — which keys a row refers to, deletes the rest once they are older than
+its grace, and then runs `reclaim`. See
+[Sweeping Files No Row Refers To](object_persistence.md#sweeping-files-no-row-refers-to)
+in the object-persistence guide.
+
 ## A Failure Is a Storage Error, Not the Backend's
 
 The faults that stop a store come from the layer underneath it and speak that
@@ -803,6 +990,8 @@ them. They are a closed list, `TomBlobStore.passThroughErrorKeys`:
 | `storage.blob.missing_chunk` | The blob is there and its parts do not add up. |
 | `storage.blob.same_key` | A copy or move named one key twice. A caller's mistake, refused before any backend is touched. |
 | `storage.blob.prefix_delete_unsupported` | The backend cannot reclaim by prefix, and says so rather than answering `0`. Ask `supportsPrefixDelete` first. |
+| `storage.quota.count_exceeded` | A `TomDeduplicatingBlobStore` refused the write or copy: its owner already holds `TomBlobQuota.maxCount` blobs. The caller's answer is to delete one, not to retry. |
+| `storage.quota.bytes_exceeded` | The same for `TomBlobQuota.maxBytes`: the owner's blobs would total more than the space allowed. |
 
 `storage.blob.invalid_range` is the same shape one step earlier: a `TomBlobRange`
 with a negative start, or an end at or before it, is refused by its own
@@ -1391,7 +1580,7 @@ pins `TomExportStore.validateKey` against `TomBlobStore.validateKey`.
 
 ## Verification
 
-Three suites cover this module, split by what each needs.
+Five suites cover this module, split by what each needs.
 
 `test/file_storage_test.dart` always runs and covers the contract every backend
 shares — the key grammar, the refusal of an invalid key on every method of every
@@ -1414,8 +1603,23 @@ file-reference columns end to end, and blob access under a C-4 grade and under a
 row scope — the two authorization rules that decide whether bytes may move at
 all.
 
+`test/deduplicating_blob_store_test.dart` always runs and covers
+`TomDeduplicatingBlobStore` over three content stores — memory, directory, and S3
+through the in-process `test/fixtures/fake_s3_server.dart` — with
+`TomMemoryBlobLedger`: one copy per content, copies that move no bytes, a failed
+upload leaving nothing behind, the reclaim and its grace, content stored again
+under a new key, the per-owner quota, the orphan sweep and its refusals, a
+repository as a reference source, and both jobs on a scheduler.
+
+`test/deduplicating_blob_store_db_test.dart` is tagged `db` and skips when no
+server is reachable. It covers `TomSqlBlobLedger` against MariaDB or PostgreSQL
+— its tables, a claim protecting content from a reclaim that read it earlier,
+the quota's sum, the sweep's paging — and the orphan sweep over a real
+repository's file columns, with a directory as the content store.
+
 ```bash
 dart run example/file_storage/file_storage_example.dart
+dart run example/file_storage/deduplicating_store_example.dart
 ```
 
 `example/file_storage/file_storage_example.dart` demonstrates the whole
@@ -1424,6 +1628,14 @@ what is *absent*: at no point is a whole file held, and step 3 proves it — a
 payload larger than any buffer in the program arrives as a sequence of chunks,
 and the count of them is the assertion. Every step checks its own result, and
 `test/examples_test.dart` runs it.
+
+`example/file_storage/deduplicating_store_example.dart` puts a
+`TomDeduplicatingBlobStore` in front of a directory and walks six steps: the
+same bytes under two keys stored once, a copy that moves no bytes, each owner
+charged in logical bytes, a write past the quota refused without residue, an
+orphan sweep deleting the one key no row names, and a reclaim that deletes the
+content only once the grace after its last claim has passed. It checks its own
+results the same way.
 
 ## Core Components
 
@@ -1437,6 +1649,12 @@ and the count of them is the assertion. Every step checks its own result, and
   and an application's own, registered through a `TomBlobStoreBackendFactory`.
 - **`blobManifestTable` / `blobChunkTable`** — the database backend's two table
   descriptors, from which its DDL and its statements are derived.
+- **`TomDeduplicatingBlobStore`** — one copy per content over any backend, a
+  per-owner `TomBlobQuota`, and the `reclaim` of content no key names.
+- **`TomBlobLedger` / `TomMemoryBlobLedger` / `TomSqlBlobLedger`** — the record
+  of keys, owners and contents that store keeps (`TomBlobLedgerEntry`,
+  `TomBlobContent`, `TomBlobUsage`), and `blobLedgerTable` / `blobContentTable`,
+  the SQL ledger's two table descriptors.
 - **`TomFileReference` / `TomFileReferenceKeys`** — the column annotation, its
   key scheme, and store resolution.
 - **`TomSqlDatasourceRepository.saveFile` / `.openFile` / `.describeFile` /
@@ -1455,40 +1673,55 @@ and the count of them is the assertion. Every step checks its own result, and
 
 ## Not Yet Implemented
 
-- **Deduplication.** Every blob now carries a content digest, so a caller *can*
-  recognise two uploads as one file — and nothing here acts on that. Collapsing
-  two keys onto one blob means reference counting, and a store that silently
-  shares bytes between keys is a store where deleting one can break the other:
-  that bookkeeping belongs where the keys are known, which is the deployment's
-  own record. See [The Content Digest](#the-content-digest).
-  <!-- unpinned: absence — nothing acts on the digest -->
-- **Finding what the rows do not claim.** `TomBlobMigration` moves every blob a
-  row points at; a blob no row names is invisible to it, and always will be —
-  finding one means enumerating the source, which is the one thing the contract
-  refuses. The report names what it claimed, and a deployment diffs that against
-  its old backend with that backend's own tooling. See
+- **Deduplication on a plain backend.** The four backends store every `put` as
+  its own blob, whatever its digest; only a `TomDeduplicatingBlobStore` in front
+  of one shares content between keys. See
+  [Deduplication, Quota and Reclaim](#deduplication-quota-and-reclaim).
+  <!-- unpinned: decision — deduplication is the deduplicating store's, not every backend's -->
+- **Finding what the rows do not claim, on a plain store.** `TomBlobMigration`
+  moves every blob a row points at; a blob no row names is invisible to it, and
+  to anything else over a plain backend — finding one means enumerating the
+  store, which the contract refuses. The report names what it claimed, and a
+  deployment diffs that against its old backend with that backend's own
+  tooling. A deduplicating store's ledger records every key, which is what
+  `TomBlobOrphanSweep` walks. See
   [Migrating Between Backends](#migrating-between-backends).
-  <!-- unpinned: absence — a sweep of unclaimed blobs is not built -->
-- **A quota that refuses a write, and a schedule.** The reclaim primitive is
-  here; the ceiling and the timer are the deployment's, for the reason
-  [Quota and Expiry](#quota-and-expiry) gives. Nothing in this module refuses a
-  `put` because an account has stored too much, and nothing runs a purge on a
-  timer.
-  <!-- unpinned: absence — the ceiling and the timer are the deployment's -->
+  <!-- unpinned: absence — a plain store keeps no record of its keys -->
+- **A quota on a plain store, and a schedule.** Only a
+  `TomDeduplicatingBlobStore` refuses a write past a `TomBlobQuota`; over a plain
+  backend the ceiling is the deployment's, for the reason
+  [Quota and Expiry](#quota-and-expiry) gives. Nothing in this module runs a
+  purge, a reclaim or a sweep on a timer by itself: the jobs are described, and a
+  deployment registers them.
+  <!-- unpinned: absence — the plain backends keep no per-owner record, and no job is registered by the module -->
+- **A quota is not a reservation.** The check reads an owner's usage and then
+  writes, so two writes racing for the last of an owner's space can both pass
+  and leave the owner over its limit by the second.
+  <!-- unpinned: untestable — a race between two writers -->
+- **Staged bytes of a process that died mid-write.** A deduplicating store moves
+  or deletes a staged write before it returns; a process that dies in between
+  leaves the staged bytes under `stagingPrefix`, which nothing records and so
+  nothing reclaims. On a content store that supports it, `deletePrefix` of that
+  prefix while no write is in flight removes them.
+  <!-- unpinned: untestable — a process dying mid-write -->
+- **Bytes left behind by a failed reclaim.** `reclaim` drops a content's record
+  before deleting its bytes; when the delete then fails, the bytes are left
+  unreachable rather than referenced, and are not retried.
+  <!-- unpinned: untestable — a content-store delete failing after the record went -->
 
 ## Dependencies
 
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
-| `dart:async` | dart | `blob_store.dart`, `blob_store_backends.dart`, `database_blob_store.dart`, `directory_blob_store.dart`, `s3_blob_store.dart` | `Future`, `FutureOr`, `Stream` |
+| `dart:async` | dart | `blob_store.dart`, `blob_store_backends.dart`, `database_blob_store.dart`, `deduplicating_blob_store.dart`, `directory_blob_store.dart`, `s3_blob_store.dart` | `Future`, `FutureOr`, `Stream`, `runZoned` for `runAs` |
 | `dart:convert` | dart | `aws_v4_signer.dart`, `blob_store.dart`, `database_blob_store.dart`, `directory_blob_store.dart`, `s3_blob_store.dart` | `base64`, `jsonDecode`, `jsonEncode`, `utf8` |
 | `dart:io` | dart | `blob_store_backends.dart`, `directory_blob_store.dart` | `File` / `Directory` for the directory backend |
 | `dart:typed_data` | dart | `blob_store.dart` | `Uint8List` |
 | `crypto` | package | `aws_v4_signer.dart`, `blob_store.dart`, `s3_blob_store.dart` | HMAC-SHA256 and SHA-256 for SigV4; the chunked SHA-256 behind `TomBlobDigest`; the MD5 S3 requires on a `DeleteObjects` body |
 | `http` | package | `s3_blob_store.dart` | the S3 backend's transport (injectable, so it is mockable) |
 | `path` | package | `directory_blob_store.dart` | key-to-path joining in the directory backend |
-| `tom_core_kernel` | package | `blob_store_backends.dart`, `blob_store_registry.dart`, `database_blob_store.dart`, `s3_blob_store.dart` | `TomServerException` by way of `TomStorageException`, `tomLog`, and the `TomAuthState` grades the C-4 gate reads; `@tomReflector` and `tomReflectionInfo`, through which a backend's settings are checked against its fields and bound onto them; `TomResilientClient`, the S3 store's default client |
-| `uuid` | package | `database_blob_store.dart` | key generation and the database backend's upload ids |
-| [datasources](datasources.md) | module | `database_blob_sql.dart`, `database_blob_store.dart` | `TomDataSource` for the database backend |
+| `tom_core_kernel` | package | `blob_ledger_sql.dart`, `blob_store_backends.dart`, `blob_store_registry.dart`, `database_blob_store.dart`, `deduplicating_blob_store.dart`, `s3_blob_store.dart` | `TomServerException` by way of `TomStorageException`, `tomLog`, and the `TomAuthState` grades the C-4 gate reads; `@tomReflector` and `tomReflectionInfo`, through which a backend's settings are checked against its fields and bound onto them; `TomResilientClient`, the S3 store's default client; `TomPrincipal`, the default owner of a deduplicating store's write; `TomJobDefinition` and `TomCommand` for the reclaim job |
+| `uuid` | package | `database_blob_store.dart`, `deduplicating_blob_store.dart` | key generation, the database backend's upload ids, and a deduplicating store's staging and content keys |
+| [datasources](datasources.md) | module | `blob_ledger_sql.dart`, `database_blob_sql.dart`, `database_blob_store.dart` | `TomDataSource` for the database backend and the SQL ledger; `TomFrameworkTable` and `sqlInstant` for their tables |
 | [little_things](little_things.md) | module | `blob_store.dart` | `TomServerException` |
-| [object_persistence](object_persistence.md) | module | `database_blob_store.dart` | `TomColumnInformation` and `TomAnnotationAnalyzer` for resolving file columns; `TomSqlDatasourceRepository` for the entity API |
+| [object_persistence](object_persistence.md) | module | `blob_ledger_sql.dart`, `database_blob_store.dart` | `TomColumnInformation` and `TomAnnotationAnalyzer` for resolving file columns; `TomSqlDatasourceRepository` for the entity API; `TomDbTable` and `TomDbColumn` on the SQL ledger's row types |

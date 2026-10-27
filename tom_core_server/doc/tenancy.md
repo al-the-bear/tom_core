@@ -535,6 +535,7 @@ is in context. Where the tenant matters, it is a column.
 | `tom_cache_invalidation` | `TomSqlInvalidationChannel` | none — the keys it carries are already qualified |
 | `tom_oauth_state` | `TomSqlOAuthStateStore` | a `tenant` column; `''` for a flow of no tenant; every read and the completion name the tenant in context |
 | `tom_blob`, `tom_blob_chunk` | `TomDatabaseBlobStore` | none |
+| `tom_blob_ledger`, `tom_blob_content` | `TomSqlBlobLedger` | an `owner` column on each key, which a quota sums; contents are shared across owners |
 | `tom_audit_trail` | `TomSqlAuditSink` | none |
 | `tom_service_account`, `tom_api_key` | `TomSqlApiKeyStore` | a nullable `tenant` column on the account, carried onto the principal its keys authenticate |
 | `tom_rate_limit` | `TomSqlRateLimiter` | none — a `principal` rule's counter key already names the tenant |

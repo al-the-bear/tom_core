@@ -476,6 +476,7 @@ const Set<String> _sqlWords = {
   'duplicate',
   'else',
   'end',
+  'escape',
   'exists',
   'float',
   'for',

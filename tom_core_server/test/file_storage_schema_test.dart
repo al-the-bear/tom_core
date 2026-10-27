@@ -47,6 +47,21 @@ void main() {
       );
     });
 
+    test('the ledger migrations are the DDL the ledger creates', () {
+      expect(
+        normaliseSql(
+          readMigration('file_storage', '[3]-create_tom_blob_ledger.sql'),
+        ),
+        normaliseSql(blobLedgerTableDdl(defaultBlobLedgerTable)),
+      );
+      expect(
+        normaliseSql(
+          readMigration('file_storage', '[4]-create_tom_blob_content.sql'),
+        ),
+        normaliseSql(blobContentTableDdl(defaultBlobContentTable)),
+      );
+    });
+
     test('the DDL follows the table names it is given', () {
       // The whole reason the functions take a name. `TomDatabaseBlobStore`
       // accepts `manifestTable:` and `chunkTable:`, and a store over renamed

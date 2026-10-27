@@ -86,6 +86,7 @@ erasure can make them unreadable (see
 | `TomSoftDelete` · `TomHistory` · `TomHistoryEntry` · `TomHistoryMeta` | Soft delete and history tables (`entity_lifecycle.dart`): the declarations, one past version as `historyOf` answers it, and the history table's own columns. |
 | `TomEntityListener` · `TomEntityLifecycle` · `TomEntityChange` · `TomEntityChangeKind` · `TomEntityChangeListener` · `TomEntityLifecycleException` | The hooks of one entity's writes, the registry of hooks and change listeners, one change and its JSON form, and the refusal of a declaration the repository cannot carry out. |
 | `TomBlobMigration` · `TomBlobMigrationReport` | Moves the blobs those columns name from one blob store to another. The key list comes from the rows because a blob store cannot enumerate itself — which makes a file column the index of what a deployment stored, and the sweep read-only on the database. |
+| `TomBlobOrphanSweep` · `TomBlobOrphanSweepReport` · `TomBlobReferenceSource` · `TomRepositoryBlobReferences` | Deletes the keys of a `TomDeduplicatingBlobStore` no row refers to (`blob_orphan_sweep.dart`), once they are older than a grace period, then reclaims their content; also as the job `tom.storage.orphan_sweep`. The store's ledger supplies the keys, and a `TomRepositoryBlobReferences` asks an entity's `@TomFileReference` columns, soft-deleted rows included, which of them are referenced. Refused inside a request (`storage.sweep.scoped_run`), whose data scope would hide references. |
 | `MariadbRepository<T, K>` | The MariaDB binding of `TomSqlDatasourceRepository` — constructed directly, and the only thing it adds is a pinned `MariadbSqlDialect`. A repository extending `TomSqlDatasourceRepository` directly renders through its data source's dialect, so it serves MariaDB and PostgreSQL alike. |
 | `TomQuerySentenceCompiler` | Compiles a written sentence (`find by owner = :who order by created_at`) into the same operator tree the builder produces, so a query can be data. A term on a `@TomReference` field — `<association>.<field> <test>`, `<association> is empty` — compiles to a correlated `EXISTS`. |
 | `TomGroupedSelect` · `TomGroupedRow` · `TomAggregate` | `GROUP BY` and its aggregates — `CountAll`, `Count`, `Sum`, `Avg`, `Min`, `Max` — projected under an alias and read back off the row by it. A `DateTime` alias reads back UTC, through the one instant convention the data source writes (`datasources/sql_instant.dart`). |
@@ -140,6 +141,9 @@ history, hooks and change events, and `test/entity_lifecycle_test.dart` and
 `EXISTS`, a `NOT EXISTS` and an `IN (SELECT …)`, and
 `test/query_associations_test.dart` and `test/query_associations_db_test.dart`
 cover association filters and subqueries without and with a server.
+`example/file_storage/deduplicating_store_example.dart` runs an orphan sweep,
+and `test/deduplicating_blob_store_test.dart` and
+`test/deduplicating_blob_store_db_test.dart` cover it without and with a server.
 `test/object_persistence_test.dart` covers the module and
 `test/object_persistence_db_test.dart` adds what only a live MariaDB or PostgreSQL can answer;
 `test/examples_test.dart` runs the example and

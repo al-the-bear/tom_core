@@ -37,6 +37,17 @@ backend on every method, because one key must not be able to reach another.
 | `TomDatabaseBlobStore` | The bytes in the database itself, as a manifest row plus chunk rows — `blobManifestTable` and `blobChunkTable` declare the two tables, `blobManifestTableDdl` and `blobChunkTableDdl` render them. No new infrastructure: no bucket, no shared mount, no extra credential. |
 | `TomS3BlobStore` | S3 and anything speaking its API. `TomAwsV4Signer` and `TomAwsCredentials` sign the requests, so the store needs no AWS SDK. Its default client is the kernel's `TomResilientClient`, so every request runs under the object store's timeout, retry, circuit-breaker and bulkhead policies (the server's `httpClient` key). |
 
+### Deduplication, quota and reclaim
+
+| Type | What it is |
+| ---- | ---------- |
+| `TomDeduplicatingBlobStore` | A `TomBlobStore` in front of any other one (the *content store*). A write streams into a staging key while its SHA-256 is computed and then becomes the content for that digest, or is discarded when the content is already held, so every key naming the same bytes shares one stored copy and a `copy` moves no bytes. With a `TomBlobQuota` each write and copy is charged to its owner — the principal in the zone, or the owner `runAs` names. Deleting a key removes its ledger entry; `reclaim` (also the job `tom.storage.reclaim`) deletes content no key names once nothing has claimed it — by a write or a copy — for `reclaimGrace`. |
+| `TomBlobLedger` · `TomMemoryBlobLedger` · `TomSqlBlobLedger` | The record such a store keeps beside the bytes, since a blob store cannot list itself: one `TomBlobLedgerEntry` per logical key (owner, digest, content key, size) and one `TomBlobContent` per distinct content (where it is stored, when it was last claimed). The SQL ledger keeps them in `tom_blob_ledger` and `tom_blob_content`, declared by `blobLedgerTable` and `blobContentTable` and rendered by `blobLedgerTableDdl` and `blobContentTableDdl`; `TomBlobLedgerEntryRow`, `TomBlobContentRow`, `TomBlobUsageRow` and `TomBlobReferenceCountRow` are its reflected row types. `tomBlobKeyUnder` is the segment-wise prefix match every ledger uses. |
+| `TomBlobQuota` · `TomBlobUsage` | At most `maxCount` blobs and `maxBytes` bytes per owner, charged in logical bytes — a shared content counts for every owner holding it. A full owner is refused before any upload (`storage.quota.count_exceeded`, `storage.quota.bytes_exceeded`). |
+
+Which keys no row refers to — the orphan sweep — is the object-persistence
+module's `TomBlobOrphanSweep`, which walks this ledger.
+
 ### The registry
 
 | Type | What it is |
@@ -75,7 +86,13 @@ serving a file over HTTP, and how exports ride the same API.
 no database, bucket or credential; `test/file_storage_test.dart` and
 `test/file_storage_schema_test.dart` cover it without a server, and
 `test/file_storage_db_test.dart` covers the database backend against a live
-MariaDB or PostgreSQL.
+MariaDB or PostgreSQL. `example/file_storage/deduplicating_store_example.dart`
+walks deduplication, quota, reclaim and the orphan sweep;
+`test/deduplicating_blob_store_test.dart` covers the deduplicating store over
+the memory, directory and S3 backends without a server (S3 through the
+in-process `test/fixtures/fake_s3_server.dart`), and
+`test/deduplicating_blob_store_db_test.dart` covers the SQL ledger and the
+orphan sweep over a real repository against a live MariaDB or PostgreSQL.
 
 ---
 
