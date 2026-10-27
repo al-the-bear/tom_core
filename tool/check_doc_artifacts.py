@@ -44,6 +44,7 @@ import sys
 from pathlib import Path
 
 from gate_report import report_faults
+import gate_scope
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -64,10 +65,11 @@ AUTHORED_SUFFIXES = {
 
 
 def tracked_doc_files(root: Path) -> list[Path]:
-    """Every version-controlled file under a ``doc/`` directory in ``root``."""
+    """Every version-controlled file under a ``doc/`` directory in ``root``,
+    relative to the root that holds it (see gate_scope)."""
     listing = subprocess.run(
         ["git", "ls-files", "-z", "--", str(root)],
-        cwd=REPO_ROOT,
+        cwd=gate_scope.root_of(root),
         capture_output=True,
         text=True,
         check=True,
@@ -80,20 +82,20 @@ def tracked_doc_files(root: Path) -> list[Path]:
 
 
 def main(argv: list[str]) -> int:
-    root = REPO_ROOT / argv[0] if argv else REPO_ROOT
-    if not root.exists():
-        print(f"no such path: {root}", file=sys.stderr)
+    roots = gate_scope.scope(argv[0] if argv else None)
+    if not roots[0].exists():
+        print(f"no such path: {roots[0]}", file=sys.stderr)
         return 2
 
     scanned = 0
     faults: list[Path] = []
-    for path in sorted(tracked_doc_files(root)):
+    for path in [p for r in roots for p in sorted(tracked_doc_files(r))]:
         scanned += 1
         if path.suffix.lower() not in AUTHORED_SUFFIXES:
             faults.append(path)
 
     for path in faults:
-        size = (REPO_ROOT / path).stat().st_size if (REPO_ROOT / path).exists() else 0
+        size = gate_scope.at(path).stat().st_size if gate_scope.at(path).exists() else 0
         print(f"{path}: generated artifact tracked under doc/ ({size:,} bytes)")
 
     print()

@@ -68,6 +68,7 @@ import sys
 from pathlib import Path
 
 from gate_report import report_faults
+from gate_scope import package_dir
 
 TOOL_DIR = Path(__file__).resolve().parent
 REPO_ROOT = TOOL_DIR.parent
@@ -83,9 +84,7 @@ PACKAGES = [
     ("tom_core_agentic", "doc/api"),
     ("tom_core_codespecs", "doc/api"),
     ("tom_core_openapi", "doc/api"),
-    ("tom_core_secrets_vault", "doc/api"),
-    ("tom_core_secrets_aws", "doc/api"),
-    ("tom_core_secrets_azure", "doc/api"),
+    ("tom_core_secrets", "doc/api"),
     ("tom_flutter_ui", "doc/api"),
 ]
 
@@ -108,7 +107,7 @@ def prepare() -> None:
 def run(package: str, docs: Path) -> tuple[list[str], dict]:
     """The faults and the tally for one package's summaries."""
     done = dart("run", "bin/check_api_signatures.dart",
-                str(REPO_ROOT / package), str(docs), cwd=PROGRAM)
+                str(package_dir(package)), str(docs), cwd=PROGRAM)
     lines = [line for line in done.stdout.splitlines() if line.strip()]
     if done.returncode != 0 or not lines:
         raise SystemExit(f"the checker failed on {package}:\n"
@@ -124,7 +123,7 @@ def self_test() -> int:
     mutation reporting nothing, fails the test.
     """
     package, folder = PACKAGES[0]
-    source = REPO_ROOT / package / folder
+    source = package_dir(package) / folder
     shutil.rmtree(SCRATCH, ignore_errors=True)
     shutil.copytree(source, SCRATCH)
     beans = (source / "api_summary_beanlocator.md").read_text(encoding="utf-8")
@@ -182,7 +181,7 @@ def main(argv: list[str]) -> int:
     total: list[str] = []
     members = fences = programs = 0
     for package, folder in PACKAGES:
-        faults, tally = run(package, REPO_ROOT / package / folder)
+        faults, tally = run(package, package_dir(package) / folder)
         total.extend(f"{package}/{fault}" for fault in faults)
         members += tally["members"]
         fences += tally["fences"]

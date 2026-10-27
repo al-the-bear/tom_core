@@ -186,6 +186,7 @@ from pathlib import Path
 from typing import Optional
 
 from gate_report import report_faults
+import gate_scope
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 WORKSPACE_ROOT = REPO_ROOT.parent.parent
@@ -393,12 +394,13 @@ def package_of(path: Path) -> Path | None:
     the workspace and could land on an unrelated package. A document out there
     is associated by ``documented_package`` instead.
     """
-    if REPO_ROOT not in path.parents:
+    root = next((r for r in gate_scope.ROOTS if r in path.parents), None)
+    if root is None:
         return None
     for parent in path.parents:
         if (parent / "pubspec.yaml").is_file():
             return parent
-        if parent == REPO_ROOT:
+        if parent == root:
             break
     return None
 
@@ -769,7 +771,7 @@ def display(path: Path) -> str:
     The corpus now spans two git roots, so a single ``relative_to`` would raise
     on half of it.
     """
-    for root in (REPO_ROOT, WORKSPACE_ROOT):
+    for root in (*gate_scope.ROOTS, WORKSPACE_ROOT):
         try:
             return str(path.relative_to(root))
         except ValueError:
@@ -777,33 +779,43 @@ def display(path: Path) -> str:
     return str(path)
 
 
-def documents_under(root: Path):
-    """Every markdown document this gate covers for a run rooted at ``root``.
+def documents_under(roots: list[Path]):
+    """Every markdown document this gate covers for a run rooted at ``roots``.
 
     The repository subtree, plus the completion corpus -- which is outside it,
     and which is included whole for a whole-repository run and filtered to the
     subtree otherwise. The filtering is by *association*, not by path, since a
     completion document's path says nothing about which package it is for.
     """
-    yield from sorted(root.rglob("*.md"))
+    for root in roots:
+        yield from sorted(root.rglob("*.md"))
     if COMPLETION_ROOT.is_dir():
         yield from sorted(COMPLETION_ROOT.rglob("*.md"))
 
 
 def main(argv: list[str]) -> int:
-    root = REPO_ROOT / argv[0] if argv else REPO_ROOT
+    roots = gate_scope.scope(argv[0] if argv else None)
+    root = roots[0]
     if not root.exists():
         print(f"no such path: {root}", file=sys.stderr)
         return 2
 
-    index, consts, arities = constructor_index(REPO_ROOT)
-    names = packages(REPO_ROOT)
+    index: Index = {}
+    consts: ConstIndex = {}
+    arities: ArityIndex = {}
+    names: dict[str, Path] = {}
+    for each in gate_scope.ROOTS:
+        found = constructor_index(each)
+        index.update(found[0])
+        consts.update(found[1])
+        arities.update(found[2])
+        names.update(packages(each))
 
     documents = 0
     samples = 0
     unplaced: list[Path] = []
     faults: list[tuple[Path, int, str, str]] = []
-    for path in documents_under(root):
+    for path in documents_under(roots):
         if SKIP_DIRS & set(path.parts):
             continue
         try:
@@ -817,7 +829,7 @@ def main(argv: list[str]) -> int:
         if declared is not None:
             placed = []
             for entry in declared:
-                candidate = REPO_ROOT / entry
+                candidate = gate_scope.at(entry)
                 if (candidate / "pubspec.yaml").is_file():
                     placed.append(candidate)
                 else:
@@ -833,7 +845,7 @@ def main(argv: list[str]) -> int:
             if declared is None:
                 unplaced.append(path)
             continue  # counted below, under its own heading, never silently
-        if not any(p == root or root in p.parents for p in placed):
+        if not any(p == r or r in p.parents for p in placed for r in roots):
             continue  # a document for packages outside the requested subtree
         documents += 1
         samples += len(blocks)

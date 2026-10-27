@@ -189,6 +189,7 @@ from pathlib import Path
 
 from gate_cache import GateCache, package_key
 from gate_report import report_faults
+import gate_scope
 
 TOOL_DIR = Path(__file__).resolve().parent
 REPO_ROOT = TOOL_DIR.parent
@@ -213,9 +214,7 @@ PACKAGES = [
     "tom_core_codespecs",
     "tom_core_flutter",
     "tom_core_openapi",
-    "tom_core_secrets_aws",
-    "tom_core_secrets_azure",
-    "tom_core_secrets_vault",
+    "tom_core_secrets",
     "tom_core_server",
     "tom_flutter_ui",
     "tom_flutter_ui_test",
@@ -546,7 +545,7 @@ def context_packages(package: Path) -> list[str]:
         names = [
             dependency for dependency in tom_dependencies(package)
             if dependency != KERNEL
-            and (REPO_ROOT / dependency / "lib" / f"{dependency}.dart").is_file()
+            and (gate_scope.package_dir(dependency) / "lib" / f"{dependency}.dart").is_file()
         ]
     if package.name != KERNEL and depends_on(package, KERNEL):
         names.append(KERNEL)
@@ -1340,7 +1339,7 @@ def main(argv: list[str]) -> int:
     total_faults: list[Fault] = []
     checked = skipped = opted_in = sketched = 0
     for name in wanted:
-        package = REPO_ROOT / name
+        package = gate_scope.at(name)
         if not (package / "pubspec.yaml").is_file():
             print(f"{name} is not a package under {REPO_ROOT}",
                   file=sys.stderr)

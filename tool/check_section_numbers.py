@@ -64,6 +64,7 @@ from collections import Counter
 from pathlib import Path
 
 from gate_report import report_faults
+import gate_scope
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -202,7 +203,7 @@ def shipped_files(root: Path):
                 continue
             if path.name in EXEMPT_DOC_NAMES:
                 continue
-            if path.relative_to(REPO_ROOT) in EXEMPT_DOCS:
+            if gate_scope.rel(path) in EXEMPT_DOCS:
                 continue
             yield path
 
@@ -338,9 +339,9 @@ def self_test() -> int:
 def main(argv: list[str]) -> int:
     if argv == ["--self-test"]:
         return self_test()
-    root = REPO_ROOT / argv[0] if argv else REPO_ROOT
-    if not root.exists():
-        print(f"no such path: {root}", file=sys.stderr)
+    roots = gate_scope.scope(argv[0] if argv else None)
+    if not roots[0].exists():
+        print(f"no such path: {roots[0]}", file=sys.stderr)
         return 2
 
     index = markdown_index()
@@ -365,7 +366,7 @@ def main(argv: list[str]) -> int:
             if candidate.is_file():
                 found = candidate
                 break
-            if directory == REPO_ROOT or directory.parent == directory:
+            if directory in gate_scope.ROOTS or directory.parent == directory:
                 break
             directory = directory.parent
         if found is None:
@@ -389,12 +390,15 @@ def main(argv: list[str]) -> int:
         A comment in the source is read by whoever holds the package, and the
         one document guaranteed to be beside it is one in this repository: a
         design document that lives in a sibling repository is a citation the
-        reader of a checkout of `tom_ai/core` alone cannot follow. Markdown is
+        reader of a checkout of that repository alone cannot follow — the
+        repository of the citing file, `tom_ai/core` or `tom_ai/core_extension`.
+        Markdown is
         not held to this, because the design documents shipped here are part
         of a document set that spans repositories and cite its other members.
         """
         path = locate(cited, source)
-        return path is None or REPO_ROOT in path.resolve().parents
+        return (path is None
+                or gate_scope.root_of(source) in path.resolve().parents)
 
     scanned = 0
     checked = 0
@@ -402,7 +406,7 @@ def main(argv: list[str]) -> int:
     outside: list[tuple[Path, int, str, str]] = []
     unlocatable: Counter[str] = Counter()
 
-    for path in shipped_files(root):
+    for path in (p for root in roots for p in shipped_files(root)):
         scanned += 1
         for line, document, number in references(path):
             if document is None:
@@ -418,10 +422,10 @@ def main(argv: list[str]) -> int:
                 outside.append((path, line, document, number))
 
     for path, line, document, number in faults:
-        print(f"{path.relative_to(REPO_ROOT)}:{line}: "
+        print(f"{gate_scope.rel(path)}:{line}: "
               f"{document} has no §{number}")
     for path, line, document, number in outside:
-        print(f"{path.relative_to(REPO_ROOT)}:{line}: "
+        print(f"{gate_scope.rel(path)}:{line}: "
               f"{document} §{number} is not in this repository")
 
     if unlocatable:

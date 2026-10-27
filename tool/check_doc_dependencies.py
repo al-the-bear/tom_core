@@ -70,6 +70,7 @@ import sys
 from pathlib import Path
 
 from gate_report import report_faults
+import gate_scope
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DOCS_ROOT = REPO_ROOT.parent.parent / "_ai" / "quests" / "tom_core" / "completion"
@@ -140,7 +141,7 @@ def audit(document: Path) -> tuple[list[str], bool] | None:
     match = PACKAGE_PATH.search(text)
     if match is None:
         return None
-    package = REPO_ROOT / match.group(1)
+    package = gate_scope.at(match.group(1))
     pubspec = package / "pubspec.yaml"
     if not pubspec.is_file():
         return None

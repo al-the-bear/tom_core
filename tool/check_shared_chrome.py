@@ -71,6 +71,7 @@ from collections import defaultdict
 from pathlib import Path
 
 from gate_report import report_faults
+import gate_scope
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -207,14 +208,22 @@ class Copy:
         return f"{self.package}/{self.name}"
 
 
-def collect(root: Path) -> dict[str, list[Copy]]:
+def packages_in(roots: list[Path]) -> dict[str, Path]:
+    """[packages] over every root in [roots]."""
+    found: dict[str, Path] = {}
+    for root in roots:
+        found.update(packages(root))
+    return found
+
+
+def collect(roots: list[Path]) -> dict[str, list[Copy]]:
     """Every library file that shares its basename with one in another package.
 
     Files unique to their package cannot be copies of anything, so they are not
     read past their name.
     """
     by_name: dict[str, list[tuple[Path, str]]] = defaultdict(list)
-    for name, package in packages(root).items():
+    for name, package in packages_in(roots).items():
         for path in library_files(package):
             by_name[path.name].append((path, name))
 
@@ -245,7 +254,7 @@ def faults_for(name: str, copies: list[Copy], known: set[str]) -> list[str]:
                 reason = ("is not a package in this repository"
                           if sibling not in known
                           else f"has no {name}")
-                found.append(f"{copy.path.relative_to(REPO_ROOT)}: points at "
+                found.append(f"{gate_scope.rel(copy.path)}: points at "
                              f"`{sibling}`, which {reason}")
                 continue
             edges[copy.package].add(sibling)
@@ -277,12 +286,12 @@ def faults_for(name: str, copies: list[Copy], known: set[str]) -> list[str]:
                 continue
             says = (f"points at {quoted(sorted(copy.declared))}"
                     if copy.declared else "carries no pointer")
-            found.append(f"{copy.path.relative_to(REPO_ROOT)}: {says}, "
+            found.append(f"{gate_scope.rel(copy.path)}: {says}, "
                          f"but is shared with {quoted(expected)}")
 
     for copy in copies:
         if copy.misplaced:
-            found.append(f"{copy.path.relative_to(REPO_ROOT)}: has a "
+            found.append(f"{gate_scope.rel(copy.path)}: has a "
                          f"'Shared in shape with' pointer outside its header "
                          f"comment, where a reader opening the file will not "
                          f"meet it before editing")
@@ -290,13 +299,13 @@ def faults_for(name: str, copies: list[Copy], known: set[str]) -> list[str]:
 
 
 def main(argv: list[str]) -> int:
-    root = REPO_ROOT / argv[0] if argv else REPO_ROOT
-    if not root.exists():
-        print(f"no such path: {root}", file=sys.stderr)
+    roots = gate_scope.scope(argv[0] if argv else None)
+    if not roots[0].exists():
+        print(f"no such path: {roots[0]}", file=sys.stderr)
         return 2
 
-    known = set(packages(root))
-    shared = collect(root)
+    known = set(packages_in(roots))
+    shared = collect(roots)
 
     faults: list[str] = []
     declared_groups = 0

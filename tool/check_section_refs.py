@@ -134,6 +134,7 @@ import tempfile
 from pathlib import Path
 
 from gate_report import report_faults
+import gate_scope
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -256,7 +257,7 @@ def shipped_files(root: Path):
                 continue
             if path.name in EXEMPT_DOC_NAMES:
                 continue
-            if path.relative_to(REPO_ROOT) in EXEMPT_DOCS:
+            if gate_scope.rel(path) in EXEMPT_DOCS:
                 continue
             yield path
 
@@ -493,20 +494,20 @@ def main(argv: list[str]) -> int:
     if "--self-test" in argv:
         return self_test()
 
-    root = REPO_ROOT / argv[0] if argv else REPO_ROOT
-    if not root.exists():
-        print(f"no such path: {root}", file=sys.stderr)
+    roots = gate_scope.scope(argv[0] if argv else None)
+    if not roots[0].exists():
+        print(f"no such path: {roots[0]}", file=sys.stderr)
         return 2
 
     scanned = 0
     faults: list[tuple[Path, int, str]] = []
-    for path in shipped_files(root):
+    for path in (p for root in roots for p in shipped_files(root)):
         scanned += 1
         for line, text in unresolved(path):
             faults.append((path, line, text))
 
     for path, line, text in faults:
-        print(f"{path.relative_to(REPO_ROOT)}:{line}: {text}")
+        print(f"{gate_scope.rel(path)}:{line}: {text}")
 
     print()
     print(f"files scanned            : {scanned}")

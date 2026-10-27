@@ -76,6 +76,7 @@ import sys
 from pathlib import Path
 
 from gate_report import report_faults
+import gate_scope
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -115,9 +116,9 @@ def source_files(root: Path) -> list[Path]:
 
 
 def main(argv: list[str]) -> int:
-    root = REPO_ROOT / argv[0] if argv else REPO_ROOT
-    if not root.exists():
-        print(f"no such path: {root}", file=sys.stderr)
+    roots = gate_scope.scope(argv[0] if argv else None)
+    if not roots[0].exists():
+        print(f"no such path: {roots[0]}", file=sys.stderr)
         return 2
 
     types = resource_types()
@@ -136,7 +137,7 @@ def main(argv: list[str]) -> int:
     scanned = 0
     faults: list[tuple[Path, int, str]] = []
 
-    for path in source_files(root):
+    for path in (p for root in roots for p in source_files(root)):
         try:
             text = path.read_text(encoding="utf-8")
         except (OSError, UnicodeDecodeError):
@@ -147,7 +148,7 @@ def main(argv: list[str]) -> int:
                 faults.append((path, number, match.group(0)))
 
     for path, number, hit in faults:
-        rel = path.relative_to(REPO_ROOT)
+        rel = gate_scope.rel(path)
         print(
             f"{rel}:{number}: `{hit}` merges the field-grade namespace into the "
             f"resource-key namespace; the resource key is `{hit.split('.')[-1]}<id>`"

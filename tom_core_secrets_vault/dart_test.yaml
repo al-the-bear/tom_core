@@ -1,5 +1,0 @@
-tags:
-  emulator:
-    # Needs a Vault dev server: tool/run_emulator_tests.sh starts one. Without
-    # it the tests skip themselves.
-    timeout: 2x

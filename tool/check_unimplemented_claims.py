@@ -78,6 +78,7 @@ from pathlib import Path
 
 from check_doc_kinds import DECLARATION
 from gate_report import report_faults
+import gate_scope
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -155,12 +156,12 @@ class Report:
         return not self.faults
 
     def render(self) -> str:
-        lines = [str(self.document.relative_to(REPO_ROOT))]
+        lines = [str(gate_scope.rel(self.document))]
         for number, symbol, verdict, header, source in self.faults:
             lines.append(
                 f"  {number:4d}  `{symbol}` claimed {verdict!r} under {header!r}"
             )
-            lines.append(f"        declared in {source.relative_to(REPO_ROOT)}")
+            lines.append(f"        declared in {gate_scope.rel(source)}")
         return "\n".join(lines)
 
 
@@ -217,7 +218,9 @@ def audit(document: Path, declared: dict[str, Path]) -> Report | None:
 def main(argv: list[str]) -> int:
     prefix = argv[1] if len(argv) > 1 else ""
 
-    declared = index_types(REPO_ROOT)
+    declared = {}
+    for root in reversed(gate_scope.ROOTS):
+        declared.update(index_types(root))
     # An empty index would let every claim pass, reporting a clean tree by
     # looking at nothing -- the one way this audit fails silently.
     if not declared:
@@ -226,10 +229,10 @@ def main(argv: list[str]) -> int:
 
     documents = sorted(
         path
-        for path in REPO_ROOT.rglob("*.md")
+        for path in gate_scope.rglob_all("*.md")
         if path.name != "CHANGELOG.md"
         and not any(part.startswith(".") for part in path.parts)
-        and str(path.relative_to(REPO_ROOT)).startswith(prefix)
+        and str(gate_scope.rel(path)).startswith(prefix)
     )
     reports = [r for r in (audit(p, declared) for p in documents) if r is not None]
 

@@ -380,6 +380,7 @@ import sys
 from pathlib import Path
 
 from gate_report import report_faults
+import gate_scope
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DOCS_ROOT = REPO_ROOT.parent.parent / "_ai" / "quests" / "tom_core" / "completion"
@@ -687,7 +688,7 @@ def audit_text(text: str, path: Path) -> Report | None:
 
     module_match = MODULE_PATH.search(text)
     if module_match is not None:
-        module = REPO_ROOT / module_match.group(1)
+        module = gate_scope.at(module_match.group(1))
         if module.is_dir():
             measured |= audit_module_header(text, module, report)
             measured |= audit_file_inventory(text, module, report)
@@ -776,7 +777,7 @@ def layout_package(text: str) -> Path | None:
     package_match = PACKAGE_PATH.search(text)
     if package_match is None:
         return None
-    package = REPO_ROOT / package_match.group(1)
+    package = gate_scope.at(package_match.group(1))
     return package if package.is_dir() else None
 
 
@@ -1038,7 +1039,7 @@ def audit_package_inventory(text: str, report: Report) -> bool:
     package_match = PACKAGE_PATH.search(text)
     if package_match is None:
         return False
-    package = REPO_ROOT / package_match.group(1)
+    package = gate_scope.at(package_match.group(1))
     if not (package / "pubspec.yaml").is_file():
         return False
 
@@ -1502,7 +1503,7 @@ def census_module(text: str) -> Path | None:
     package = PACKAGE_PATH.search(text)
     if package is not None and package.start() < module.start():
         return None
-    path = REPO_ROOT / module.group(1)
+    path = gate_scope.at(module.group(1))
     return path if path.is_dir() else None
 
 
@@ -1716,7 +1717,7 @@ def audit_index_package(
     package_match = PACKAGE_PATH.search(linked_text)
     if package_match is None:
         return
-    package = REPO_ROOT / package_match.group(1)
+    package = gate_scope.at(package_match.group(1))
     if not (package / "pubspec.yaml").is_file():
         return
     files = tracked_files(package)
@@ -1902,7 +1903,7 @@ def _nearest_screen_package(text: str, before: int) -> Path | None:
             best = (at, name)
     if best is None:
         return None
-    package = REPO_ROOT / best[1]
+    package = gate_scope.at(best[1])
     return package if (package / "pubspec.yaml").is_file() else None
 
 
@@ -1911,7 +1912,7 @@ def _census_package(text: str) -> Path | None:
     match = PACKAGE_PATH.search(text)
     if match is None:
         return None
-    package = REPO_ROOT / match.group(1)
+    package = gate_scope.at(match.group(1))
     return package if (package / "pubspec.yaml").is_file() else None
 
 

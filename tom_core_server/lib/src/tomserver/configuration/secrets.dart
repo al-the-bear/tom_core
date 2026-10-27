@@ -29,9 +29,9 @@
 ///
 /// A store is reached through a [TomSecretsProvider] registered under the name
 /// the references use. The framework ships [TomMapSecretsProvider] for tests
-/// and local development; the stores have one package each —
-/// `tom_core_secrets_vault`, `tom_core_secrets_aws`, `tom_core_secrets_azure` —
-/// so a deployment pulls in only the store it uses. A third party implements
+/// and local development; the stores are libraries of `tom_core_secrets`, in
+/// `tom_core_extensions` — `vault.dart`, `aws.dart`, `azure.dart` — so a
+/// deployment imports only the store it uses. A third party implements
 /// [TomSecretsProvider] the same way.
 ///
 /// ## Rotation

@@ -55,6 +55,7 @@ import sys
 from pathlib import Path
 
 from gate_report import report_faults
+import gate_scope
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -76,18 +77,18 @@ def module_readmes(subtree: str | None) -> list[Path]:
     """Every `lib/src/**/readme.md` under [REPO_ROOT], sorted."""
     found = [
         path
-        for path in sorted(REPO_ROOT.glob("*/lib/src/**/readme.md"))
+        for path in gate_scope.glob_all("*/lib/src/**/readme.md")
         if path.is_file()
     ]
     if subtree is None:
         return found
-    return [path for path in found if path.parts[len(REPO_ROOT.parts)] == subtree]
+    return [path for path in found if gate_scope.rel(path).parts[0] == subtree]
 
 
 def faults_in(readme: Path) -> list[str]:
     """The elements [readme] is missing."""
     text = readme.read_text(encoding="utf8")
-    where = readme.relative_to(REPO_ROOT)
+    where = gate_scope.rel(readme)
     return [
         f"{where}  has no {name}"
         for name, pattern in ELEMENTS.items()
@@ -149,7 +150,7 @@ def main(argv: list[str]) -> int:
         print(fault)
 
     print(f"\nmodule readmes walked    : {len(readmes)}")
-    print(f"packages covered         : {len({r.parts[len(REPO_ROOT.parts)] for r in readmes})}")
+    print(f"packages covered         : {len({gate_scope.rel(r).parts[0] for r in readmes})}")
     print(f"readmes with a fault     : {len({f.split()[0] for f in faults})}")
     return report_faults(len(faults))
 

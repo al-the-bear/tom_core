@@ -107,6 +107,7 @@ import sys
 from pathlib import Path
 
 from gate_report import report_faults
+import gate_scope
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -189,8 +190,8 @@ def exported_targets(path: Path, text: str, within: set[Path]) -> list[Path]:
 def packages(names: list[str]) -> list[Path]:
     """The package directories to audit, as `lib`-bearing pubspec roots."""
     found = sorted(
-        {p.parent for p in REPO_ROOT.glob("*/pubspec.yaml")}
-        | {p.parent for p in REPO_ROOT.glob("*/*/pubspec.yaml")}
+        {p.parent for p in gate_scope.glob_all("*/pubspec.yaml")}
+        | {p.parent for p in gate_scope.glob_all("*/*/pubspec.yaml")}
     )
     found = [p for p in found if (p / "lib").is_dir()]
     if not names:
@@ -229,7 +230,7 @@ def audit(package: Path, faults: list[str]) -> int:
             )
 
     for barrel, text in sorted(barrels.items()):
-        shown = barrel.relative_to(REPO_ROOT)
+        shown = gate_scope.rel(barrel)
         declared: dict[str, str | None] = {}
         for name, reason in MARKER.findall(text):
             declared[name] = (reason or "").strip() or None

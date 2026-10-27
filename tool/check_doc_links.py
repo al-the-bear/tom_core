@@ -99,6 +99,7 @@ from pathlib import Path
 from urllib.parse import unquote
 
 from gate_report import report_faults
+import gate_scope
 
 TOOL_DIR = Path(__file__).resolve().parent
 REPO_ROOT = TOOL_DIR.parent
@@ -225,18 +226,26 @@ def main(argv: list[str]) -> int:
     # markdown is the inventory and paths are reported relative to it. That is
     # how the workspace-wide sweep (`_bin/check_doc_links_workspace.py` at the
     # workspace root) reuses this file instead of a second copy of its rules.
-    repo_root = REPO_ROOT
+    # Without `--repo`, this repository and tom_core_extensions (gate_scope),
+    # each reported relative to its own root.
     if argv[:1] == ["--repo"] and len(argv) >= 2:
         repo_root = Path(argv[1]).resolve()
         argv = argv[2:]
-    root = repo_root / argv[0] if argv else repo_root
-    if not root.exists():
-        print(f"no such path: {root}", file=sys.stderr)
-        return 2
+        pairs = [(repo_root, repo_root / argv[0] if argv else repo_root)]
+    elif argv:
+        root = gate_scope.at(argv[0])
+        pairs = [(gate_scope.root_of(root), root)]
+    else:
+        pairs = [(root, root) for root in gate_scope.ROOTS]
+    for _, root in pairs:
+        if not root.exists():
+            print(f"no such path: {root}", file=sys.stderr)
+            return 2
 
     scanned = checked = 0
     faults: list[str] = []
-    for path in sorted(tracked_markdown(root)):
+    for repo_root, path in [(r, p) for r, root in pairs
+                            for p in sorted(tracked_markdown(root))]:
         scanned += 1
         for number, target in links(path):
             checked += 1

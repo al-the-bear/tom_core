@@ -51,6 +51,7 @@ from pathlib import Path
 
 from gate_cache import GateCache, _root_digest, package_key
 from gate_report import report_faults
+import gate_scope
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -72,7 +73,7 @@ MINIMUM_ARTIFACTS = 25
 def artifacts() -> list[Path]:
     """Every checked-in reflection artifact under [REPO_ROOT], sorted."""
     found: list[Path] = []
-    stack = [REPO_ROOT]
+    stack = list(gate_scope.ROOTS)
     while stack:
         directory = stack.pop()
         for entry in sorted(directory.iterdir()):
@@ -90,7 +91,7 @@ def owning_package(artifact: Path) -> Path | None:
     for parent in artifact.parents:
         if (parent / "pubspec.yaml").is_file():
             return parent
-        if parent == REPO_ROOT:
+        if parent in gate_scope.ROOTS:
             break
     return None
 
@@ -191,7 +192,7 @@ def main(argv: list[str]) -> int:
         return 2
 
     faults: list[str] = [
-        f"{artifact.relative_to(REPO_ROOT)}: outside any package"
+        f"{gate_scope.rel(artifact)}: outside any package"
         for artifact in orphans
     ]
     # A package whose inputs match its last clean run is not re-analyzed
@@ -201,7 +202,7 @@ def main(argv: list[str]) -> int:
                       enabled="--no-cache" not in argv)
     gate_source = Path(__file__).read_text(encoding="utf-8")
     for package in sorted(packages):
-        name = str(package.relative_to(REPO_ROOT))
+        name = str(gate_scope.rel(package))
         key = package_key(package, gate_source)
         if cache.get(name, key) is not None:
             continue

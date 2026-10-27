@@ -213,6 +213,7 @@ import sys
 from pathlib import Path
 
 from gate_report import report_faults
+import gate_scope
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -244,7 +245,7 @@ def navigates(path: Path) -> bool:
     it forbids; excluding it is what lets the gate keep its documentation
     rather than acquire a suppression list.
     """
-    if GUIDELINES in path.parts or path == REPO_ROOT / "README.md":
+    if GUIDELINES in path.parts or path in (r / "README.md" for r in gate_scope.ROOTS):
         return False
     return (
         DOC_DIR in path.parts
@@ -279,7 +280,7 @@ def citable_suffixes() -> set[str]:
     """
     return {
         path.suffix.lower().lstrip(".")
-        for path in REPO_ROOT.rglob("*")
+        for path in gate_scope.rglob_all("*")
         if path.is_file() and path.suffix and not (SKIP_DIRS & set(path.parts))
     }
 
@@ -363,7 +364,8 @@ def citations(path: Path, text: str, cross: re.Pattern[str]) -> list[tuple[int, 
 
 
 def main(argv: list[str]) -> int:
-    root = REPO_ROOT / argv[0] if argv else REPO_ROOT
+    roots = gate_scope.scope(argv[0] if argv else None)
+    root = roots[0]
     if not root.exists():
         print(f"no such path: {root}", file=sys.stderr)
         return 2
@@ -372,7 +374,7 @@ def main(argv: list[str]) -> int:
     cross = cross_pattern(suffixes)
     scanned = {".dart": 0, ".svg": 0, ".md": 0}
     faults: list[tuple[Path, int, str, str]] = []
-    for path in source_files(root):
+    for path in (p for r in roots for p in source_files(r)):
         try:
             text = path.read_text(encoding="utf-8")
         except (OSError, UnicodeDecodeError):
@@ -389,7 +391,7 @@ def main(argv: list[str]) -> int:
 
     for path, number, fault, prose in faults:
         excerpt = prose if len(prose) <= 70 else prose[:67] + "..."
-        print(f"{path.relative_to(REPO_ROOT)}:{number}: {fault} -- {excerpt}")
+        print(f"{gate_scope.rel(path)}:{number}: {fault} -- {excerpt}")
 
     print()
     # Counted per kind: the figures are nine files among thousands, so a single

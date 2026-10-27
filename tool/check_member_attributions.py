@@ -166,6 +166,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from gate_report import report_faults
+import gate_scope
 
 TOOL_DIR = Path(__file__).resolve().parent
 REPO_ROOT = TOOL_DIR.parent
@@ -339,7 +340,7 @@ TOP_LEVEL_NAMES: dict[str, set[str]] = defaultdict(set)
 def package_of(path: Path) -> str:
     """The package directory a source file belongs to (first path segment)."""
     try:
-        return path.resolve().relative_to(REPO_ROOT.resolve()).parts[0]
+        return gate_scope.rel(path).parts[0]
     except (ValueError, IndexError):
         return ""
 
@@ -752,7 +753,7 @@ def blank_historical_part(lines: list[str]) -> list[str]:
 
 def display(path: Path) -> Path:
     """``path`` relative to whichever root holds it."""
-    for root in (REPO_ROOT, WORKSPACE_ROOT):
+    for root in (*gate_scope.ROOTS, WORKSPACE_ROOT):
         try:
             return path.relative_to(root)
         except ValueError:
@@ -902,10 +903,10 @@ def documents(prefix: str) -> list[Path]:
     """The package documents, then the completion corpus (see "Two roots")."""
     found = [
         path
-        for path in REPO_ROOT.rglob("*.md")
+        for path in gate_scope.rglob_all("*.md")
         if path.name != "CHANGELOG.md"
         and not any(part.startswith(".") for part in path.parts)
-        and str(path.relative_to(REPO_ROOT)).startswith(prefix)
+        and str(gate_scope.rel(path)).startswith(prefix)
     ]
     if COMPLETION.is_dir() and (not prefix or prefix.startswith("completion")):
         found += COMPLETION.glob("*.md")
@@ -1072,7 +1073,9 @@ def main(argv: list[str]) -> int:
     testing = "--self-test" in arguments
     prefix = next((a for a in arguments if not a.startswith("-")), "")
 
-    types = index_types(REPO_ROOT)
+    types = {}
+    for root in reversed(gate_scope.ROOTS):
+        types.update(index_types(root))
     # An empty index would let every attribution pass, reporting a clean tree by
     # looking at nothing -- the one way this audit fails silently.
     if not types:

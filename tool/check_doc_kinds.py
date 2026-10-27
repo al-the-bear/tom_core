@@ -130,6 +130,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from gate_report import report_faults
+import gate_scope
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 WORKSPACE_ROOT = REPO_ROOT.parent.parent
@@ -139,7 +140,7 @@ WORKSPACE_ROOT = REPO_ROOT.parent.parent
 # A base that is not on disk is skipped -- `_ai` is a separate clone and the
 # gate has to run without it.
 DOCUMENT_ROOTS: tuple[tuple[Path, str], ...] = (
-    (REPO_ROOT, "**/doc/*.md"),
+    *((root, "**/doc/*.md") for root in gate_scope.ROOTS),
     (WORKSPACE_ROOT / "_ai" / "quests" / "tom_core" / "completion", "*.md"),
 )
 
@@ -250,6 +251,14 @@ def symbols_of(cell: str) -> list[str | None] | None:
     return [bare.group(1)] if bare else None
 
 
+def all_declarations() -> dict[str, str]:
+    """[index_declarations] over every root the gates read (gate_scope)."""
+    kinds: dict[str, str] = {}
+    for root in reversed(gate_scope.ROOTS):
+        kinds.update(index_declarations(root))
+    return kinds
+
+
 def index_declarations(root: Path) -> dict[str, str]:
     """Map every public top-level declaration in the repo to its kind."""
     kinds: dict[str, str] = {}
@@ -298,7 +307,7 @@ def display_path(document: Path) -> str:
     looks: `relative_to` *raises* for a path under neither root, and rendering a
     report is the moment a checker is least able to afford an exception.
     """
-    for base in (REPO_ROOT, WORKSPACE_ROOT):
+    for base in (*gate_scope.ROOTS, WORKSPACE_ROOT):
         if document.is_relative_to(base):
             return str(document.relative_to(base))
     return str(document)
@@ -494,7 +503,7 @@ def self_test(kinds: dict[str, str]) -> int:
 
 def main(argv: list[str]) -> int:
     if argv[1:] == ["--self-test"]:
-        kinds = index_declarations(REPO_ROOT)
+        kinds = all_declarations()
         return self_test(kinds) if kinds else 2
     prefix = argv[1] if len(argv) > 1 else ""
 
@@ -502,7 +511,7 @@ def main(argv: list[str]) -> int:
     # checked: a document in one package routinely tabulates a type declared in
     # another, and a subtree-scoped index would call every one of those unknown
     # and skip it -- reporting a clean tree by looking at less of it.
-    kinds = index_declarations(REPO_ROOT)
+    kinds = all_declarations()
     if not kinds:
         print(f"no declarations found under {REPO_ROOT}", file=sys.stderr)
         return 2

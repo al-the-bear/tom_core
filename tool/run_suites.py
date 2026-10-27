@@ -22,9 +22,10 @@ is the step that failed; this runs all of them, so nobody has to.
 
 **What "green" means here** is what the quest overview says it means: every
 package that carries a suite passes it, and the gates hold. That is the five
-framework packages, `tom_core_codespecs`, `tom_core_openapi`, the three
-`tom_core_secrets_*` providers, and the two
-`tom_flutter_ui` harnesses -- twelve suites -- plus `check_gates.py`.
+framework packages, `tom_core_codespecs`, `tom_core_openapi`,
+`tom_core_secrets`, and the two `tom_flutter_ui` harnesses -- ten suites --
+plus `check_gates.py`. `tom_core_agentic`, `tom_core_openapi` and
+`tom_core_secrets` live in `tom_core_extensions` (`gate_scope.py`).
 
 **How each suite runs.** Flutter packages run under `flutter test`, the rest
 under `dart test`, each in its own package directory with its own
@@ -60,6 +61,8 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
+import gate_scope
+
 TOOL_DIR = Path(__file__).resolve().parent
 REPO_ROOT = TOOL_DIR.parent
 LOG_DIR = TOOL_DIR / "ztmp" / "suites"
@@ -72,9 +75,7 @@ PACKAGES = (
     "tom_core_agentic",
     "tom_core_codespecs",
     "tom_core_openapi",
-    "tom_core_secrets_vault",
-    "tom_core_secrets_aws",
-    "tom_core_secrets_azure",
+    "tom_core_secrets",
     "tom_flutter_ui",
     "tom_core_flutter",
     "tom_flutter_ui_test",
@@ -102,7 +103,7 @@ class Result:
 
 def is_flutter(package: str) -> bool:
     """Whether ``package`` depends on the Flutter SDK, so needs `flutter test`."""
-    pubspec = (REPO_ROOT / package / "pubspec.yaml").read_text(encoding="utf-8")
+    pubspec = (gate_scope.package_dir(package) / "pubspec.yaml").read_text(encoding="utf-8")
     return re.search(r"^\s*sdk:\s*flutter\s*$", pubspec, re.MULTILINE) is not None
 
 
@@ -183,7 +184,7 @@ def run(name: str, command: list[str], cwd: Path) -> Result:
 
 def ensure_resolved(package: str) -> None:
     """Run `pub get` for a package whose dependencies were never resolved."""
-    directory = REPO_ROOT / package
+    directory = gate_scope.package_dir(package)
     if (directory / ".dart_tool" / "package_config.json").exists():
         return
     tool = "flutter" if is_flutter(package) else "dart"
@@ -205,7 +206,7 @@ def main(argv: list[str]) -> int:
         )
         return 2
 
-    plan = [(p, command_for(p), REPO_ROOT / p) for p in packages]
+    plan = [(p, command_for(p), gate_scope.package_dir(p)) for p in packages]
     if gates:
         plan.append((GATES, [sys.executable, str(TOOL_DIR / "check_gates.py")], REPO_ROOT))
 

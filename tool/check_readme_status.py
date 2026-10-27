@@ -48,6 +48,7 @@ import sys
 from pathlib import Path
 
 from gate_report import report_faults
+import gate_scope
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -75,7 +76,7 @@ PUBSPEC_VERSION = re.compile(r"^version:\s*(\S+)", re.M)
 def status_blocks(subtree: str | None) -> list[tuple[Path, str]]:
     """Every `README.md` with a `## Status` section, and that section's text."""
     found: list[tuple[Path, str]] = []
-    for readme in sorted(REPO_ROOT.glob("*/README.md")):
+    for readme in gate_scope.glob_all("*/README.md"):
         if subtree is not None and readme.parent.name != subtree:
             continue
         block = STATUS.search(readme.read_text(encoding="utf8"))
@@ -86,7 +87,7 @@ def status_blocks(subtree: str | None) -> list[tuple[Path, str]]:
 
 def faults_in(readme: Path, status: str) -> list[str]:
     """The faults [status] carries, reported against [readme]."""
-    where = readme.relative_to(REPO_ROOT)
+    where = gate_scope.rel(readme)
     faults: list[str] = []
 
     pubspec = readme.parent / "pubspec.yaml"

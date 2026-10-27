@@ -434,7 +434,7 @@ are in `tom_core_server`'s
 | Kernel (foundation) | [`../tom_core_kernel/README.md`](../tom_core_kernel/README.md) |
 | Flutter integration | [`../tom_core_flutter/README.md`](../tom_core_flutter/README.md) |
 | Endpoints module | [`../tom_core_server/doc/endpoints.md`](../tom_core_server/doc/endpoints.md) |
-| OpenAPI document and generated clients | [`../tom_core_openapi/README.md`](../tom_core_openapi/README.md) |
+| OpenAPI document and generated clients | [`tom_core_openapi/README.md`](../../core_extension/tom_core_openapi/README.md) (in `tom_core_extensions`) |
 
 ---
 

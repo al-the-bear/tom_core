@@ -49,6 +49,7 @@ from pathlib import Path
 
 from check_section_refs import REPO_ROOT, shipped_files
 from gate_report import report_faults
+import gate_scope
 
 #: The tree whose Dart declares the names documentation may write.
 WORKSPACE_CODE = REPO_ROOT.parent
@@ -92,9 +93,9 @@ def phantoms(root: Path, declared: set[str]):
 def main(argv: list[str]) -> int:
     by_name = "--names" in argv
     args = [a for a in argv if a != "--names"]
-    root = REPO_ROOT / args[0] if args else REPO_ROOT
-    if not root.exists():
-        print(f"no such path: {root}", file=sys.stderr)
+    roots = gate_scope.scope(args[0] if args else None)
+    if not roots[0].exists():
+        print(f"no such path: {roots[0]}", file=sys.stderr)
         return 2
 
     declared = declared_names()
@@ -105,18 +106,18 @@ def main(argv: list[str]) -> int:
               f"{WORKSPACE_CODE}; not measured", file=sys.stderr)
         return 2
 
-    found = list(phantoms(root, declared))
+    found = [hit for root in roots for hit in phantoms(root, declared)]
     if by_name:
         grouped: dict[str, list[str]] = defaultdict(list)
         for path, line, name in found:
-            grouped[name].append(f"{path.relative_to(REPO_ROOT)}:{line}")
+            grouped[name].append(f"{gate_scope.rel(path)}:{line}")
         for name in sorted(grouped, key=lambda n: (-len(grouped[n]), n)):
             print(f"{name}  ({len(grouped[name])})")
             for site in grouped[name]:
                 print(f"    {site}")
     else:
         for path, line, name in found:
-            print(f"{path.relative_to(REPO_ROOT)}:{line}: `{name}` is "
+            print(f"{gate_scope.rel(path)}:{line}: `{name}` is "
                   "declared nowhere under tom_ai/")
 
     print()

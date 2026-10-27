@@ -108,6 +108,7 @@ from pathlib import Path
 
 from check_unimplemented_claims import index_types
 from gate_report import report_faults
+import gate_scope
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -298,7 +299,7 @@ class Report:
 def audit(region: Region, declared: dict[str, Path]) -> Report:
     """Compare one region against its directory in both directions."""
     report = Report(region)
-    directory = REPO_ROOT / region.directory
+    directory = gate_scope.at(region.directory)
     if not directory.is_dir():
         report.phantom.append(region.directory)
         return report
@@ -337,8 +338,8 @@ def family_words(family: set[str]) -> set[str]:
 
 def shown(path: Path) -> str:
     """A document's reported path: repository-relative, or the corpus's own."""
-    if path.is_relative_to(REPO_ROOT):
-        return str(path.relative_to(REPO_ROOT))
+    if any(path.is_relative_to(root) for root in gate_scope.ROOTS):
+        return str(gate_scope.rel(path))
     return str(path.relative_to(REPO_ROOT.parent.parent))
 
 
@@ -350,8 +351,9 @@ def documents(prefix: str) -> list[Path]:
     """
     inside = (
         path
-        for path in REPO_ROOT.rglob("*.md")
-        if not any(part.startswith(".") for part in path.relative_to(REPO_ROOT).parts)
+        for root in gate_scope.ROOTS
+        for path in root.rglob("*.md")
+        if not any(part.startswith(".") for part in path.relative_to(root).parts)
     )
     return sorted(
         path
@@ -378,7 +380,7 @@ def self_test(declared: dict[str, Path]) -> int:
         if not audit(region, declared).clean:
             print(f"self-test: {where} is already defective", file=sys.stderr)
             return 2
-        family = descendants(superclasses(REPO_ROOT / region.directory), region.base)
+        family = descendants(superclasses(gate_scope.at(region.directory)), region.base)
         for word in sorted(family_words(family)):
             members = sorted(
                 n for n in family & region.named if leading_word(n) == word
@@ -427,7 +429,9 @@ def main(argv: list[str]) -> int:
     testing = "--self-test" in arguments
     prefix = next((a for a in arguments if not a.startswith("-")), "")
 
-    declared = index_types(REPO_ROOT)
+    declared = {}
+    for root in reversed(gate_scope.ROOTS):
+        declared.update(index_types(root))
     # An empty index would call every listed name a phantom, and a full report
     # of nonsense is harder to notice than a refusal to run.
     if not declared:

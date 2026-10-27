@@ -50,6 +50,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 from gate_report import report_faults
+import gate_scope
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -65,12 +66,12 @@ def figures(root: Path) -> list[Path]:
 
 
 def main(argv: list[str]) -> int:
-    root = REPO_ROOT / argv[0] if argv else REPO_ROOT
-    if not root.exists():
-        print(f"no such path: {root}", file=sys.stderr)
+    roots = gate_scope.scope(argv[0] if argv else None)
+    if not roots[0].exists():
+        print(f"no such path: {roots[0]}", file=sys.stderr)
         return 2
 
-    found = figures(root)
+    found = [path for root in roots for path in figures(root)]
     broken: list[tuple[Path, str]] = []
 
     for path in found:
@@ -82,7 +83,7 @@ def main(argv: list[str]) -> int:
             broken.append((path, f"unreadable: {error}"))
 
     for path, error in broken:
-        rel = path.relative_to(REPO_ROOT)
+        rel = gate_scope.rel(path)
         print(f"{rel}: not well-formed XML, so it renders as nothing -- {error}")
         if "--" in path.read_text(encoding="utf-8", errors="replace"):
             print(

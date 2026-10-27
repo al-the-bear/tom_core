@@ -38,8 +38,11 @@ re-documented here — one phrase of "what it is" plus the link is the contract.
 - **Share one model of state, security, and resources** across server and
   client — the platform-neutral [`tom_core_kernel`](tom_core_kernel/README.md)
   is the single source of those cross-cutting concerns.
-- **Assemble agent runtimes** from generic, domain-free, `dart:io`-free
-  building blocks ([`tom_core_agentic`](tom_core_agentic/README.md)).
+
+Optional services built on the core — agentic building blocks with the Claude
+Agent SDK provider and the agent tool framework, sync, cloud secret stores, and
+OpenAPI — are in the sibling repository
+[`tom_core_extensions`](../core_extension/README.md).
 
 ---
 
@@ -48,16 +51,13 @@ re-documented here — one phrase of "what it is" plus the link is the contract.
 Everything roots at the **kernel**. The two runtimes (**server** and **Flutter**)
 re-export it, so an app depends on one of them and gets the kernel API for free.
 The **UI library** is the rich widget set that the Flutter runtime's thin
-integration layer complements. The **agentic** blocks sit beside the kernel,
-depending only on `tom_basics`.
+integration layer complements.
 
 ```
                     tom_core_kernel            (platform-neutral foundation)
                    /       |        \
        tom_core_server  tom_core_flutter  tom_flutter_ui
          (backend)      (Flutter glue)    (widget library)
-
-       tom_core_agentic  (agent building blocks; depends only on tom_basics)
 ```
 
 ---
@@ -80,23 +80,11 @@ for all entries is this repository root.
 | [`tom_core_server`](tom_core_server/README.md) | The server layer: an HTTP host, an endpoint pipeline, a relational persistence layer with a type-safe query model, datasources and migrations, server configuration, caching, and authentication/authorization. Re-exports the kernel through its own barrel. |
 | [`tom_core_flutter`](tom_core_flutter/README.md) | The Flutter integration layer: re-exports the kernel and adds Flutter widgets that bind to observable kernel state, form primitives, typed UI properties, client-side platform detection, and client auth helpers. |
 
-### Server tooling
-
-| Package | What it is |
-| --- | --- |
-| [`tom_core_openapi`](tom_core_openapi/README.md) | OpenAPI 3.1 for Tom servers: generates a server's document at build time from its endpoint annotations and reflected DTOs, validates it against the OpenAPI meta-schema, and generates a typed Dart client that depends on `package:http` only. A `tom_build_base` command-line tool (`openapi`). |
-
 ### UI
 
 | Package | What it is |
 | --- | --- |
 | [`tom_flutter_ui`](tom_flutter_ui/README.md) | The Flutter widget library: a Material/Cupertino-aware widget set, a declarative form system, a behavioural action system, and a fluent row-based layout engine (Advanced Container Layout). Every widget understands the kernel's `tomId`/`tomGroup` visibility, the four-state `TomAuthState` model, and resource-driven styling. |
-
-### Agentic
-
-| Package | What it is |
-| --- | --- |
-| [`tom_core_agentic`](tom_core_agentic/README.md) | Generic, domain-free, `dart:io`-free building blocks for agentic systems — placeholder resolution, path-scoped sandboxing, content-hash conventions, config read/write. Depends only on `tom_basics`; reusable across the brain, the assistant, and any agent runtime. |
 
 ### Demo & test apps
 
@@ -142,8 +130,6 @@ above link the relevant files. The most common entry points:
 | Flutter integration modules | [`tom_core_flutter/doc/`](tom_core_flutter/doc/) |
 | Widget library — ACL engine | [`tom_flutter_ui/doc/advanced_container_layout.md`](tom_flutter_ui/doc/advanced_container_layout.md) |
 | Widget library — forms & authorizers | [`tom_flutter_ui/doc/forms.md`](tom_flutter_ui/doc/forms.md) · [`form_authorizers.md`](tom_flutter_ui/doc/form_authorizers.md) |
-| Agentic building blocks | [`tom_core_agentic/doc/`](tom_core_agentic/doc/) |
-| OpenAPI generation, validation and the Dart client | [`tom_core_openapi/doc/`](tom_core_openapi/doc/) |
 | Form demo catalogue | [`tom_flutter_form_test/doc/demo_catalogue.md`](tom_flutter_form_test/doc/demo_catalogue.md) |
 | UI demo catalogue | [`tom_flutter_ui_test/doc/demo_catalogue.md`](tom_flutter_ui_test/doc/demo_catalogue.md) |
 
@@ -156,8 +142,6 @@ tom_core_kernel/       platform-neutral foundation (DI, state, security, …)   
 tom_core_server/       backend runtime: HTTP, persistence, auth               (runtime)
 tom_core_flutter/      Flutter integration layer (re-exports the kernel)      (runtime)
 tom_flutter_ui/        Flutter widget library: widgets, forms, ACL engine     (UI)
-tom_core_agentic/      domain-free agentic building blocks (dart:io-free)      (agentic)
-tom_core_openapi/      OpenAPI 3.1 document, validator and Dart client         (tooling)
 tom_flutter_form_test/ runnable demo: the form framework                      (demo app)
 tom_flutter_ui_test/   runnable demo/smoke-test: the whole widget library     (demo app)
 tool/                  repo-wide developer tooling (see below)                (tooling)
@@ -165,13 +149,18 @@ tool/                  repo-wide developer tooling (see below)                (t
 
 Dependency direction, simplified: everything roots at `tom_core_kernel`;
 `tom_core_server` and `tom_core_flutter` build on and re-export it;
-`tom_flutter_ui` builds on the kernel and is exercised by the two demo apps;
-`tom_core_agentic` depends only on `tom_basics`.
+`tom_flutter_ui` builds on the kernel and is exercised by the two demo apps.
 
 ## Repository tooling
 
 Tools that span the whole repository live in `tool/`; anything scoped to one
 package lives in that package's own `tool/`.
+
+The gates read the sibling repository [`tom_core_extensions`](../core_extension/README.md)
+as well — its packages are held to the same documentation invariants, and one
+baseline file covers both. `tool/gate_scope.py` holds the two roots, and a path
+in a report is relative to the root that holds it, so it starts with the
+package either way.
 
 Every `check_*.py` below is a **gate**: it counts documentation faults and exits
 non-zero when it finds any. They are run together by `tool/check_gates.py`,
@@ -302,6 +291,7 @@ one.
 | [`tool/gate_report.py`](tool/gate_report.py) | The contract a gate implements: prints the machine-readable fault total and derives the exit status from it |
 | [`tool/dart_sdk.py`](tool/dart_sdk.py) | Finds the `dart` the gates need when the shell's PATH has none — PATH, the SDKs' own environment variables, `flutter` on PATH, then conventional install locations — so the gate runner can put it on every gate's PATH |
 | [`tool/gate_cache.py`](tool/gate_cache.py) | Remembers a clean analyzer verdict per package until one of its inputs changes; used by `check_reflection_artifacts.py` and `check_doc_dart_blocks.py` |
+| [`tool/gate_scope.py`](tool/gate_scope.py) | The two trees the gates read — this repository and `tom_core_extensions` (`tom_ai/core_extension`) — and the path functions every gate walks them with; a path is reported relative to the root that holds it |
 | [`tool/check_tooling_table.py`](tool/check_tooling_table.py) | Pins this table, and the prose sections below it, to the contents of `tool/` |
 | [`tool/check_overview_inventory.py`](tool/check_overview_inventory.py) | Recomputes the quest overview's Package Inventory table and per-package Structure lines from git-tracked files, by the counting rules stated beside the table |
 | [`tool/check_doc_tocs.py`](tool/check_doc_tocs.py) | Audits a document's navigation: its `## Table of Contents`, every anchor it links to itself, and every `#fragment` it links to in another document |
@@ -380,8 +370,8 @@ touch, so there is no diff in which to see it.
 
 Three counts are kept apart: a script with no row, a row naming no script (the
 reverse drift, left behind by a rename), and a `check_*.py` with no invocation
-block. `gate_report.py`, `gate_cache.py` and `dart_sdk.py` legitimately have no
-block — they are helpers a gate or the runner imports rather than gates to run,
+block. `gate_report.py`, `gate_cache.py`, `gate_scope.py` and `dart_sdk.py`
+legitimately have no block — they are helpers a gate or the runner imports rather than gates to run,
 and their rows say so. Accuracy is not
 checked, only presence: whether a summary is *true* needs judgement, whether a
 row exists does not. That is the same line `check_doc_inventories.py` and

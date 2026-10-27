@@ -80,6 +80,7 @@ import sys
 from pathlib import Path
 
 from gate_report import report_faults
+from gate_scope import rel, scope
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SKIP_DIRS = {
@@ -339,7 +340,7 @@ def scanned_files(root: Path):
             continue
         if path.name in EXEMPT_FILES or path.name.endswith(GENERATED_SUFFIX):
             continue
-        if path.relative_to(REPO_ROOT) in EXEMPT_PATHS:
+        if rel(path) in EXEMPT_PATHS:
             continue
         yield path
 
@@ -394,20 +395,20 @@ def self_test() -> int:
 def main(argv: list[str]) -> int:
     if argv == ["--self-test"]:
         return self_test()
-    root = REPO_ROOT / argv[0] if argv else REPO_ROOT
-    if not root.exists():
-        print(f"no such path: {root}", file=sys.stderr)
+    roots = scope(argv[0] if argv else None)
+    if not all(root.exists() for root in roots):
+        print(f"no such path: {roots[0]}", file=sys.stderr)
         return 2
 
     scanned = 0
     faults: list[tuple[Path, int, str, str]] = []
-    for path in scanned_files(root):
+    for path in (p for root in roots for p in scanned_files(root)):
         scanned += 1
         for line, kind, text in faults_in(path):
             faults.append((path, line, kind, text))
 
     for path, line, kind, text in faults:
-        print(f"{path.relative_to(REPO_ROOT)}:{line}: [{kind}] {text}")
+        print(f"{rel(path)}:{line}: [{kind}] {text}")
 
     print()
     print(f"files scanned            : {scanned}")

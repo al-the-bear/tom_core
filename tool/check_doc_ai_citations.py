@@ -100,6 +100,7 @@ import sys
 from pathlib import Path
 
 from gate_report import report_faults
+import gate_scope
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 #: `tom_ai/core` -> `tom_ai` -> the workspace root, where the `_ai` mount lives.
@@ -155,9 +156,11 @@ def quest_only_names() -> set[str] | None:
         for name in _walk_names(QUESTS, {"history"}, follow=True)
         if name.endswith((".md", ".yaml"))
     }
-    return quest_documents - _walk_names(
-        REPO_ROOT, {".dart_tool", "build", ".git", "node_modules"}, follow=False
-    )
+    for root in gate_scope.ROOTS:
+        quest_documents -= _walk_names(
+            root, {".dart_tool", "build", ".git", "node_modules"}, follow=False
+        )
+    return quest_documents
 
 
 def shipped_files(root: Path) -> list[Path]:
@@ -189,12 +192,13 @@ def citations(path: Path, quest_names: set[str]) -> list[tuple[str, int, str]]:
 
 
 def main(argv: list[str]) -> int:
-    root = REPO_ROOT / argv[0] if argv else REPO_ROOT
+    roots = gate_scope.scope(argv[0] if argv else None)
+    root = roots[0]
     if not root.exists():
         print(f"no such path: {root}", file=sys.stderr)
         return 2
 
-    files = shipped_files(root)
+    files = [path for r in roots for path in shipped_files(r)]
     # A checker that stops finding files reports a clean tree, which is the one
     # way this kind of audit fails without anyone noticing.
     if not files:
@@ -211,7 +215,7 @@ def main(argv: list[str]) -> int:
         quest_names = set()
 
     for path in files:
-        relative = path.relative_to(REPO_ROOT)
+        relative = gate_scope.rel(path)
         faults.extend(
             f"{kind} {relative}:{number} cites `{cited}`, which no reader of"
             " the package can open"

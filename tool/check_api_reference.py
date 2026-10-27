@@ -74,6 +74,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from gate_report import report_faults
+from gate_scope import package_dir
 
 TOOL_DIR = Path(__file__).resolve().parent
 REPO_ROOT = TOOL_DIR.parent
@@ -497,7 +498,7 @@ class Package:
 
     @property
     def root(self) -> Path:
-        return REPO_ROOT / self.name
+        return package_dir(self.name)
 
     @property
     def modules_root(self) -> Path:

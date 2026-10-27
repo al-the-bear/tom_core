@@ -146,6 +146,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from gate_report import report_faults
+import gate_scope
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DOCS_ROOT = REPO_ROOT.parent.parent / "_ai" / "quests" / "tom_core" / "completion"
@@ -394,7 +395,7 @@ class Report:
         rel = (
             self.path.relative_to(DOCS_ROOT)
             if self.path.is_relative_to(DOCS_ROOT)
-            else self.path.relative_to(REPO_ROOT)
+            else gate_scope.rel(self.path)
         )
         return "\n".join([str(rel), *(f"    {f}" for f in self.faults)])
 
@@ -417,11 +418,11 @@ def audit_section(path: Path, text: str) -> Report | None:
     if module_match is None:
         return None
     relative = module_match.group(1)
-    module = REPO_ROOT / relative
+    module = gate_scope.at(relative)
     if not module.is_dir():
         return None
     # `tom_core_server/lib/src/tomserver/authentication` -> `tom_core_server/lib`.
-    project = REPO_ROOT / "/".join(relative.split("/")[:2])
+    project = gate_scope.at("/".join(relative.split("/")[:2]))
 
     listed = documented(text)
     if listed is None:
@@ -462,7 +463,7 @@ def audit_package(path: Path, text: str) -> Report | None:
     package_match = PACKAGE_PATH.search(text)
     if package_match is None:
         return None
-    package = REPO_ROOT / package_match.group(1)
+    package = gate_scope.at(package_match.group(1))
     if not (package / "pubspec.yaml").is_file():
         return None
 
@@ -495,13 +496,13 @@ def prose_documents() -> list[tuple[Path, Path, Path]]:
     """
     triples: list[tuple[Path, Path, Path]] = []
     for package, (source, pattern) in PROSE_PACKAGES.items():
-        modules = REPO_ROOT / package / source
+        modules = gate_scope.package_dir(package) / source
         if not modules.is_dir():
             continue
         for module in sorted(d for d in modules.iterdir() if d.is_dir()):
-            guide = REPO_ROOT / package / pattern.format(m=module.name)
+            guide = gate_scope.package_dir(package) / pattern.format(m=module.name)
             if guide.is_file():
-                triples.append((guide, module, REPO_ROOT / package / "lib"))
+                triples.append((guide, module, gate_scope.package_dir(package) / "lib"))
     return triples
 
 
@@ -545,9 +546,9 @@ def code_of(text: str) -> str:
 
 def packages() -> list[Path]:
     """Every package in the repository: the framework packages and each sample."""
-    found = [p.parent for p in REPO_ROOT.glob("*/pubspec.yaml")]
-    found += [p.parent for p in REPO_ROOT.glob("tom_core_samples/*/pubspec.yaml")]
-    return sorted(found)
+    found = [p.parent for p in gate_scope.glob_all("*/pubspec.yaml")]
+    found += [p.parent for p in gate_scope.glob_all("tom_core_samples/*/pubspec.yaml")]
+    return sorted(found, key=gate_scope.rel)
 
 
 def raises_in(package: Path) -> dict[str, str]:
@@ -624,7 +625,7 @@ def main(argv: list[str]) -> int:
         # the completion side: those documents are named `tom_core_server_*.md`
         # and a guide is `authentication.md`, so matching the filename would
         # make one argument mean two different things.
-        if not guide.relative_to(REPO_ROOT).parts[0].startswith(prefix):
+        if not gate_scope.rel(guide).parts[0].startswith(prefix):
             continue
         report = audit_prose(guide, module, project)
         if report is not None:
@@ -633,7 +634,7 @@ def main(argv: list[str]) -> int:
 
     suites: list[Report] = []
     for package in packages():
-        if not str(package.relative_to(REPO_ROOT)).startswith(prefix):
+        if not str(gate_scope.rel(package)).startswith(prefix):
             continue
         report = audit_tests(package)
         if report is not None:

@@ -204,6 +204,7 @@ import sys
 from pathlib import Path
 
 from gate_report import report_faults
+import gate_scope
 
 #: The gate reads this repository, ``tom_ai/core``, and nothing beside it. The
 #: rest of ``tom_ai`` belongs to other quests and is left to them; the forks
@@ -531,8 +532,8 @@ def main(argv: list[str]) -> int:
               "nothing until it is fixed", file=sys.stderr)
         return 2
 
-    root = REPO_ROOT / argv[0] if argv else REPO_ROOT
-    if not root.exists():
+    root = gate_scope.at(argv[0]) if argv else None
+    if root is not None and not root.exists():
         print(f"no such path: {root}", file=sys.stderr)
         return 2
 
@@ -551,7 +552,7 @@ def main(argv: list[str]) -> int:
     # the search must not turn a name that exists elsewhere into a reported
     # fault.
     sources = [(p, p.read_text(encoding="utf-8", errors="replace"))
-               for p in source_files(REPO_ROOT)]
+               for r in gate_scope.ROOTS for p in source_files(r)]
     known_names: set[str] = set()
     known_words: set[str] = set()
     declared: set[str] = set()
@@ -561,7 +562,7 @@ def main(argv: list[str]) -> int:
         declared |= declared_types(text)
 
     for path, text in sources:
-        if root != REPO_ROOT and root not in path.parents and path != root:
+        if root is not None and root not in path.parents and path != root:
             continue
         refs = private_references(text)
         if refs:
@@ -580,14 +581,14 @@ def main(argv: list[str]) -> int:
         missing.extend((path, number, name) for number, name in hits)
 
     for path, number, name in dangling:
-        rel = path.relative_to(REPO_ROOT)
+        rel = gate_scope.rel(path)
         print(f"{rel}:{number}: [{name}] resolves to nothing in this library")
     for path, number, name in vanished:
-        rel = path.relative_to(REPO_ROOT)
+        rel = gate_scope.rel(path)
         print(f"{rel}:{number}: `{name}` is framed as superseded but appears in "
               f"no code in this repo -- the reader cannot look it up")
     for path, number, name in missing:
-        rel = path.relative_to(REPO_ROOT)
+        rel = gate_scope.rel(path)
         print(f"{rel}:{number}: [{name}] names nothing in this repo -- no import "
               f"can fix it, so the name is wrong")
 

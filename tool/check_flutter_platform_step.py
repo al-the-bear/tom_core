@@ -47,11 +47,11 @@ Three faults are reported:
 from __future__ import annotations
 
 import re
-import subprocess
 import sys
 from pathlib import Path
 
 from gate_report import report_faults
+import gate_scope
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -64,21 +64,18 @@ STEP = re.compile(r"flutter create --empty --platforms=\w+ \.")
 ANY_CREATE = re.compile(r"flutter create\b")
 
 
-def tracked_files() -> list[str]:
-    done = subprocess.run(
-        ["git", "ls-files"], cwd=REPO_ROOT, capture_output=True, text=True,
-        check=True,
-    )
-    return done.stdout.splitlines()
+def tracked_files() -> list[Path]:
+    """Every tracked file of every root the gates read (gate_scope)."""
+    return gate_scope.tracked_files()
 
 
-def packages_in_scope(files: list[str]) -> list[Path]:
+def packages_in_scope(files: list[Path]) -> list[Path]:
     """Runnable Flutter packages that track no platform folder."""
     found: list[Path] = []
-    for pubspec in (f for f in files if f.endswith("pubspec.yaml")):
-        package = REPO_ROOT / pubspec
+    names = [str(f) for f in files]
+    for package in (f for f in files if f.name == "pubspec.yaml"):
         root = package.parent
-        prefix = "" if root == REPO_ROOT else f"{root.relative_to(REPO_ROOT)}/"
+        prefix = f"{root}/"
         if not re.search(r"^\s*sdk:\s*flutter\s*$", package.read_text(), re.M):
             continue
         if not (root / "lib" / "main.dart").is_file():
@@ -87,7 +84,7 @@ def packages_in_scope(files: list[str]) -> list[Path]:
         if not readme.is_file() or "flutter run" not in readme.read_text():
             continue
         if any(f.startswith(tuple(f"{prefix}{p}/" for p in PLATFORMS))
-               for f in files):
+               for f in names):
             continue
         found.append(root)
     return sorted(found)
@@ -107,7 +104,7 @@ def fenced_lines(text: str) -> list[tuple[int, str]]:
 
 
 def check(root: Path) -> list[str]:
-    name = root.relative_to(REPO_ROOT)
+    name = gate_scope.rel(root)
     text = (root / "README.md").read_text(encoding="utf-8")
     faults: list[str] = []
 

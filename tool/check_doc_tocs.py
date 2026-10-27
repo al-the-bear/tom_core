@@ -64,6 +64,7 @@ from pathlib import Path
 from urllib.parse import unquote
 
 from gate_report import report_faults
+import gate_scope
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -251,7 +252,7 @@ class Report:
                     or self.cross)
 
     def render(self) -> str:
-        lines = [f"{self.path.relative_to(REPO_ROOT)}"]
+        lines = [f"{gate_scope.rel(self.path)}"]
         for line_no, text in self.missing:
             lines.append(f"    MISSING  :{line_no:<5} {text}")
         for text, target in self.stale:
@@ -489,15 +490,15 @@ def audit_text_dangling(text: str) -> list[tuple[int, str]]:
 def main(argv: list[str]) -> int:
     if argv == ["--self-test"]:
         return self_test()
-    root = REPO_ROOT / argv[0] if argv else REPO_ROOT
-    if not root.exists():
-        print(f"no such path: {root}", file=sys.stderr)
+    roots = gate_scope.scope(argv[0] if argv else None)
+    if not roots[0].exists():
+        print(f"no such path: {roots[0]}", file=sys.stderr)
         return 2
 
     scanned = 0
     checked = 0
     defective: list[Report] = []
-    for path in sorted(root.rglob("*.md")):
+    for path in (p for root in roots for p in sorted(root.rglob("*.md"))):
         if SKIP_DIRS & set(path.parts):
             continue
         report = audit(path)

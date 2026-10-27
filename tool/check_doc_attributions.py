@@ -122,6 +122,7 @@ import sys
 from pathlib import Path
 
 from gate_report import report_faults
+import gate_scope
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -184,7 +185,7 @@ def package_of(md: Path) -> Path | None:
     for parent in md.parents:
         if (parent / "pubspec.yaml").is_file():
             return parent
-        if parent == REPO_ROOT:
+        if parent in gate_scope.ROOTS:
             break
     return None
 
@@ -258,8 +259,8 @@ def contents(path: Path, _seen: frozenset[Path] = frozenset()) -> str:
 
 def resolve(cited: str, package: Path) -> Path | None:
     """The file *cited* names, package-relative, lib-relative or repo-relative."""
-    for base in (package, package / "lib", REPO_ROOT):
-        candidate = base / cited
+    for candidate in (package / cited, package / "lib" / cited,
+                      gate_scope.at(cited)):
         if candidate.is_file():
             return candidate
     return None
@@ -328,16 +329,16 @@ def audit(md: Path, package: Path) -> tuple[int, int, list[tuple[int, str, str]]
 
 
 def main(argv: list[str]) -> int:
-    root = REPO_ROOT / argv[0] if argv else REPO_ROOT
-    if not root.exists():
-        print(f"no such path: {root}", file=sys.stderr)
+    roots = gate_scope.scope(argv[0] if argv else None)
+    if not roots[0].exists():
+        print(f"no such path: {roots[0]}", file=sys.stderr)
         return 2
 
     documents = 0
     seen = 0
     judged = 0
     total = 0
-    for md in markdown_files(root):
+    for md in (m for r in roots for m in markdown_files(r)):
         package = package_of(md)
         if package is None:
             continue
@@ -349,7 +350,7 @@ def main(argv: list[str]) -> int:
         judged += names
         total += len(faults)
         for line, name, where in faults:
-            print(f"{md.relative_to(REPO_ROOT)}:{line}")
+            print(f"{gate_scope.rel(md)}:{line}")
             print(f"    MISATTRIBUTED: {name} is claimed of {where}, "
                   f"which does not contain it")
 

@@ -43,6 +43,7 @@ import sys
 from pathlib import Path
 
 from gate_report import report_faults
+import gate_scope
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -123,18 +124,18 @@ def pubspecs(root: Path) -> list[Path]:
 
 
 def main(argv: list[str]) -> int:
-    root = REPO_ROOT / argv[0] if argv else REPO_ROOT
-    if not root.exists():
-        print(f"MISSING    {root} does not exist")
+    roots = gate_scope.scope(argv[0] if argv else None)
+    if not roots[0].exists():
+        print(f"MISSING    {roots[0]} does not exist")
         return 1
 
     faults = 0
     scanned = 0
 
-    for path in pubspecs(root):
+    for path in (p for root in roots for p in pubspecs(root)):
         scanned += 1
         text = path.read_text(encoding="utf-8")
-        rel = path.relative_to(REPO_ROOT)
+        rel = gate_scope.rel(path)
 
         description = read_description(text)
         if description is None or not description:

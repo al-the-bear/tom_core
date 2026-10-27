@@ -79,6 +79,7 @@ import sys
 from pathlib import Path
 
 from gate_report import report_faults
+import gate_scope
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -229,9 +230,9 @@ def audit_residuals(text: str, truth: dict[str, dict[str, str]]):
 
 
 def main(argv: list[str]) -> int:
-    root = REPO_ROOT / argv[0] if argv else REPO_ROOT
-    if not root.exists():
-        print(f"no such path: {root}", file=sys.stderr)
+    roots = gate_scope.scope(argv[0] if argv else None)
+    if not roots[0].exists():
+        print(f"no such path: {roots[0]}", file=sys.stderr)
         return 2
 
     truth = load_matrix(REPO_ROOT)
@@ -242,7 +243,7 @@ def main(argv: list[str]) -> int:
 
     scanned = tables = claims = 0
     faults: list[str] = []
-    for path in doc_files(root):
+    for path in (p for root in roots for p in doc_files(root)):
         try:
             text = path.read_text(encoding="utf-8")
         except OSError:
@@ -250,7 +251,7 @@ def main(argv: list[str]) -> int:
         if DISCRIMINATOR not in text:
             continue
         scanned += 1
-        shown = path.relative_to(REPO_ROOT)
+        shown = gate_scope.rel(path)
 
         lines = text.split("\n")
         for line, field, role, documented, actual in audit_tables(

@@ -122,6 +122,7 @@ import sys
 from pathlib import Path
 
 from gate_report import report_faults
+import gate_scope
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 WORKSPACE = REPO_ROOT.parent.parent
@@ -163,7 +164,8 @@ def packages_for(lines: list[str], index: int) -> list[str]:
 
 def resolves(path: str, packages: list[str]) -> bool:
     """True when *path* names something on disk under any accepted root."""
-    roots = [WORKSPACE, REPO_ROOT] + [REPO_ROOT / pkg for pkg in packages]
+    roots = [WORKSPACE, *gate_scope.ROOTS] + [
+        gate_scope.package_dir(pkg) for pkg in packages]
     return any((root / path).exists() for root in roots)
 
 
@@ -178,7 +180,7 @@ def package_of(md: Path) -> Path | None:
     for parent in md.parents:
         if (parent / "pubspec.yaml").exists():
             return parent
-        if parent == REPO_ROOT:
+        if parent in gate_scope.ROOTS:
             break
     return None
 
@@ -209,7 +211,7 @@ def package_index() -> dict[str, Path]:
     so directly.
     """
     index: dict[str, Path] = {}
-    for pubspec in REPO_ROOT.rglob("pubspec.yaml"):
+    for pubspec in gate_scope.rglob_all("pubspec.yaml"):
         if not SKIP_PARTS.isdisjoint(pubspec.parts):
             continue
         index.setdefault(pubspec.parent.name, pubspec.parent)
@@ -237,7 +239,7 @@ def audit_module_dirs(
             else:
                 prefix, rest = claim.split("/", 1)
                 named = packages.get(prefix)
-                candidates = [REPO_ROOT / claim]
+                candidates = [gate_scope.at(claim)]
                 if named is not None:
                     candidates.append(named / rest)
             claimed += 1
@@ -247,15 +249,15 @@ def audit_module_dirs(
             if re.search(r"`" + re.escape(name) + r"`", corpus):
                 continue
             faults += 1
-            print(f"{md.relative_to(REPO_ROOT)}:{i + 1}")
+            print(f"{gate_scope.rel(md)}:{i + 1}")
             print(f"    UNRECORDED: {claim} is absent and no removal record names it")
     return claimed, faults
 
 
 def main(argv: list[str]) -> int:
-    subtree = REPO_ROOT / argv[1] if len(argv) > 1 else REPO_ROOT
-    if not subtree.exists():
-        print(f"MISSING {subtree}")
+    subtrees = gate_scope.scope(argv[1] if len(argv) > 1 else None)
+    if not subtrees[0].exists():
+        print(f"MISSING {subtrees[0]}")
         return 1
 
     checked = 0
@@ -265,7 +267,7 @@ def main(argv: list[str]) -> int:
     corpus = removal_corpus()
     known_packages = package_index()
 
-    for md in markdown_files(subtree):
+    for md in (m for subtree in subtrees for m in markdown_files(subtree)):
         lines = md.read_text(encoding="utf-8").splitlines()
         for i, line in enumerate(lines):
             match = SOURCE_LINE.match(line)
@@ -280,7 +282,7 @@ def main(argv: list[str]) -> int:
                 qualifier = (
                     f" (relative to {', '.join(packages)})" if packages else ""
                 )
-                print(f"{md.relative_to(REPO_ROOT)}:{i + 1}")
+                print(f"{gate_scope.rel(md)}:{i + 1}")
                 print(f"    unresolved: {path}{qualifier}")
 
         seen, bad = audit_module_dirs(md, lines, corpus, known_packages)

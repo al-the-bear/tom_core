@@ -1,5 +1,0 @@
-tags:
-  emulator:
-    # Needs Lowkey Vault, an Azure Key Vault emulator: tool/run_emulator_tests.sh starts one. Without
-    # it the tests skip themselves.
-    timeout: 2x

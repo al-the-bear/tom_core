@@ -17,4 +17,4 @@ dev_dependencies:
   test: ^1.28.0
   # Regenerates the two clients and checks the committed ones are current.
   tom_core_openapi:
-    path: ../../tom_core_openapi
+    path: ../../../core_extension/tom_core_openapi

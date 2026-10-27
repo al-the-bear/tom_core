@@ -59,6 +59,7 @@ import sys
 from pathlib import Path
 
 from gate_report import report_faults
+import gate_scope
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -96,7 +97,7 @@ COUNTED = re.compile(r"^(\d+) of (\d+) files$")
 
 
 def module_dirs(package: str) -> list[Path]:
-    root = REPO_ROOT / package / PACKAGES[package][0]
+    root = gate_scope.package_dir(package) / PACKAGES[package][0]
     return sorted(d for d in root.iterdir() if d.is_dir()) if root.is_dir() else []
 
 
@@ -110,7 +111,7 @@ def module_files(mdir: Path) -> list[str]:
 
 def dependencies(package: str, mdir: Path) -> dict[str, tuple[str, set[str]]]:
     """``key -> (kind, importing files)``, keyed as a table row names it."""
-    src = (REPO_ROOT / package / PACKAGES[package][0]).resolve()
+    src = (gate_scope.package_dir(package) / PACKAGES[package][0]).resolve()
     found: dict[str, tuple[str, set[str]]] = {}
 
     for path in sorted(mdir.rglob("*.dart")):
@@ -208,10 +209,10 @@ def audit_module(package: str, mdir: Path, doc: Path) -> list[str]:
 
     body = section(doc)
     if body is None:
-        return [f"NOSECTION {doc.relative_to(REPO_ROOT)} — no `{HEADING}` section"]
+        return [f"NOSECTION {gate_scope.rel(doc)} — no `{HEADING}` section"]
 
     table = [ln for ln in body if ln.startswith("|")]
-    rel = doc.relative_to(REPO_ROOT)
+    rel = gate_scope.rel(doc)
     deps = dependencies(package, mdir)
     files = module_files(mdir)
 
@@ -308,7 +309,7 @@ def audit(prefix: str | None) -> tuple[list[str], int]:
         if prefix and not package.startswith(prefix):
             continue
         for mdir in module_dirs(package):
-            doc = REPO_ROOT / package / docpat.format(m=mdir.name)
+            doc = gate_scope.package_dir(package) / docpat.format(m=mdir.name)
             faults += audit_module(package, mdir, doc)
             audited += 1
     return faults, audited
@@ -371,8 +372,8 @@ def self_test() -> int:
     failures = 0
     for name, probe, perturb, expected in SELF_TESTS:
         package, module, docrel = probe
-        doc = REPO_ROOT / package / docrel
-        mdir = REPO_ROOT / package / PACKAGES[package][0] / module
+        doc = gate_scope.package_dir(package) / docrel
+        mdir = gate_scope.package_dir(package) / PACKAGES[package][0] / module
         original = doc.read_text()
 
         clean = audit_module(package, mdir, doc)

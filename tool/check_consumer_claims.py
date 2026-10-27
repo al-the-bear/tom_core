@@ -63,6 +63,7 @@ import sys
 from pathlib import Path
 
 from gate_report import report_faults
+import gate_scope
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -180,15 +181,15 @@ def claims(text: str) -> list[tuple[int, str]]:
 
 
 def main(argv: list[str]) -> int:
-    root = REPO_ROOT / argv[0] if argv else REPO_ROOT
-    if not root.exists():
+    root = gate_scope.at(argv[0]) if argv else None
+    if root is not None and not root.exists():
         print(f"no such path: {root}", file=sys.stderr)
         return 2
 
     # Indexed repo-wide, reported subtree-only: see the module docstring on
     # why a subtree-scoped index cannot tell "deleted" from "elsewhere".
     text_of: dict[Path, str] = {}
-    for path in source_files(REPO_ROOT):
+    for path in (p for r in gate_scope.ROOTS for p in source_files(r)):
         try:
             text_of[path] = path.read_text(encoding="utf-8")
         except OSError:
@@ -228,7 +229,8 @@ def main(argv: list[str]) -> int:
     unbacked: list[tuple[Path, int, str, str]] = []
     missing: list[tuple[Path, int, str]] = []
 
-    for path in source_files(root):
+    for path in (p for r in ([root] if root else gate_scope.ROOTS)
+                 for p in source_files(r)):
         text = text_of.get(path)
         if text is None:
             continue
@@ -258,17 +260,17 @@ def main(argv: list[str]) -> int:
             code = library_code(library_root(consumer, text_of[consumer]))
             if not any(re.search(rf"\b{re.escape(n)}\b", code) for n in offered):
                 unbacked.append(
-                    (path, number, name, str(consumer.relative_to(REPO_ROOT)))
+                    (path, number, name, str(gate_scope.rel(consumer)))
                 )
         checked += 1
 
     for path, number, name in missing:
-        rel = path.relative_to(REPO_ROOT)
+        rel = gate_scope.rel(path)
         print(f"{rel}:{number}: claims [{name}] uses this, but no such type "
               f"is declared anywhere in the repo")
 
     for path, number, name, consumer in unbacked:
-        rel = path.relative_to(REPO_ROOT)
+        rel = gate_scope.rel(path)
         print(f"{rel}:{number}: claims [{name}] uses this, but {consumer} "
               f"references nothing this library declares")
 

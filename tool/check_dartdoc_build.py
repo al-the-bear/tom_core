@@ -81,6 +81,7 @@ from pathlib import Path
 
 from dartdoc_links import allowed_packages, scan, self_test
 from gate_report import report_faults
+import gate_scope
 
 TOOL_DIR = Path(__file__).resolve().parent
 REPO_ROOT = TOOL_DIR.parent
@@ -91,8 +92,7 @@ SCRATCH = TOOL_DIR / "ztmp" / "dartdoc"
 #: have not been surveyed. The `advanced_*` samples are discovered rather than
 #: listed, so a ninth is gated the day it is added.
 PACKAGES = ["tom_core_kernel", "tom_core_agentic", "tom_core_codespecs",
-            "tom_core_openapi", "tom_core_secrets_aws",
-            "tom_core_secrets_azure", "tom_core_secrets_vault"] + sorted(
+            "tom_core_openapi", "tom_core_secrets"] + sorted(
     f"tom_core_samples/{d.name}"
     for d in (REPO_ROOT / "tom_core_samples").glob("advanced_*")
     if (d / "pubspec.yaml").is_file())
@@ -145,7 +145,7 @@ def faults_in(log: str) -> tuple[list[str], int, int]:
             if place:
                 path = place.group(2)
                 try:
-                    path = str(Path(path.split(":")[0]).relative_to(REPO_ROOT))
+                    path = str(gate_scope.rel(Path(path.split(":")[0])))
                 except ValueError:
                     pass
                 tail = ":".join(place.group(2).split(":")[1:])
@@ -174,7 +174,7 @@ def main(argv: list[str]) -> int:
         return 2
 
     SCRATCH.mkdir(parents=True, exist_ok=True)
-    packages = [REPO_ROOT / name for name in wanted]
+    packages = [gate_scope.at(name) for name in wanted]
     for package in packages:
         if not (package / "pubspec.yaml").is_file():
             print(f"{package.name} is not a package under {REPO_ROOT}",

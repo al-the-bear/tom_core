@@ -13,35 +13,50 @@ library;
 
 import 'dart:io';
 
-/// The repository root, `tom_ai/core`, found from the package a suite runs in.
-///
-/// A suite runs with its package root as the working directory. The root is
-/// the nearest ancestor holding `tool/check_gates.py`, so a package nested
-/// deeper -- a sample under `tom_core_samples/` -- finds it as well as one
-/// sitting directly beneath it.
-Directory repositoryRoot() {
-  var dir = Directory.current.absolute;
-  while (true) {
-    if (File('${dir.path}/tool/check_gates.py').existsSync()) return dir;
-    final parent = dir.parent;
-    if (parent.path == dir.path) {
-      throw StateError(
-        'no ancestor of ${Directory.current.path} holds tool/check_gates.py, '
-        'so this suite is not running inside tom_ai/core',
-      );
-    }
-    dir = parent;
-  }
-}
+/// The repository whose `tool/` holds the gates, `tom_ai/core`, found from the
+/// package a suite runs in.
+Directory repositoryRoot() => _roots().core;
 
-/// The package a suite runs in, as a path relative to [repositoryRoot] --
-/// `tom_core_kernel`, or `tom_core_samples/advanced_ops_server`.
+/// The package a suite runs in, as a path relative to the root that holds it
+/// -- `tom_core_kernel`, `tom_core_samples/advanced_ops_server`, or, for a
+/// package of `tom_core_extensions`, `tom_core_agentic`. The gates resolve
+/// such a path in either root (`tool/gate_scope.py`).
 String packagePath() {
-  final root = repositoryRoot().uri.pathSegments.where((s) => s.isNotEmpty);
+  final root = _roots().own.uri.pathSegments.where((s) => s.isNotEmpty);
   final here = Directory.current.absolute.uri.pathSegments.where(
     (s) => s.isNotEmpty,
   );
   return here.skip(root.length).join('/');
+}
+
+/// The gates' repository and the repository the current package is in.
+///
+/// A suite runs with its package root as the working directory. Walking up,
+/// the first directory holding `tool/check_gates.py` is `tom_ai/core` itself
+/// -- found from a sample nested under `tom_core_samples/` as well as from a
+/// package directly beneath it. A package of `tom_core_extensions` finds
+/// instead the directory whose sibling `core/` holds the gates: that is
+/// `tom_ai/core_extension`, and the gates read it too.
+({Directory core, Directory own}) _roots() {
+  var dir = Directory.current.absolute;
+  while (true) {
+    if (File('${dir.path}/tool/check_gates.py').existsSync()) {
+      return (core: dir, own: dir);
+    }
+    final sibling = Directory('${dir.parent.path}/core');
+    if (File('${sibling.path}/tool/check_gates.py').existsSync()) {
+      return (core: sibling, own: dir);
+    }
+    final parent = dir.parent;
+    if (parent.path == dir.path) {
+      throw StateError(
+        'no ancestor of ${Directory.current.path} holds tool/check_gates.py '
+        'or sits beside a core/ that does, so this suite is not running '
+        'inside tom_ai/core or tom_ai/core_extension',
+      );
+    }
+    dir = parent;
+  }
 }
 
 /// The launchers that start Python 3, in the order they are tried.
@@ -95,7 +110,7 @@ class PackageGateResult {
 /// Runs `tool/<gate>.py` with this package's path as its argument.
 ///
 /// Every checker that accepts a subtree takes it as a path relative to the
-/// repository root, which is what [packagePath] returns.
+/// root that holds it, which is what [packagePath] returns.
 PackageGateResult runPackageGate(String gate) {
   final result = runPython(['tool/$gate.py', packagePath()]);
   final output = '${result.stdout}${result.stderr}';

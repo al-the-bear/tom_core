@@ -82,6 +82,7 @@ from pathlib import Path
 
 from check_unimplemented_claims import index_types
 from gate_report import report_faults
+import gate_scope
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -130,7 +131,7 @@ def declares_inventory(overview: str) -> bool:
 def packages(subtree: str | None) -> list[Path]:
     found = [
         entry
-        for entry in sorted(REPO_ROOT.iterdir())
+        for entry in gate_scope.top_level_entries()
         if entry.is_dir() and (entry / "lib").is_dir() and (entry / "doc").is_dir()
     ]
     if subtree is None:
@@ -267,7 +268,7 @@ def audit(subtree: str | None) -> tuple[list[str], dict[str, int]]:
                 # had stopped finding declarations would fail the landmarks, not
                 # slip past one module at a time.
                 continue
-            where = document.relative_to(REPO_ROOT)
+            where = gate_scope.rel(document)
             counted[str(where)] = len(declared)
             named = named_in(overview.group(1))
             for missing in sorted(declared - named):

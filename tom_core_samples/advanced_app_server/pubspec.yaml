@@ -35,4 +35,4 @@ dev_dependencies:
     path: ../../../reflection/tom_reflection_generator
   # Writes openapi/openapi.json from the endpoint annotations (tool/openapi.dart).
   tom_core_openapi:
-    path: ../../tom_core_openapi
+    path: ../../../core_extension/tom_core_openapi

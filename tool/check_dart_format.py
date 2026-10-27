@@ -62,6 +62,7 @@ import sys
 from pathlib import Path
 
 from gate_report import report_faults
+import gate_scope
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -101,7 +102,8 @@ def dart_files() -> list[Path]:
             elif entry.suffix == ".dart" and not name.endswith(GENERATED):
                 found.append(entry)
 
-    walk(REPO_ROOT)
+    for root in gate_scope.ROOTS:
+        walk(root)
     return found
 
 
@@ -118,18 +120,24 @@ def unformatted(files: list[Path], fix: bool = False) -> list[str]:
     if not files:
         return []
     args = ["format"] if fix else ["format", "--output=none"]
-    relative = [str(f.relative_to(REPO_ROOT)) for f in files]
-    result = subprocess.run(
-        ["dart", *args, *relative],
-        capture_output=True,
-        text=True,
-        cwd=REPO_ROOT,
-    )
     touched = []
-    for line in result.stdout.splitlines():
-        for prefix in ("Changed ", "Formatted "):
-            if line.startswith(prefix) and line.rstrip().endswith(".dart"):
-                touched.append(line[len(prefix) :].strip())
+    # One run per root, from that root, so a path in and out is relative to
+    # the root that holds it (see gate_scope).
+    for root in gate_scope.ROOTS:
+        mine = [f for f in files if gate_scope.root_of(f) == root]
+        if not mine:
+            continue
+        relative = [str(gate_scope.rel(f)) for f in mine]
+        result = subprocess.run(
+            ["dart", *args, *relative],
+            capture_output=True,
+            text=True,
+            cwd=root,
+        )
+        for line in result.stdout.splitlines():
+            for prefix in ("Changed ", "Formatted "):
+                if line.startswith(prefix) and line.rstrip().endswith(".dart"):
+                    touched.append(line[len(prefix) :].strip())
     return sorted(touched)
 
 
