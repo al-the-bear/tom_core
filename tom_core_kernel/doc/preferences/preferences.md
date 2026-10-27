@@ -2,7 +2,8 @@
 
 The Preferences module is the *contract* half of user preferences: the
 well-known keys, the wire DTOs, the value codec, and the API declaration that a
-client and a server both bind to.
+client and a server both bind to — and the keys a principal's notification
+choices are stored under, with the API that lists what they can choose.
 
 ## Table of Contents
 
@@ -31,6 +32,8 @@ client and a server both bind to.
     - [Where the key is stated](#where-the-key-is-stated)
     - [Changes are pulled, not pushed](#changes-are-pulled-not-pushed)
   - [TomUserPreferencesApiService](#tomuserpreferencesapiservice)
+  - [TomNotificationPreferenceKeys](#tomnotificationpreferencekeys)
+  - [tomNotificationPreferencesApi](#tomnotificationpreferencesapi)
 - [The Two Stores](#the-two-stores)
   - [When both stores hold the same key](#when-both-stores-hold-the-same-key)
 - [Usage Examples](#usage-examples)
@@ -61,6 +64,7 @@ client and a server both bind to.
 | `TomUserPreferenceCodec` | class | Encodes/decodes preference values; refuses a type mismatch rather than coercing. |
 | `TomUserPreferenceCodecException` | class | Encode/decode failure (extends `TomException`). |
 | `TomUserPreferenceKeyException` | class | Raised when a preference key does not satisfy `TomUserPreferenceKeys`. |
+| `TomNotificationPreferenceKeys` | abstract final class | The keys a principal's notification choices are stored under (`notifications.type.<type>`, `notifications.category.<category>`, `notifications.cadence.type.<type>`, `notifications.cadence.category.<category>`, `notifications.quietHours`, `notifications.timeZone`, `notifications.digestTime`) and the encoding of their values. |
 
 A preference is a typed value belonging to one user. The *store* is not here —
 server-stored preferences live in `tom_core_server`
@@ -74,6 +78,11 @@ client. What lives here is the part both halves must agree on:
 - **`TomUserPreferenceCodec`** — how a value becomes JSON text and comes back.
 - **`tomUserPreferencesApi`** — the URI, method, request type, result type and
   access policy of every preference endpoint.
+- **`TomNotificationPreferenceKeys`** and **`tomNotificationPreferencesApi`** —
+  the keys a principal's notification choices are stored under, and the one
+  endpoint that lists the notification types a user may configure. The
+  choices are ordinary preferences; the rules that read them are
+  `tom_core_server`'s `notifications` module.
 
 The kernel is the framework's contracts package: it is the one package a client
 and a server both already depend on, so declaring any of the above elsewhere
@@ -872,6 +881,66 @@ The contract's Dart face — implemented by the server, and by any hand-written 
 generated client caller. It carries no annotation, because the server-side ones
 live in `tom_core_server` and cannot be named from the kernel.
 
+### TomNotificationPreferenceKeys
+
+Which channels a user receives a notification on, and when, is stored as
+ordinary user preferences — `String` values under keys this class spells. There
+is no second store: a client writes them through `writePreference`
+(`PUT /preferences`), and role and deployment defaults apply beneath them like
+beneath any other key.
+
+| Key | Value | Meaning |
+| --- | ----- | ------- |
+| `typeKey('taskAssigned')` → `notifications.type.taskAssigned` | `email,push` | The channels for one notification type |
+| `categoryKey('tasks')` → `notifications.category.tasks` | `email` | The channels for every type of the category with no choice of its own |
+| `quietHoursKey` → `notifications.quietHours` | `22:00-07:00` | The window non-urgent notifications wait out; one ending before it starts runs past midnight |
+| `timeZoneKey` → `notifications.timeZone` | `Europe/Berlin` | The IANA zone the window and the digest time are read in; UTC when unset |
+| `typeCadenceKey('taskAssigned')` → `notifications.cadence.type.taskAssigned` | `hourly` | How often one type is delivered: `immediate`, `hourly` or `daily` (`cadences`) |
+| `categoryCadenceKey('tasks')` → `notifications.cadence.category.tasks` | `daily` | The cadence for every type of the category with no cadence of its own |
+| `digestTimeKey` → `notifications.digestTime` | `18:30` | When a daily digest goes out; 08:00 when unset |
+
+A choice is looked up from the most specific key to the least: the type's own
+key, then its category's, then the type's declared default channels. **An empty
+string is a choice** — "no channel" — and differs from an absent key, which
+defers to the next level. `encodeChannels` writes channel names
+comma-separated, without duplicates and sorted, so one choice is always one
+string; `decodeChannels` reads them back and drops blanks.
+
+A cadence is looked up the same way — the type's cadence key, then its
+category's, then the type's declared default cadence — and a value that names
+no cadence counts as unset. An `hourly` or `daily` cadence collects the type's
+notifications into one digest message per channel; an urgent type is always
+delivered at once, whatever is stored.
+
+```dart
+// email and push for task assignments, nothing for weekly digests
+final writes = {
+  TomNotificationPreferenceKeys.typeKey('taskAssigned'):
+      TomNotificationPreferenceKeys.encodeChannels(['push', 'email']),
+  TomNotificationPreferenceKeys.typeKey('weeklyDigest'): '',
+};
+// {notifications.type.taskAssigned: email,push,
+//  notifications.type.weeklyDigest: }
+```
+
+The type and category names are the application's; what a type allows, and
+how the stored value is cut down to that, is decided on the server — see
+`tom_core_server`'s `doc/notifications.md`.
+
+### tomNotificationPreferencesApi
+
+`GET /notification-preferences`, `TomAuthenticatedAccess`, endpoint id
+`listNotificationPreferences` under the API id `tomNotificationPreferences`. It
+answers what a settings screen offers: every notification type the server
+registered, with the channels it may use, the channels in effect for the caller
+and where they came from (`type`, `category` or `default`), its cadence,
+whether it is mandatory or urgent, and the caller's quiet hours, time zone and
+digest time. It writes
+nothing; the choices go through the `/preferences` endpoints.
+
+`registerTomNotificationPreferencesApi()` registers it with `tomRemoteApis`,
+idempotently; the server's framework API registration calls it.
+
 ## The Two Stores
 
 Preferences come in two kinds, and the split is a design decision rather than an
@@ -1095,7 +1164,7 @@ its registry.
 | ---------- | ---- | ----------- | --- |
 | `dart:convert` | dart | `user_preference_codec.dart` | `jsonEncode` / `jsonDecode` in `user_preference_codec.dart`, which is how a preference value crosses the store boundary as text |
 | `tom_reflection` | package | `user_preference_codec.dart` | `tomReflector`, `ClassMirror` and `TomReflectionInfo` — a preference object crosses the wire as reflected JSON |
-| [http_connection](../http_connection/http_connection.md) | module | `user_preferences_contract.dart` | `TomApi`, `TomApiEndpoint`, the API registry |
+| [http_connection](../http_connection/http_connection.md) | module | `notification_preferences_contract.dart`, `user_preferences_contract.dart` | `TomApi`, `TomApiEndpoint`, the API registry |
 | [little_things](../little_things/little_things.md) | module | `user_preference_codec.dart`, `user_preference_keys.dart`, `user_preferences_contract.dart` | `TomException`, the base of the codec's exception and the bulk write's `preferences.bulk.malformed` refusal |
 | [reflection](../reflection/reflection.md) | module | `user_preference_codec.dart`, `user_preferences_contract.dart` | `@tomReflector` and the JSON conversion path |
-| [security](../security/security.md) | module | `user_preferences_contract.dart` | `TomAuthenticatedAccess` for the endpoint access policy |
+| [security](../security/security.md) | module | `notification_preferences_contract.dart`, `user_preferences_contract.dart` | `TomAuthenticatedAccess` for the endpoint access policy |

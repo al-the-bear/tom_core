@@ -548,6 +548,12 @@ The store also answers `backlog(now)`: the runs that are due — `pending`, with
 `TomJobBacklog` (`due`, `oldestDueAt`). It changes nothing; the scheduler reads
 it for its [backlog gauges](#metrics). A paused job's runs are not in it.
 
+`findRun(id)` answers the run recorded under an id, in any state, or `null`.
+A component that enqueues runs under ids of its own asks it before enqueueing:
+the messaging outbox keys each run by its message, and a message whose run is
+already there — queued, delivered or failed for good — is not queued again. A
+run `purgeFinished` removed is not found.
+
 The contract also holds the paused jobs (`pauseJob`, `resumeJob`, `pausedJobs` —
 see [Pausing a Job](#pausing-a-job)) and the checkpoint a running body saves
 (`saveCheckpoint`, fenced on the claim like every transition — see

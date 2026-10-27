@@ -122,6 +122,7 @@ const _stepCounts = <String, int>{
   'example/messaging/messaging_templated_example.dart': 12,
   'example/messaging/sms_gateway_presets.dart': 7,
   'example/metrics/metrics_example.dart': 6,
+  'example/notifications/notifications_example.dart': 10,
   'example/object_persistence/entity_lifecycle_example.dart': 6,
   'example/object_persistence/subquery_example.dart': 5,
   'example/object_persistence/field_encryption_example.dart': 10,

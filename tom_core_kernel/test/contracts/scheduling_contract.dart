@@ -98,6 +98,19 @@ void runTomJobStoreContract(String variant, TomJobStoreFactory create) {
       expect((await store.findWindow('job', at))!.id, 'a');
     });
 
+    test('findRun finds a run by id in every state, until it is '
+        'purged', () async {
+      expect(await store.findRun('a'), isNull);
+      await store.enqueue(makeRun('a'));
+      expect((await store.findRun('a'))!.state, TomJobRunState.pending);
+      final claimed = (await store.claimDue(at, 'owner-1')).single;
+      await store.complete(claimed, at);
+      expect((await store.findRun('a'))!.state, TomJobRunState.succeeded);
+      expect(await store.findRun('b'), isNull);
+      await store.purgeFinished(at.add(const Duration(days: 1)));
+      expect(await store.findRun('a'), isNull);
+    });
+
     test(
       'a tenant\'s run keeps its tenant, and its window is its own',
       () async {

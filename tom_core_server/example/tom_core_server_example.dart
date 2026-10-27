@@ -202,6 +202,12 @@ const List<TourStop> tour = [
         'once, and acknowledged only after it was',
   ),
   TourStop(
+    'example/notifications/notifications_example.dart',
+    'Notification types and per-user channel choices: one notification fanned '
+        'out to the outbox, held through quiet hours, and sent once however '
+        'often it is dispatched',
+  ),
+  TourStop(
     'example/export/export_example.dart',
     'The streaming tabular shape, columns derived from a reflected entity, '
         'the CSV/XLSX/PDF renderers, the format registry and the storage '

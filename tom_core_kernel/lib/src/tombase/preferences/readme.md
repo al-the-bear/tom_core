@@ -7,7 +7,9 @@ The **wire contract** for server-stored user preferences: the DTOs, the value
 codec, the well-known key vocabulary, and the `TomApi` declaration the server
 binds its endpoints to. The *store* lives in `tom_core_server`
 (`preferences/`); what lives here is everything a client and a server must
-agree on, in the one package they both already depend on.
+agree on, in the one package they both already depend on. That includes the
+keys a principal's notification choices are stored under: they are ordinary
+preferences, read by `tom_core_server`'s `notifications` module.
 
 ## Key types
 
@@ -24,6 +26,8 @@ agree on, in the one package they both already depend on.
 | `tomUserPreferencesApi` | The `TomApi`: `GET`/`PUT`/`POST`/`DELETE` under `/preferences`, all `TomAuthenticatedAccess`. Six endpoints — the by-key and collection reads, the single write (`PUT /preferences`), the bulk write (`POST /preferences`, all or none), the by-key delete, and a `DELETE /preferences` that clears the account |
 | `tomUserPreferencesMaxPerPrincipal` / `tomUserPreferencesLimitExceededErrorKey` | The store's ceiling — 256 preferences per principal — and the key of the `409` a write answers when it would add one more. With the codec's 16 KiB `maxValueBytes` it bounds the unpaged list |
 | `tomUserPreferenceOriginUser` / `…OriginRole` / `…OriginDeployment` | The values of `TomUserPreferenceDto.origin` |
+| `TomNotificationPreferenceKeys` | The keys a principal's notification choices are stored under — `typeKey(type)` (`notifications.type.<type>`), `categoryKey(category)`, `typeCadenceKey(type)` / `categoryCadenceKey(category)` (`notifications.cadence.type.<type>`, `…category.<category>`, one of `cadences`: `immediate`, `hourly`, `daily`), `quietHoursKey` (`notifications.quietHours`, `HH:MM-HH:MM`), `timeZoneKey` (`notifications.timeZone`, an IANA name) and `digestTimeKey` (`notifications.digestTime`, `HH:MM`, 08:00 when unset) — and `encodeChannels` / `decodeChannels` for the comma-separated channel names. An empty value is a choice ("no channel"); an absent key defers to the next level |
+| `tomNotificationPreferencesApi` | The `TomApi` of `GET /notification-preferences` (`TomAuthenticatedAccess`): every notification type the server registered, with the channels it may use, the channels and cadence in effect for the caller, and the caller's quiet hours and digest time. `registerTomNotificationPreferencesApi()` registers it; `tomNotificationPreferencesApiId` / `tomNotificationPreferencesListEndpointId` are its ids |
 | `tomUserPreferencesNotFoundErrorKey` | `preferences.not_found` — how the read says "neither written nor defaulted": a `404` carrying the error envelope with this `errorKey`. A bare `404` is a refusal, so the key, not the status, is what a caller branches on |
 
 ## Quick start

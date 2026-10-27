@@ -1,7 +1,8 @@
 # Tom Core Kernel API Reference: Preferences Module
 
 The keys, wire DTOs, value codec and API declaration shared by the server-side
-and device-side preference stores.
+and device-side preference stores, and the preference keys and API declaration
+of a principal's notification choices.
 
 ## Table of Contents
 
@@ -17,20 +18,29 @@ and device-side preference stores.
   - [TomUserPreferencesApiService](#tomuserpreferencesapiservice)
   - [TomUserPreferenceCodec](#tomuserpreferencecodec)
   - [TomUserPreferenceCodecException](#tomuserpreferencecodecexception)
+  - [TomNotificationPreferenceKeys](#tomnotificationpreferencekeys)
 - [Global Functions and Constants](#global-functions-and-constants)
 - [The tomUserPreferencesApi Endpoints](#the-tomuserpreferencesapi-endpoints)
+- [The tomNotificationPreferencesApi Endpoint](#the-tomnotificationpreferencesapi-endpoint)
 
 ## Overview
 
 Sources: `lib/src/tombase/preferences/user_preference_keys.dart`,
 `lib/src/tombase/preferences/user_preferences_contract.dart`,
-`lib/src/tombase/preferences/user_preference_codec.dart`.
+`lib/src/tombase/preferences/user_preference_codec.dart`,
+`lib/src/tombase/preferences/notification_preferences_contract.dart`.
 
 This module holds the contract half of user preferences. The store itself is
 elsewhere — server-stored preferences live in `tom_core_server`, device-stored
 ones on the client — but both bind to the declarations here: the well-known
 keys, the wire DTOs, the codec that decides how a value becomes JSON text and
 comes back, and the `TomApi` describing the six `/preferences` endpoints.
+
+A principal's notification choices are ordinary preferences. The server's
+`notifications` module reads them under the keys `TomNotificationPreferenceKeys`
+spells, a client writes them through the `/preferences` endpoints like any
+other value, and `tomNotificationPreferencesApi` declares the one endpoint that
+lists the notification types a user may configure.
 
 A stored preference is JSON text plus the name of the type it was written as.
 The name travels with the value because JSON forgets types, and it is what lets
@@ -52,6 +62,8 @@ TomUserPreferenceKeyRequest        (@tomReflector)
 TomUserPreferencesApiService       (abstract)
 
 TomUserPreferenceCodec             (static-only)
+
+TomNotificationPreferenceKeys      (abstract final; constants + key builders)
 
 TomException
 ├── TomUserPreferenceKeyException
@@ -378,6 +390,39 @@ values and what each one means.
 The two `preferences.type.*` keys are not on either side of the wire: they are
 raised while *naming* a value, so they belong to both the write and the read.
 
+### TomNotificationPreferenceKeys
+
+The preference keys a principal's notification choices are stored under, and
+the encoding of their values. Every value is a `String`.
+
+A choice is looked up from the most specific key to the least: the type's own
+key, then its category's, then the type's declared default channels. An empty
+string is a choice — "no channel" — and differs from an absent key, which
+defers to the next level.
+
+- **Declaration:** `abstract final class`; never instantiated.
+
+#### Constants
+
+| Constant | Type | Value | Description |
+| -------- | ---- | ----- | ----------- |
+| `prefix` | `String` | `notifications` | The prefix of every notification preference key. |
+| `quietHoursKey` | `String` | `notifications.quietHours` | The quiet hours, `HH:MM-HH:MM` in the principal's time zone; a window ending before it starts runs past midnight. |
+| `timeZoneKey` | `String` | `notifications.timeZone` | The IANA time zone the quiet hours and the digest time are read in (`Europe/Berlin`); UTC when unset. |
+| `digestTimeKey` | `String` | `notifications.digestTime` | The time of day a daily digest goes out, `HH:MM` in the principal's time zone; 08:00 when unset. |
+| `cadences` | `List<String>` | `['immediate', 'hourly', 'daily']` | The values a cadence key holds. |
+
+#### Static Methods
+
+| Method | Returns | Description |
+| ------ | ------- | ----------- |
+| `typeKey(String type)` | `String` | `notifications.type.<type>` — the channels chosen for one notification type. |
+| `categoryKey(String category)` | `String` | `notifications.category.<category>` — the channels chosen for every type of the category that has no choice of its own. |
+| `typeCadenceKey(String type)` | `String` | `notifications.cadence.type.<type>` — how often one type is delivered: one of `cadences`, at once or collected into an hourly or daily digest. |
+| `categoryCadenceKey(String category)` | `String` | `notifications.cadence.category.<category>` — the cadence for every type of the category that has no cadence of its own. |
+| `encodeChannels(Iterable<String> channels)` | `String` | The channel names as a preference value: comma-separated, duplicates dropped, sorted, so one choice is always stored as one string. |
+| `decodeChannels(String value)` | `Set<String>` | The channel names a value holds, blanks dropped; the empty set for an empty value. |
+
 ## Global Functions and Constants
 
 | Name | Type | Description |
@@ -398,6 +443,10 @@ raised while *naming* a value, so they belong to both the write and the read.
 | `tomUserPreferencesNotFoundErrorKey` | `String` | `preferences.not_found` — the error key the read answers a key with neither a value of the caller's nor a default, and the contract's only statement of absence. Declared here because the server raises it and the client recognises it. |
 | `tomUserPreferencesApi` | `TomApi` | The `/preferences` API — see below. |
 | `registerTomUserPreferencesApi()` | `void` | Registers `tomUserPreferencesApi` with the global `tomRemoteApis` registry. Idempotent, and called by both halves. Explicit rather than implicit so a deployment that stores no preferences does not carry the API. |
+| `tomNotificationPreferencesApiId` | `String` | `tomNotificationPreferences` — the id `tomNotificationPreferencesApi` is registered and bound under. |
+| `tomNotificationPreferencesListEndpointId` | `String` | `listNotificationPreferences`. |
+| `tomNotificationPreferencesApi` | `TomApi` | The `/notification-preferences` API — see below. |
+| `registerTomNotificationPreferencesApi()` | `void` | Registers `tomNotificationPreferencesApi` with the global `tomRemoteApis` registry; idempotent. `TomEndpointRouting.registerFrameworkApis` in `tom_core_server` calls it. |
 
 ## The tomUserPreferencesApi Endpoints
 
@@ -480,3 +529,36 @@ not decided by this API: the server's entity declares
 `@TomDbScope(field: 'principal_id')`, so the repository confines every statement
 to the caller. No URI carries a principal parameter, because there is nothing to
 ask for but your own.
+
+## The tomNotificationPreferencesApi Endpoint
+
+Base URI `/notification-preferences`. One endpoint, `TomAuthenticatedAccess`:
+
+| Endpoint id | Method | URI | Request type | Result type |
+| ----------- | ------ | --- | ------------ | ----------- |
+| `listNotificationPreferences` | GET | `` | — | `Map<String, Object?>` |
+
+It answers what a settings screen offers a user: every registered notification
+type with the channels it may use, the channels in effect for the caller and
+where they came from, and the caller's quiet hours.
+
+```json
+{
+  "types": [
+    {"name": "taskAssigned", "category": "tasks",
+     "allowedChannels": ["email", "push", "sms"],
+     "channels": ["email", "push"], "origin": "type",
+     "cadence": "daily",
+     "mandatory": false, "urgent": false}
+  ],
+  "quietHours": "22:00-07:00",
+  "timeZone": "Europe/Berlin",
+  "digestTime": "08:00"
+}
+```
+
+`origin` is `type`, `category` or `default`. `cadence` is `immediate`,
+`hourly` or `daily`; an urgent type is always `immediate`. `quietHours` and
+`timeZone` are `null` when unset; `digestTime` is `08:00` when unset. The endpoint writes nothing: a client changes a choice by
+writing its key through `writePreference` (`PUT /preferences`), as a `String`
+from `TomNotificationPreferenceKeys.encodeChannels`.

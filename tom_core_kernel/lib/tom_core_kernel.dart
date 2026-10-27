@@ -50,6 +50,7 @@ export 'src/tombase/logging/file_log_replay_store.dart';
 export 'src/tombase/logging/remote_logserver.dart';
 export 'src/tombase/metrics/metrics.dart';
 export 'src/tombase/metrics/prometheus_text.dart';
+export 'src/tombase/preferences/notification_preferences_contract.dart';
 export 'src/tombase/preferences/user_preference_codec.dart';
 export 'src/tombase/preferences/user_preference_keys.dart';
 export 'src/tombase/preferences/user_preferences_contract.dart';

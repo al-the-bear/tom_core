@@ -935,7 +935,9 @@ A durable, retrying send queue in front of a `TomMessageRouter`. It owns no
 retry logic: it enqueues one job run per message on a scheduler of its own that
 dispatches inline, and durability, retry count, backoff, one-delivery-at-a-time
 and failure alerting all remain the kernel scheduler's. The run id is
-`'<jobName>:<messageId>'`, which makes the message its own idempotence key.
+`'<jobName>:<messageId>'`, which makes the message its own idempotence key: a
+message whose id the store still holds — queued, delivered or failed for good —
+is not queued again.
 
 - **Implements:** `TomClosable`
 
@@ -991,12 +993,12 @@ all — are routinely measured in minutes.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `send` | `Future<void> send(TomMessage message)` | Queues `message` and returns once it is durably stored. Enqueues directly rather than through the schedule's event stream, so two messages composed in the same instant are two runs, and gives the run a window instant of its own (`TomEventInstants.next`), so two messages queued in the same microsecond do not share the store's `(job, tenant, scheduled instant)` key — the second would replace the first. The run records the tenant in context, and the message is delivered inside it — a transport choosing a per-tenant sending identity reads it from `TomTenantContext.currentId`; the receipt and the delivery correlation name it. Throws `TomMessagingException` once the outbox is closed. |
-| `sendNow` | `Future<void> sendNow(TomMessage message)` | Queues `message` and ticks immediately, for a case where the tick interval is felt by a human. A failure still retries on the queue exactly as `send` would. |
+| `send` | `Future<bool> send(TomMessage message, {DateTime? notBefore})` | Queues `message` and returns once it is durably stored, answering `true`. A message whose id the store already holds a run for — queued, delivered, or failed for good — is not queued again, and `send` answers `false`: a caller retrying a `send` it is unsure completed causes no second delivery, however long ago the first went out. The id is held until `purgeFinished` removes its run. `notBefore` holds the message in the queue until that instant — the first attempt is made at the first tick after it; an instant already past is the same as none. Enqueues directly rather than through the schedule's event stream, so two messages composed in the same instant are two runs, and gives the run a window instant of its own (`TomEventInstants.next`), so two messages queued in the same microsecond do not share the store's `(job, tenant, scheduled instant)` key — the second would replace the first. The run records the tenant in context, and the message is delivered inside it — a transport choosing a per-tenant sending identity reads it from `TomTenantContext.currentId`; the receipt and the delivery correlation name it. Throws `TomMessagingException` once the outbox is closed. |
+| `sendNow` | `Future<void> sendNow(TomMessage message)` | Queues `message` (as `send` does, so a message already held is not queued again) and ticks immediately, for a case where the tick interval is felt by a human. A failure still retries on the queue exactly as `send` would. |
 | `tick` | `Future<void> tick()` | Runs one delivery pass; exposed so a test can drive delivery without waiting on wall-clock time. |
 | `start` | `void start()` | Begins delivering on the scheduler's tick interval, and registers this outbox in `started` until `close`. Throws `TomMessagingException` (`messaging.outbox.closed`) once the outbox is closed. |
 | `oldestWaitingSince` | `Future<DateTime?> oldestWaitingSince()` | When the oldest message of this outbox that is due and not yet taken for delivery started waiting, or `null` when none waits — read from the store's backlog for `jobName`. The framework readiness check compares it against `maxOutboxWait` when one is set. |
-| `purgeFinished` | `Future<int> purgeFinished(DateTime before)` | Drops finished runs recorded before `before`, returning how many. Never called on your behalf: the completed runs are a delivery audit trail whose retention is a deployment's decision. |
+| `purgeFinished` | `Future<int> purgeFinished(DateTime before)` | Drops finished runs recorded before `before`, returning how many. A purged message's id is not held, so a `send` of the same id afterwards queues it again. Never called on your behalf: the completed runs are a delivery audit trail whose retention is a deployment's decision. |
 | `close` | `Future<void> close()` | *(override)* Removes the outbox from `started`, stops delivery, closes the scheduler — releasing its leases — and closes the receipt stream, completing once all of that has. The `router` is left open. Idempotent: every call is handed the same close. |
 
 ### TomTemplatedMessageService

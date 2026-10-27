@@ -24,7 +24,7 @@ declarations are omitted.
 | Logging | [api_summary_logging.md](api_summary_logging.md) | Cross-isolate and remote log transport, outputs, and log servers, and the structured JSON line output with its zone-read context fields. |
 | Metrics | [api_summary_metrics.md](api_summary_metrics.md) | Counters, gauges, histograms and observed gauges in a per-isolate registry, and the Prometheus text rendering of its snapshot. |
 | Observable | [api_summary_observable.md](api_summary_observable.md) | Observable base, observers, and the boxed `TomObject<T>` value/collection hierarchy. |
-| Preferences | [api_summary_preferences.md](api_summary_preferences.md) | Well-known preference keys, wire DTOs, the value codec, and the `/preferences` API declaration. |
+| Preferences | [api_summary_preferences.md](api_summary_preferences.md) | Well-known preference keys, wire DTOs, the value codec, and the `/preferences` API declaration; the notification-preference keys and the `/notification-preferences` API declaration. |
 | Reflection | [api_summary_reflection.md](api_summary_reflection.md) | The kernel reflector, reflection info, and JSON (de)serialization via mirrors. |
 | Resources | [api_summary_resources.md](api_summary_resources.md) | Text and config resource providers over a JSON tree. |
 | Scheduling | [api_summary_scheduling.md](api_summary_scheduling.md) | Schedules, job definitions, the persistent run store, the lease lock, and the scheduler. |
@@ -263,6 +263,10 @@ declarations are omitted.
 | `registerTomUserPreferencesApi()` | function | Registers the API with `tomRemoteApis`; idempotent. |
 | `TomUserPreferenceKeyException` | class | Raised when a preference key does not satisfy `TomUserPreferenceKeys`. |
 | `registerTomUserPreferencesApi` | function | Registers `tomUserPreferencesApi` with the global `tomRemoteApis` registry. |
+| `TomNotificationPreferenceKeys` | abstract final class | The preference keys a principal's notification choices are stored under, and the encoding of their values. |
+| `tomNotificationPreferencesApi` | final | The `/notification-preferences` API: one authenticated `GET` listing the notification types the caller may configure. |
+| `tomNotificationPreferencesApiId`, `tomNotificationPreferencesListEndpointId` | const | Its API id (`tomNotificationPreferences`) and endpoint id (`listNotificationPreferences`). |
+| `registerTomNotificationPreferencesApi` | function | Registers `tomNotificationPreferencesApi` — `GET /notification-preferences` — with `tomRemoteApis`; idempotent. |
 
 ### Reflection (`lib/src/tombase/reflection/`)
 

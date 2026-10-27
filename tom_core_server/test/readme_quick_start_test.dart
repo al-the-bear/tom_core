@@ -83,6 +83,7 @@ const _quickStarts = <_QuickStart>[
     prints: ['error.order.not-found', 'true'],
   ),
   _QuickStart.runnable('messaging', prints: ['email', 'delivered']),
+  _QuickStart.runnable('notifications', prints: ['queued', 'is yours']),
   _QuickStart.runnable('object_persistence', prints: ['write the readme']),
   _QuickStart.runnable('transactions', prints: ['true']),
   _QuickStart.runnable('audit', prints: ['Invoice', 'true']),

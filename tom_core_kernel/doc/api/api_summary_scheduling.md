@@ -804,6 +804,7 @@ re-reading the store.
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `enqueue` | `Future<void> enqueue(TomJobRun run)` | Adds a run. Idempotence is the caller's job, via `findWindow`. Throws `schedule.job.payload` — **before** changing the queue — when `payload` is not JSON-encodable. |
+| `findRun` | `Future<TomJobRun?> findRun(String id)` | The run recorded under `id`, in any state, or `null`. A component that enqueues runs under ids of its own — the messaging outbox keys a run by its message — asks this before enqueueing, so the same id submitted again after its run finished does not run twice. A run removed by `purgeFinished` is not found. |
 | `findWindow` | `Future<TomJobRun?> findWindow(String jobName, DateTime scheduledFor, {String? tenant})` | The existing run for a window of `tenant` (`null` for runs of no tenant), if it was already planned. A window belongs to one tenant: the same instant for two tenants is two windows. |
 | `lastWindow` | `Future<DateTime?> lastWindow(String jobName)` | The most recent window planned for a job — where catch-up resumes from. |
 | `claimDue` | `Future<List<TomJobClaim>> claimDue(DateTime now, String owner, {int limit = 16, bool Function(TomJobRun run)? accept})` | Atomically claims up to `limit` due runs for `owner`, returning one ticket per run won. Takes runs by descending `priority`, insertion order among equals, and skips the runs of paused jobs. |
@@ -854,6 +855,7 @@ An in-process store — the default for tests and single-process use.
 | `snapshotSync` | `List<TomJobRun> snapshotSync()` | A synchronous copy of the held runs. |
 | `pausedSync` | `Map<String, DateTime> pausedSync()` | A synchronous copy of the paused jobs. |
 | `replaceAll` | `void replaceAll(Iterable<TomJobRun> runs, [Map<String, DateTime> paused = const {}])` | Replaces the runs and the paused jobs wholesale (used when loading). |
+| `findRun` | `Future<TomJobRun?> findRun(String id)` | *(override)* The held run under `id`, or `null`. |
 | `backlog` | `Future<List<TomJobBacklog>> backlog(DateTime now)` | *(override)* One pass over the held runs, counting those `isDue(now)` per job — paused jobs left out — and keeping the earliest `runAt`. |
 
 ### TomFileJobStore
@@ -909,6 +911,7 @@ effect on disk, and the price of a salvage that survives the next restart.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
+| `findRun` | `Future<TomJobRun?> findRun(String id)` | *(override)* The in-memory answer, taken under the file mutex. |
 | `backlog` | `Future<List<TomJobBacklog>> backlog(DateTime now)` | *(override)* The in-memory answer, taken under the file mutex after re-reading the file, so it counts what every store on the file has enqueued and claimed. |
 
 ## The lease lock

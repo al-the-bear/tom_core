@@ -1620,11 +1620,42 @@ void main() {
       // A caller retrying a send it is unsure completed must not cause two
       // deliveries.
       final message = _mail(id: 'same');
-      await outbox.send(message);
-      await outbox.send(message);
+      expect(await outbox.send(message), isTrue);
+      expect(await outbox.send(message), isFalse);
       expect(await outbox.store.all(), hasLength(1));
       await outbox.tick();
       expect(transport.count, 1);
+    });
+
+    test('a message already delivered is not delivered again', () async {
+      // However long after the first delivery the retry comes: the run is
+      // still in the store, finished, and the id is what the outbox asks for.
+      final message = _mail(id: 'once');
+      await outbox.sendNow(message);
+      expect(await outbox.send(message), isFalse);
+      await outbox.tick();
+      expect(transport.count, 1);
+      expect(
+        (await outbox.store.findRun('${outbox.jobName}:once'))?.state,
+        TomJobRunState.succeeded,
+      );
+    });
+
+    test('notBefore holds a message until that instant', () async {
+      await outbox.send(
+        _mail(id: 'later'),
+        notBefore: clock.now.add(const Duration(hours: 1)),
+      );
+      // An instant already past is the same as none.
+      await outbox.send(
+        _mail(id: 'now'),
+        notBefore: clock.now.subtract(const Duration(hours: 1)),
+      );
+      await outbox.tick();
+      expect(transport.sent.map((m) => m.id), ['now']);
+      clock.now = clock.now.add(const Duration(hours: 1));
+      await outbox.tick();
+      expect(transport.sent.map((m) => m.id), ['now', 'later']);
     });
 
     test('the queued payload is the message, restorable in full', () async {
@@ -1925,13 +1956,14 @@ void main() {
     });
   });
 
-  group('the five boundaries are stated, and stay true', () {
+  group('the four boundaries are stated, and stay true', () {
     // A non-goal is only worth writing down if something notices when it stops
-    // being one. `doc/messaging.md` says plainly that the notification model
-    // belongs to the application, that this module sends and will not receive,
-    // that a webhook has nothing to template, that a template language is not
-    // coming, and that DKIM is the relay's; the rules below are what make those
-    // sentences falsifiable rather than decorative.
+    // being one. `doc/messaging.md` says plainly that this module sends and
+    // will not receive, that a webhook has nothing to template, that a
+    // template language is not coming, and that DKIM is the relay's — and that
+    // the notification model lives above this module, in `notifications`, and
+    // is unknown to it. The rules below are what make those sentences
+    // falsifiable rather than decorative.
 
     const sourceRoot = 'lib/src/tomserver/messaging';
 
@@ -1972,9 +2004,10 @@ void main() {
         offenders,
         isEmpty,
         reason:
-            'the notification model belongs to the application — see "Not in '
-            'This Framework" in doc/messaging.md. These declarations say '
-            'otherwise: ${offenders.join(', ')}',
+            'the notification model is the notifications module, above this '
+            'one and unknown to it — see "Not in This Framework" in '
+            'doc/messaging.md. These declarations say otherwise: '
+            '${offenders.join(', ')}',
       );
     });
 
@@ -2055,7 +2088,7 @@ void main() {
       expect(services, isEmpty, reason: services.join(', '));
     });
 
-    test('the guide states all five boundaries rather than deferring them', () {
+    test('the guide states all four boundaries rather than deferring them', () {
       // The sentence itself, and where it sits. "Not Yet Implemented" promises
       // the framework will get to a thing, so a non-goal filed there reads as a
       // deferral — which is the one reading this section exists to prevent.
@@ -2064,7 +2097,8 @@ void main() {
         guide.indexOf('## Not in This Framework'),
         guide.indexOf('## Not Yet Implemented'),
       );
-      expect(section, contains('will not provide'));
+      expect(section, contains('Four things'));
+      expect(section, contains('[notifications module](notifications.md)'));
       expect(section, contains('will not receive'));
       expect(section, contains('no reader and no locale'));
       expect(section, contains('template *language* is not coming'));
@@ -2078,7 +2112,6 @@ void main() {
       // recommendation rather than on the bare word: "there is no IMAP client"
       // also contains "IMAP", and an assertion satisfied by the sentence that
       // states the absence would pass however the alternative was worded.
-      expect(section, contains('TomUserPreferences'));
       expect(section, contains('dedicated IMAP package'));
       expect(section, contains('puts it in a body part'));
       expect(section, contains('requiredList'));

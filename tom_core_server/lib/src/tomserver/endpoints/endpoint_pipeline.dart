@@ -1834,6 +1834,7 @@ class TomEndpointRouting {
     registerTomUserPreferencesApi();
     registerTomOAuthApi();
     registerTomFeatureFlagsApi();
+    registerTomNotificationPreferencesApi();
   }
 
   /// Scans the annotated classes and mounts every endpoint method onto a fresh

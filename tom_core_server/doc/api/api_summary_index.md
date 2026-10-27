@@ -25,6 +25,7 @@ surface documented here.
 | Little Things | [api_summary_little_things.md](api_summary_little_things.md) | The server-side base exception `TomServerException`, the `TomLoginFailure` reason its login subclass carries — correlated with the kernel's request id — `tomErrorEnvelope`, the wire shape every error response uses, and `tomErrorResponse`, which answers it as the envelope or as an RFC 9457 problem document. |
 | Messaging | [api_summary_messaging.md](api_summary_messaging.md) | Channel-neutral messages, delivery transports (SMTP, HTTP SMS gateway and stand-ins), MIME encoding, the durable outbox, resource-keyed email and SMS, and the idempotent receiver (inbox) for consuming a broker's messages once. |
 | Metrics | [api_summary_metrics.md](api_summary_metrics.md) | The request series, the Prometheus scrape endpoint answered ahead of authentication, and the OTLP/HTTP transport and metrics exporter. |
+| Notifications | [api_summary_notifications.md](api_summary_notifications.md) | The notification model above messaging: notification types and their policy, subscription resolution, per-user channel choices, cadences and quiet hours read from the user preferences, resource-keyed rendering, the dispatcher that fans a notification out to the outbox, hourly and daily digests, and `GET /notification-preferences`. |
 | Object Persistence | [api_summary_object_persistence.md](api_summary_object_persistence.md) | Persistence annotations, repositories, query builder, operators/expressions, subqueries and association filters, grouped queries and their aggregates, paging and sorting, file-reference columns, data scoping, column authorization, field-level encryption with its keys, rotation and re-encryption, and the entity lifecycle: soft delete, history tables, lifecycle hooks and change events. |
 | Preferences | [api_summary_preferences.md](api_summary_preferences.md) | Server-stored per-principal preferences: the scoped `tom_user_preference` entity, the typed service over it, the `/preferences/*` endpoints, and the deployment and role defaults beneath them. |
 | Privacy | [api_summary_privacy.md](api_summary_privacy.md) | Data-protection operations: personal-data declarations on entities, erasure, subject-access export, retention, and crypto-shredding of personal values in the audit trail with per-subject keys. |
@@ -733,6 +734,36 @@ surface documented here.
 | `tomMetricsEndpointMiddleware` | function | Answers a Prometheus scrape ahead of authentication, with an optional bearer token. |
 | `tomOtlpMetricsJson` | function | A snapshot as an OTLP `ExportMetricsServiceRequest` in JSON. |
 | `tomUnmatchedRoute` | constant | `unmatched` — the route label of a request no endpoint matched. |
+
+### Notifications (`lib/src/tomserver/notifications/`)
+
+| Type | Kind | Description |
+| ---- | ---- | ----------- |
+| `TomNotificationException` | class | A notification that cannot be declared, raised or rendered (extends `TomServerException`). |
+| `TomNotificationType` | class | A kind of notification the application raises, and its policy: allowed and default channels, category, mandatory, urgent. |
+| `TomNotificationRecipient` | class | A principal a notification reaches, with the addresses they can be reached at per channel. |
+| `TomNotification` | class | One occurrence: type, parameters, named recipients, and the id every message it fans out to derives its id from. |
+| `TomNotificationAudience` | abstract class | Subscription resolution: who receives a notification of one type; `.of(function)` for a function. |
+| `TomNotificationCatalog` | class | The registered types, each with its audience; installed as a bean. |
+| `TomQuietHours` | class | A daily window, `HH:MM-HH:MM` in the principal's zone, during which non-urgent notifications are held. |
+| `TomNotificationChoiceOrigin` | enum | Where a recipient's channels came from: `type`, `category` or `defaults`. |
+| `TomNotificationChoice` | class | What a principal receives one type on, with their quiet hours and zone. |
+| `TomNotificationPreferenceSource` | abstract class | Reads a principal's stored notification preference values. |
+| `TomUserPreferencesNotificationSource` | class | That source over `TomUserPreferences`, role and deployment defaults included. |
+| `TomNotificationPreferences` | class | The choice rules (type key, category key, type defaults, within the allowed channels), and the writes of the caller's choices. |
+| `TomNotificationRendering` | class | One notification, for one recipient, on one channel, under one message id. |
+| `TomNotificationRenderer` | abstract class | Turns a rendering into a `TomMessage`. |
+| `TomTemplatedNotificationRenderer` | class | Renders from the `notification.<type>[.<channel>]` resource keys `subject`, `body` and `html`; a webhook gets the notification as JSON. |
+| `TomNotificationDeliveryOutcome` | enum | `queued`, `deferred`, `digested`, `alreadyQueued` or `noAddress`. |
+| `TomNotificationDelivery` | class | One recipient-channel pair of a dispatch and what became of it. |
+| `TomNotificationDispatchReport` | class | Every pair a dispatch considered, and the recipients who opted out. |
+| `TomNotificationDispatcher` | class | Fans a notification out to the messaging outbox, once per recipient and chosen channel, with deterministic message ids. |
+| `TomNotificationCadence` | enum | How often a recipient receives a type: `immediate`, `hourly` or `daily`. |
+| `TomNotificationDigestItem` | class | One notification collected into a digest, as its payload holds it. |
+| `TomNotificationDigestRendering` | class | One digest — the items collected for one recipient on one channel — to render as one message. |
+| `TomNotificationDigests` | class | Collects hourly and daily notifications as pending job runs and sends each digest through the outbox when it is due. |
+| `tomNotificationDigestJobName` | constant | `notifications.digest` — the job name digest runs are stored under. |
+| `TomNotificationPreferencesServer` | class | The `@TomApiImplementation` behind the kernel's `tomNotificationPreferencesApi` (`GET /notification-preferences`). |
 
 ### Object Persistence (`lib/src/tomserver/object_persistence/`)
 
@@ -1588,6 +1619,28 @@ surface documented here.
 | `TomMutualTlsClientFactory` | Server |
 | `TomMutualTlsException` | Server |
 | `TomNoOpMessageTransport` | Messaging |
+| `TomNotification` | Notifications |
+| `TomNotificationAudience` | Notifications |
+| `TomNotificationCadence` | Notifications |
+| `TomNotificationCatalog` | Notifications |
+| `TomNotificationChoice` | Notifications |
+| `TomNotificationChoiceOrigin` | Notifications |
+| `TomNotificationDelivery` | Notifications |
+| `TomNotificationDeliveryOutcome` | Notifications |
+| `TomNotificationDigestItem` | Notifications |
+| `tomNotificationDigestJobName` | Notifications |
+| `TomNotificationDigestRendering` | Notifications |
+| `TomNotificationDigests` | Notifications |
+| `TomNotificationDispatcher` | Notifications |
+| `TomNotificationDispatchReport` | Notifications |
+| `TomNotificationException` | Notifications |
+| `TomNotificationPreferences` | Notifications |
+| `TomNotificationPreferenceSource` | Notifications |
+| `TomNotificationPreferencesServer` | Notifications |
+| `TomNotificationRecipient` | Notifications |
+| `TomNotificationRenderer` | Notifications |
+| `TomNotificationRendering` | Notifications |
+| `TomNotificationType` | Notifications |
 | `TomOAuthAuthenticationService` | Authentication |
 | `TomOAuthAuthorizationState` | Authentication |
 | `TomOAuthCredential` | Authentication |
@@ -1657,6 +1710,7 @@ surface documented here.
 | `TomQueryBuilder` | Object Persistence |
 | `TomQuerySentenceCompiler` | Object Persistence |
 | `TomQuerySyntaxException` | Object Persistence |
+| `TomQuietHours` | Notifications |
 | `TomRateLimitDecision` | Rate Limiting |
 | `TomRateLimiter` | Rate Limiting |
 | `TomRateLimitException` | Rate Limiting |
@@ -1868,6 +1922,7 @@ surface documented here.
 | `TomTabularRow` | Export |
 | `TomTabularSection` | Export |
 | `TomTemplatedMessageService` | Messaging |
+| `TomTemplatedNotificationRenderer` | Notifications |
 | `TomTenancy` | Tenancy |
 | `TomTenancyException` | Tenancy |
 | `TomTenant` | Tenancy |
@@ -1904,6 +1959,7 @@ surface documented here.
 | `TomUserPreferenceRepository` | Preferences |
 | `TomUserPreferences` | Preferences |
 | `TomUserPreferencesErrorHandler` | Preferences |
+| `TomUserPreferencesNotificationSource` | Notifications |
 | `TomUserPreferencesServer` | Preferences |
 | `TomUserTwoFactorEnrolment` | Authentication |
 | `TomUserTwoFactorEnrolmentRepository` | Authentication |

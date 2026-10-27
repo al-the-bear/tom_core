@@ -503,6 +503,14 @@ abstract class TomJobStore {
   /// [encodePayload].
   Future<void> enqueue(TomJobRun run);
 
+  /// The run recorded under [id], in whatever state, or `null`.
+  ///
+  /// A component that enqueues runs under ids of its own — the messaging
+  /// outbox keys a run by its message — asks this before enqueueing, so
+  /// submitting the same id again after the run finished does not run it a
+  /// second time. A run removed by [purgeFinished] is no longer found.
+  Future<TomJobRun?> findRun(String id);
+
   /// The run already recorded for [jobName] at [scheduledFor] for [tenant]
   /// (`null` for runs of no tenant), or `null`.
   ///
@@ -760,6 +768,9 @@ class TomMemoryJobStore implements TomJobStore {
     _runs[run.id] = run;
     onMutated();
   }
+
+  @override
+  Future<TomJobRun?> findRun(String id) async => _runs[id];
 
   @override
   Future<TomJobRun?> findWindow(
@@ -1155,6 +1166,10 @@ class TomFileJobStore extends TomMemoryJobStore {
 
   @override
   Future<void> enqueue(TomJobRun run) => _exclusively(() => super.enqueue(run));
+
+  @override
+  Future<TomJobRun?> findRun(String id) =>
+      _exclusively(() => super.findRun(id));
 
   @override
   Future<TomJobRun?> findWindow(

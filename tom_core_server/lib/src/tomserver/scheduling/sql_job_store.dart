@@ -265,6 +265,13 @@ class TomSqlJobStore implements TomJobStore {
   }
 
   @override
+  Future<TomJobRun?> findRun(String id) async {
+    await ensureSchema();
+    final rows = await _select('WHERE id = :id LIMIT 1', {'id': id});
+    return rows.isEmpty ? null : rows.first;
+  }
+
+  @override
   Future<TomJobRun?> findWindow(
     String jobName,
     DateTime scheduledFor, {

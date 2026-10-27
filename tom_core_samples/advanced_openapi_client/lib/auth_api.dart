@@ -1354,6 +1354,19 @@ class AuthApi {
     return response;
   }
 
+  /// `GET /notification-preferences`
+  ///
+  /// Every notification type with its allowed channels and the channels in effect for the caller, and the caller's quiet hours.
+  Future<Map<String, Object?>> listNotificationPreferences() async {
+    final response = await _send(
+      'GET',
+      '/notification-preferences',
+      authenticated: true,
+    );
+    final Object? decoded = jsonDecode(utf8.decode(response.bodyBytes));
+    return (decoded as Map).cast<String, Object?>();
+  }
+
   /// `POST /oauth/authorize`
   Future<TomOAuthAuthorizationDto> beginOAuthAuthorization({
     required TomOAuthAuthorizationRequest body,

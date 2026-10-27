@@ -62,18 +62,16 @@ bundle that can change a message's shape is one that can break it.
 `TomPushService` are the three templated services, each its own subclass rather
 than a generalisation of another — but a webhook's recipient is a program and
 its payload is `TomMessage.toJson()`, so there is no user-facing prose to
-resolve and no locale to resolve it in.
-
-**The notification model is not here and is not coming.** Which events notify,
-who subscribes to them, and through which channels is the *application's*
-domain vocabulary and its product's policy; this module answers only how a
-message on a named channel leaves. That is a statement of ownership rather than
-a deferral — see "Not in This Framework" in `doc/messaging.md` for what an
-application builds it out of, all of which is already here: an open channel
-value, a durable idempotent outbox, per-principal preference storage, and a
-templated-service base to render each type against. Both boundaries are stated
-under "Not in This Framework" in `doc/messaging.md`, with the reasoning and the
+resolve and no locale to resolve it in. Both boundaries are stated under "Not
+in This Framework" in `doc/messaging.md`, with the reasoning and the
 alternative for each.
+
+**Notifications are a layer above this one.** Which events notify, who
+subscribes to them, and through which channels each user wants them is the
+`notifications` module (`../notifications/`, see `doc/notifications.md`): it
+turns one notification into one message per recipient and chosen channel and
+hands each to the outbox. This module does not know that layer exists; it
+answers only how a message on a named channel leaves.
 
 **The inbox is the receiving side of a broker, beside the four layers.**
 `inbox.dart` and `inbox_sql.dart` hold the idempotent receiver: a consumer of a
@@ -253,7 +251,7 @@ Source: `outbox.dart`
 
 | Type | What it is |
 | ---- | ---------- |
-| `TomMessageOutbox` | The send queue, on the kernel's job scheduler. A send that outlives the process that asked for it, with retry driven by the permanent/transient distinction above. Each message's run gets a window instant of its own (`TomEventInstants`, in `scheduling`), so two messages queued in the same microsecond stay two runs. `start()` registers it in `TomMessageOutbox.started`, which the framework readiness check on `GET /ready` asks whether it is delivering. |
+| `TomMessageOutbox` | The send queue, on the kernel's job scheduler. A send that outlives the process that asked for it, with retry driven by the permanent/transient distinction above. Each message's run gets a window instant of its own (`TomEventInstants`, in `scheduling`), so two messages queued in the same microsecond stay two runs. The message id is the idempotence key: `send` answers `false` and queues nothing for an id the store still holds — queued, delivered or failed for good — until `purgeFinished` removes its run. `send(message, notBefore: instant)` holds a message until that instant. `start()` registers it in `TomMessageOutbox.started`, which the framework readiness check on `GET /ready` asks whether it is delivering. |
 | `tomOutboxJobName` | The scheduler job name the outbox registers under (`messaging.outbox`). |
 
 ### Application messaging

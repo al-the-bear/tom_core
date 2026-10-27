@@ -218,12 +218,15 @@ class TomMessageOutbox implements TomClosable {
   /// two answers.
   Stream<TomDeliveryReceipt> get receipts => _receipts.stream;
 
-  /// Queues [message] for delivery and returns once it is durably stored.
+  /// Queues [message] for delivery and returns once it is durably stored;
+  /// answers whether it was queued.
   ///
   /// The run id is derived from [TomMessage.id], which makes the message its
-  /// own idempotence key: submitting the same message twice replaces the queued
-  /// run rather than queueing a second copy. That is deliberate — a caller
-  /// retrying a `send` it is unsure completed should not cause two deliveries.
+  /// own idempotence key: a message whose id the outbox already holds — queued,
+  /// delivered, or failed for good — is not queued again, and `send` answers
+  /// `false`. That is deliberate — a caller retrying a `send` it is unsure
+  /// completed should not cause two deliveries, however long ago the first one
+  /// went out. The outbox holds an id until [purgeFinished] removes its run.
   ///
   /// Enqueued directly rather than pushed through the schedule's event stream.
   /// The scheduler collapses events that arrive in the same clock instant into
@@ -234,22 +237,31 @@ class TomMessageOutbox implements TomClosable {
   ///
   /// The message is queued for the tenant in context, and delivered inside it:
   /// a transport choosing a per-tenant sending identity reads it from there.
-  Future<void> send(TomMessage message) async {
+  ///
+  /// [notBefore] holds the message in the queue until that instant: the first
+  /// attempt is made at the first tick after it. A notification held through
+  /// its recipient's quiet hours is queued this way, so it is durable from the
+  /// moment it was raised. An instant already past is the same as none.
+  Future<bool> send(TomMessage message, {DateTime? notBefore}) async {
     _requireOpen();
     final now = _clock();
+    final runAt = notBefore != null && notBefore.isAfter(now) ? notBefore : now;
+    final runId = '$jobName:${message.id}';
+    if (await store.findRun(runId) != null) return false;
     await store.enqueue(
       TomJobRun(
-        id: '$jobName:${message.id}',
+        id: runId,
         jobName: jobName,
         // A window of the run's own: two messages queued in the same
         // microsecond would otherwise share the store's window key, and the
         // second would replace the first.
         scheduledFor: TomEventInstants.next(now),
-        runAt: now,
+        runAt: runAt,
         payload: message.toJson(),
         tenant: TomTenantContext.currentId,
       ),
     );
+    return true;
   }
 
   /// Queues [message] and delivers it immediately, without waiting for a tick.

@@ -41,6 +41,10 @@
       "description": "The client-visible feature flags, evaluated for the caller."
     },
     {
+      "name": "tomNotificationPreferences",
+      "description": "The notification types the caller may configure, with the channels in effect for the caller."
+    },
+    {
       "name": "tomOAuth",
       "description": "OAuth 2.0 / OpenID Connect authorization-code login."
     },
@@ -1985,6 +1989,99 @@
           }
         },
         "security": []
+      }
+    },
+    "/notification-preferences": {
+      "get": {
+        "tags": [
+          "tomNotificationPreferences"
+        ],
+        "operationId": "listNotificationPreferences",
+        "description": "Every notification type with its allowed channels and the channels in effect for the caller, and the caller's quiet hours.",
+        "responses": {
+          "200": {
+            "description": "The result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TomProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope, or the same fields as an RFC 9457 problem document when the request accepts application/problem+json, unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TomProblem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "apiKeyAuth": []
+          }
+        ]
       }
     },
     "/oauth/authorize": {

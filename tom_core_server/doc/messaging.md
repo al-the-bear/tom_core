@@ -8,10 +8,10 @@ from resource keys so no user-facing string is written in Dart — and, for a
 consumer of a message broker, an idempotent receiver (inbox) that processes a
 message the broker delivers more than once exactly once.
 
-This module does **not** model notification types, subscriptions or user
-preferences, and it is not going to — that belongs to the application, and
-[Not in This Framework](#not-in-this-framework) says why and what to build it
-out of.
+Notification types, subscriptions and each user's channel choices are not
+here: they are the [notifications module](notifications.md), a layer above this
+one that turns a notification into one message per recipient and chosen channel
+and hands each to the outbox. This module does not know that layer exists.
 
 ## Table of Contents
 
@@ -92,8 +92,6 @@ out of.
 - [Verification](#verification)
 - [Core Components](#core-components)
 - [Not in This Framework](#not-in-this-framework)
-  - [The notification model](#the-notification-model)
-    - [What to build it out of](#what-to-build-it-out-of)
   - [A templated service for webhook](#a-templated-service-for-webhook)
     - [One service per channel](#one-service-per-channel)
   - [Markup in templates](#markup-in-templates)
@@ -1339,9 +1337,23 @@ the same microsecond would otherwise share that key, the second replacing the
 first. The instant is the run's identity in the store; the run is due at once.
 
 **The run id is the message id.** `'<jobName>:<messageId>'`, which makes the
-message its own idempotence key: submitting the same message twice replaces the
-queued run rather than queueing a second copy. A caller retrying a `send` it is
-unsure completed must not cause two deliveries.
+message its own idempotence key: `send` asks the store for a run under that id
+first, and a message whose run is there — queued, delivered, or failed for good
+— is not queued again; `send` answers `false`. A caller retrying a `send` it is
+unsure completed must not cause two deliveries, and that holds however long
+after the first delivery the retry comes, because a finished run stays in the
+store until `purgeFinished` removes it (see
+[What "Queued" Guarantees](#what-queued-guarantees)). A dispatcher that derives
+its message ids from what it is sending — the
+[notifications module](notifications.md#dispatch-and-idempotence) does — can
+therefore re-run after a crash halfway through and queue only what the first
+run did not.
+
+**A message can wait for an instant.** `send(message, notBefore: instant)`
+queues the run due at `instant` rather than now: it is durable from the moment
+it is queued and is first attempted at the first tick after `instant`. An
+instant already past is the same as none. The notifications module holds a
+notification through its recipient's quiet hours this way.
 
 The default retry policy is five attempts over a widening backoff — five rather
 than the framework default of three, because a mail relay's transient refusals
@@ -1377,7 +1389,9 @@ durable store for any deployment that means it.
 Nothing purges automatically. A delivered message stays in the store as a
 completed run, which is a delivery audit trail and may be worth keeping; how
 long is a deployment's decision, so `purgeFinished(before)` exists but is never
-called on your behalf.
+called on your behalf. The completed run is also what makes a repeated `send`
+of the same message id a no-op, so purging a run is what lets its id be queued
+again: keep runs at least as long as a caller may retry.
 
 ## Failure Reporting
 
@@ -1412,7 +1426,9 @@ await outbox.send(TomMessage.email(
 ));
 ```
 
-`send` returns as soon as the message is durably queued. `sendNow` queues and
+`send` returns as soon as the message is durably queued, answering `true` — or
+`false`, without queueing anything, when the store already holds a run for the
+message's id. `sendNow` queues and
 then ticks immediately, for a case where a fifteen-second tick interval is felt
 by a human staring at an inbox — a password reset, say. A failure still retries
 on the queue exactly as `send` would; the only difference is that the first
@@ -1976,50 +1992,15 @@ reads them: a stopped scheduler is not ready, and a message waiting past
 
 ## Not in This Framework
 
-Five things a reader might reasonably come here looking for are **not coming**,
+Four things a reader might reasonably come here looking for are **not coming**,
 and this section says so rather than leaving them on a list that reads as a
 schedule. Each names who owns the concern and what to build it with, because a
 non-goal that names no alternative is a refusal rather than an answer.
 
-### The notification model
-
-**It is an application's, and `tom_core` will not provide one.** "Which events notify, who subscribes to them, and through which channels"
-is a different question from "deliver this message on this channel", and the
-list below is what a reader should expect to find in their own code rather than
-here:
-
-| Concern | Why it is not framework work |
-| ------- | ---------------------------- |
-| Notification *types* — `taskAssigned`, `invoiceOverdue` | The set is the application's domain vocabulary. A framework enum of it would be a framework that knows what the application is for. |
-| Which channels a type may use | A policy about the business, not about delivery: "a password reset never goes to a webhook" is a rule the deployment owns. |
-| Per-user channel preferences | The *granularity* is the whole design — per type, per category, per quiet-hours window — and it is decided by what the product lets a user say. Guessing it produces a schema nobody wants to migrate off. |
-| Subscription resolution — who gets this | A query over the application's own entities. |
-| Fan-out | One notification becomes N messages, one per resolved recipient-channel pair; each is then an ordinary `outbox.send`. |
-
-This is a statement of ownership, not a deferral. The framework's earlier text
-declined the work without saying who does it, which left the concern claimed by
-nobody — and an unclaimed concern is one every application rebuilds while
-assuming the framework is about to.
-
-#### What to build it out of
-
-The substrate is deliberately complete for this:
-
-- `TomMessageChannel` is an **open** named value, so a resolved channel is a
-  name the framework already understands — including one it has never heard of.
-- `TomMessageOutbox.send` is the fan-out's terminus: durable, retried, and
-  idempotent on `TomMessage.id`, so a dispatcher that re-runs does not
-  double-send.
-- `TomUserPreferences` stores per-principal values and is scoped by owner, which
-  is where channel choices go without a second storage mechanism.
-- `TomTemplatedMessageService` is the base a per-type renderer extends, the way
-  `TomEmailService` and `TomSmsService` do.
-
-A dispatcher above those is roughly: resolve the subscribers, read each one's
-channel preferences, render one message per pair through a templated service,
-and hand each to the outbox. `messaging` stays unaware of all of it, which is
-the separation that lets a channel be added without touching the notification
-layer and a notification type without touching a transport.
+The notification model — which events notify, who receives them, and on which
+channels each user wants them — is not among them, and is not in this module
+either: it is the [notifications module](notifications.md), built on this one's
+open channel value and idempotent outbox, and unknown to it.
 
 ### A templated service for webhook
 
@@ -2167,12 +2148,14 @@ was processed before, and reads nothing out of a mailbox.
 ## Not Yet Implemented
 
 - **Nothing acts on a delivery report.** A report is recorded and published on
-  `TomDeliveryReportEndpoint.reports`, and the module draws no conclusion from
-  it: a `failed` state does not suppress the next message to that address, and
-  an `expired` one does not re-queue anything. Both are policy — whose address
-  to stop using, and when a re-send is worth paying for — and belong to the
-  notification model, which is
-  [not this framework's](#not-in-this-framework).
+  `TomDeliveryReportEndpoint.reports`, and nothing in the framework draws a
+  conclusion from it: a `failed` state does not suppress the next message to
+  that address, and an `expired` one does not re-queue anything. Neither this
+  module nor the [notifications module](notifications.md) does either. Both are
+  policy — whose address to stop using, and when a re-send is worth paying
+  for. Every message the notifications module renders carries its
+  `notificationType`, `notificationId` and `recipientId` in its metadata, so a
+  consumer of the reports can lead one back to the notification.
   <!-- unpinned: absence — no consumer of delivery reports ships -->
 - **SMS vendor presets in `lib/`.** Deliberate, not missing:
   `example/messaging/sms_gateway_presets.dart` carries worked mappings for three

@@ -690,6 +690,12 @@ two runs of one job enqueued in the same microsecond would still share a
 scheduled instant, and in `tom_job_run` the second would replace the first — a
 message lost without a trace.
 
+Neither replaces a run by its id either. `TomJobStore.findRun(id)` answers the
+run under an id in any state, and the outbox asks it before enqueueing, so a
+message whose run is still in the store — queued, delivered or failed for good
+— is not queued again. `TomSqlJobStore` answers it from `tom_job_run`; a run
+`purgeFinished` moved to the archive is not found.
+
 `TomEventInstants.next(now)` is the window instant those components give their
 runs: the clock's reading in UTC, or one microsecond past the last instant it
 answered when the clock has not moved on. The instant is the run's identity in
