@@ -106,6 +106,11 @@ applies the browser- and transport-security keys `securityHeaders`, `cors`,
 present; a value of the wrong shape stops the start with the key of the setting
 it belongs to (see
 [Browser and Transport Security](#browser-and-transport-security)). Then it
+applies the `featureFlags` key (`TomServer.configureFeatureFlags`): the
+deployment's feature flags, installed as the provider `TomFeatureFlags` reads.
+A value of the wrong shape stops the start with
+`configuration.feature_flags.invalid`; without the key the installed provider
+stands (see [configuration.md](configuration.md#feature-flags)). Then it
 applies the `requestIds` key (`TomServer.configureRequestIds`): the request-id
 header and the proxies it is believed from. A value of the wrong shape stops the
 start with `server.request_ids.config.invalid`; without the key `X-Request-Id`
@@ -1151,7 +1156,7 @@ and an application that needs one builds it today rather than waiting:
 | `tom_core_kernel` | package | `graceful_shutdown.dart`, `mutual_tls.dart`, `request_ids.dart`, `server.dart` | `TomPrincipal`, `TomClientJwtToken`, `TomBearerAuthentication`, `TomExecutionContext`/`tomExecutionContext`, `TomZoneValues`, `tomLog`, `tomPrintStackTrace`, `TomException`, `TomTraceContext` and `TomRequestId` (the request's trace and request id), `TomLogContext`, `TomJsonLogOutput` / `TomConsoleLogOutput` (`logFormat`), `tomShutdownCleanup` (the signals the graceful shutdown runs on), `TomScheduler.started` (the schedulers it drains) and `TomHttpResilience` / `TomHttpResilienceException` (`configureHttpClients`), `TomHttpClientFactory`, `TomHttpClientAbstractFactory` and `TomResilientClient` (the mutual-TLS client), `TomUser` and `TomAccessControlInformation` (a service principal) |
 | [authentication](authentication.md) | module | `server.dart` | `TomServerSelfLogin`, `TomServerSelfLoginException`, `TomApiKeys` and `TomApiKeyIdentity` (a service account's API key), `TomSessionCookie` and `TomSessionCookieException` (a browser session's cookie and its CSRF check) |
 | [authorization](authorization.md) | module | `server.dart` | `TomAuthorizationCache` (principal resolution) |
-| [configuration](configuration.md) | module | `server.dart` | `TomBaseServerConfiguration` |
+| [configuration](configuration.md) | module | `server.dart` | `TomBaseServerConfiguration`; `TomFeatureFlagsServer` (`configureFeatureFlags` applies the `featureFlags` key) |
 | [datasources](datasources.md) | module | `graceful_shutdown.dart` | `TomDataSourceInfo.closeAll`, the graceful shutdown's last step |
 | [endpoints](endpoints.md) | module | `server.dart` | `TomEndpointRouting` (router initialisation), `TomOpenApiServer` (the OpenAPI document path, set from `openApiDocument`), `TomIdempotency` (`configureIdempotency` applies the `idempotency` key), `TomCors` (`configureSecurity` applies the `cors` key) |
 | [healthcheck](healthcheck.md) | module | `graceful_shutdown.dart`, `server.dart` | `TomFrameworkReadinessAnalyzer`, installed on `GET /ready` by `start()` when `frameworkReadiness` is on, `TomHealthServer` / `TomDefaultHealthAnalyzer` to see whether the application installed its own, and `TomHealthServer.markShuttingDown`, the graceful shutdown's first step |

@@ -14,7 +14,7 @@ surface documented here.
 | Authorization | [api_summary_authorization.md](api_summary_authorization.md) | Authorization cache, graded access, principal delegation and resource grants. |
 | Cache | [api_summary_cache.md](api_summary_cache.md) | Isolate-backed server cache, its command messages, cross-node invalidation and item-authorization answers. |
 | Command Line | [api_summary_cmdline.md](api_summary_cmdline.md) | CLI argument parsing (`TomArgs`) and `.env` file loading (`TomEnvFile`). |
-| Configuration | [api_summary_configuration.md](api_summary_configuration.md) | Server config provider, typed config values, YAML resources, and secret references resolved from a secret store. |
+| Configuration | [api_summary_configuration.md](api_summary_configuration.md) | Server config provider, typed config values, YAML resources, secret references resolved from a secret store, and the configured feature flags with their endpoint. |
 | Datasources | [api_summary_datasources.md](api_summary_datasources.md) | DB type system, SQL dialects, queries, MariaDB datasource/prepared statements, read replicas. |
 | Database Migration | [api_summary_db_migration.md](api_summary_db_migration.md) | Migration runner, versioning, rollback with down scripts, the record of the last run readiness reads, and the MariaDB and PostgreSQL migration adaptors. |
 | Endpoints | [api_summary_endpoints.md](api_summary_endpoints.md) | Service/endpoint annotations, routing, handler pipeline, error handling, and the three transports over it: HTML form bodies, redirects and WebSockets — plus the HTTP surface of file columns, idempotency keys that answer a retried request with the first one's response, and the CORS allow-list deciding which browser origins may read a response. |
@@ -340,6 +340,7 @@ surface documented here.
 | `TomSecretSubscription` | class | A watcher's registration, ended by `cancel`. |
 | `TomSecretsRefresh` | class | What one refresh found: changed and failed references. |
 | `TomSecretsException` | class | A secret that could not be read or resolved (extends `TomServerException`). |
+| `TomFeatureFlagsServer` | class | The `featureFlags` configuration key, installed as the flag provider, and the `GET /feature-flags` endpoint. |
 
 ### Datasources (`lib/src/tomserver/datasources/`)
 
@@ -1443,6 +1444,7 @@ surface documented here.
 | `TomExternalTenancyMapping` | Authentication |
 | `TomFcmPushProtocol` | Messaging |
 | `TomFcmServiceAccountCredential` | Messaging |
+| `TomFeatureFlagsServer` | Configuration |
 | `TomFieldEncryption` | Object Persistence |
 | `TomFieldEncryptionException` | Object Persistence |
 | `TomFieldKeyring` | Object Persistence |

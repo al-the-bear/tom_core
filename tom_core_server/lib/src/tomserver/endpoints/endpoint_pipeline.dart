@@ -1833,6 +1833,7 @@ class TomEndpointRouting {
   void registerFrameworkApis() {
     registerTomUserPreferencesApi();
     registerTomOAuthApi();
+    registerTomFeatureFlagsApi();
   }
 
   /// Scans the annotated classes and mounts every endpoint method onto a fresh

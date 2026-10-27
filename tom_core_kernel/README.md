@@ -42,8 +42,8 @@ serialized without hand-written boilerplate. Conceptually it provides five thing
   JSON lines carrying the trace, span and tenant), an isolate worker
   pool, a durable job scheduler, in-process metrics exported to Prometheus
   and OTLP, the canonical success-or-error result
-  envelope, JSON tree helpers, resource providers, settings, timezone-aware
-  timestamps, and ordered shutdown.
+  envelope, JSON tree helpers, resource providers, settings, feature
+  flags, timezone-aware timestamps, and ordered shutdown.
 
 ## Installation
 
@@ -130,7 +130,7 @@ handle declared so far so a missing binding fails at start-up.
 | `scheduling` | `TomScheduler`, `TomJobDefinition`, `TomSchedule` (cron / calendar / interval / once / event), `TomJobStore`, `TomLeaseLock` | Durable, leased job scheduling with retry and catch-up policies, job priorities, pausing, and checkpoints a run resumes from |
 | `json` | map-merge, pretty-print helpers | JSON tree merge/serialization utilities |
 | `resources` | `TomTextResourceProvider`, `TomConfigResourceProvider` | Text and configuration resource resolution |
-| `settings` | client settings/authorization | Settings management |
+| `settings` | `TomGetSettingsMessage`, `TomGetSettingsResult`, `TomFeatureFlags`, `TomRuleFlagProvider`, `TomFeatureFlagsClient` | The client-settings exchange, and feature flags: rules by tenant, role and stable percentage, read through an OpenFeature-shaped provider, and the `/feature-flags` API a client fetches its evaluated flags from |
 | `preferences` | `TomUserPreferenceKeys`, `TomUserPreferenceDto`, `TomUserPreferenceCodec`, `tomUserPreferencesApi` | The contract both preference stores bind to: well-known keys, wire DTOs, the value codec, and the `/preferences` API |
 | `shutdown_cleanup` | `TomShutdownCleanup`, `TomDisposable`, `TomClosable` | Ordered shutdown / cleanup hooks |
 | `timezoned` | `DateTimestamp`, timezone tables | Timezone-aware date/time |

@@ -97,7 +97,14 @@ certificates of mutual TLS, with which `start` binds through
 `TomMutualTls.serve` — see
 [`doc/server.md`](../../../../doc/server.md#browser-and-transport-security).
 
-**Request ids.** Next `start` applies the `requestIds` key
+**Feature flags.** Next `start` applies the `featureFlags` key
+(`TomServer.configureFeatureFlags`, `TomFeatureFlagsServer.configurationKey`):
+the deployment's flags, installed as the `TomRuleFlagProvider` that
+`TomFeatureFlags` reads for each request. Without the key the installed
+provider stands — see
+[`doc/configuration.md`](../../../../doc/configuration.md#feature-flags).
+
+**Request ids.** Then `start` applies the `requestIds` key
 (`TomServer.configureRequestIds`, `TomRequestIdPolicy.configurationKey`): the
 request-id header and the proxies it is believed from. Without the key
 `X-Request-Id` is echoed and believed from no one, so every request runs under

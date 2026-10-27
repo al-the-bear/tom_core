@@ -2,8 +2,9 @@
 
 The server configuration surface: a process-wide resource provider, a reflected
 base configuration class merged from all sources, typed single-property views,
-YAML loading with environment-variable substitution, and secret references
-resolved from a secret store before the configuration is built.
+YAML loading with environment-variable substitution, secret references
+resolved from a secret store before the configuration is built, and the feature
+flags of the `featureFlags` key with the endpoint serving them to clients.
 
 ## Table of Contents
 
@@ -27,6 +28,7 @@ resolved from a secret store before the configuration is built.
   - [TomSecretSubscription](#tomsecretsubscription)
   - [TomSecretsRefresh](#tomsecretsrefresh)
   - [TomSecrets](#tomsecrets)
+  - [TomFeatureFlagsServer](#tomfeatureflagsserver)
 - [Global Functions and Constants](#global-functions-and-constants)
 
 ## Overview
@@ -35,7 +37,8 @@ Source: `lib/src/tomserver/configuration/base_server_configuration.dart`,
 `lib/src/tomserver/configuration/tom_config.dart`,
 `lib/src/tomserver/configuration/yaml_resources.dart`,
 `lib/src/tomserver/configuration/runtime_environment.dart`,
-`lib/src/tomserver/configuration/secrets.dart`.
+`lib/src/tomserver/configuration/secrets.dart`,
+`lib/src/tomserver/configuration/feature_flags_server.dart`.
 
 `TomServerConfigResourceProvider` holds the resolved configuration tree and
 answers dotted-path property lookups; a single provider is shared process-wide
@@ -61,6 +64,11 @@ read, `TomMapSecretsProvider` answers from a map, `watch` / `refresh` /
 `startRefresh` carry rotation (`TomSecretSubscription`, `TomSecretsRefresh`),
 and every failure is a `TomSecretsException`.
 
+`TomFeatureFlagsServer` is the server half of the kernel's feature flags:
+`configure` installs the `featureFlags` key as a `TomRuleFlagProvider` in
+`TomFeatureFlags.provider` (called at start by `TomServer.configureFeatureFlags`),
+and its `evaluateFlags` endpoint implements `GET /feature-flags`.
+
 ## Class Hierarchy
 
 ```text
@@ -73,6 +81,9 @@ TomConfig<T>
     ├── TomIntConfig      (T = int)
     ├── TomDoubleConfig   (T = double)
     └── TomBoolConfig     (T = bool)
+
+TomFeatureFlagsServer  (@tomReflector, @tomComponent,
+                        @TomApiImplementation(apiId: tomFeatureFlagsApiId))
 
 TomException  (tom_core_kernel)
     └── TomServerException
@@ -703,6 +714,39 @@ abstract final class TomSecrets {
 | `startRefresh` | `static void startRefresh(Duration every)` | Refreshes every `every` until `stopRefresh`, replacing a running timer. |
 | `stopRefresh` | `static void stopRefresh()` | Stops the periodic refresh. |
 | `reset` | `static Future<void> reset()` | Stops the timer, closes every provider and forgets every provider, value and watcher — a server's shutdown, and test support. |
+
+### TomFeatureFlagsServer
+
+The `GET /feature-flags` endpoint, and the configuration of the flags. Holds no
+state of its own — the flags are `TomFeatureFlags.provider`, the caller is the
+request zone — so the pipeline may construct it itself.
+
+- **Annotations:** `@tomReflector`; `@tomComponent`;
+  `@TomApiImplementation(apiId: tomFeatureFlagsApiId)`.
+
+#### Constructors
+
+```dart
+const TomFeatureFlagsServer()
+```
+
+#### Static Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `configurationKey` | `static const String` | `'featureFlags'`, the configuration key holding the flags. |
+
+#### Static Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `configure` | `static void configure(Object? config)` | Installs the flags of `config` — a map from flag key to definition, read by `TomRuleFlagProvider.fromConfiguration` — as `TomFeatureFlags.provider`. A value of the wrong shape throws a `TomConfigurationException` keyed `configuration.feature_flags.invalid`, its `reason` parameter naming the fault; nothing is installed. |
+
+#### Methods
+
+| Method | Endpoint | Description |
+| ------ | -------- | ----------- |
+| `evaluateFlags()` | `evaluateFlags` — `GET /feature-flags` | `{"flags": …}`: `TomFeatureFlags.provider.evaluateAll` for `TomFlagContext.current()` — with the built-in provider every `exposed` flag, evaluated for the caller's tenant, roles and id. `@TomApiEndpointImplementation(apiId: tomFeatureFlagsApiId, endpointId: tomFeatureFlagsEvaluateEndpointId)`; the contract declares `TomPublicAccess`. A deployment that installed another provider serves whatever its `evaluateAll` answers. |
 
 ## Global Functions and Constants
 

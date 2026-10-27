@@ -14,20 +14,24 @@ library;
 import '../../sample_bootstrap.dart';
 
 import '01_client_authorization_example.dart' as client_authorization;
+import '02_feature_flags_example.dart' as feature_flags;
 
 /// Standalone entry point for running settings examples.
-void main() {
+Future<void> main() async {
   bootstrapSamples();
-  run();
+  await run();
 }
 
 /// Run all settings examples.
 /// Called from run_all_samples.dart or can be run standalone via main().
-void run() {
+Future<void> run() async {
   sampleGroupHeader('Settings');
 
   client_authorization.run();
   print('✓ Client authorization examples passed\n');
+
+  await feature_flags.run();
+  print('✓ Feature flag examples passed\n');
 
   sampleGroupFooter('Settings');
 }

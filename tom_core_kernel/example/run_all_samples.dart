@@ -196,7 +196,7 @@ Future<void> main() async {
     print('\n${'═' * 70}');
     print('SETTINGS SAMPLES');
     print('═' * 70);
-    settings.run();
+    await settings.run();
     samplesRun++;
 
     // 19. Shutdown Cleanup samples

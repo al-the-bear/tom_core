@@ -13,6 +13,7 @@ import '../authentication/session_cookie.dart';
 import '../little_things/server_exception.dart';
 import '../little_things/error_response.dart';
 import '../configuration/base_server_configuration.dart';
+import '../configuration/feature_flags_server.dart';
 import '../configuration/runtime_environment.dart';
 import '../endpoints/cors.dart';
 import '../endpoints/endpoint_pipeline.dart';
@@ -748,6 +749,7 @@ class TomServer {
     // login included — runs under the configured policies.
     configureHttpClients();
     configureSecurity();
+    configureFeatureFlags();
     configureRequestIds();
     configureIdempotency();
     await configureFieldEncryption();
@@ -1027,6 +1029,20 @@ class TomServer {
     ]) {
       if (provider.exists(key)) configure(provider.get(key));
     }
+  }
+
+  /// Installs the flags of the [TomFeatureFlagsServer.configurationKey] map
+  /// of [config] (the server configuration unless given) as the feature-flag
+  /// provider — see [TomFeatureFlagsServer.configure]. Called by [start].
+  /// Without the key the installed provider stands: every flag reads its
+  /// default unless the application installed one.
+  static void configureFeatureFlags([TomServerConfigResourceProvider? config]) {
+    final provider =
+        config ?? TomServerConfigResourceProvider.getServerConfig();
+    if (!provider.exists(TomFeatureFlagsServer.configurationKey)) return;
+    TomFeatureFlagsServer.configure(
+      provider.get(TomFeatureFlagsServer.configurationKey),
+    );
   }
 
   /// The configuration key holding the idempotency-key settings — see

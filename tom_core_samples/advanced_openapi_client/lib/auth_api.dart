@@ -1246,6 +1246,15 @@ class AuthApi {
     return LoginResult.fromJson(decoded as Map<String, Object?>);
   }
 
+  /// `GET /feature-flags`
+  ///
+  /// Every flag the server exposes to clients, evaluated for the caller: `{"flags": {"<key>": <value>, ...}}`.
+  Future<Map<String, Object?>> evaluateFlags() async {
+    final response = await _send('GET', '/feature-flags', authenticated: false);
+    final Object? decoded = jsonDecode(utf8.decode(response.bodyBytes));
+    return (decoded as Map).cast<String, Object?>();
+  }
+
   /// `GET /files/{entity}/{id}/{column}`
   Future<http.Response> tomFileServiceFileGet({
     required String entity,

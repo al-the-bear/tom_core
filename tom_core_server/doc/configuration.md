@@ -7,7 +7,9 @@ properties, and a reflected **configuration base class**
 all configuration sources at startup. `TomYaml` loads YAML files with
 environment-variable substitution, and `TomSecrets` resolves values written as
 **secret references** — `secret:<provider>:<path>[#<field>]` — from a secret
-store before the configuration is built.
+store before the configuration is built. The `featureFlags` key holds the
+deployment's **feature flags**, which `TomFeatureFlagsServer` installs at start
+and serves to clients.
 
 ## Table of Contents
 
@@ -55,6 +57,11 @@ store before the configuration is built.
   - [An overlay is a patch, not a replacement](#an-overlay-is-a-patch-not-a-replacement)
   - [A substituted value is a string](#a-substituted-value-is-a-string)
   - [A missing file throws, unless you ask for the tolerant loader](#a-missing-file-throws-unless-you-ask-for-the-tolerant-loader)
+- [Feature Flags](#feature-flags)
+  - [Defining the flags](#defining-the-flags)
+  - [Reading a flag on the server](#reading-a-flag-on-the-server)
+  - [The endpoint and the client](#the-endpoint-and-the-client)
+  - [Plugging in another provider](#plugging-in-another-provider)
 - [Not Yet Implemented](#not-yet-implemented)
 - [Core Components](#core-components)
 - [Verification](#verification)
@@ -83,6 +90,7 @@ store before the configuration is built.
 | `TomSecretSubscription` | class | A watcher's registration, ended by `cancel` |
 | `TomSecretsRefresh` | class | What one refresh found: the references that changed and the ones that failed |
 | `TomSecretsException` | class | A secret that could not be read or resolved, keyed `secrets.*` (extends `TomServerException`) |
+| `TomFeatureFlagsServer` | class | The feature flags of the `featureFlags` key, installed at start, and the `GET /feature-flags` endpoint serving a client the ones it may read |
 
 ## The Resource Provider
 
@@ -1008,7 +1016,8 @@ keyed `server.request_ids.config.invalid` before anything is applied. A request
 id the trusted proxy sends that is not a valid id (8 to 128 characters of ASCII
 letters, digits and `._:-`) is ignored per request, never refused.
 
-**When it applies.** `start()` applies the key right after the
+**When it applies.** `start()` applies the key right after
+[`featureFlags`](#feature-flags), which follows the
 [browser- and transport-security keys](#browser-and-transport-security). The
 setting is per isolate. `requestIds` is not a field of the configuration base,
 so the startup warning about
@@ -1516,9 +1525,11 @@ keys](#unknown-keys-in-the-configuration-resources) names it.
 
 ### Error keys
 
-Every failure is a `TomSecretsException`, a `TomServerException` with
+Every secrets failure is a `TomSecretsException`, a `TomServerException` with
 `clientThrow` `false`. A message names the reference or the path, never a
-secret's value.
+secret's value. A malformed [feature-flag](#feature-flags) configuration is a
+`TomConfigurationException`, listed here beside them because it stops the start
+the same way.
 
 | Key | Raised by | When |
 | --- | --------- | ---- |
@@ -1529,6 +1540,7 @@ secret's value.
 | `secrets.field.missing` | `load`, `resolve` | The secret has no member of the field's name. |
 | `secrets.fetch.not_found` | a provider's `fetch` | The store holds nothing at the path. |
 | `secrets.fetch.failed` | a provider's `fetch`; `load`, `resolve` | Anything else a fetch fails with — a provider exception that is not a `TomSecretsException` is wrapped in this key, with the original as `rootException`. |
+| `configuration.feature_flags.invalid` | `TomFeatureFlagsServer.configure`, `TomServer.configureFeatureFlags` | The `featureFlags` value is not a map of flags, a flag key is malformed, a definition lacks `default`, a rule lacks `value`, a setting is unknown or a value has the wrong shape. `parameters` carries the `reason`, naming the flag; nothing is installed. |
 
 The provider libraries add their own `secrets.<store>.*` keys for their
 configuration and login failures; each lists them in its guide.
@@ -1671,6 +1683,131 @@ without: an asset that ships with the package and is missing at boot is almost
 always a wrong working directory, and a tolerant load turns that into a server
 started with no configuration whose first symptom appears several layers later.
 
+## Feature Flags
+
+The `featureFlags` key of the configuration resources
+(`TomFeatureFlagsServer.configurationKey`) holds the deployment's feature
+flags: values switched without a release, evaluated per tenant, role or stable
+percentage of principals. Like `httpClient` it is a nested map read through
+`TomServerConfigResourceProvider`, not a field of the configuration base:
+`TomServer.start` hands it to `TomFeatureFlagsServer.configure` through
+`TomServer.configureFeatureFlags`, which installs it as a `TomRuleFlagProvider`
+in `TomFeatureFlags.provider`. Without the key the installed provider stands —
+every flag reads its default unless the application installed a provider of
+its own. The flag API itself is the kernel's settings module
+(`tom_core_kernel/doc/settings/settings.md`).
+
+### Defining the flags
+
+```yaml
+# assets/config-resources_default.yaml
+featureFlags:
+  new-checkout:
+    default: false
+    exposed: true                  # a client may read it
+    rules:
+      - tenants: [acme]
+        value: true
+      - roles: [beta-tester]
+        value: true
+      - percentage: 25             # of principals, by a stable hash
+        value: true
+  export-row-limit:
+    default: 1000
+```
+
+| Key | Type | Default | What it decides |
+| --- | ---- | ------- | --------------- |
+| `default` | any | required | The value when no rule matches. |
+| `rules` | `List` | none | The rules, tried in order; the first that matches gives its `value`. |
+| `exposed` | `bool` | `false` | Whether a client may read the flag. A flag is server-only unless it says so. |
+
+A rule carries `value` (required) and any of these conditions; it matches when
+every condition it states holds:
+
+| Key | Type | Matches when |
+| --- | ---- | ------------ |
+| `tenants` | `List<String>` | The request's tenant is one of them. |
+| `roles` | `List<String>` | The principal holds at least one of them. |
+| `percentage` | `num`, 0 to 100 | The principal falls in that share of the flag's buckets — a hash of the flag key and the principal's id, so a principal stays in or out across requests and instances, and raising the percentage only adds principals. An anonymous caller is in no percentage. |
+
+A flag key is letters, digits, `.`, `_` and `-`, starting with a letter or
+digit; a value may be a boolean, a number, a string, a list or a map.
+
+**A value of the wrong shape stops the start.** `featureFlags` that is not a
+map, a malformed flag key, a definition without `default`, a rule without
+`value`, an unknown setting, `tenants` or `roles` that is not a non-empty list,
+or a `percentage` outside 0 to 100 throws a `TomConfigurationException` keyed
+`configuration.feature_flags.invalid`, naming the flag in its `reason`
+parameter, before anything is installed.
+
+**When it applies.** `start()` applies the key right after the
+[browser- and transport-security keys](#browser-and-transport-security), before
+`requestIds`. The setting is per isolate. `featureFlags` is not a field of the
+configuration base, so the startup warning about
+[unknown keys](#unknown-keys-in-the-configuration-resources) names it.
+
+### Reading a flag on the server
+
+Every request runs in a zone carrying its principal and tenant, so a handler
+reads a flag for its caller without passing anything:
+
+```dart
+if (await TomFeatureFlags.isEnabled('new-checkout')) {
+  // the new checkout
+}
+final limit = await TomFeatureFlags.getInt(
+  'export-row-limit',
+  defaultValue: 1000,
+);
+```
+
+A read never throws: an unknown flag, a value of another type or a failing
+provider answer the caller's default, and `TomFeatureFlags.details` says why.
+Outside a request — a scheduled job, a startup step — the context is passed
+explicitly (`context: TomFlagContext(tenant: 'acme')`).
+
+### The endpoint and the client
+
+`TomFeatureFlagsServer` implements the kernel's `tomFeatureFlagsApi`, which
+`TomEndpointRouting.registerFrameworkApis` registers with the other framework
+APIs: `GET /feature-flags`, under `TomPublicAccess`. It answers
+`{"flags": {"<key>": <value>, ...}}` — `TomFeatureFlags.provider.evaluateAll`
+for the caller: with the built-in provider, every `exposed` flag evaluated for
+the caller's tenant, roles and id. A client sees its own values, never the
+rules and never a server-only flag; an anonymous caller is evaluated as no one
+in particular.
+
+A client fetches the snapshot once — at start, after a sign-in — and reads its
+flags locally:
+
+```dart
+TomFeatureFlags.provider = await TomFeatureFlagsClient.fetch(
+  Uri.parse('https://api.example.com'),
+  bearerToken: accessToken,
+);
+```
+
+`fetch` throws `feature_flags.fetch.failed` when the server does not answer
+with flags; a client that would rather run on defaults catches it and keeps the
+provider it has.
+
+### Plugging in another provider
+
+The provider contract, `TomFlagProvider`, is shaped after OpenFeature's, so an
+OpenFeature or vendor bridge is a subclass answering `resolve` (and
+`evaluateAll`, for what the endpoint serves). Install it after `start()`, which
+replaces the provider when `featureFlags` is configured, or leave the key out:
+
+```dart
+await server.start();
+TomFeatureFlags.provider = VendorFlagProvider(vendorClient);
+```
+
+The endpoint then serves whatever that provider's `evaluateAll` answers; one
+that cannot enumerate answers an empty map, and its flags are read on the
+server only.
+
 ## Not Yet Implemented
 
 - **A misspelled setting outside the configuration resources is silently
@@ -1733,6 +1870,9 @@ started with no configuration whose first symptom appears several layers later.
   `collectSources` (the source merge), `getDefaultValues` (the merge with its
   secret references substituted) and the reflected `setValues`.
 - **`TomYaml`** — YAML loading with environment substitution.
+- **`TomFeatureFlagsServer`** — the `featureFlags` configuration key
+  (`configure`, installing a `TomRuleFlagProvider`) and the `GET /feature-flags`
+  endpoint (`evaluateFlags`).
 - **`TomSecrets`** (+ `TomSecretsProvider`, `TomMapSecretsProvider`,
   `TomSecretReference`, `TomSecretPayload`, `TomSecretSubscription`,
   `TomSecretsRefresh`, `TomSecretsException`) — secret references: the
@@ -1805,6 +1945,13 @@ resolving configuration (precedence, unloaded and unknown references, one fetch
 per path) and rotation (watchers, fail-soft refresh, `startRefresh`) — with no
 external store.
 
+`test/feature_flags_server_test.dart` covers [Feature Flags](#feature-flags):
+the flags installed from `featureFlags` at start, a malformed definition
+stopping the start with `configuration.feature_flags.invalid`, and
+`GET /feature-flags` answering the exposed flags for an anonymous caller,
+evaluating them for an authenticated one without sending a server-only flag,
+and a client reading the snapshot it fetched.
+
 The two are linked in both directions — the example's header names this
 document and the suite, and the suite runs the example, under exactly the
 command above, requiring exit 0 and requiring every numbered step to have
@@ -1824,8 +1971,9 @@ falsifiable from the suite, as is each limitation it admits to.
 | `dart:convert` | dart | `secrets.dart` | `jsonDecode` / `jsonEncode`, for a field of a JSON secret |
 | `dart:io` | dart | `base_server_configuration.dart`, `runtime_environment.dart`, `yaml_resources.dart` | `File`, `Platform` |
 | `shelf` | package | `base_server_configuration.dart` | the `Middleware` / `Handler` / `Request` / `Response` types used by the configuration's handler fields |
-| `tom_core_kernel` | package | `base_server_configuration.dart`, `runtime_environment.dart`, `secrets.dart`, `yaml_resources.dart` | `tomReflector`, `getObjectFromTree`, `mergeMapsOneSided`, `makeCleanJsonMap`, `substituteEnvVars`, `TomRuntime`, `tomLog` |
+| `tom_core_kernel` | package | `base_server_configuration.dart`, `feature_flags_server.dart`, `runtime_environment.dart`, `secrets.dart`, `yaml_resources.dart` | `tomReflector`, `getObjectFromTree`, `mergeMapsOneSided`, `makeCleanJsonMap`, `substituteEnvVars`, `TomRuntime`, `tomLog`; `tomComponent`, `TomFeatureFlags`, `TomRuleFlagProvider`, `TomFlagContext` and `tomFeatureFlagsApiId` for the feature flags |
 | `yaml` | package | `yaml_resources.dart` | YAML parsing for `TomYaml` |
 | [cmdline](cmdline.md) | module | `base_server_configuration.dart`, `runtime_environment.dart`, `tom_config.dart` | `TomArgs` and `TomEnvFile` (source parsing/merging); `TomArgs.convertToObjectMap` also reads a text value as the type a `TomConfig` wants |
+| [endpoints](endpoints.md) | module | `feature_flags_server.dart` | `TomApiImplementation` and `TomApiEndpointImplementation`, binding `TomFeatureFlagsServer` to `tomFeatureFlagsApi` |
 | [little_things](little_things.md) | module | `secrets.dart`, `tom_config.dart` | `TomServerException`, the base of `TomConfigurationException` and `TomSecretsException` |
 | [server](server.md) | module | `base_server_configuration.dart` | `tomLoggingMiddleware` |

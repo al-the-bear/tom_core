@@ -9,7 +9,8 @@ property sources (YAML via `TomYaml`, env, args) into the active
 resolve individual keys — obligatory (throws when absent) or with a default.
 A value in any source may be a secret reference, `secret:<provider>:<path>[#<field>]`,
 which `TomSecrets` resolves from a secret store before the configuration is
-built.
+built. The `featureFlags` key holds the deployment's feature flags, installed at
+start and served to clients by `TomFeatureFlagsServer`.
 
 ## Key types
 
@@ -27,6 +28,7 @@ built.
 | `TomSecrets` | The secrets registry: `register` a `TomSecretsProvider`, `load` every reference in `TomBaseServerConfiguration.collectSources(args)` before the configuration is built (fatal on any failure), and `getDefaultValues` substitutes each in place — so a secret has its source's precedence. `refresh` / `startRefresh` re-read the store fail-soft and call `watch`ers of changed references. |
 | `TomSecretsProvider` · `TomMapSecretsProvider` | A secret store, registered under the name references use; the map-backed one is for tests and local development. Vault, AWS Secrets Manager and Azure Key Vault are libraries of `tom_core_secrets`, in `tom_core_extensions` (`vault.dart`, `aws.dart`, `azure.dart`). |
 | `TomSecretReference` · `TomSecretPayload` · `TomSecretSubscription` · `TomSecretsRefresh` · `TomSecretsException` | A parsed reference, what a provider read, a watcher's registration, a refresh's outcome, and every secrets failure, keyed `secrets.*`. |
+| `TomFeatureFlagsServer` | The server half of feature flags: `configure` installs the flags of the `featureFlags` key (`configurationKey`) as a `TomRuleFlagProvider` in `TomFeatureFlags.provider` — a value of the wrong shape throws `TomConfigurationException` keyed `configuration.feature_flags.invalid` — and `evaluateFlags` serves `GET /feature-flags`, the flags marked `exposed` evaluated for the caller. `TomServer.start` calls `configure` through `TomServer.configureFeatureFlags`. |
 | `selectedRuntimeEnvironmentName` | Which runtime environment the deployment selected (`env`), read from the command line, then the `.env`, then the OS environment. The selection has to happen *before* the configuration exists — it is what picks the overlay — so it reads those sources itself rather than coming out of the merge. |
 
 ## Quick start
@@ -56,6 +58,13 @@ void main() {
 `otlpHeaders` and `otlpMetricsIntervalSeconds` decide whether the series leave
 the process as a Prometheus scrape, an OTLP push, or both — see [`doc/metrics.md`](../../../../doc/metrics.md).
 
+**Feature flags.** The `featureFlags` key maps each flag to its `default`, its
+`rules` (by `tenants`, `roles`, `percentage`) and whether it is `exposed` to
+clients. Server code reads a flag for the request at hand with
+`TomFeatureFlags.isEnabled` / `getInt` / …; a client fetches the exposed ones
+from `GET /feature-flags` — see
+[`doc/configuration.md`](../../../../doc/configuration.md#feature-flags).
+
 **Graceful shutdown.** `shutdownGracePeriodSeconds` (20), `shutdownReadinessDelaySeconds`
 (0) and `exitOnShutdownSignal` (on) decide how the server stops on SIGTERM or
 SIGINT: how long the work in flight gets, how long requests are still taken
@@ -70,6 +79,8 @@ installed after the first read is a provider that read did not see.
 `example/configuration/secrets_example.dart` walks secret references in nine
 checked steps — precedence, an unloaded reference refused, rotation, a
 third-party provider — and `test/secrets_test.dart` covers them.
+`test/feature_flags_server_test.dart` covers the feature flags' configuration
+and endpoint.
 `test/configuration_test.dart` covers the module and also runs the example,
 `test/runtime_environment_test.dart` covers the environment selector, and
 `test/readme_quick_start_test.dart` runs the snippet above, so none can drift

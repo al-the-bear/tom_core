@@ -30,7 +30,7 @@ declarations are omitted.
 | Scheduling | [api_summary_scheduling.md](api_summary_scheduling.md) | Schedules, job definitions, the persistent run store, the lease lock, and the scheduler. |
 | Scope IDs | [api_summary_scope_ids.md](api_summary_scope_ids.md) | Hierarchical scope identity, scope-path building, and zone-scoped builders. |
 | Security | [api_summary_security.md](api_summary_security.md) | Principals/ACIs, access controls, authorization state machine, resource roles, bearer auth. |
-| Settings | [api_summary_settings.md](api_summary_settings.md) | Reflected settings request/result messages. |
+| Settings | [api_summary_settings.md](api_summary_settings.md) | Reflected settings request/result messages, and feature flags: the flag API, its providers and rules, and the `/feature-flags` API declaration with its client. |
 | Shutdown Cleanup | [api_summary_shutdown_cleanup.md](api_summary_shutdown_cleanup.md) | Disposable/closable contracts and signal-driven shutdown coordination. |
 | Timezoned | [api_summary_timezoned.md](api_summary_timezoned.md) | Timezone-aware date/time value types and the IANA-backed `TomTimezone`. |
 
@@ -396,6 +396,20 @@ declarations are omitted.
 | ---- | ---- | ----------- |
 | `TomGetSettingsMessage` | class | Reflected request for client settings. |
 | `TomGetSettingsResult` | class | Reflected settings response (texts, roles, …). |
+| `TomFeatureFlags` | abstract final class | The flag API: `isEnabled`, `getString`, `getInt`, `getDouble`, `getObject`, `details`, through the installed `provider`; never throws. |
+| `TomFlagContext` | class | Who a flag is evaluated for: targeting key, tenant, roles, attributes; `current()` reads the zone. |
+| `TomFlagResolutionReason` | enum | Why a flag resolved to its value (OpenFeature's reasons). |
+| `TomFlagResolution` | class | One evaluation: value, reason, deciding rule, error. |
+| `TomFlagProvider` | abstract class | The provider contract, shaped after OpenFeature's: `resolve`, `evaluateAll`. |
+| `TomStaticFlagProvider` | class | Fixed values — a client's snapshot, or a test's. |
+| `TomFlagRule` | class | A targeting rule by tenants, roles and stable percentage. |
+| `TomFlagDefinition` | class | A flag: default, rules, and whether a client may read it. |
+| `TomRuleFlagProvider` | class | The built-in provider: flag definitions read from configuration. |
+| `tomFeatureFlagsApi` | final | The `GET /feature-flags` API, `TomPublicAccess`. |
+| `tomFeatureFlagsApiId`, `tomFeatureFlagsEvaluateEndpointId` | const | The API id (`tomFeatureFlags`) and its endpoint id (`evaluateFlags`). |
+| `registerTomFeatureFlagsApi` | function | Registers `tomFeatureFlagsApi` with the global `tomRemoteApis` registry; idempotent. |
+| `TomFeatureFlagsClient` | abstract final class | Fetches a client's evaluated flags from a server. |
+| `TomFeatureFlagsException` | class | A client could not fetch its flags, `feature_flags.fetch.failed` (extends `TomException`). |
 
 ### Shutdown Cleanup (`lib/src/tombase/shutdown_cleanup/`)
 
