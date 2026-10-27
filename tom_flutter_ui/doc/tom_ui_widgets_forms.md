@@ -4181,11 +4181,11 @@ ListView.builder(
 
 ## 24b. Demo Application
 
-The framework is exercised end to end by `tom_ai/core/tom_flutter_form_test`, a
+The framework is exercised end to end by `tom_ai/core/tom_core_samples/tom_flutter_form_test`, a
 Flutter app with two tabs: full-featured demos with event logs, inspectors and
 control panels, and copy-friendly examples that each come in a Material and a
 Cupertino flavour. Its
-[demo catalogue](../../tom_flutter_form_test/doc/demo_catalogue.md) lists every
+[demo catalogue](../../tom_core_samples/tom_flutter_form_test/doc/demo_catalogue.md) lists every
 screen and the `tom_flutter_ui` feature each one validates.
 
 ---

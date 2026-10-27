@@ -211,7 +211,6 @@ SCRATCH_ROOT = TOOL_DIR / "ztmp" / "doc_dart_blocks"
 PACKAGES = [
     "tom_core_kernel",
     "tom_core_agentic",
-    "tom_core_codespecs",
     "tom_core_flutter",
     "tom_core_openapi",
     "tom_core_secrets",

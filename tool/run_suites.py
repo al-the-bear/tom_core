@@ -22,9 +22,9 @@ is the step that failed; this runs all of them, so nobody has to.
 
 **What "green" means here** is what the quest overview says it means: every
 package that carries a suite passes it, and the gates hold. That is the five
-framework packages, `tom_core_codespecs`, `tom_core_openapi`,
-`tom_core_secrets`, and the two `tom_flutter_ui` harnesses -- ten suites --
-plus `check_gates.py`. `tom_core_agentic`, `tom_core_openapi` and
+framework packages, `tom_core_openapi`, `tom_core_secrets`, and the two
+`tom_flutter_ui` harnesses in `tom_core_samples/` -- nine suites -- plus
+`check_gates.py`. `tom_core_agentic`, `tom_core_openapi` and
 `tom_core_secrets` live in `tom_core_extensions` (`gate_scope.py`).
 
 **How each suite runs.** Flutter packages run under `flutter test`, the rest
@@ -73,7 +73,6 @@ PACKAGES = (
     "tom_core_kernel",
     "tom_core_server",
     "tom_core_agentic",
-    "tom_core_codespecs",
     "tom_core_openapi",
     "tom_core_secrets",
     "tom_flutter_ui",

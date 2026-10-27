@@ -2,7 +2,7 @@
 
 An **article-grade** tour of the **ACL (Advanced Container Layout)** engine in
 [`tom_flutter_ui`](../../tom_flutter_ui). Where
-[`tom_flutter_ui_test/lib/acl_demos/`](../../tom_flutter_ui_test) renders the ACL
+[`tom_flutter_ui_test/lib/acl_demos/`](../tom_flutter_ui_test) renders the ACL
 layouts as a smoke-test harness, this sample is built to be *read*: every
 capability appears as a **code → rendered** pair, so the `AclBuilder` chain that
 produced a layout sits right beside the layout it produces.

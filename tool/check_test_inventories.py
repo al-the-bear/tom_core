@@ -123,17 +123,17 @@ class Inventory(NamedTuple):
 INVENTORIES: dict[str, Inventory] = {
     "completion/tom_flutter_form_test_app_changes.md": Inventory(
         doc=QUEST_COMPLETION / "tom_flutter_form_test_app_changes.md",
-        tests=REPO_ROOT / "tom_flutter_form_test" / "test",
+        tests=REPO_ROOT / "tom_core_samples" / "tom_flutter_form_test" / "test",
         files_column=2,
     ),
     "completion/tom_flutter_ui_test_app_changes.md": Inventory(
         doc=QUEST_COMPLETION / "tom_flutter_ui_test_app_changes.md",
-        tests=REPO_ROOT / "tom_flutter_ui_test" / "test",
+        tests=REPO_ROOT / "tom_core_samples" / "tom_flutter_ui_test" / "test",
         files_column=1,
     ),
     "tom_flutter_ui_test/README.md": Inventory(
-        doc=REPO_ROOT / "tom_flutter_ui_test" / "README.md",
-        tests=REPO_ROOT / "tom_flutter_ui_test" / "test",
+        doc=REPO_ROOT / "tom_core_samples" / "tom_flutter_ui_test" / "README.md",
+        tests=REPO_ROOT / "tom_core_samples" / "tom_flutter_ui_test" / "test",
         files_column=1,
     ),
 }
@@ -156,7 +156,7 @@ class CountInventory(NamedTuple):
 
 COUNT_INVENTORIES: dict[str, CountInventory] = {
     "tom_flutter_form_test/README.md": CountInventory(
-        doc=REPO_ROOT / "tom_flutter_form_test" / "README.md",
+        doc=REPO_ROOT / "tom_core_samples" / "tom_flutter_form_test" / "README.md",
         kind_column=1,
         count_column=2,
         against="completion/tom_flutter_form_test_app_changes.md",

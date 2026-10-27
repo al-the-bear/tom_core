@@ -243,8 +243,8 @@ Run it with `flutter run example/gallery_demo.dart` for the full gallery.
 | [`example/actions/`](example/actions) | Actions, transactions, undo/redo, triggers |
 | [`example/theme/`](example/theme) · [`example/resource_auth/`](example/resource_auth) · [`example/groups/`](example/groups) · [`example/custom/`](example/custom) · [`example/widget_base/`](example/widget_base) | Per-module samples |
 
-The companion demo/test apps [`tom_flutter_form_test`](../tom_flutter_form_test/doc/demo_catalogue.md)
-and [`tom_flutter_ui_test`](../tom_flutter_ui_test/doc/demo_catalogue.md) exercise
+The companion demo/test apps [`tom_flutter_form_test`](../tom_core_samples/tom_flutter_form_test/doc/demo_catalogue.md)
+and [`tom_flutter_ui_test`](../tom_core_samples/tom_flutter_ui_test/doc/demo_catalogue.md) exercise
 the whole library across dozens of interactive demos — see their demo catalogues.
 
 > **Cross-package samples.** The `tom_core_samples` showcases —
@@ -353,8 +353,8 @@ tom_core_flutter │                 tom_flutter_ui   ← this package
 
 `tom_flutter_ui` is the rich UI toolkit; the lower-level kernel-on-Flutter
 binding lives in [`tom_core_flutter`](../tom_core_flutter/README.md). Both demo
-harnesses ([`tom_flutter_form_test`](../tom_flutter_form_test/README.md),
-[`tom_flutter_ui_test`](../tom_flutter_ui_test/README.md)) target
+harnesses ([`tom_flutter_form_test`](../tom_core_samples/tom_flutter_form_test/README.md),
+[`tom_flutter_ui_test`](../tom_core_samples/tom_flutter_ui_test/README.md)) target
 `tom_flutter_ui` + `tom_core_kernel` and do **not** depend on
 `tom_core_flutter`. See the repository map at [`../README.md`](../README.md).
 

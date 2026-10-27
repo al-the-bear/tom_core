@@ -1,0 +1,45 @@
+name: tom_flutter_form_test
+description: >-
+  Demo application and end-to-end exercise harness for the Tom form framework:
+  interactive demo screens and worked examples over the tom_flutter_ui form
+  widgets, driven by tom_core_kernel observables, reflection, resources and
+  security.
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.11.4
+
+dependencies:
+  flutter:
+    sdk: flutter
+  tom_flutter_ui:
+    path: ../../tom_flutter_ui
+  tom_core_kernel:
+    path: ../../tom_core_kernel
+  tom_basics: ">=3.0.0"
+  tom_reflection: ">=1.0.1"
+  timezone: any
+  # Cupertino icon font — required by every Cupertino widget the
+  # Phase 5 demos exercise (Demo M / N / O). Without this dep the
+  # CupertinoIcons.ttf font isn't bundled and every icon renders as
+  # a small placeholder rectangle (or, for codepoints that collide
+  # with another loaded font, a stray glyph — e.g. event-time
+  # rendered as an open lock).
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  tom_reflection_generator:
+    path: ../../../reflection/tom_reflection_generator
+  build: ^4.0.3
+  build_runner: ^2.10.4
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/

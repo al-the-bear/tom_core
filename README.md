@@ -20,8 +20,8 @@ re-documented here — one phrase of "what it is" plus the link is the contract.
 > [Sample learning path](#sample-learning-path)) — a shared todo app built up
 > from a server, a Flutter client and four UI showcases. For the foundation,
 > read [`tom_core_kernel`](tom_core_kernel/README.md); for the broadest live UI
-> reference, run [`tom_flutter_form_test`](tom_flutter_form_test/README.md)
-> (the form stack) or [`tom_flutter_ui_test`](tom_flutter_ui_test/README.md)
+> reference, run [`tom_flutter_form_test`](tom_core_samples/tom_flutter_form_test/README.md)
+> (the form stack) or [`tom_flutter_ui_test`](tom_core_samples/tom_flutter_ui_test/README.md)
 > (the full widget set).
 
 ---
@@ -93,8 +93,8 @@ the layer end-to-end against the live Flutter engine.
 
 | App | What it is |
 | --- | --- |
-| [`tom_flutter_form_test`](tom_flutter_form_test/README.md) | A two-tab Flutter showcase of the **form framework** (`tom_flutter_ui` forms/fields over the kernel's resources, security, and reflection). See its [demo catalogue](tom_flutter_form_test/doc/demo_catalogue.md). |
-| [`tom_flutter_ui_test`](tom_flutter_ui_test/README.md) | A four-tab Flutter demo / smoke-test of the **whole `tom_flutter_ui` library** — the ACL layout engine, the widget set, the form framework, and the resource/authorization machinery. See its [demo catalogue](tom_flutter_ui_test/doc/demo_catalogue.md). |
+| [`tom_flutter_form_test`](tom_core_samples/tom_flutter_form_test/README.md) | A two-tab Flutter showcase of the **form framework** (`tom_flutter_ui` forms/fields over the kernel's resources, security, and reflection). See its [demo catalogue](tom_core_samples/tom_flutter_form_test/doc/demo_catalogue.md). |
+| [`tom_flutter_ui_test`](tom_core_samples/tom_flutter_ui_test/README.md) | A four-tab Flutter demo / smoke-test of the **whole `tom_flutter_ui` library** — the ACL layout engine, the widget set, the form framework, and the resource/authorization machinery. See its [demo catalogue](tom_core_samples/tom_flutter_ui_test/doc/demo_catalogue.md). |
 
 ---
 
@@ -130,8 +130,8 @@ above link the relevant files. The most common entry points:
 | Flutter integration modules | [`tom_core_flutter/doc/`](tom_core_flutter/doc/) |
 | Widget library — ACL engine | [`tom_flutter_ui/doc/advanced_container_layout.md`](tom_flutter_ui/doc/advanced_container_layout.md) |
 | Widget library — forms & authorizers | [`tom_flutter_ui/doc/forms.md`](tom_flutter_ui/doc/forms.md) · [`form_authorizers.md`](tom_flutter_ui/doc/form_authorizers.md) |
-| Form demo catalogue | [`tom_flutter_form_test/doc/demo_catalogue.md`](tom_flutter_form_test/doc/demo_catalogue.md) |
-| UI demo catalogue | [`tom_flutter_ui_test/doc/demo_catalogue.md`](tom_flutter_ui_test/doc/demo_catalogue.md) |
+| Form demo catalogue | [`tom_flutter_form_test/doc/demo_catalogue.md`](tom_core_samples/tom_flutter_form_test/doc/demo_catalogue.md) |
+| UI demo catalogue | [`tom_flutter_ui_test/doc/demo_catalogue.md`](tom_core_samples/tom_flutter_ui_test/doc/demo_catalogue.md) |
 
 ---
 
@@ -142,8 +142,9 @@ tom_core_kernel/       platform-neutral foundation (DI, state, security, …)   
 tom_core_server/       backend runtime: HTTP, persistence, auth               (runtime)
 tom_core_flutter/      Flutter integration layer (re-exports the kernel)      (runtime)
 tom_flutter_ui/        Flutter widget library: widgets, forms, ACL engine     (UI)
-tom_flutter_form_test/ runnable demo: the form framework                      (demo app)
-tom_flutter_ui_test/   runnable demo/smoke-test: the whole widget library     (demo app)
+tom_core_samples/      the sample applications, and the two demo apps:        (samples)
+  tom_flutter_form_test/  runnable demo: the form framework                   (demo app)
+  tom_flutter_ui_test/    runnable demo/smoke-test: the whole widget library  (demo app)
 tool/                  repo-wide developer tooling (see below)                (tooling)
 ```
 
@@ -701,8 +702,8 @@ that is allowed to say one thing is a build nobody reads. The log names every
 warning by file and line and is kept under `tool/ztmp/dartdoc/`; the HTML is
 deleted once it has been read. Packages are gated only once they are silent,
 the same rule `check_doc_dart_blocks.py` states. Four packages —
-`tom_core_kernel`, `tom_core_agentic`, `tom_core_codespecs` and
-`tom_core_openapi` — are listed and the `advanced_*` samples are discovered, and all of them
+`tom_core_kernel`, `tom_core_agentic`, `tom_core_openapi` and
+`tom_core_secrets` — are listed and the `advanced_*` samples are discovered, and all of them
 build in parallel — about eighty seconds, against four minutes in series.
 
 **A silent build is necessary, not sufficient.** `dart doc` resolves a
@@ -928,8 +929,8 @@ fire. A green light there would be coverage in appearance only. Whether those
 signatures are *true* is a different question, answered by
 `check_api_signatures.py` below.
 
-Eight packages are triaged to zero and gated: `tom_core_kernel`,
-`tom_core_agentic`, `tom_core_codespecs`, `tom_core_flutter`, `tom_core_openapi`,
+Seven packages are triaged to zero and gated: `tom_core_kernel`,
+`tom_core_agentic`, `tom_core_flutter`, `tom_core_openapi`,
 `tom_core_server`, `tom_flutter_ui` and `tom_flutter_ui_test`. One is not: `tom_flutter_form_test`
 carries no ` ```dart ` fence, and a gated package with nothing to read exits
 unmeasured. The sample
@@ -962,8 +963,8 @@ generic or a record with its fields reordered is the same type the analyzer
 prints expanded. A fence that is not a list of declarations — a truncated
 parameter list — is a fault; one that parses as statements is a usage sample
 and is left to the gate above. Seven packages: `tom_core_kernel`,
-`tom_core_server`, `tom_core_flutter`, `tom_core_agentic`, `tom_core_codespecs`,
-`tom_core_openapi` and `tom_flutter_ui`. The `Methods` and `Properties` tables quote signatures
+`tom_core_server`, `tom_core_flutter`, `tom_core_agentic`,
+`tom_core_openapi`, `tom_core_secrets` and `tom_flutter_ui`. The `Methods` and `Properties` tables quote signatures
 too, as inline code, and are not read.
 
 ```bash
@@ -1089,9 +1090,7 @@ is not checked; a document with no numbered headings cannot cite itself.
 
 **A Dart comment may cite only a document in this repository.** The reader of a
 package's source holds a checkout of `tom_ai/core`, and a design document in a
-sibling repository is a citation that reader cannot follow. That is why the
-CodeSpecs mapping and derivation contract ship in `tom_core_codespecs/doc/`,
-and the fault reads *`<doc>` §N is not in this repository*. Markdown is not held
+sibling repository is a citation that reader cannot follow, and the fault reads *`<doc>` §N is not in this repository*. Markdown is not held
 to it: the design documents shipped here belong to a document set that spans
 repositories and cite its other members.
 

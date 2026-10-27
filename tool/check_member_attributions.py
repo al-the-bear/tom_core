@@ -921,7 +921,7 @@ def self_test(types: dict[str, list[TypeInfo]]) -> int:
     passes, break one reference in each of the two ways that matter, and require
     a fault each time.
     """
-    subject = REPO_ROOT / "tom_flutter_ui_test/doc/widget_resource_parameters.md"
+    subject = REPO_ROOT / "tom_core_samples/tom_flutter_ui_test/doc/widget_resource_parameters.md"
     if not subject.exists():
         print(f"self-test: {subject} is gone", file=sys.stderr)
         return 2

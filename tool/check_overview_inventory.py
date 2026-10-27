@@ -75,10 +75,14 @@ STRUCTURE = {
 
 
 def tracked(package: str) -> list[str]:
-    root = gate_scope.root_of(gate_scope.package_dir(package))
-    out = subprocess.run(["git", "ls-files", "--", package], cwd=root,
+    """[package]'s tracked files, relative to the package, wherever it sits in
+    its root (a demo app lives in `tom_core_samples/`)."""
+    directory = gate_scope.package_dir(package)
+    root = gate_scope.root_of(directory)
+    where = directory.relative_to(root).as_posix()
+    out = subprocess.run(["git", "ls-files", "--", where], cwd=root,
                          capture_output=True, text=True, check=True).stdout
-    prefix = f"{package}/"
+    prefix = f"{where}/"
     return [f[len(prefix):] for f in out.split() if f.startswith(prefix)]
 
 

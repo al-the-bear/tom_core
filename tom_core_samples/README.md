@@ -53,8 +53,8 @@ and `advanced_todo_contracts` an endpoint table generated from its registry.
 > with green test suites — the shared `todo_domain` package and the six samples.
 > Each links back here and to the package READMEs it exercises. The two live
 > demo apps in the repository root —
-> [`tom_flutter_form_test`](../tom_flutter_form_test/README.md) and
-> [`tom_flutter_ui_test`](../tom_flutter_ui_test/README.md) — remain the broadest
+> [`tom_flutter_form_test`](tom_flutter_form_test/README.md) and
+> [`tom_flutter_ui_test`](tom_flutter_ui_test/README.md) — remain the broadest
 > runnable reference for the UI layer.
 
 ---
@@ -250,8 +250,8 @@ framework packages and samples whose content has changed since.
 | Server stack | [`../tom_core_server/README.md`](../tom_core_server/README.md) |
 | Flutter integration | [`../tom_core_flutter/README.md`](../tom_core_flutter/README.md) |
 | Widget library | [`../tom_flutter_ui/README.md`](../tom_flutter_ui/README.md) |
-| Live form demo app | [`../tom_flutter_form_test/doc/demo_catalogue.md`](../tom_flutter_form_test/doc/demo_catalogue.md) |
-| Live UI demo app | [`../tom_flutter_ui_test/doc/demo_catalogue.md`](../tom_flutter_ui_test/doc/demo_catalogue.md) |
+| Live form demo app | [`../tom_flutter_form_test/doc/demo_catalogue.md`](tom_flutter_form_test/doc/demo_catalogue.md) |
+| Live UI demo app | [`../tom_flutter_ui_test/doc/demo_catalogue.md`](tom_flutter_ui_test/doc/demo_catalogue.md) |
 
 ---
 

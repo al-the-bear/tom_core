@@ -53,13 +53,21 @@ def rel(path: Path) -> Path:
     return Path(os.path.relpath(resolved, REPO_ROOT))
 
 
+#: The folder of the core holding the samples and the two demo apps; a package
+#: in it is found by its name like a top-level one.
+SAMPLES = "tom_core_samples"
+
+
 def package_dir(name: str) -> Path:
     """The directory of the package (or root-level folder) [name], in
-    whichever root holds it; under the core when no root does, so a gate that
-    reports a missing package names the place it looked first."""
+    whichever root holds it -- at its top level, or, for a sample or demo app,
+    in the core's `tom_core_samples/`; under the core when nothing does, so a
+    gate that reports a missing package names the place it looked first."""
     for root in ROOTS:
         if (root / name).exists():
             return root / name
+    if (REPO_ROOT / SAMPLES / name / "pubspec.yaml").is_file():
+        return REPO_ROOT / SAMPLES / name
     return REPO_ROOT / name
 
 

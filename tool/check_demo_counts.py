@@ -49,7 +49,7 @@ from typing import NamedTuple
 from gate_report import report_faults
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-APP = REPO_ROOT / "tom_flutter_ui_test"
+APP = REPO_ROOT / "tom_core_samples" / "tom_flutter_ui_test"
 
 # Document label -> the lib/ folder it counts. The label is what has to appear
 # in the document's table, so it reads as prose rather than as a path.
@@ -61,7 +61,7 @@ GROUPS: dict[str, str] = {
 
 # Documents carrying a counts table, relative to REPO_ROOT.
 DOCUMENTS: list[str] = [
-    "tom_flutter_ui_test/README.md",
+    "tom_core_samples/tom_flutter_ui_test/README.md",
 ]
 
 BEGIN = "<!-- demo-counts:begin -->"

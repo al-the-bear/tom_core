@@ -1,0 +1,41 @@
+name: tom_flutter_ui_test
+description: >-
+  Demo application and end-to-end exercise harness for the Tom Flutter UI
+  widget library: demo screens over the Advanced Container Layout engine, the
+  Tom-wrapped Material and Cupertino widget set, the form framework, and the
+  resource and authorization machinery driven by tom_core_kernel.
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.11.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  # Supplies the GlobalMaterialLocalizations delegates that main.dart installs
+  # so the locale switcher has more than one locale to switch between.
+  flutter_localizations:
+    sdk: flutter
+  # Cupertino icon font — the widget demos render CupertinoIcons directly
+  # (demos 05, 13, 24, 25). Without this dep the font isn't bundled and those
+  # icons render as placeholder rectangles.
+  cupertino_icons: ^1.0.8
+  # Persists the selected locale across runs — see lib/locale_settings.dart.
+  shared_preferences: ^2.2.2
+
+  # The libraries under test, consumed from the workspace rather than pub.dev.
+  tom_flutter_ui:
+    path: ../../tom_flutter_ui
+  tom_core_kernel:
+    path: ../../tom_core_kernel
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  # Bundles the Material icon font used throughout the demo screens.
+  uses-material-design: true

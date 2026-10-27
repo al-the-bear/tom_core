@@ -247,6 +247,8 @@ def navigates(path: Path) -> bool:
     """
     if GUIDELINES in path.parts or path in (r / "README.md" for r in gate_scope.ROOTS):
         return False
+    if path.name == "CHANGELOG.md":
+        return False
     return (
         DOC_DIR in path.parts
         or path.name == "README.md"

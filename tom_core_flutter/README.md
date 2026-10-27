@@ -54,8 +54,8 @@ reach for `tom_flutter_ui`; `tom_core_flutter` only carries the kernel binding
 helpers.
 
 The two demo/test harnesses make the split concrete:
-[`tom_flutter_form_test`](../tom_flutter_form_test) and
-[`tom_flutter_ui_test`](../tom_flutter_ui_test) target
+[`tom_flutter_form_test`](../tom_core_samples/tom_flutter_form_test) and
+[`tom_flutter_ui_test`](../tom_core_samples/tom_flutter_ui_test) target
 **`tom_flutter_ui` + `tom_core_kernel`** directly — they do **not** depend on
 `tom_core_flutter`. Reach for `tom_core_flutter` when you want the kernel on
 Flutter with the minimal binding helpers; reach for `tom_flutter_ui` when you

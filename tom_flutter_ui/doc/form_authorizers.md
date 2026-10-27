@@ -233,7 +233,7 @@ return ListenableBuilder(
 ```
 
 That's exactly the pattern demo_a_lifecycle.dart uses — see
-[`_buildActionRow`](../../tom_flutter_form_test/lib/demos/demo_a_lifecycle.dart).
+[`_buildActionRow`](../../tom_core_samples/tom_flutter_form_test/lib/demos/demo_a_lifecycle.dart).
 
 ### Why not just listen on `state` as one object?
 
@@ -403,7 +403,7 @@ form.email.uiStateController = TomUIStateController(
 );
 ```
 
-See [`_applyUIStateController`](../../tom_flutter_form_test/lib/demos/demo_b_authorization.dart).
+See [`_applyUIStateController`](../../tom_core_samples/tom_flutter_form_test/lib/demos/demo_b_authorization.dart).
 Combine it with an authorizer on the same field — for example a role-
 based `authorizerNarrowsOnly` narrowing to `read` for non-admins — and
 you get the same two-lane composition the Save button above describes.

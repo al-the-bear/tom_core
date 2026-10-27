@@ -1492,10 +1492,10 @@ def census_module(text: str) -> Path | None:
     the package atoms and in nouns of their own -- hand-written lines, files
     under a folder. They are not module headers and must not be read as one, so
     a document whose first path reference is a package path is declined here
-    rather than half-understood: `tom_core_codespecs` opens on
-    ``tom_core_codespecs/lib/`` and mentions a module path only much later, and
-    reading that later path would measure a directory the census never spoke
-    about.
+    rather than half-understood: a package document that opens on
+    ``<package>/lib/`` and mentions a module path only much later would
+    otherwise be read for that later path, measuring a directory the census
+    never spoke about.
     """
     module = MODULE_PATH.search(text)
     if module is None:
