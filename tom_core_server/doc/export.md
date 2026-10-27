@@ -75,7 +75,7 @@ arrives it is adapted onto this shape rather than the renderers being rewritten.
 | `TomMemoryExportRegister` / `TomSqlExportRegister` | classes | In-memory and relational registers |
 | `TomExportRecord` / `TomExportUsage` | classes | One stored export as the register knows it; what one owner holds |
 | `TomExportRecordRow` / `TomExportUsageRow` | classes | The register table's rows as the driver hands them back |
-| `exportRegisterTable` / `exportRegisterTableDdl` / `defaultExportRegisterTable` | functions / constant | The register table (`tom_export`), declared once, and its DDL |
+| `exportRegisterTable` / `exportRegisterTableDdl` / `defaultExportRegisterTable` | function / function / const String | The register table (`tom_export`), declared once, and its DDL |
 | `TomExportQuota` | class | How many exports, and how many bytes, one owner may hold |
 | `TomExportRetention` | class | Deletes exports older than a maximum age, by hand or as a scheduled job |
 | `tomFormatCellAsText` | function | The one answer to "how does a value look as text" |
