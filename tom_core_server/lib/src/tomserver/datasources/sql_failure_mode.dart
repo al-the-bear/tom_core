@@ -40,7 +40,7 @@ library;
 
 import 'package:mysql_client/exception.dart';
 import 'package:postgres/postgres.dart' as pg;
-import 'package:tom_basics/tom_basics.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 /// What a failed data-source write says about whether it took effect.
 enum TomSqlFailureMode {

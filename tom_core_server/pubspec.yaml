@@ -3,6 +3,13 @@ description: Server library for the TOM framework.
 version: 1.3.0
 repository: https://github.com/al-the-bear/tom_core
 
+# The development TLS key in base_server_configuration.dart is published on
+# purpose: it is the default a fresh server starts with, and
+# usesDevelopmentTlsMaterial exists so a deployment can refuse it. pub's secret
+# scan would otherwise refuse the package for carrying it.
+false_secrets:
+  - /lib/src/tomserver/configuration/base_server_configuration.dart
+
 environment:
   sdk: ^3.10.0
 
