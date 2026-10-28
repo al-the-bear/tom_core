@@ -31,17 +31,16 @@ dependencies:
   # CustomPainter here, so the widget inherits this framework's theming rather
   # than a third party's.
   qr: ^3.0.2
+  # The HTTP client the platform detection builds for the kernel's channels:
+  # IOClient on io platforms, the fetch client's base type on the web
+  # (runtime/platform_detection_*.dart).
+  http: ^1.5.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   lints: ^6.0.0
   test: ^1.25.6
-  # Test-only: the preferences client is exercised against a scripted
-  # `http.Client` instead of a socket, and a fake has to name the type it stands
-  # in for. The library code reaches HTTP through the kernel's channel
-  # abstraction and never imports this.
-  http: ^1.5.0
   # Test-only: the documentation-link guard resolves relative markdown targets
   # against the file that declares them, which is path joining and
   # normalisation, not string concatenation.
