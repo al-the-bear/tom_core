@@ -81,6 +81,14 @@ transaction, acknowledges after the commit, and skips a message it recorded
 before — so at-least-once delivery is processed exactly once. It knows no
 broker; any consumer loop calls it with its own acknowledgement.
 
+**The bus relay is the sending side of a message bus.** `bus_relay.dart` holds
+`TomBusRelay`, the transactional outbox for a `TomMessageBus` (the
+`tom_core_message_bus` package): `publish` queues the message as a job run in
+the caller's database transaction when its store is a `TomSqlJobStore`, and the
+relay's scheduler publishes it to the bus after the commit — a rolled-back
+transaction publishes nothing, a committed one publishes at least once, under
+the queued message id.
+
 `mime_encoder.dart` sits beside the SMTP transport rather than under it: the
 RFC 5322 document is a value the encoder produces, not a step of the
 conversation, and it is asserted directly by the test suite.
@@ -225,6 +233,15 @@ Source: `inbox.dart`, `inbox_sql.dart`
 | `inboxTable` · `inboxTableDdl` · `defaultInboxTable` | `tom_message_inbox`, declared once and listed by `frameworkOwnedTables`. |
 | `TomInboxException` | An empty or over-long consumer name or message id (`messaging.inbox.invalid_consumer`, `messaging.inbox.invalid_message_id`). |
 
+### The bus relay
+
+Source: `bus_relay.dart`
+
+| Type | What it is |
+| ---- | ---------- |
+| `TomBusRelay` | Messages for a `TomMessageBus` queued on a `TomJobStore` and published by a scheduler of its own. `publish(topic, payload, {key, headers, id, codec})` answers the message id; inside a transaction on a `TomSqlJobStore` the run is written in it, so the message is published after the commit or never. A message id the relay holds is not queued again; a publish the bus refused is retried (`retryPolicy`, 10 attempts from 5 s to 5 min); the message is published in the trace it was queued in. `tick()` publishes what is due, `start()` publishes on the tick interval, `close()` stops it and leaves the bus open. A memory store, the default, joins no transaction. Throws `messaging.bus_relay.closed` once closed. |
+| `tomBusRelayJobName` | The scheduler job name the relay registers under (`messaging.bus_relay`). |
+
 ### The vendor mapping's path
 
 Source: `vendor_mapping.dart`
@@ -253,7 +270,7 @@ Source: `outbox.dart`
 
 | Type | What it is |
 | ---- | ---------- |
-| `TomMessageOutbox` | The send queue, on the kernel's job scheduler. A send that outlives the process that asked for it, with retry driven by the permanent/transient distinction above. Each message's run gets a window instant of its own (`TomEventInstants`, in `scheduling`), so two messages queued in the same microsecond stay two runs. The message id is the idempotence key: `send` answers `false` and queues nothing for an id the store still holds — queued, delivered or failed for good — until `purgeFinished` removes its run. `send(message, notBefore: instant)` holds a message until that instant. `start()` registers it in `TomMessageOutbox.started`, which the framework readiness check on `GET /ready` asks whether it is delivering. With a tracer installed, `send` is a producer span, `outbox send`, written into the message's headers as `traceparent` / `tracestate`, and the delivery a consumer span, `outbox deliver`, continuing it. |
+| `TomMessageOutbox` | The send queue, on the kernel's job scheduler. A send that outlives the process that asked for it, with retry driven by the permanent/transient distinction above. Each message's run gets a window instant of its own (`TomEventInstants`, in `scheduling`), so two messages queued in the same microsecond stay two runs. The message id is the idempotence key: `send` answers `false` and queues nothing for an id the store still holds — queued, delivered or failed for good — until `purgeFinished` removes its run. `send(message, notBefore: instant)` holds a message until that instant. Inside a transaction, on a `TomSqlJobStore`, `send` and `sendNow` queue the message in it: it commits or rolls back with the business write that caused it (see `doc/messaging.md`, Queueing Inside a Transaction); a `TomMemoryJobStore`, the default, queues at once. `start()` registers it in `TomMessageOutbox.started`, which the framework readiness check on `GET /ready` asks whether it is delivering. With a tracer installed, `send` is a producer span, `outbox send`, written into the message's headers as `traceparent` / `tracestate`, and the delivery a consumer span, `outbox deliver`, continuing it. |
 | `tomOutboxJobName` | The scheduler job name the outbox registers under (`messaging.outbox`). |
 
 ### Application messaging
@@ -296,7 +313,7 @@ Future<void> main() async {
 See [`doc/messaging.md`](../../../../doc/messaging.md) for the full treatment:
 why this is not a mailer call, the open-channel decision, the one distinction a
 transport must get right, the SMTP conversation, the SMS gateway shape and its
-segment arithmetic, the push protocols and credentials, what "queued" guarantees, the application template rule, and the idempotent receiver.
+segment arithmetic, the push protocols and credentials, what "queued" guarantees, the application template rule, the idempotent receiver, and the bus relay.
 The connection-free surface runs in
 `example/messaging/messaging_example.dart` and, for the template layer, in
 `example/messaging/messaging_templated_example.dart` — `test/messaging_test.dart`
@@ -308,6 +325,8 @@ and SMS protocols through their injectable seams.
 `test/push_transport_test.dart` the push protocols, credentials and exchanges,
 `test/inbox_test.dart` and `test/inbox_db_test.dart` the inbox in memory and
 against a database (`example/messaging/inbox_example.dart` runs it end to end),
+`test/bus_relay_test.dart` the bus relay and `test/outbox_transaction_db_test.dart`
+the outbox and the relay inside database transactions,
 and `test/readme_quick_start_test.dart` runs the snippet above.
 
 ---

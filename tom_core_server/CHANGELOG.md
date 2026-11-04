@@ -2,6 +2,45 @@
 
 ### Added
 
+- **The bus relay** (`messaging` module). `TomBusRelay({bus, store, jobName,
+  retryPolicy, timeout, tickInterval, clock, onAlert, lock})`, the
+  transactional outbox for a `TomMessageBus` of the new `tom_core_message_bus`
+  package, taken by path: `publish<T>(topic, payload, {key, headers, id,
+  codec})` queues a job run (`'<jobName>:<messageId>'`, default job name
+  `tomBusRelayJobName`, `messaging.bus_relay`) — in the caller's transaction on
+  a `TomSqlJobStore` — and answers the message id; a message id the relay holds
+  is not queued again; `tick`, `start` and `close` (the bus stays open). The
+  relay job publishes under the queued message id, in the trace the publish was
+  queued in, retrying a refused publish (10 attempts, 5 s to 5 min by default).
+  The job does not overlap and requests recovery: with a shared lease lock one
+  node relays at a time, in queue order; a run interrupted mid-publish is
+  re-queued once its lease ran out and published again under the same id — a
+  duplicate, never a loss. `tick` loops the scheduler's passes until one
+  publishes nothing. `messaging.bus_relay.closed` once closed. Documented in `doc/messaging.md` (The
+  Bus Relay); tests in `test/bus_relay_test.dart` and, on MariaDB and
+  PostgreSQL, the group `the bus relay, on the data source the transaction
+  writes` of `test/outbox_transaction_db_test.dart`.
+- **Outbox messages commit with the transaction they are queued in**
+  (`scheduling`, `messaging`, `datasources`, `transactions` modules).
+  `TomMessageOutbox.send` / `sendNow` inside a transaction
+  (`TomTransactionManager.runInTransaction`, a `@TomTransactional` endpoint)
+  queue the message in it when the store is a `TomSqlJobStore`:
+  `TomSqlJobStore.enqueue` and `findRun` run in the transaction's branch on the
+  data source it writes to, as a participant of their own on another data source
+  (one-phase commits can come apart: `partiallyCommitted`), and — for a tenant
+  routed (`TomDataSourceInfo.route`) to a data source on the same server, as
+  `schema` tenancy does — on the tenant's data source against the base schema's
+  table, riding the tenant's branch. `ensureSchema` runs its DDL in a
+  transaction scope of its own (`TomTransactionManager.runInTransactionScope`),
+  never in the caller's. `TomTransaction.participantIds`;
+  `TomSqlDatasource.schemaName` (MariaDB `databaseName`, PostgreSQL `schema` or
+  `public`), `canQualify(other)` (same driver, host, port and user; on
+  PostgreSQL also the same database) and `qualify(table)`;
+  `TomFrameworkTable.replaceStatements(..., {table})` and
+  `replaceRow(..., {table})`. Documented in `doc/messaging.md` (Queueing Inside
+  a Transaction), `doc/scheduling.md`, `doc/datasources.md`,
+  `doc/transactions.md` and `doc/tenancy.md`; tests in
+  `test/outbox_transaction_db_test.dart` (`db`, MariaDB and PostgreSQL).
 - **OpenTelemetry tracing** (`tracing` module, new; `server`,
   `configuration`, `datasources`, `transactions`, `messaging`, `metrics`
   modules; kernel `TomTracing` seam). `TomOtelTracer({processors, resource,

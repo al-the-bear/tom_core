@@ -1138,6 +1138,25 @@ abstract class TomSqlDatasource implements TomDataSource {
   @protected
   String get dbSystemName;
 
+  /// The schema this data source's unqualified table names resolve in: the
+  /// database on MariaDB, the `search_path` schema on PostgreSQL.
+  String get schemaName;
+
+  /// Whether a statement on one of this data source's connections can reach a
+  /// table of [other] by naming it [qualify]-ed: the same driver, server and
+  /// user. A data source a schema-isolated tenant is routed to can reach its
+  /// base data source's tables this way; one on another server cannot.
+  bool canQualify(TomSqlDatasource other) =>
+      other.runtimeType == runtimeType &&
+      other.host == host &&
+      other.port == port &&
+      other.username == username;
+
+  /// [table] qualified with this data source's [schemaName], so a connection
+  /// of a data source that [canQualify] this one reaches it.
+  String qualify(String table) =>
+      '${sqlDialect.quoteIdentifier(schemaName)}.$table';
+
   /// The `operation` label of each [withLink] operation.
   static const Map<String, String> _operationLabels = {
     'executeQuery': 'query',

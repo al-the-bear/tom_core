@@ -87,6 +87,12 @@ for all entries is this repository root.
 | --- | --- |
 | [`tom_flutter_ui`](tom_flutter_ui/README.md) | The Flutter widget library: a Material/Cupertino-aware widget set, a declarative form system, a behavioural action system, and a fluent row-based layout engine (Advanced Container Layout). Every widget understands the kernel's `tomId`/`tomGroup` visibility, the four-state `TomAuthState` model, and resource-driven styling. |
 
+### Messaging
+
+| Package | What it is |
+| --- | --- |
+| [`tom_core_message_bus`](tom_core_message_bus/README.md) | A broker-neutral message bus: the `TomMessageBus` contract (publish and subscribe with consumer groups, at-least-once delivery, acknowledgement and rejection, dead-letter topics, typed payloads through reflection, the trace context in the headers, ordering per key as a declared capability), the in-memory bus, and the conformance suite every broker adapter runs. It builds on the kernel only; `tom_core_server`'s bus relay publishes to it after a database commit. No broker adapter ships. |
+
 ### Storage
 
 | Package | What it is |
@@ -154,6 +160,7 @@ tom_core_kernel/       platform-neutral foundation (DI, state, security, …)   
 tom_core_server/       backend runtime: HTTP, persistence, auth               (runtime)
 tom_core_flutter/      Flutter integration layer (re-exports the kernel)      (runtime)
 tom_flutter_ui/        Flutter widget library: widgets, forms, ACL engine     (UI)
+tom_core_message_bus/  broker-neutral message bus, in-memory bus, conformance (messaging)
 tom_core_storage/      storage port, media, cache, journal; settings          (storage)
 tom_core_samples/      the sample applications, and the two demo apps:        (samples)
   tom_flutter_form_test/  runnable demo: the form framework                   (demo app)
@@ -163,7 +170,9 @@ tool/                  repo-wide developer tooling (see below)                (t
 
 Dependency direction, simplified: everything roots at `tom_core_kernel`;
 `tom_core_server` and `tom_core_flutter` build on and re-export it;
-`tom_flutter_ui` builds on the kernel and is exercised by the two demo apps.
+`tom_flutter_ui` builds on the kernel and is exercised by the two demo apps;
+`tom_core_message_bus` builds on the kernel, and `tom_core_server` depends on it
+without re-exporting it.
 
 ## Repository tooling
 

@@ -190,6 +190,11 @@ A `TomTransaction` is created only through `TomTransactionManager.startTransacti
 which calls their `startTransaction(transaction)` exactly once — registering the *same
 participant* again is a no-op, so callers never have to track membership.
 Enlisting after the transaction has concluded throws `TomTransactionException`.
+`participantIds` lists the ids of the participants enlisted so far, in
+enlistment order — the order they are prepared and committed in — which is how
+a caller or a test sees whether a piece of work joined an existing participant
+or enlisted one of its own (the outbox's queue row on a second data source
+does the latter; see [messaging.md](messaging.md#queueing-inside-a-transaction)).
 
 **An id belongs to one object.** `getParticipantId()` names a *resource* rather
 than an object — `MariaDbDatasource` answers

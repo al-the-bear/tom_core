@@ -507,7 +507,7 @@ claimed organization is the session's.
 | SCIM | `TomSqlScimStore.named` routed per tenant with a `tenant` column; secrets per tenant | [Identity Federation per Tenant](#identity-federation-per-tenant) |
 | External sign-in | a pending flow completes only in the tenant it began in; provider sets per tenant | [Identity Federation per Tenant](#identity-federation-per-tenant) |
 | Jobs | a run records its tenant; its body runs inside it, across a worker isolate too; its window and its overlap protection are per tenant | [scheduling](scheduling.md#runs-per-tenant) |
-| Messaging outbox | a message is queued for the tenant in context and delivered inside it; its receipt and its delivery correlation name the tenant | [messaging](messaging.md#messages-per-tenant) |
+| Messaging outbox | a message is queued for the tenant in context and delivered inside it; its receipt and its delivery correlation name the tenant; queued inside a transaction under `schema` isolation, it commits with the tenant's writes | [messaging](messaging.md#messages-per-tenant) |
 | Delivery reports | `tom_delivery_report.tenant` attributes a carrier's report, which arrives carrying nothing but the carrier's id, to its tenant | [messaging](messaging.md#messages-per-tenant) |
 | Idempotency keys | a key is scoped to the tenant in context, its principal and the operation; the SQL store resolves its data source by name per request, so a routed data source keeps a tenant's keys in the tenant's schema or database | [endpoints](endpoints.md#stores-clusters-and-tenants) |
 | Sagas | a saga belongs to the tenant it began in, and its steps and compensations run inside it; `TomSqlSagaStore` resolves its data source by name on every call, so a routed data source keeps a tenant's sagas beside the data its steps change; a resumption looks into every tenant | [transactions](transactions.md#sagas-per-tenant) |
@@ -522,7 +522,8 @@ principal revoked, outside any tenant's context.
 
 The framework's own tables serve the whole deployment and are **not routed**:
 each store is built over a data source at start-up and keeps it, whatever tenant
-is in context. Where the tenant matters, it is a column.
+is in context, and its rows live in that data source. Where the tenant matters,
+it is a column.
 
 | Table | Store | Tenant |
 | ----- | ----- | ------ |
@@ -543,6 +544,20 @@ is in context. Where the tenant matters, it is a column.
 Build these stores over a data source that is not in `TomTenancy.datasources`,
 or construct them outside any tenant's context, which is where a server's
 start-up runs anyway. Their migrations belong in the deployment-wide tree.
+
+**The job queue's write inside a transaction uses the tenant's connection.**
+`tom_job_run` still lives in the base data source, but a `TomSqlJobStore.enqueue`
+— and the `findRun` before it — made inside a transaction of a tenant whose data
+source is routed to one on the same server (`TomSqlDatasource.canQualify`: same
+driver, host, port and user, on PostgreSQL also the same database) runs on the
+tenant's data source and names the table qualified by the base schema
+(`TomSqlDatasource.qualify`). That is what `schema` isolation gives: the row rides
+on the tenant's transaction branch, so a message queued on the outbox commits or
+rolls back with the tenant's business writes in one commit, and lands in the
+base table the scheduler polls. Under `database` isolation on another server
+`canQualify` fails and the store's own data source enlists as a second
+participant — see
+[messaging.md](messaging.md#queueing-inside-a-transaction) for what that commits.
 
 **The message inbox is the exception, and on purpose.** `TomSqlInbox` records
 a message in the same transaction as the consumer's own writes, so it must live
@@ -779,6 +794,10 @@ each of the three isolation models with the same assertions — that is the poin
 of one seam — and checks where the rows land: in the shared table under
 `shared`, in each tenant's schema under `schema`, in each tenant's database under
 `database`. It covers repositories, caches, revocations, jobs and the outbox.
+`test/outbox_transaction_db_test.dart`, tagged `db`, holds the outbox's queue row
+under `schema` isolation, with the store on the unrouted base data source, to
+the tenant's transaction branch: rolled back with it, and committed into the
+base schema, where the outbox's tick delivers it.
 `tool/run_db_tests.sh` (MariaDB) or `tool/run_db_tests_postgres.sh`
 (PostgreSQL) starts a database for it.
 

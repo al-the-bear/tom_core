@@ -1,0 +1,14 @@
+# Build configuration for tom_core_message_bus
+#
+# Reflection generator configuration for the typed-payload tests and the
+# example: a payload class crosses the bus through the kernel's reflection.
+
+targets:
+  $default:
+    builders:
+      tom_reflection_generator:reflection_generator:
+        generate_for:
+          - test/codec_test.dart
+          - example/message_bus_example.dart
+        options:
+          formatted: true

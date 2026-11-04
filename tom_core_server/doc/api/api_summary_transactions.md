@@ -262,6 +262,7 @@ None — the constructor is private; obtain instances via
 | `isRunning` | `bool` | *(getter)* Whether the transaction is still open (not yet committed or rolled back). |
 | `id` | `String` | The transaction's id, `tx_<process tag>_<counter>`: unique in the process, and through a random process tag across the processes sharing a decision log. The key its commit decision is recorded under (final). |
 | `span` | `TomSpan?` | The transaction's span, `transaction`, from its start to its conclusion — or `null` when tracing is off or the transaction was opened outside traced work (the span is started `childOnly`) (`late final`). Carries `tom.transaction.id` and `tom.transaction.read_only`, and on conclusion `tom.transaction.outcome` and `tom.transaction.participants`; `partiallyCommitted` and `rolledBackWithFailures` mark it failed. Work run through `runInSpan` — as `TomTransactionManager.runInTransaction` and a transactional endpoint run theirs — is its child. |
+| `participantIds` | `List<String>` | *(getter)* The ids (`getParticipantId`) of the participants enlisted so far, in enlistment order — the order they are prepared and committed in — as an unmodifiable list. |
 
 #### Methods
 

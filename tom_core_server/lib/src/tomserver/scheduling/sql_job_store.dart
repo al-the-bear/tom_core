@@ -106,6 +106,7 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../datasources/datasource_initialization.dart';
 import '../datasources/framework_table.dart';
+import '../datasources/sql_datasource.dart';
 import '../datasources/sql_failure_mode.dart';
 import '../datasources/sql_instant.dart';
 import '../little_things/server_exception.dart';
@@ -245,29 +246,80 @@ class TomSqlJobStore implements TomJobStore {
   ///
   /// Idempotent and called automatically by every operation; exposed so a
   /// start-up sequence can provision the schema before serving traffic.
-  Future<void> ensureSchema() => _schema.ensure(() async {
-    if (createSchema) {
-      await _queue.create(datasource);
-      await _pauses.create(datasource);
-      await _archive?.create(datasource);
-    }
-  });
+  ///
+  /// Never inside the caller's transaction: the DDL runs in a transaction
+  /// scope of its own, on a connection of its own. On MariaDB a `CREATE TABLE`
+  /// commits the transaction its connection holds, so the first enqueue made
+  /// in a transaction would otherwise commit the caller's work before the
+  /// caller decided to.
+  Future<void> ensureSchema() => _schema.ensure(
+    () => TomTransactionManager.runInTransactionScope(() async {
+      if (createSchema) {
+        await _queue.create(datasource);
+        await _pauses.create(datasource);
+        await _archive?.create(datasource);
+      }
+    }),
+  );
 
+  /// Where the queue is written and read in the current zone: this store's
+  /// data source, or — in a transaction, for a tenant whose data source the
+  /// deployment routes ([TomDataSourceInfo.route]) to one on the same server,
+  /// as `schema` tenancy does — the routed data source, the table qualified
+  /// with this store's schema.
+  ///
+  /// The routed data source is the one the tenant's business writes enlist in
+  /// the transaction, so the queue row rides on their connection and commits
+  /// or rolls back with them in one branch. The row still lands in this
+  /// store's own table, which is where the scheduler polls.
+  ({TomDataSource datasource, String table}) _queueTarget() {
+    final own = (datasource: datasource, table: table);
+    final store = datasource;
+    if (store is! TomSqlDatasource) return own;
+    final transaction = TomTransactionManager.getCurrentTransaction();
+    if (transaction == null || !transaction.isRunning) return own;
+    final base = TomDataSourceInfo.getBaseDataSourceInfo(store.registeredName);
+    if (base == null || !identical(base.datasource, store)) return own;
+    final routed = TomDataSourceInfo.route(base).datasource;
+    if (identical(routed, store) ||
+        routed is! TomSqlDatasource ||
+        !routed.canQualify(store)) {
+      return own;
+    }
+    return (datasource: routed, table: store.qualify(table));
+  }
+
+  /// Queues [run].
+  ///
+  /// Inside a transaction the row is written in it — on this store's data
+  /// source when the transaction writes there too, else as a participant of
+  /// its own; see [_queueTarget] for a tenant routed to a schema of the same
+  /// server, where it joins the tenant's branch.
   @override
   Future<void> enqueue(TomJobRun run) async {
     await ensureSchema();
+    final target = _queueTarget();
     // REPLACE rather than INSERT because enqueue is the store's only writer of
     // new rows and the scheduler may re-enqueue a window it is re-planning. The
     // unique key on (job_name, scheduled_for) is what keeps the idempotence key
     // a database invariant rather than a convention, so a second row for the
     // same window cannot exist even if a peer races this one.
-    await _queue.replaceRow(datasource, _writeColumns, _bindOf(run));
+    await _queue.replaceRow(
+      target.datasource,
+      _writeColumns,
+      _bindOf(run),
+      table: target.table,
+    );
   }
 
+  /// The run [id], read where [enqueue] writes — so a transaction sees the
+  /// runs it queued itself.
   @override
   Future<TomJobRun?> findRun(String id) async {
     await ensureSchema();
-    final rows = await _select('WHERE id = :id LIMIT 1', {'id': id});
+    final rows = await _select('WHERE id = :id LIMIT 1', {
+      'id': id,
+    }, target: _queueTarget());
     return rows.isEmpty ? null : rows.first;
   }
 
@@ -919,12 +971,14 @@ class TomSqlJobStore implements TomJobStore {
 
   Future<List<TomJobRun>> _select(
     String suffix,
-    Map<String, dynamic> params,
-  ) async {
-    final rows = await datasource.executeQuery<TomJobRunRow>(
-      'SELECT ${_queue.columnList} FROM $table $suffix',
-      params,
-    );
+    Map<String, dynamic> params, {
+    ({TomDataSource datasource, String table})? target,
+  }) async {
+    final rows = await (target?.datasource ?? datasource)
+        .executeQuery<TomJobRunRow>(
+          'SELECT ${_queue.columnList} FROM ${target?.table ?? table} $suffix',
+          params,
+        );
     return rows.map(_runOf).toList();
   }
 

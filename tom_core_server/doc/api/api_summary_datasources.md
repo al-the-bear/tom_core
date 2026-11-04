@@ -1354,6 +1354,7 @@ or calls, not part of the surface an application reaches for.
 | `lentConnectionCount` | `int` | *(getter)* How many connections are lent out — to transactions or statements. |
 | `pooledLinks` | `Iterable<TomSqlLink>` | *(getter, protected)* Every connection of the pool, lent or idle; empty when not open. |
 | `dbSystemName` | `String` | *(getter, protected, abstract)* The `db.system.name` attribute of a statement's span — `mariadb`, `postgresql`. |
+| `schemaName` | `String` | *(getter, abstract)* The schema this data source's unqualified table names resolve in: the database on MariaDB, the `search_path` schema on PostgreSQL. |
 
 ##### Methods — what a driver supplies
 
@@ -1398,6 +1399,8 @@ or calls, not part of the surface an application reaches for.
 | `toString` | `String toString()` | *(override)* `<driverLabel> host:port/database` and its state: `open (N lent, M idle)` while it is open, and otherwise which of the two ways it came to hold no pool — `closed` or `never opened`. |
 | `getParticipantId` | `String getParticipantId()` | *(override)* `<participantPrefix>-<database>@<host>:@<port>` — the database this source speaks to, so two instances configured for one database enlist once. |
 | `withSessionLock` | `Future<R> withSessionLock<R>(String name, Future<R> Function() body, {Duration wait = const Duration(minutes: 10), Duration poll = const Duration(milliseconds: 250)})` | Runs `body` while this process holds the database-wide session lock `name`, trying `tryLockOn` every `poll` for up to `wait` and then throwing `error.datasource.session_lock_timeout` (parameters `lock` and `waitMs`). The lock is taken on a connection of its own, opened through `openLink` beside the pool and closed when `body` ends, so it is released when `body` returns, when it throws, and by the database when the process dies. `body`'s statements run on the pool as usual — a mutual exclusion between processes, not a transaction. Re-entrant within the zone per `host:port/databaseName` and `name`: a `body` asking for the same lock again runs without waiting for itself. The migration lock is built on it. |
+| `canQualify` | `bool canQualify(TomSqlDatasource other)` | Whether a statement on one of this data source's connections can reach a table of `other` by its `qualify`-ed name: the same driver (`runtimeType`), `host`, `port` and `username`. A data source a schema-isolated tenant is routed to can reach its base data source's tables this way; one on another server cannot. |
+| `qualify` | `String qualify(String table)` | `table` qualified with this data source's `schemaName`, the schema quoted by `sqlDialect.quoteIdentifier`, so a connection of a data source that `canQualify` this one reaches it. |
 
 ##### Methods — transactions
 
@@ -1654,6 +1657,7 @@ MariaDbDatasource()
 | `sqlDialect` | `TomStandardSqlDialect` | *(override)* The MariaDB SQL dialect, a `MariadbSqlDialect`. |
 | `driverLabel` | `String` | *(override)* `MariadbDatasource`. |
 | `dbSystemName` | `String` | *(override)* `mariadb`. |
+| `schemaName` | `String` | *(override)* `databaseName`. |
 | `preparedStatementLabel` | `String` | *(override)* `MariadbPreparedStatement`. |
 | `participantPrefix` | `String` | *(override)* `MariaDb`. |
 | `commitStatement` | `String` | *(override)* `COMMIT;`. |
@@ -1813,6 +1817,7 @@ Sets `port` to PostgreSQL's default, `5432`.
 | `sslMode` | `String` | How the connection is encrypted: `disable`, `require` (encrypt, accept any certificate) or `verifyFull` (encrypt and verify). Default `require`. Any other value fails the first connection with `error.initialize.invalid_ssl_mode` (parameter `sslMode`). |
 | `driverLabel` | `String` | *(override)* `PostgresDatasource`. |
 | `dbSystemName` | `String` | *(override)* `postgresql`. |
+| `schemaName` | `String` | *(override)* `schema`, or `public` — the server's default — when it is empty. |
 | `preparedStatementLabel` | `String` | *(override)* `PostgresPreparedStatement`. |
 | `participantPrefix` | `String` | *(override)* `Postgres`. |
 | `commitStatement` | `String` | *(override)* `COMMIT`. |
@@ -1824,6 +1829,7 @@ Sets `port` to PostgreSQL's default, `5432`.
 | ------ | --------- | ----------- |
 | `datasourceException` | `PostgresDatasourceException datasourceException(String key, String message, {Map<String, dynamic>? parameters, StackTrace? stack, Object? rootException, bool autoLog = false})` | *(override)* Every refusal of this driver is a `PostgresDatasourceException`. |
 | `connectionLostException` | `PostgresConnectionLostException connectionLostException(String key, String message, {Map<String, dynamic>? parameters, StackTrace? stack, Object? rootException})` | *(override)* The retry signal is a `PostgresConnectionLostException`. |
+| `canQualify` | `bool canQualify(TomSqlDatasource other)` | *(override)* As `TomSqlDatasource.canQualify`, and also the same `databaseName`: a PostgreSQL connection reaches another schema of its database, never another database. |
 | `openLink` | `Future<TomSqlLink> openLink()` | *(override)* Opens a connection to `databaseName` (the `postgres` database when it is empty) with `sslMode`, the `timeOut` connect timeout and `TimeZone` `UTC`, then sets `search_path` to `schema` when one is configured. |
 | `closeLink` | `Future<void> closeLink(TomSqlLink link)` | *(override)* Closes the link's connection; a failure is logged, never thrown. |
 | `tryLockOn` | `Future<bool> tryLockOn(TomSqlLink link, String name)` | *(override)* `SELECT pg_try_advisory_lock(hashtextextended(:name, 0))` on the link's connection. An advisory lock takes a number, so the name is hashed into one with `hashtextextended`, alike on every node. |
@@ -2124,8 +2130,8 @@ because a descriptor is built once at start-up, where the alternative is a
 | `column` | `TomFrameworkColumn? column(String column)` | The named column, or `null`. |
 | `columnsOf` | `String columnsOf(Iterable<String> names)` | `names` as a column list, in the order given. Throws `ArgumentError` when a name is not a column — a projection that outlived the column it names fails at the first call rather than at the database. |
 | `insertRow` | `String insertRow(TomStandardSqlDialect dialect, Map<String, String> values, {bool ignoreConflict = false})` | Renders a row-writing statement for `dialect`'s database (`TomStandardSqlDialect.insertInto`). `values` maps a column name to the SQL text that supplies it, usually a `:bind` but sometimes a literal. With `ignoreConflict` a row whose key already exists is kept and the write changes nothing. Keyed by name rather than by position, because a positional list would let a column inserted in the descriptor silently shift every value one place along. Throws `ArgumentError` on an unknown column. |
-| `replaceStatements` | `List<String> replaceStatements(TomStandardSqlDialect dialect, Map<String, String> values)` | The statements writing a row over every row it supersedes — the one with its primary key, and any colliding on one of this table's unique keys — in `dialect`'s database (`TomStandardSqlDialect.replaceInto`). Throws `ArgumentError` on an unknown column. |
-| `replaceRow` | `Future<void> replaceRow(TomDataSource datasource, Map<String, String> values, Map<String, dynamic> params)` | Writes a row over every row it supersedes, in `datasource`: one statement on MariaDB; a `DELETE` and an `INSERT` run in one transaction where the database has no `REPLACE`. `values` names the SQL text per column as for `insertRow`; `params` binds it. |
+| `replaceStatements` | `List<String> replaceStatements(TomStandardSqlDialect dialect, Map<String, String> values, {String? table})` | The statements writing a row over every row it supersedes — the one with its primary key, and any colliding on one of this table's unique keys — in `dialect`'s database (`TomStandardSqlDialect.replaceInto`). `table` is the table as the statements address it, `name` by default. Throws `ArgumentError` on an unknown column. |
+| `replaceRow` | `Future<void> replaceRow(TomDataSource datasource, Map<String, String> values, Map<String, dynamic> params, {String? table})` | Writes a row over every row it supersedes, in `datasource`: one statement on MariaDB; a `DELETE` and an `INSERT` run in one transaction where the database has no `REPLACE`. `values` names the SQL text per column as for `insertRow`; `params` binds it. `table` names the table as the statement addresses it — a schema-qualified name (`TomSqlDatasource.qualify`) when `datasource` is not the one the table lives in — and defaults to `name`. |
 | `createStatements` | `List<String> createStatements(TomStandardSqlDialect dialect)` | The statements building this table in `dialect`'s database: the `CREATE TABLE IF NOT EXISTS`, then — where the database cannot declare an index inside the table — one `CREATE INDEX IF NOT EXISTS` per index. `IF NOT EXISTS` because every store calls it on first use and a second process must not fail on a table the first one created. |
 | `create` | `Future<void> create(TomDataSource datasource)` | Creates this table in `datasource` if it does not exist, running `createStatements` in the data source's own dialect. |
 | `toString` | `String toString()` | *(override)* `"TomFrameworkTable(<name>)"`. |

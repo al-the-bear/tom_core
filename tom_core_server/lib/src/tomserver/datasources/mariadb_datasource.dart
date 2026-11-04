@@ -193,6 +193,9 @@ class MariaDbDatasource extends TomSqlDatasource {
   String get dbSystemName => 'mariadb';
 
   @override
+  String get schemaName => databaseName;
+
+  @override
   String get preparedStatementLabel => "MariadbPreparedStatement";
 
   @override

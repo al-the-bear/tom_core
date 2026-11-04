@@ -23,7 +23,7 @@ surface documented here.
 | Health Check | [api_summary_healthcheck.md](api_summary_healthcheck.md) | Health analyzer and health-check service/server — process-wide or per instance, with cooperative cancellation of a timed-out analysis — and the framework readiness checks `/ready` answers with by default — or `503 shutting down` once a graceful shutdown has begun. |
 | Item Authorization | [api_summary_item_authorization.md](api_summary_item_authorization.md) | Item authorizations kept by an external authority: the port to it, a caching client for checks, accessible items and the user's sharing acts, and the row scope it feeds. |
 | Little Things | [api_summary_little_things.md](api_summary_little_things.md) | The server-side base exception `TomServerException`, the `TomLoginFailure` reason its login subclass carries — correlated with the kernel's request id — `tomErrorEnvelope`, the wire shape every error response uses, and `tomErrorResponse`, which answers it as the envelope or as an RFC 9457 problem document. |
-| Messaging | [api_summary_messaging.md](api_summary_messaging.md) | Channel-neutral messages, delivery transports (SMTP, HTTP SMS gateway and stand-ins), MIME encoding, the durable outbox, resource-keyed email and SMS, and the idempotent receiver (inbox) for consuming a broker's messages once. |
+| Messaging | [api_summary_messaging.md](api_summary_messaging.md) | Channel-neutral messages, delivery transports (SMTP, HTTP SMS gateway and stand-ins), MIME encoding, the durable outbox, resource-keyed email and SMS, the idempotent receiver (inbox) for consuming a broker's messages once, and the bus relay that publishes to a message bus after the transaction commits. |
 | Metrics | [api_summary_metrics.md](api_summary_metrics.md) | The request series, the Prometheus scrape endpoint answered ahead of authentication, and the OTLP/HTTP transport and metrics exporter. |
 | Notifications | [api_summary_notifications.md](api_summary_notifications.md) | The notification model above messaging: notification types and their policy, subscription resolution, per-user channel choices, cadences and quiet hours read from the user preferences, resource-keyed rendering, the dispatcher that fans a notification out to the outbox, hourly and daily digests, and `GET /notification-preferences`. |
 | Object Persistence | [api_summary_object_persistence.md](api_summary_object_persistence.md) | Persistence annotations, repositories, query builder, operators/expressions, subqueries and association filters, grouped queries and their aggregates, paging and sorting, file-reference columns, data scoping, column authorization, field-level encryption with its keys, rotation and re-encryption, and the entity lifecycle: soft delete, history tables, lifecycle hooks and change events. |
@@ -712,6 +712,7 @@ surface documented here.
 | `TomSmsEncoding` | enum | `gsm7`, `ucs2`. |
 | `TomMimeEncoder` | class | Renders a message as an RFC 5322 / MIME document. |
 | `TomMessageOutbox` | class | The durable send queue in front of a router. |
+| `TomBusRelay` | class | The transactional outbox for a `TomMessageBus`: queued in the caller's transaction, published after the commit. |
 | `TomTemplatedMessageService` | abstract class | The rule every channel shares: a message is a template key plus parameters. |
 | `TomEmailRequest` | class | What to send, to whom, with which values — a template key, never a subject or body. |
 | `TomEmailService` | class | Renders resource-keyed email in the recipient's locale and queues it on the outbox. |
@@ -723,6 +724,7 @@ surface documented here.
 | `TomTransientDeliveryException` | class | A delivery failure worth another attempt. |
 | `tomMimeLineEnding` / `tomMimeMaxLineLength` | top-level | MIME line ending and maximum line length. |
 | `tomOutboxJobName` | top-level | The default job name the outbox registers under. |
+| `tomBusRelayJobName` | top-level | The default job name the bus relay registers under. |
 
 ### Metrics (`lib/src/tomserver/metrics/`)
 
@@ -1325,6 +1327,8 @@ surface documented here.
 | `TomBlobUsage` | File Storage |
 | `TomBlobUsageRow` | File Storage |
 | `TomBoolConfig` | Configuration |
+| `TomBusRelay` | Messaging |
+| `tomBusRelayJobName` | Messaging |
 | `TomCache` | Cache |
 | `TomCachedItemLevel` | Cache |
 | `TomCacheEntry` | Cache |

@@ -39,6 +39,7 @@ declared.
 - [Data Sources and Drivers](#data-sources-and-drivers)
   - [Every settings key has to bind](#every-settings-key-has-to-bind)
   - [Routing per tenant](#routing-per-tenant)
+  - [Reaching another schema of the same server](#reaching-another-schema-of-the-same-server)
   - [What one execution reports](#what-one-execution-reports)
 - [When a Write Fails](#when-a-write-fails)
   - [Why the test recognises the *definite* side](#why-the-test-recognises-the-definite-side)
@@ -847,9 +848,32 @@ declares it, so it does not depend on tenancy.
 A repository resolves its data source through `route` on every call, so one
 repository serves every tenant. A framework store — the job queue, the leases,
 the invalidation log — is built once over a data source and keeps it, which is
-what keeps the framework's tables deployment-wide. With no router installed,
+what keeps the framework's tables deployment-wide. The job queue's write inside
+a transaction is the one place a framework store uses the tenant's connection:
+it addresses its own table there by a schema-qualified name (see
+[Reaching another schema of the same server](#reaching-another-schema-of-the-same-server)). With no router installed,
 `getDataSourceInfo` and `getBaseDataSourceInfo` answer the same. See
 [tenancy.md](tenancy.md#how-a-data-source-is-routed) for the routing rules.
+
+### Reaching another schema of the same server
+
+Under schema isolation the data source a tenant is routed to and the registered
+one it was derived from are two data sources on one server. A statement on
+either's connection can reach the other's tables by naming them with the
+schema they live in. `TomSqlDatasource` answers both questions that takes:
+
+| Member | Answer |
+| ------ | ------ |
+| `schemaName` | The schema this data source's unqualified table names resolve in: `databaseName` on MariaDB (`MariaDbDatasource`), the `schema` setting on PostgreSQL (`PostgresDatasource`), or `public` when that is empty. |
+| `canQualify(other)` | Whether a statement on one of this data source's connections can reach a table of `other` by its qualified name: the same driver, `host`, `port` and `username` — on PostgreSQL also the same `databaseName`, because a PostgreSQL connection reaches another schema of its database, never another database. |
+| `qualify(table)` | `table` qualified with this data source's `schemaName`, the schema quoted by the dialect (`sqlDialect.quoteIdentifier`): `` `tenant_base`.tom_job_run `` on MariaDB, `"public".tom_job_run` on PostgreSQL. |
+
+`TomSqlJobStore` is the caller: inside a transaction of a tenant routed to a
+data source that `canQualify` the store's own, it writes and reads the queue on
+the tenant's data source as `store.qualify(table)`, so the row joins the
+tenant's transaction branch and still lands in the base table — see
+[scheduling.md](scheduling.md#queueing-in-a-transaction). Database isolation on
+another server fails `canQualify`, and the store keeps its own connection.
 
 ### What one execution reports
 
@@ -1966,7 +1990,7 @@ from it:
 | The create-if-missing DDL each store issues on first use, in the connected database's words | `create(datasource)`, `createStatements(dialect)` |
 | The canonical DDL — the types as declared | `createTableDdl` |
 | The column lists its statements interpolate | `columnList`, `columnsOf(names)` |
-| Its row writes | `insertRow(dialect, values, ignoreConflict: …)`, `replaceStatements(dialect, values)`, `replaceRow(datasource, values, params)` |
+| Its row writes | `insertRow(dialect, values, ignoreConflict: …)`, `replaceStatements(dialect, values, table: …)`, `replaceRow(datasource, values, params, table: …)` |
 | The `TomSchemaModel` the convergence guard compares | `db_migration/framework_convergence.dart`, which replays `createTableDdl` through the same `TomSchemaDdlReader` the migration side uses |
 
 A `TomFrameworkColumn` carries a name, a SQL type, nullability, an optional
@@ -2088,7 +2112,9 @@ absorbs a writer that inserted the same key between the two statements. Two
 statements, because one cannot do it: a row deleted by a `WITH` still holds its
 key against the `INSERT` of the same statement. `replaceRow(datasource, values,
 params)` runs them in one transaction when there are two, so no reader sees the
-row missing.
+row missing. Both take an optional `table`: the table as the statement
+addresses it, `name` by default. A store writing its table over a connection of
+another data source passes the qualified name (`TomSqlDatasource.qualify`).
 
 `incrementCounter` takes and reads the count in one statement because a second
 read is wrong under concurrency: every caller of a burst would see the final

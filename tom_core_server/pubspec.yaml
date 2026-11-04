@@ -18,6 +18,10 @@ dependencies:
   tom_core_kernel:
     path: ../tom_core_kernel
   tom_basics_console: ^1.0.0
+  # The broker-neutral message bus the bus relay (messaging/bus_relay.dart)
+  # publishes to.
+  tom_core_message_bus:
+    path: ../tom_core_message_bus
   tom_reflection: ^1.0.2
   shelf: ^1.4.2
   shelf_router: ^1.1.2

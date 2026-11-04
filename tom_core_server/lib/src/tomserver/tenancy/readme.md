@@ -54,6 +54,11 @@ Future<void> main() async {
 }
 ```
 
+The framework's own tables stay in the base data source. Under `schema`
+isolation the job queue's write inside a transaction runs over the tenant's
+connection against the base schema's table (`TomSqlDatasource.qualify`), so a
+message queued on the outbox commits with the tenant's writes.
+
 See [`doc/tenancy.md`](../../../../doc/tenancy.md) for the isolation models, the
 configuration, request resolution, what is tenant-scoped and what stays
 deployment-wide, and

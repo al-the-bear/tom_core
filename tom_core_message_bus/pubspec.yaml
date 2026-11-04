@@ -1,0 +1,29 @@
+name: tom_core_message_bus
+description: >-
+  A broker-neutral message bus for Tom services: publish and subscribe with
+  consumer groups, acknowledgement and rejection, dead-letter topics, typed
+  payloads through reflection and the trace context in the headers. Ships an
+  in-memory bus and the conformance suite every broker adapter passes.
+version: 0.1.0
+repository: https://github.com/al-the-bear/tom_core
+
+environment:
+  sdk: ^3.10.0
+
+dependencies:
+  # The exception base, reflection (typed payloads), the trace context and the
+  # request id a delivery runs under, and the span seam. By path, as every
+  # package of tom_core takes its siblings, so a server resolving both takes
+  # one kernel.
+  tom_core_kernel:
+    path: ../tom_core_kernel
+  # The conformance suite (conformance.dart) is a library adapters import into
+  # their own tests, so the test package is a dependency of the library, not
+  # only of this package's tests.
+  test: ^1.28.0
+
+dev_dependencies:
+  lints: ^6.0.0
+  build_runner: ^2.10.4
+  build: ^4.0.3
+  tom_reflection_generator: ">=1.4.0"

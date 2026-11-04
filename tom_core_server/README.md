@@ -45,7 +45,9 @@ observable state, security, resources) and adds everything a service needs:
   choices, quiet hours and hourly or daily digests, one message per recipient
   and chosen channel — an
   **idempotent receiver (inbox)** that lets a broker's consumer process a
-  redelivered message once,
+  redelivered message once, a **bus relay** that publishes to a
+  [`tom_core_message_bus`](../tom_core_message_bus/README.md) bus once the
+  transaction the publish was queued in has committed,
   **tabular export** to CSV/XLSX/PDF with charts, by response, storage or
   email, under a per-owner quota and a retention purge,
   **streaming blob storage** behind one contract, with one copy per content,
@@ -179,7 +181,7 @@ added.
 | `tracing` | `TomOtelTracer`, `TomUntracedClient`, `TomInMemorySpanExporter`, `TomTracingException` | The OpenTelemetry tracer behind the kernel's `TomTracing` seam: the server span of every request (`<METHOD> <route>`), and the spans of SQL statements (the statement as written, never a bound value), transactions, outgoing HTTP calls, job runs and the outbox's send and delivery, carried across services in `traceparent` and through the outbox in the message's headers, sampled parent-first and exported over OTLP/HTTP to the metrics' `otlpEndpoint`. Off until `tracing` is configured, and no span is made while it is off |
 | `audit` | `TomAuditTrail`, `TomAudited`, `TomAuditRecord`, `TomAuditSink`, `TomSqlAuditSink`, `TomAuditAnchor`, `TomAuditAnchorStore`, `TomAuditAnchorPublisher` | Attributable, tamper-evident trail written at the endpoint and repository chokepoints, stored in memory, in append-only files, or in a table whose write-once guarantee is the grant it is served with — and anchors, published outside the server, that turn a wholesale rewrite or a truncation from invisible into provable |
 | `privacy` | `TomPrivacy`, `TomDataSubject`, `TomPersonal`, `TomRetention`, `TomSubjectKeys`, `TomSqlSubjectKeyStore` | GDPR tooling over the application's own repositories: `@TomDataSubject` marks the column naming a person and what erasing them does to the row (delete, anonymize, unlink), `@TomPersonal` the columns holding their data, `@TomRetention` how long rows are kept; `erase` reaches every registered entity and is audited, `exportSubject` renders everything held about a person as CSV, XLSX or PDF, and a retention job deletes or anonymizes what is past its time. With subject keys installed, personal values in the audit trail are sealed per person, and erasing them shreds the key — the values become unreadable while the hash chain still verifies |
-| `messaging` | `TomMessage`, `TomMessageTransport`, `TomSmtpTransport`, `TomMessageOutbox`, `TomInbox` | Outbound messages: a channel-neutral shape, SMTP, and a durable outbox on the kernel's job scheduler; an idempotent receiver for consuming a broker's messages once |
+| `messaging` | `TomMessage`, `TomMessageTransport`, `TomSmtpTransport`, `TomMessageOutbox`, `TomInbox`, `TomBusRelay` | Outbound messages: a channel-neutral shape, SMTP, and a durable outbox on the kernel's job scheduler; an idempotent receiver for consuming a broker's messages once; the bus relay, the transactional outbox for a `TomMessageBus` of `tom_core_message_bus` |
 | `notifications` | `TomNotificationType`, `TomNotificationCatalog`, `TomNotificationAudience`, `TomNotification`, `TomNotificationPreferences`, `TomQuietHours`, `TomTemplatedNotificationRenderer`, `TomNotificationDispatcher`, `TomNotificationDigests`, `TomNotificationPreferencesServer` | The notification model above messaging: notification types the application declares with the channels each may use, the audience that resolves who receives one, each user's channel choices, cadence and quiet hours stored as ordinary user preferences (role and deployment defaults included), every message rendered from resource keys in the recipient's locale, and one message per recipient and chosen channel queued on the outbox under an id derived from the notification — so a repeated dispatch sends nothing twice. A user who chose an hourly or daily cadence receives one digest message per channel instead, kept until due as a pending job run in the outbox's store. `GET /notification-preferences` lists the types and the caller's channels for a settings screen |
 | `resources` | `TomTextLocale`, `TomLocalizedTextResources`, `TomResourceLocaleException` | Per-recipient text for a server that renders many languages at once: the locale is an argument rather than ambient state, bundles resolve along a fallback chain *per key* so a half-translated language serves what it has, and a missing key answers `null` instead of the key — right on a screen, unacceptable in a subject line |
 | `export` | `TomTabularResult`, `TomTabularChart`, `TomTabularRenderer`, `TomCsvRenderer`, `TomXlsxRenderer`, `TomPdfRenderer`, `TomExportService`, `TomExportStore`, `TomExportEmailDelivery`, `TomExportRegister`, `TomExportQuota`, `TomExportRetention` | CSV/XLSX/PDF rendering from one streaming tabular shape, with bar, line and pie charts of a section's rows (vector graphics in PDF, native charts in XLSX); streamed back to a caller, into storage, or by email through the messaging outbox as a link or an attachment; a register of stored exports (`tom_export`) that a per-owner quota counts against and a retention purge, by hand or scheduled, works from |
@@ -526,7 +528,10 @@ tom_basics · tom_crypto · tom_reflection
 ```
 
 `tom_core_server` sits directly on `tom_core_kernel` and re-exports it, so server
-apps get the full kernel API through one dependency. See the
+apps get the full kernel API through one dependency. It also depends on
+[`tom_core_message_bus`](../tom_core_message_bus/README.md), the broker-neutral
+message bus its bus relay publishes to; the bus is not re-exported, so an
+application that publishes or subscribes imports it itself. See the
 [repository map](../README.md) for the full picture.
 
 ## Further documentation

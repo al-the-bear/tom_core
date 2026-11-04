@@ -248,7 +248,12 @@ share one database, and the descriptor is what the convergence check compares a
 provisioned schema against. Both stores can also create their tables
 on first use (`createSchema: true`, the default), which is what a test or a
 single-service deployment wants; set it `false` when the migration module owns
-the schema and the application's database user may not run DDL.
+the schema and the application's database user may not run DDL. `ensureSchema()`
+provisions the tables at start-up; it never runs inside the caller's
+transaction, but in a transaction scope of its own
+(`TomTransactionManager.runInTransactionScope`) on a connection of its own,
+because on MariaDB a `CREATE TABLE` commits the transaction its connection
+holds.
 
 Three constraints carry the design:
 
@@ -283,6 +288,22 @@ saga orchestrator — takes each run's instant from `TomEventInstants.next(now)`
 the clock's reading, or one microsecond past the last instant it gave out, so
 two runs of one job queued in the same microsecond do not share a key and the
 second does not replace the first. It holds within one isolate.
+
+## Queueing in a transaction
+
+`enqueue` inside a transaction writes the run in it, so the run commits or rolls
+back with the caller's work — which is what makes a message queued on the
+messaging outbox one unit with the write that caused it. `findRun` reads where
+`enqueue` writes, so a transaction sees the runs it queued itself. On the data
+source the transaction writes to, the enqueue joins its branch (one commit); on
+another data source it is a participant of its own (a rollback undoes both; two
+one-phase commits can come apart unless both are XA data sources). For a tenant
+whose data source is routed (`TomDataSourceInfo.route`) to one that
+`TomSqlDatasource.canQualify` the store's — `schema` tenancy — both run on the
+tenant's data source against the base schema's table
+(`TomSqlDatasource.qualify`): one commit on the tenant's branch, the row in the
+table the scheduler polls. See
+[`doc/scheduling.md`](../../../../doc/scheduling.md#queueing-in-a-transaction).
 
 ## Time
 

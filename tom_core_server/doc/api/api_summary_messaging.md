@@ -7,7 +7,8 @@ transports for tests and local runs, a durable outbox that queues delivery onto
 the kernel's job scheduler, and the templating layer above it that composes
 every channel's messages from resource keys — and, on the receiving side of a
 message broker, the idempotent receiver (inbox) that processes a redelivered
-message once.
+message once; and, on the sending side of a message bus, the bus relay that
+publishes a message once the transaction it was queued in has committed.
 
 ## Table of Contents
 
@@ -32,6 +33,7 @@ message once.
   - [TomFileMessageTransport](#tomfilemessagetransport)
   - [TomMimeEncoder](#tommimeencoder)
   - [TomMessageOutbox](#tommessageoutbox)
+  - [TomBusRelay](#tombusrelay)
   - [TomTemplatedMessageService](#tomtemplatedmessageservice)
   - [TomEmailRequest](#tomemailrequest)
   - [TomEmailService](#tomemailservice)
@@ -115,7 +117,8 @@ Source: `lib/src/tomserver/messaging/email_service.dart`,
 `lib/src/tomserver/messaging/sql_delivery_report_store.dart`,
 `lib/src/tomserver/messaging/vendor_mapping.dart`,
 `lib/src/tomserver/messaging/inbox.dart`,
-`lib/src/tomserver/messaging/inbox_sql.dart`.
+`lib/src/tomserver/messaging/inbox_sql.dart`,
+`lib/src/tomserver/messaging/bus_relay.dart`.
 
 The module separates three things a single `sendMail()` call conflates.
 *Composition* is `TomMessage` and the value types around it — `TomRecipient`
@@ -186,6 +189,14 @@ declared once by `inboxTable` (`inboxTableDdl`, `defaultInboxTable`) and read
 back as `TomInboxRow`, in the data source the consumer's work writes to;
 `TomMemoryInbox` keeps them in memory for tests. The inbox knows no broker.
 
+*Publishing to a bus* is `TomBusRelay`, the transactional outbox for a
+`TomMessageBus` of `tom_core_message_bus`. `publish` writes one job run per
+message — `'<jobName>:<messageId>'`, under `tomBusRelayJobName` unless another
+name is given — to the relay's `TomJobStore`, in the caller's transaction on a
+`TomSqlJobStore`, and the relay's own scheduler publishes it to the bus after
+the commit, under the queued message id, in the trace the publish was queued
+in, retrying a publish the bus refused.
+
 `TomMessagingException` is the module's base error, from which every failure
 above derives — except `TomInboxException`, the inbox's refusal of an empty or
 over-long consumer name or message id, which extends `TomServerException`
@@ -248,6 +259,7 @@ TomDeliveryReceipt
 TomMessageRouter
 TomMimeEncoder
 TomMessageOutbox
+TomBusRelay  (implements TomClosable)
 TomEmailRequest
 TomSmtpSecurity  (enum)
 TomSmtpSettings
@@ -968,7 +980,8 @@ factory TomMessageOutbox({
 ```
 
 `store` defaults to a `TomMemoryJobStore`, which is right for tests and wrong
-for production. `retryPolicy` defaults to five attempts rather than the
+for production. It also joins no transaction: a message queued with a
+`TomSqlJobStore` commits or rolls back with the transaction it is queued in. `retryPolicy` defaults to five attempts rather than the
 framework's three, because a relay's transient refusals — greylisting above
 all — are routinely measured in minutes.
 
@@ -993,13 +1006,74 @@ all — are routinely measured in minutes.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `send` | `Future<bool> send(TomMessage message, {DateTime? notBefore})` | Queues `message` and returns once it is durably stored, answering `true`. A message whose id the store already holds a run for — queued, delivered, or failed for good — is not queued again, and `send` answers `false`: a caller retrying a `send` it is unsure completed causes no second delivery, however long ago the first went out. The id is held until `purgeFinished` removes its run. `notBefore` holds the message in the queue until that instant — the first attempt is made at the first tick after it; an instant already past is the same as none. Enqueues directly rather than through the schedule's event stream, so two messages composed in the same instant are two runs, and gives the run a window instant of its own (`TomEventInstants.next`), so two messages queued in the same microsecond do not share the store's `(job, tenant, scheduled instant)` key — the second would replace the first. The run records the tenant in context, and the message is delivered inside it — a transport choosing a per-tenant sending identity reads it from `TomTenantContext.currentId`; the receipt and the delivery correlation name it. With a tracer installed (`TomTracing`) queueing is a `producer` span, `outbox send` (`messaging.system` `tom_outbox`, `messaging.operation.type` `send`, `messaging.destination.name` the job name, `messaging.message.id`), and the message is queued with that span's `traceparent` and `tracestate` in its `headers`; the delivery is a `consumer` span, `outbox deliver`, continuing that header, with `tom.job.run_id`. Throws `TomMessagingException` once the outbox is closed. |
+| `send` | `Future<bool> send(TomMessage message, {DateTime? notBefore})` | Queues `message` and returns once it is durably stored, answering `true`. A message whose id the store already holds a run for — queued, delivered, or failed for good — is not queued again, and `send` answers `false`: a caller retrying a `send` it is unsure completed causes no second delivery, however long ago the first went out. The id is held until `purgeFinished` removes its run. `notBefore` holds the message in the queue until that instant — the first attempt is made at the first tick after it; an instant already past is the same as none. Enqueues directly rather than through the schedule's event stream, so two messages composed in the same instant are two runs, and gives the run a window instant of its own (`TomEventInstants.next`), so two messages queued in the same microsecond do not share the store's `(job, tenant, scheduled instant)` key — the second would replace the first. The run records the tenant in context, and the message is delivered inside it — a transport choosing a per-tenant sending identity reads it from `TomTenantContext.currentId`; the receipt and the delivery correlation name it. With a tracer installed (`TomTracing`) queueing is a `producer` span, `outbox send` (`messaging.system` `tom_outbox`, `messaging.operation.type` `send`, `messaging.destination.name` the job name, `messaging.message.id`), and the message is queued with that span's `traceparent` and `tracestate` in its `headers`; the delivery is a `consumer` span, `outbox deliver`, continuing that header, with `tom.job.run_id`. Inside a transaction (`TomTransactionManager.runInTransaction`, a `@TomTransactional` endpoint) on a `TomSqlJobStore`, the message is queued in it and commits or rolls back with it — in its branch on the data source it writes to, as a participant of its own on another, on the tenant's branch under `schema` tenancy — and the idempotence check sees the runs the transaction queued; a `TomMemoryJobStore` joins no transaction and queues at once. Throws `TomMessagingException` once the outbox is closed. |
 | `sendNow` | `Future<void> sendNow(TomMessage message)` | Queues `message` (as `send` does, so a message already held is not queued again) and ticks immediately, for a case where the tick interval is felt by a human. A failure still retries on the queue exactly as `send` would. |
 | `tick` | `Future<void> tick()` | Runs one delivery pass; exposed so a test can drive delivery without waiting on wall-clock time. |
 | `start` | `void start()` | Begins delivering on the scheduler's tick interval, and registers this outbox in `started` until `close`. Throws `TomMessagingException` (`messaging.outbox.closed`) once the outbox is closed. |
 | `oldestWaitingSince` | `Future<DateTime?> oldestWaitingSince()` | When the oldest message of this outbox that is due and not yet taken for delivery started waiting, or `null` when none waits — read from the store's backlog for `jobName`. The framework readiness check compares it against `maxOutboxWait` when one is set. |
 | `purgeFinished` | `Future<int> purgeFinished(DateTime before)` | Drops finished runs recorded before `before`, returning how many. A purged message's id is not held, so a `send` of the same id afterwards queues it again. Never called on your behalf: the completed runs are a delivery audit trail whose retention is a deployment's decision. |
 | `close` | `Future<void> close()` | *(override)* Removes the outbox from `started`, stops delivery, closes the scheduler — releasing its leases — and closes the receipt stream, completing once all of that has. The `router` is left open. Idempotent: every call is handed the same close. |
+
+### TomBusRelay
+
+Messages for a `TomMessageBus` queued on a `TomJobStore`, so a publish commits
+with the caller's database transaction, and published to the bus once it has.
+The relay is the transactional outbox for the bus: `publish` writes a run — in
+the caller's transaction on a `TomSqlJobStore`, as the message outbox does —
+and the relay's scheduler publishes it, retrying a publish the bus refused. The
+publish is at least once, as the bus's delivery is: a publish whose
+acknowledgement was lost is made again, under the same message id.
+
+- **Implements:** `TomClosable`
+
+#### Constructors
+
+None — the generative constructor is private; instances are created through the
+factory below.
+
+#### Factory Constructors
+
+```dart
+factory TomBusRelay({
+  required TomMessageBus bus,
+  TomJobStore? store,
+  String jobName = tomBusRelayJobName,
+  TomRetryPolicy retryPolicy = const TomRetryPolicy(
+    maxAttempts: 10,
+    initialBackoff: Duration(seconds: 5),
+    maxBackoff: Duration(minutes: 5),
+  ),
+  Duration timeout = const Duration(seconds: 30),
+  Duration tickInterval = const Duration(seconds: 1),
+  DateTime Function()? clock,
+  TomJobAlertSink? onAlert,
+  TomLeaseLock? lock,
+})
+```
+
+`store` defaults to a `TomMemoryJobStore` — for tests: a relay on a memory store
+joins no transaction and loses what it holds when the process stops.
+`retryPolicy` governs a publish the bus refused; `onAlert` is told of one that
+failed for good. The relay registers its job on a scheduler of its own that
+dispatches inline.
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `bus` | `TomMessageBus` | The bus messages are published to. Not owned: `close` leaves it open (final). |
+| `store` | `TomJobStore` | The queue the messages wait in (final). |
+| `jobName` | `String` | The registered job name, and the prefix of every run id (final). |
+| `scheduler` | `TomScheduler` | The scheduler publishing the queued messages; owned and closed by `close` (final). |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `publish` | `Future<String> publish<T>(String topic, T payload, {String? key, Map<String, String> headers = const {}, String? id, TomBusCodec<T>? codec})` | Queues `payload` for `topic`, encoded by `codec` (the reflection codec unless given), and answers the message id — `id` when given, a new `msg-` id otherwise. The message is published by a later `tick`, with `key` and `headers`, in the trace the publish was made in. Inside a transaction on a `TomSqlJobStore` the queued run is written in that transaction: the message is published after the commit, or never. A message id the relay already holds a run for is not queued again. The run records the tenant in context. Throws `messaging.bus_relay.closed` (a `TomMessagingException`) once the relay is closed, and `message_bus.payload.not_json` for a payload that does not encode. |
+| `tick` | `Future<void> tick()` | Publishes what is due, one message after another, completing when a pass of the scheduler publishes nothing more — the queue is empty, what is left waits for a retry, or another node holds the relay's lease. A tick asked for while one runs joins it. |
+| `start` | `void start()` | Runs a `tick` every tick interval of the scheduler. |
+| `close` | `Future<void> close()` | *(override)* Stops publishing, waits for the tick under way and closes the scheduler; `bus` stays open. Idempotent: every call is handed the same close. |
 
 ### TomTemplatedMessageService
 
@@ -2915,6 +2989,7 @@ One row of the inbox table, as `TomSqlInbox.hasProcessed` reads it. Reflected
 | `tomMimeLineEnding` | `const String` | `\r\n`, the line ending every mail protocol requires. A bare `\n` is accepted by some servers and silently corrupts the message on others. |
 | `tomMimeMaxLineLength` | `const int` | `76` — the maximum line length RFC 5322 permits, excluding the line ending. |
 | `tomOutboxJobName` | `const String` | `'messaging.outbox'`, the default job name the outbox registers under. Stable across restarts by necessity: it is the store key tying queued runs to the definition that knows how to execute them. |
+| `tomBusRelayJobName` | `const String` | `'messaging.bus_relay'`, the default job name the bus relay registers under. Stable across restarts: it ties queued runs to the relay that publishes them. |
 | `defaultDeliveryReportTable` | `const String` | `'tom_delivery_report'`, the correlation index's table name when nothing overrides it. |
 | `defaultInboxTable` | `const String` | `'tom_message_inbox'`, the inbox's table name when nothing overrides it. |
 

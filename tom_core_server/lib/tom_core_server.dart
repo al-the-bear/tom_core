@@ -150,6 +150,7 @@ export 'src/tomserver/item_authorization/item_authority_scope_source.dart';
 export 'src/tomserver/item_authorization/item_authorization_client.dart';
 export 'src/tomserver/little_things/error_response.dart';
 export 'src/tomserver/little_things/server_exception.dart';
+export 'src/tomserver/messaging/bus_relay.dart';
 export 'src/tomserver/messaging/delivery_report.dart';
 export 'src/tomserver/messaging/delivery_report_endpoint.dart';
 export 'src/tomserver/messaging/delivery_report_sql.dart';

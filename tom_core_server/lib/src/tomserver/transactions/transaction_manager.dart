@@ -315,6 +315,10 @@ class TomTransaction {
     return result;
   }
 
+  /// The ids of the participants enlisted so far, in enlistment order — the
+  /// order they are prepared and committed in.
+  List<String> get participantIds => List.unmodifiable(_participants.keys);
+
   /// Runs [body] as the transaction's work: inside its [span] when there is
   /// one, so what it traces are the span's children.
   R runInSpan<R>(R Function() body) {

@@ -6,7 +6,9 @@ transports for tests and local runs, a durable outbox that queues delivery onto
 the kernel's job scheduler, and a templating layer that composes every message
 from resource keys so no user-facing string is written in Dart — and, for a
 consumer of a message broker, an idempotent receiver (inbox) that processes a
-message the broker delivers more than once exactly once.
+message the broker delivers more than once exactly once; and, for a producer, the
+bus relay, which queues a message for a `TomMessageBus` in the caller's database
+transaction and publishes it once that transaction has committed.
 
 Notification types, subscriptions and each user's channel choices are not
 here: they are the [notifications module](notifications.md), a layer above this
@@ -69,6 +71,12 @@ and hands each to the outbox. This module does not know that layer exists.
 - [The MIME Document](#the-mime-document)
 - [Delivery Semantics: One Retry Mechanism](#delivery-semantics-one-retry-mechanism)
 - [What "Queued" Guarantees](#what-queued-guarantees)
+- [Queueing Inside a Transaction](#queueing-inside-a-transaction)
+- [The Bus Relay](#the-bus-relay)
+  - [Publishing in a transaction](#publishing-in-a-transaction)
+  - [What the relay guarantees](#what-the-relay-guarantees)
+  - [Trace and tenant](#trace-and-tenant)
+  - [Bus relay failure keys](#bus-relay-failure-keys)
 - [Failure Reporting](#failure-reporting)
 - [Tracing](#tracing)
 - [Wiring a Server](#wiring-a-server)
@@ -144,6 +152,7 @@ and hands each to the outbox. This module does not know that layer exists.
 | `TomMimeEncoder` | class | Renders a `TomMessage` as an RFC 5322 / MIME document |
 | `tomVendorValueAt` | function | The dotted-path reader both vendor mappings share; a numeric segment indexes a list |
 | `TomMessageOutbox` | class | The durable send queue in front of a router |
+| `TomBusRelay` / `tomBusRelayJobName` | class / const String | The transactional outbox for a `TomMessageBus`: a publish queued on a job store in the caller's transaction, published to the bus after the commit |
 | `TomTemplatedMessageService` | abstract class | The rule every channel shares: a message is a template key plus parameters |
 | `TomEmailRequest` | class | What to send and to whom: a template key and parameters, never a subject or body |
 | `TomEmailService` | class | Renders a template in the recipient's locale and queues it on the outbox |
@@ -1108,6 +1117,9 @@ of these rolls back with the transaction, so a crash after the call and before
 the commit repeats it on redelivery. Such a call has to be idempotent itself
 (the provider's idempotency key, set to the message id), or be turned into a
 database write inside `work` that a later step acts on once it has committed.
+A message queued on an outbox whose store is a `TomSqlJobStore` is such a
+write: it commits with the record (see
+[Queueing Inside a Transaction](#queueing-inside-a-transaction)).
 
 ### Concurrent deliveries
 
@@ -1193,10 +1205,11 @@ whose work is in memory too.
 The inbox does not know the broker. `process` takes the message id and two
 functions — the work and the acknowledgement — so any broker's consumer loop
 uses it the same way: a queue client acknowledges a delivery, a log-based client
-commits an offset, a webhook receiver answers `200`. There is no message bus and
-no broker adapter in `tom_core`; any consumer loop calls `process` with its own
-acknowledgement, and the message bus, by design, wraps each of its handlers in
-an inbox in exactly the same way.
+commits an offset, a webhook receiver answers `200`. A handler of the
+[message bus](../../tom_core_message_bus/doc/message_bus.md) wraps its work in
+`process` the same way, with the delivery's `ack` as the acknowledgement and
+`TomBusMessage.id` as the message id; no broker adapter of the bus ships in
+`tom_core`.
 
 ### Inbox failure keys
 
@@ -1399,6 +1412,165 @@ called on your behalf. The completed run is also what makes a repeated `send`
 of the same message id a no-op, so purging a run is what lets its id be queued
 again: keep runs at least as long as a caller may retry.
 
+## Queueing Inside a Transaction
+
+A message queued with `send` (or `sendNow`) inside a database transaction —
+`TomTransactionManager.runInTransaction`, a `@TomTransactional` endpoint —
+commits or rolls back **with that transaction** when the outbox's store is a
+`TomSqlJobStore`. "The business write plus the e-mail it announces" is one
+unit, without a broker: a rolled-back order leaves no confirmation mail in the
+queue, and a committed one always has its mail queued.
+
+```dart
+await TomTransactionManager.runInTransaction((_) async {
+  await orders.insert(order);                       // the business write
+  await outbox.send(TomMessage.email(               // queued in the same unit
+    to: [TomRecipient(order.customerEmail)],
+    subject: 'Order received',
+    text: 'Order ${order.number} is on its way.',
+  ));
+});
+```
+
+The queue row is written by `TomSqlJobStore.enqueue`, and the idempotence check
+before it (`findRun`) reads where `enqueue` writes, so a transaction sees the
+runs it queued itself — a second `send` of the same message id in the same
+transaction answers `false`. How the row joins the transaction depends on where
+the store's data source sits relative to the transaction's writes:
+
+| Store's data source | How the enqueue joins | What commit and rollback mean |
+| ------------------- | --------------------- | ----------------------------- |
+| The data source the transaction writes to | The SQL data source enlists in the zone's current transaction on its first statement, so the enqueue runs in the **same branch**, on the same connection. | One commit. A rollback leaves no outbox row. |
+| A different data source | The store's data source enlists as a **participant of its own**; `TomTransaction.participantIds` lists both. | A rollback undoes both. The commit is the coordinator's per-participant commit: with two one-phase data sources a failure between the two commits can leave one committed (outcome `partiallyCommitted`). Only two XA data sources (`MariaDbXADatasource`, `PostgresXADatasource`) commit both in two phases. |
+| The unrouted base data source, under `schema` tenancy | The current tenant's data source is routed (`TomDataSourceInfo.route`) to one on the same server (`TomSqlDatasource.canQualify`), so `enqueue` and `findRun` run on the **tenant's** data source, with the store's table qualified by the base schema (`TomSqlDatasource.qualify`). | One commit, on the tenant's branch. The row lands in the base table, which is where the scheduler polls. |
+| The base data source, under `database` tenancy on another server | `canQualify` fails, so the store's data source enlists as a participant of its own. | As for a different data source. |
+
+The guarantee covers the queueing, not the delivery: the row commits with the
+transaction, and the outbox's scheduler delivers it afterwards, at least once —
+see [What "Queued" Guarantees](#what-queued-guarantees).
+
+**A `TomMemoryJobStore` joins no transaction.** The outbox's default store,
+used when `store` is omitted, queues the message at once: a rollback after
+`send` leaves it queued and delivered. A deployment that relies on the
+guarantee supplies a `TomSqlJobStore`.
+
+**Provision the schema before serving traffic.** `TomSqlJobStore.ensureSchema`
+never runs inside the caller's transaction: its `CREATE TABLE IF NOT EXISTS`
+runs in a transaction scope of its own
+(`TomTransactionManager.runInTransactionScope`), on a connection of its own,
+because on MariaDB a DDL statement commits the transaction its connection
+holds. Calling `ensureSchema()` at start-up keeps that extra connection off the
+request path; with `createSchema: false` the store creates nothing and the
+migrations own the tables — see
+[scheduling.md](scheduling.md#queueing-in-a-transaction).
+
+## The Bus Relay
+
+A service that publishes to a message bus as a consequence of a database write
+has two wrong places to publish. Inside the transaction, the publish cannot be
+undone: a transaction that then rolls back leaves a message announcing a write
+that never happened. After the commit, the message is lost when the process
+stops between the two. `TomBusRelay` is the transactional outbox for the bus
+([`tom_core_message_bus`](../../tom_core_message_bus/README.md)): `publish`
+writes a job run to the relay's `TomJobStore` — in the caller's transaction on
+a `TomSqlJobStore`, exactly as the message outbox does — and the relay's own
+scheduler publishes it to the bus after the commit, retrying a publish the bus
+refused.
+
+```dart
+final relay = TomBusRelay(bus: bus, store: jobStore); // a TomSqlJobStore
+relay.start();
+
+await TomTransactionManager.runInTransaction((_) async {
+  await orders.insert(order);                         // the business write
+  await relay.publish('orders', {'orderId': order.number}); // in the same unit
+});
+```
+
+`publish<T>(topic, payload, {key, headers, id, codec})` has the arguments of
+`TomMessageBus.publish` and answers the message id — `id` when given, a new
+`msg-` id otherwise. It encodes the payload at once, with `codec` or the
+reflection codec, so a payload that is not JSON is refused before anything is
+queued (`message_bus.payload.not_json`). The run is
+`'<jobName>:<messageId>'` with its own window instant
+(`TomEventInstants.next`), carrying the topic, key, headers, the encoded
+payload and the current trace position.
+
+| Constructor argument | Default | What it is |
+| -------------------- | ------- | ---------- |
+| `bus` | required | The `TomMessageBus` the messages are published to. Not owned: `close` leaves it open. |
+| `store` | `TomMemoryJobStore` | The queue. A memory store is for tests: it joins no transaction and loses what it holds when the process stops. |
+| `jobName` | `tomBusRelayJobName` (`messaging.bus_relay`) | The job the relay registers, and the prefix of every run id. Stable across restarts: it ties queued runs to the relay that publishes them. |
+| `retryPolicy` | 10 attempts, 5 s to 5 min | How a publish the bus refused is retried. |
+| `timeout` | 30 s | How long one publish may take. |
+| `tickInterval` | 1 s | How often a started relay looks for due runs. |
+| `clock`, `onAlert`, `lock` | — | The scheduler's clock, alert sink (a publish failed for good) and lease lock. |
+
+`start()` runs a `tick()` every tick interval. `tick()` publishes what is due,
+one message after another, and completes when a pass of the scheduler
+publishes nothing more — the queue is empty, what is left waits for a retry, or
+another node holds the relay's lease; a tick asked for while one runs joins it.
+`close()` stops publishing, waits for the tick under way and closes the relay's
+scheduler.
+
+### Publishing in a transaction
+
+A relay on a `TomSqlJobStore` writes its run through `TomSqlJobStore.enqueue`,
+so the run joins the transaction as an outbox message does — in the branch of
+the data source the transaction writes to, as a participant of its own on
+another, on the tenant's branch under `schema` tenancy; the table in
+[Queueing Inside a Transaction](#queueing-inside-a-transaction) holds for the
+relay unchanged. A rolled-back transaction publishes nothing; a committed one
+publishes once.
+
+### What the relay guarantees
+
+**Exactly one run per message id, and at least one publish.** A message id the
+store already holds a run for — queued, published or failed for good — is not
+queued again, so a caller retrying a `publish` it is unsure completed queues no
+second message. The publish itself is at least once, as the bus's delivery is:
+a publish whose acknowledgement was lost is made again, and it is made under the
+queued message id, so the consumers see the same `TomBusMessage.id` and an
+inbox recognises the repeat.
+
+A publish the bus refused — it threw — is retried under `retryPolicy`; once the
+attempts are spent the run fails for good and `onAlert` is told. A run whose
+stored payload is not a message fails for good at once.
+
+| Failure | What happens |
+| ------- | ------------ |
+| The transaction rolls back | Nothing is published: the run was never committed |
+| The process stops after the commit, before the publish | The run stays queued; the next relay on the store publishes it |
+| The process stops during the publish | The run stays claimed; once its lease has run out (the scheduler's `leaseTimeout`, 15 minutes by default) a relay re-queues it — the relay's job requests recovery — and publishes it again |
+| The broker took the message, the completion was not recorded | Published again under the same id: a duplicate, never a loss |
+
+**One node relays at a time.** The relay's job does not overlap
+(`allowOverlap: false`), so its lease is the job's: with a `lock` shared by the
+nodes — a `TomSqlLeaseLock` over the store's data source — the cluster
+publishes one message at a time, and in the order the messages were queued. A
+message whose publish failed is retried after its backoff, behind the ones
+queued after it, so the order holds until a publish is retried.
+
+`test/bus_relay_test.dart` shows each row: the next relay publishing a queued
+run, a stop during the publish recovered under the same id, and two relays on
+one lease lock publishing one message at a time in queue order; the rollback is
+`test/outbox_transaction_db_test.dart`'s.
+
+### Trace and tenant
+
+The relay records the trace position of the zone `publish` was called in, and
+publishes inside that trace, so the bus's `traceparent` header continues the
+request that queued the message and a consumer's handling joins it — however
+much later, and on whichever node, the relay publishes. A message queued in no
+trace is published from the relay's job run. The run records the tenant in
+context (`TomTenantContext.currentId`), as the outbox's do.
+
+### Bus relay failure keys
+
+| Key | Raised when |
+| --- | ----------- |
+| `messaging.bus_relay.closed` | `publish` on a closed relay; a `TomMessagingException`, before anything is queued |
+
 ## Failure Reporting
 
 Two channels, deliberately not overlapping:
@@ -1525,7 +1697,10 @@ each message with the tenant it was sent for:
   too, in `tom_delivery_report.tenant`.
 
 The outbox's queue is the framework's job queue, which is deployment-wide: one
-table holds every tenant's messages, and the tenant travels with each run.
+table holds every tenant's messages, and the tenant travels with each run. Under
+`schema` tenancy a `send` inside a transaction writes that row over the tenant's
+connection, into the base table, so it commits with the tenant's business
+writes — see [Queueing Inside a Transaction](#queueing-inside-a-transaction).
 
 ## Application Email: A Template Key, Not a Body
 
@@ -1858,9 +2033,9 @@ hands back is a plain [`TomMessage.push`](#push-two-vendors-and-a-mapping).
 
 ## Verification
 
-Nine suites cover the module: six split along the same seam this document
+Eleven suites cover the module: six split along the same seam this document
 is — the substrate below the services, and the templated layer above it — one
-pinning the error vocabulary, and two for the inbox.
+pinning the error vocabulary, two for the inbox, and two for the bus relay.
 
 `test/messaging_error_keys_test.dart` pins the module's error vocabulary: each case reaches a raise with a real input and asserts the exact key, so a key the module stops raising, or raises for a different condition, fails by name. None needs a database.
 
@@ -1895,6 +2070,18 @@ row behind, and two simultaneous deliveries charge once.
 `test/framework_schema_db_test.dart` compares the table `ensureSchema` creates
 with `inboxTable`, and `test/framework_schema_test.dart` the reference
 migration.
+
+`test/bus_relay_test.dart` runs the relay against `TomMemoryMessageBus` on a
+memory store: a queued message reaching the bus on the next tick, under its id,
+key and headers; a message id the relay holds not queued twice; the consumer
+running in the trace the message was queued in; a publish the bus refused made
+again; and a closed relay refusing to queue (`messaging.bus_relay.closed`).
+`test/outbox_transaction_db_test.dart` (`@Tags(['db'])`, skipped without a
+database), in the group `the bus relay, on the data source the transaction
+writes`, runs it on a `TomSqlJobStore` inside transactions on MariaDB or
+PostgreSQL: a rolled-back transaction publishes nothing and leaves no run, a
+committed one publishes once. The same file covers the outbox in each row of
+the table in [Queueing Inside a Transaction](#queueing-inside-a-transaction).
 
 Four examples run the module end to end.
 
@@ -1998,6 +2185,9 @@ reads them: a stopped scheduler is not ready, and a message waiting past
   maps between.
 - **`TomMimeEncoder`** — the RFC 5322 / MIME document.
 - **`TomMessageOutbox` / `tomOutboxJobName`** — the durable send queue.
+- **`TomBusRelay` / `tomBusRelayJobName`** — the transactional outbox for a
+  `TomMessageBus`: a publish queued in the caller's transaction, published
+  after the commit.
 - **`TomTemplatedMessageService`** — the template-key rule every channel shares.
 - **`TomEmailRequest` / `TomEmailService`** — resource-keyed application email,
   rendered in the recipient's locale and queued on the outbox.
@@ -2203,17 +2393,18 @@ was processed before, and reads nothing out of a mailbox.
 
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
-| `dart:async` | dart | 8 of 19 files | `Future`, `FutureOr`, `Stream`, `StreamController`, `unawaited` |
-| `dart:convert` | dart | 7 of 19 files | `Encoding`, `LineSplitter`, `base64`, `json`, `jsonDecode`, `jsonEncode` |
+| `dart:async` | dart | 9 of 20 files | `Future`, `FutureOr`, `Stream`, `StreamController`, `unawaited` |
+| `dart:convert` | dart | 7 of 20 files | `Encoding`, `LineSplitter`, `base64`, `json`, `jsonDecode`, `jsonEncode` |
 | `dart:io` | dart | `message_transport.dart`, `push_transport.dart`, `smtp_transport.dart` | `Socket` / `SecureSocket` |
-| `dart:math` | dart | `mime_encoder.dart` | `Random`, `min` |
+| `dart:math` | dart | `bus_relay.dart`, `mime_encoder.dart` | `Random`, `min` |
 | `dart:typed_data` | dart | `message.dart`, `push_transport.dart` | `Uint8List`, `BytesBuilder` |
 | `async` | package | `smtp_transport.dart` | `StreamQueue` drives the SMTP line protocol |
 | `dart_jsonwebtoken` | package | `push_transport.dart` | ES256 and RS256 signing of the APNs provider token and the FCM service-account assertion |
 | `http2` | package | `push_transport.dart` | the HTTP/2 client APNs requires |
 | `path` | package | `message_transport.dart` | file naming in `TomFileMessageTransport` |
 | `shelf` | package | `delivery_report_endpoint.dart` | `Request` / `Response`, because a carrier acts on the status code and the pipeline's own envelope would make every refusal a `500` |
-| `tom_core_kernel` | package | 12 of 19 files | `TomScheduler`, `TomJobStore`, `TomJobDefinition`, `TomRetryPolicy`, `TomJobAlertSink`, `TomPermanentFailure`, `TomCommand`, `TomClosable`, `TomPrincipal`, `TomUser`, `TomBean`, `TomDataSource`, `tomLog`, `TomHeader` / `TomMimeType`, `TomTracing` / `TomSpanKind` / `TomTraceContext` (the outbox's send and delivery spans), and `TomServerChannel` / `TomServerCall` / `TomServerCallSpecs` — the HTTP call layer `TomSmsTransport`, `TomWebhookTransport` and `TomHttp1PushExchange` reach their endpoints through, rather than a raw client |
+| `tom_core_kernel` | package | 13 of 20 files | `TomScheduler`, `TomJobStore`, `TomJobDefinition`, `TomRetryPolicy`, `TomJobAlertSink`, `TomPermanentFailure`, `TomPermanentJobFailure`, `TomCommand`, `TomClosable`, `TomPrincipal`, `TomUser`, `TomBean`, `TomDataSource`, `tomLog`, `TomHeader` / `TomMimeType`, `TomTracing` / `TomSpanKind` / `TomTraceContext` (the outbox's send and delivery spans), and `TomServerChannel` / `TomServerCall` / `TomServerCallSpecs` — the HTTP call layer `TomSmsTransport`, `TomWebhookTransport` and `TomHttp1PushExchange` reach their endpoints through, rather than a raw client |
+| `tom_core_message_bus` | package | `bus_relay.dart` | `TomMessageBus`, `TomBusCodec` and `TomBusException`, the bus the relay publishes to |
 | `uuid` | package | `message.dart` | `UuidV4`, for a message id when the caller supplies none |
 | [configuration](configuration.md) | module | `sms_transport.dart`, `smtp_transport.dart` | `TomBaseServerConfiguration` |
 | [datasources](datasources.md) | module | `delivery_report_sql.dart`, `inbox.dart`, `inbox_sql.dart`, `sql_delivery_report_store.dart` | `TomFrameworkTable` — the single declaration the DDL, the statements and the convergence guard all derive from — plus `TomDataSourceInfo`, `TomSchemaProvisioning` and `sqlInstant` |
@@ -2222,5 +2413,5 @@ was processed before, and reads nothing out of a mailbox.
 | [object_persistence](object_persistence.md) | module | `inbox.dart`, `sql_delivery_report_store.dart` | `TomDbTable` / `TomDbColumn` on the reflected row types the driver maps |
 | [resources](resources.md) | module | `email_service.dart`, `push_service.dart`, `sms_service.dart` | `TomLocalizedTextResources` |
 | [resources](resources.md) | module | `email_service.dart`, `push_service.dart`, `sms_service.dart`, `templated_message_service.dart` | `TomLocalizedTextResources` and `TomTextLocale`, which `TomTemplatedMessageService` resolves every template through (see `doc/resources.md`) |
-| [scheduling](scheduling.md) | module | `outbox.dart` | `TomEventInstants`, the window instant of each message's run |
+| [scheduling](scheduling.md) | module | `bus_relay.dart`, `outbox.dart` | `TomEventInstants`, the window instant of each message's run |
 | [transactions](transactions.md) | module | `inbox.dart` | `TomTransactionManager.runInTransaction`, which holds the inbox's record and the consumer's work in one transaction |

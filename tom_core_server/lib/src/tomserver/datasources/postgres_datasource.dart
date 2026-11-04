@@ -201,6 +201,16 @@ class PostgresDatasource extends TomSqlDatasource {
   @override
   String get dbSystemName => 'postgresql';
 
+  /// [schema], or `public` — the server's default — when none is set.
+  @override
+  String get schemaName => schema.isEmpty ? 'public' : schema;
+
+  /// Also the same database: PostgreSQL reaches another schema of the
+  /// connection's database, never another database.
+  @override
+  bool canQualify(TomSqlDatasource other) =>
+      super.canQualify(other) && other.databaseName == databaseName;
+
   @override
   String get preparedStatementLabel => "PostgresPreparedStatement";
 

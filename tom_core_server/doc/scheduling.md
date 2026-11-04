@@ -37,6 +37,7 @@ covers only what changes when the substrate is a database.
 - [Wiring a Cluster Node](#wiring-a-cluster-node)
 - [Runs per Tenant](#runs-per-tenant)
 - [Runs Enqueued Outside a Schedule](#runs-enqueued-outside-a-schedule)
+- [Queueing in a Transaction](#queueing-in-a-transaction)
 - [Operating Notes](#operating-notes)
 - [Not Yet Implemented](#not-yet-implemented)
 - [Verification](#verification)
@@ -591,6 +592,14 @@ Two supported routes, and the choice is about who is allowed to run DDL:
   apply them. Right when the application's database user may not run DDL, which
   is the usual production posture.
 
+Either way, `ensureSchema()` is the call a start-up sequence makes to provision
+the tables before serving traffic. It never runs inside the caller's
+transaction: its DDL runs in a transaction scope of its own
+(`TomTransactionManager.runInTransactionScope`), on a connection of its own,
+because on MariaDB a `CREATE TABLE` commits the transaction its connection holds
+— the first `enqueue` made in a transaction would otherwise commit the caller's
+work before the caller decided to.
+
 The migration layout is the module's standard one. The shipped files sit at
 `<directory>/<datasourceName>/<schemaName>/[<version>]-<description>.sql` and
 carry no environment tag, because a scheduling schema is wanted in every
@@ -666,7 +675,10 @@ This module stores it:
   so the window lookup that makes enqueueing idempotent is per tenant, and the
   unique key enforces the same thing in the database.
 - The queue itself is **deployment-wide**: one `tom_job_run` holds every
-  tenant's runs, and the store is not routed per tenant. A node claims whatever
+  tenant's runs, and the store is not routed per tenant. Only the connection
+  changes: an `enqueue` inside a transaction of a tenant routed to a schema of
+  the same server is written over the tenant's connection into the base table
+  (see [Queueing in a Transaction](#queueing-in-a-transaction)). A node claims whatever
   is due, whichever tenant it belongs to; the tenant travels with the run.
 - A job with `allowOverlap: false` takes its lease on `job:<name>@<tenant>` for a
   run of a tenant, so `tom_lease` serialises per job and tenant and one tenant's
@@ -702,6 +714,32 @@ answered when the clock has not moved on. The instant is the run's identity in
 the store, not when it is due — `runAt` says that. It holds within one isolate;
 two nodes, or two isolates, enqueueing runs of one job for one tenant in the same
 microsecond can still meet.
+
+## Queueing in a Transaction
+
+`TomSqlJobStore.enqueue` inside a transaction (`TomTransactionManager.runInTransaction`,
+a `@TomTransactional` endpoint) writes the run **in that transaction**: it commits
+or rolls back with the caller's work. `findRun` reads where `enqueue` writes, so a
+transaction sees the runs it queued itself. This is what makes a message queued
+on the messaging outbox one unit with the business write that caused it (see
+[messaging.md](messaging.md#queueing-inside-a-transaction)).
+
+Where the statement runs depends on the store's data source:
+
+| Store's data source | Where `enqueue` and `findRun` run | Commit |
+| ------------------- | --------------------------------- | ------ |
+| The one the transaction writes to | The same branch, on the same connection: the SQL data source enlists in the zone's current transaction on its first statement. | One commit. |
+| Another data source | A participant of its own; `TomTransaction.participantIds` lists both. | The coordinator commits each participant in turn. A rollback undoes both; with two one-phase data sources a failure between the commits can leave one committed (`partiallyCommitted`), unless both are XA data sources. |
+| The unrouted base data source of a tenant routed (`TomDataSourceInfo.route`) to a data source that `canQualify` it | The tenant's data source, with the table qualified by the base schema (`TomSqlDatasource.qualify`) — `tom_job_run` of the base schema, where the scheduler polls. | One commit, on the tenant's branch. |
+
+`canQualify` holds for the same driver, host, port and user — on PostgreSQL
+also the same database — so `schema` tenancy takes the third row, and
+`database` tenancy on another server the second. Outside a transaction every
+statement runs on the store's own data source.
+
+`ensureSchema` stays out of the caller's transaction (see
+[Creating the Schema](#creating-the-schema)), and a `TomMemoryJobStore` joins no
+transaction at all: its `enqueue` takes effect at once.
 
 ## Operating Notes
 
@@ -783,6 +821,15 @@ gauges — to the answer the in-memory store gives.
 
 It is tagged `db` and skips when no server is reachable, so the default
 `testkit :test` run stays green without one.
+
+`test/outbox_transaction_db_test.dart` (tagged `db`, on MariaDB and PostgreSQL)
+holds [Queueing in a Transaction](#queueing-in-a-transaction): on the data
+source the transaction writes, a rollback leaves no outbox row, a commit
+exactly one, and the enqueue runs in the transaction's own branch; on a
+different data source the enqueue is a second participant that rolls back and
+commits with the transaction; under `schema` tenancy with the store on the
+unrouted base data source the enqueue rides the tenant's branch, rolls back
+with it, and commits into the base schema, where the outbox's tick delivers it.
 
 `TomEventInstants` is covered where its callers are: the group
 `TomEventInstants` in `test/saga_test.dart` holds that one clock reading gives

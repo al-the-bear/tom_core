@@ -285,11 +285,12 @@ class TomFrameworkTable {
   /// in [dialect]'s database; see [TomStandardSqlDialect.replaceInto].
   List<String> replaceStatements(
     TomStandardSqlDialect dialect,
-    Map<String, String> values,
-  ) {
+    Map<String, String> values, {
+    String? table,
+  }) {
     _refuseUnknown(values.keys, 'values');
     return dialect.replaceInto(
-      name,
+      table ?? name,
       values,
       primaryKey: primaryKey,
       uniqueKeys: [
@@ -302,13 +303,20 @@ class TomFrameworkTable {
   /// Writes a row over every row it supersedes, in [datasource] — one
   /// statement on MariaDB, a `DELETE` and an `INSERT` in one transaction where
   /// the database has no `REPLACE`. [values] names the SQL text per column as
-  /// for [insertRow]; [params] binds it.
+  /// for [insertRow]; [params] binds it. [table] names the table as the
+  /// statement addresses it — a schema-qualified name, when [datasource] is
+  /// not the one the table lives in — and defaults to [name].
   Future<void> replaceRow(
     TomDataSource datasource,
     Map<String, String> values,
-    Map<String, dynamic> params,
-  ) async {
-    final statements = replaceStatements(datasource.sqlDialect, values);
+    Map<String, dynamic> params, {
+    String? table,
+  }) async {
+    final statements = replaceStatements(
+      datasource.sqlDialect,
+      values,
+      table: table,
+    );
     if (statements.length == 1) {
       await datasource.executeCommand(statements.single, params);
       return;
