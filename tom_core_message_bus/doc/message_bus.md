@@ -336,10 +336,15 @@ a partitioned log orders a partition, a queue with competing consumers
 generally does not — so a consumer that relies on ordering checks
 `bus.capabilities.orderedPerKey` rather than assuming it.
 
+The NATS adapter, `TomNatsMessageBus`, does not declare it: a NAK redelivers
+one message while the next is already with another consumer of the group.
+
 ## Writing an Adapter
 
 An adapter over Kafka, RabbitMQ, NATS or a cloud broker implements
-`TomMessageBus`. Four rules keep every bus the same above it:
+`TomMessageBus`. [`tom_core_message_bus_nats`](../../../core_extension/tom_core_message_bus_nats/doc/nats_message_bus.md)
+is a complete one, over NATS JetStream. Four rules keep every bus the same
+above it:
 
 1. **The trace.** `publish` runs its broker call inside
    `TomBusTrace.publishing` and sends the headers it is handed; the consumer
@@ -466,11 +471,13 @@ closed relay (see the server's
 
 ## Not Yet Implemented
 
-- **No broker adapter ships.** The package holds the contract, the in-memory
-  bus and the conformance suite; an adapter over Kafka, RabbitMQ, NATS or a
-  cloud broker is written against them, as
-  [Writing an Adapter](#writing-an-adapter) describes.
-  <!-- unpinned: absence — no broker adapter ships -->
+- **No adapter over Kafka, RabbitMQ or a cloud broker.** The package holds
+  the contract, the in-memory bus and the conformance suite; the one broker
+  adapter is NATS JetStream's,
+  [`tom_core_message_bus_nats`](../../../core_extension/tom_core_message_bus_nats/doc/nats_message_bus.md)
+  in `tom_core_extensions`. An adapter over another broker is written against
+  the contract, as [Writing an Adapter](#writing-an-adapter) describes.
+  <!-- unpinned: absence — no adapter over Kafka, RabbitMQ or a cloud broker -->
 - **No message priority.** Messages of a group are delivered in the order they
   wait, and nothing lets a message overtake another.
   <!-- unpinned: absence — TomMessageBus.publish takes no priority -->

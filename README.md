@@ -91,7 +91,7 @@ for all entries is this repository root.
 
 | Package | What it is |
 | --- | --- |
-| [`tom_core_message_bus`](tom_core_message_bus/README.md) | A broker-neutral message bus: the `TomMessageBus` contract (publish and subscribe with consumer groups, at-least-once delivery, acknowledgement and rejection, dead-letter topics, typed payloads through reflection, the trace context in the headers, ordering per key as a declared capability), the in-memory bus, and the conformance suite every broker adapter runs. It builds on the kernel only; `tom_core_server`'s bus relay publishes to it after a database commit. No broker adapter ships. |
+| [`tom_core_message_bus`](tom_core_message_bus/README.md) | A broker-neutral message bus: the `TomMessageBus` contract (publish and subscribe with consumer groups, at-least-once delivery, acknowledgement and rejection, dead-letter topics, typed payloads through reflection, the trace context in the headers, ordering per key as a declared capability), the in-memory bus, and the conformance suite every broker adapter runs. It builds on the kernel only; `tom_core_server`'s bus relay publishes to it after a database commit. Broker adapters live in `tom_core_extensions`: NATS JetStream is `tom_core_message_bus_nats`. |
 
 ### Storage
 

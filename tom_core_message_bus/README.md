@@ -21,7 +21,10 @@ a cloud queue — writes against `TomMessageBus`, the contract every bus keeps,
 and not against the broker's client. The package holds that contract, the
 in-memory bus that keeps it inside one process, and the conformance suite that
 checks any bus against it. A broker adapter implements the contract and runs
-the suite in its own tests; no broker adapter ships in this package.
+the suite in its own tests; no broker adapter ships in this package. The
+adapter over NATS JetStream is
+[`tom_core_message_bus_nats`](../../core_extension/tom_core_message_bus_nats/README.md),
+in `tom_core_extensions`.
 
 The contract is **at least once**: a message is delivered until a consumer of
 its group acknowledges it or it is dead-lettered, and the message id is the
@@ -198,6 +201,8 @@ dart run example/message_bus_example.dart
 - [`tom_core_server/doc/messaging.md`](../tom_core_server/doc/messaging.md#the-bus-relay)
   — the bus relay: messages queued in the caller's database transaction and
   published to a bus after the commit.
+- [`tom_core_message_bus_nats`](../../core_extension/tom_core_message_bus_nats/README.md)
+  — the adapter over NATS JetStream, in `tom_core_extensions`.
 
 ## Dependencies
 
