@@ -46,8 +46,9 @@ dev_dependencies:
   # only when reflected signatures change.
   build: ^4.0.3
   build_runner: ^2.10.4
-  tom_reflection_generator:
-    path: ../../../reflection/tom_reflection_generator
+  # Hosted, lower bound only: pub takes the analyzer-10 line (1.8.x) while
+  # flutter or tom_d4rt hold analyzer below 14, and 1.9+ once they move.
+  tom_reflection_generator: ">=1.8.2"
 
 flutter:
   uses-material-design: true
