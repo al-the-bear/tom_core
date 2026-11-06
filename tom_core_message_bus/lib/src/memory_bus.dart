@@ -5,10 +5,9 @@ library;
 import 'dart:async';
 import 'dart:math';
 
-import 'package:tom_core_kernel/tom_core_kernel.dart';
-
 import 'bus.dart';
 import 'codec.dart';
+import 'dispatch.dart';
 import 'message.dart';
 import 'trace.dart';
 
@@ -102,60 +101,30 @@ class TomMemoryMessageBus implements TomMessageBus {
     required TomBusHandler<T> handler,
     TomBusCodec<T>? codec,
     int maxDeliveries = 5,
+    bool ephemeral = false,
   }) async {
     _requireOpen();
     tomCheckSubscription(topic, group, maxDeliveries);
-    final target = (_topics[topic] ??= {})[group] ??= _Group(topic, group);
+    final target = (_topics[topic] ??= {})[group] ??= _Group(
+      topic,
+      group,
+      ephemeral: ephemeral,
+    );
     final consumer = _Consumer(
       this,
       target,
       maxDeliveries,
-      (message, attempt) => _handle(
+      (message, attempt) => tomDispatch(
         message,
-        attempt,
-        group,
-        codec ?? TomBusCodec<T>.reflected(),
-        handler,
+        attempt: attempt,
+        group: group,
+        codec: codec ?? TomBusCodec<T>.reflected(),
+        handler: handler,
       ),
     );
     target.consumers.add(consumer);
     _pump(target);
     return consumer;
-  }
-
-  static Future<(TomBusOutcome, String?)> _handle<T>(
-    TomBusMessage message,
-    int attempt,
-    String group,
-    TomBusCodec<T> codec,
-    TomBusHandler<T> handler,
-  ) async {
-    final T payload;
-    try {
-      payload = codec.decode(message.payload);
-    } on TomBusException {
-      return (TomBusOutcome.deadLettered, 'undecodable');
-    }
-    final delivery = TomBusDelivery<T>(
-      message: message,
-      payload: payload,
-      attempt: attempt,
-      group: group,
-    );
-    try {
-      await TomBusTrace.delivering(
-        message,
-        group,
-        () async => handler(delivery),
-      );
-    } on Object catch (error) {
-      tomLog.warn(
-        'Message ${message.id} of ${message.topic} failed in $group, '
-        'attempt $attempt: $error',
-      );
-      if (delivery.outcome == null) delivery.reject(reason: '$error');
-    }
-    return (delivery.outcome ?? TomBusOutcome.acknowledged, delivery.reason);
   }
 
   /// Hands the group's waiting messages to its free consumers.
@@ -232,12 +201,12 @@ class TomMemoryMessageBus implements TomMessageBus {
 
   void _deadLetter(_Group group, _Pending pending, String reason) {
     _route(
-      pending.message.withHeaders({
-        TomBusHeaders.deadLetterTopic: pending.message.topic,
-        TomBusHeaders.deadLetterGroup: group.name,
-        TomBusHeaders.deadLetterReason: reason,
-        TomBusHeaders.deadLetterAttempts: '${pending.attempts}',
-      }, topic: tomDeadLetterTopic(pending.message.topic)),
+      tomDeadLetter(
+        pending.message,
+        group: group.name,
+        reason: reason,
+        attempts: pending.attempts,
+      ),
     );
   }
 
@@ -287,10 +256,11 @@ class _Pending {
 }
 
 class _Group {
-  _Group(this.topic, this.name);
+  _Group(this.topic, this.name, {required this.ephemeral});
 
   final String topic;
   final String name;
+  final bool ephemeral;
   final List<_Pending> queue = [];
   final List<_Consumer> consumers = [];
   final Set<String> busyKeys = {};
@@ -319,6 +289,13 @@ class _Consumer implements TomBusSubscription {
   @override
   Future<void> cancel() async {
     _group.consumers.remove(this);
+    if (_group.ephemeral && _group.consumers.isEmpty) {
+      // The last consumer of an ephemeral group: the group goes, and what
+      // waits for it with it.
+      final groups = _bus._topics[_group.topic];
+      if (identical(groups?[_group.name], _group)) groups!.remove(_group.name);
+      _group.queue.clear();
+    }
     await Future.wait(List.of(_bus._inFlight));
     _bus._pump(_group);
   }

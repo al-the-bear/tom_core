@@ -294,7 +294,11 @@ surface documented here.
 | `TomInvalidationKind` | enum | `principal`, `cacheEntry`, `cache`, `item`. |
 | `TomInvalidationChannel` | abstract interface class | How invalidations reach the other nodes; states its `stalenessBound`. |
 | `TomLocalInvalidationChannel` | class | The default single-process channel; staleness bound zero. |
-| `TomSqlInvalidationChannel` | class | Channel over a polled database table; staleness bound is the poll interval. |
+| `TomSqlInvalidationChannel` | class | Channel over a polled database table; staleness bound is the poll interval. Also a `TomInvalidationLog`. |
+| `TomBusInvalidationChannel` | class | Channel over a `TomMessageBus`, a group of its own per node, ephemeral; staleness bound stated, one second by default. |
+| `TomInvalidationLog` | abstract interface class | Where the bus channel remembers the revocations still in force. |
+| `TomMemoryInvalidationLog` | class | An invalidation log in memory, for one process and tests. |
+| `tomInvalidationTopic` | constant | `tom.cache.invalidation` — the bus channel's default topic. |
 | `TomCacheInvalidator` | abstract final class | Cluster-wide entry point: `revokePrincipal`, `invalidateCacheEntry`, `invalidateCache`, `invalidateItemAuthorization`, `install`. |
 | `TomCacheInvalidateMessage` | class | Cross-isolate invalidation command (extends `TomCommand`). |
 | `TomCacheInvalidationRow` | class | One row of the invalidation log, as the SQL channel reads it. |
@@ -1327,6 +1331,7 @@ surface documented here.
 | `TomBlobUsage` | File Storage |
 | `TomBlobUsageRow` | File Storage |
 | `TomBoolConfig` | Configuration |
+| `TomBusInvalidationChannel` | Cache |
 | `TomBusRelay` | Messaging |
 | `tomBusRelayJobName` | Messaging |
 | `TomCache` | Cache |
@@ -1555,6 +1560,8 @@ surface documented here.
 | `TomIntConfig` | Configuration |
 | `TomInvalidationChannel` | Cache |
 | `TomInvalidationKind` | Cache |
+| `TomInvalidationLog` | Cache |
+| `tomInvalidationTopic` | Cache |
 | `TomIssuedApiKey` | Authentication |
 | `TomItemAuthority` | Item Authorization |
 | `TomItemAuthorityScopeSource` | Item Authorization |
@@ -1605,6 +1612,7 @@ surface documented here.
 | `TomMemoryExternalIdentityStore` | Authentication |
 | `TomMemoryIdempotencyStore` | Endpoints |
 | `TomMemoryInbox` | Messaging |
+| `TomMemoryInvalidationLog` | Cache |
 | `TomMemoryMessageTransport` | Messaging |
 | `TomMemoryOAuthTokenStore` | Authentication |
 | `TomMemoryRateLimiter` | Rate Limiting |

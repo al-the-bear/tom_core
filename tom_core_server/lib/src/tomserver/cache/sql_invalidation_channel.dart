@@ -10,6 +10,7 @@ import '../datasources/datasource_initialization.dart';
 import '../datasources/framework_table.dart';
 import '../datasources/sql_instant.dart';
 import '../object_persistence/persistence_annotations.dart';
+import 'bus_invalidation_channel.dart';
 import 'cache_invalidation.dart';
 import 'invalidation_sql.dart';
 import 'server_cache.dart';
@@ -26,7 +27,12 @@ import 'server_cache.dart';
 /// [retention] — the revocations still in force — so a node that joins the
 /// cluster, or restarts, does not serve a token another node revoked before it
 /// was there. Rows older than [retention] are deleted as the log is polled.
-class TomSqlInvalidationChannel implements TomInvalidationChannel {
+///
+/// The table is also a [TomInvalidationLog]: [record] writes a row and
+/// [revocationsInForce] reads the revocations within [retention], which is how
+/// `TomBusInvalidationChannel` remembers revocations without polling.
+class TomSqlInvalidationChannel
+    implements TomInvalidationChannel, TomInvalidationLog {
   /// Creates a channel over [datasource].
   ///
   /// With [createSchema] left `true` the log table is created on first use;
@@ -180,8 +186,25 @@ class TomSqlInvalidationChannel implements TomInvalidationChannel {
     );
   }
 
+  /// Writes [invalidation] to the log — which is all [publish] does: the other
+  /// nodes read it at their next poll.
   @override
-  Future<void> publish(TomCacheInvalidation invalidation) async {
+  Future<void> publish(TomCacheInvalidation invalidation) =>
+      record(invalidation);
+
+  @override
+  Future<List<TomCacheInvalidation>> revocationsInForce() async {
+    await ensureSchema();
+    final rows = await datasource.executeQuery<TomCacheInvalidationRow>(
+      'SELECT ${_rows.columnList} FROM $table '
+      "WHERE kind = 'principal' AND raised_at >= :cutoff ORDER BY id",
+      {'cutoff': DateTime.now().toUtc().subtract(retention)},
+    );
+    return [for (final row in rows) row.toInvalidation()];
+  }
+
+  @override
+  Future<void> record(TomCacheInvalidation invalidation) async {
     await ensureSchema();
     await datasource.executeCommand(
       _rows.insertRow(datasource.sqlDialect, const {

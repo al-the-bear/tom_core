@@ -205,6 +205,58 @@ void tomMessageBusConformance({
     });
   });
 
+  group('ephemeral groups', () {
+    test('MB-C19: an ephemeral group keeps nothing once its last consumer is '
+        'gone', () async {
+      final topic = unique('c19');
+      final group = unique('g');
+      final first = await bus.subscribe<String>(
+        topic,
+        group: group,
+        ephemeral: true,
+        handler: (_) {},
+      );
+      await first.cancel();
+      await bus.publish(topic, 'while gone');
+      final received = <String>[];
+      await bus.subscribe<String>(
+        topic,
+        group: group,
+        ephemeral: true,
+        handler: (d) => received.add(d.payload),
+      );
+      await bus.publish(topic, 'after');
+      await until(() => received.isNotEmpty, 'the later message');
+      await calm();
+      expect(received, ['after']);
+    });
+
+    test(
+      'MB-C20: ephemeral groups fan a message out to each of them',
+      () async {
+        final topic = unique('c20');
+        final seen = <String, List<String>>{'a': [], 'b': []};
+        for (final node in ['a', 'b']) {
+          await bus.subscribe<String>(
+            topic,
+            group: unique('node-$node'),
+            ephemeral: true,
+            handler: (d) => seen[node]!.add(d.payload),
+          );
+        }
+        await bus.publish(topic, 'to everyone');
+        await until(
+          () => seen.values.every((l) => l.isNotEmpty),
+          'both ephemeral groups',
+        );
+        expect(seen, {
+          'a': ['to everyone'],
+          'b': ['to everyone'],
+        });
+      },
+    );
+  });
+
   group('acknowledge and reject', () {
     test('MB-C7: an acknowledged message is not delivered again', () async {
       final topic = unique('c7');

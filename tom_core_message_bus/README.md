@@ -22,9 +22,13 @@ and not against the broker's client. The package holds that contract, the
 in-memory bus that keeps it inside one process, and the conformance suite that
 checks any bus against it. A broker adapter implements the contract and runs
 the suite in its own tests; no broker adapter ships in this package. The
-adapter over NATS JetStream is
-[`tom_core_message_bus_nats`](../../core_extension/tom_core_message_bus_nats/README.md),
-in `tom_core_extensions`.
+adapters live in `tom_core_extensions`:
+[`tom_core_message_bus_nats`](../../core_extension/tom_core_message_bus_nats/README.md)
+over NATS JetStream,
+[`tom_core_message_bus_rabbitmq`](../../core_extension/tom_core_message_bus_rabbitmq/README.md)
+over RabbitMQ, and
+[`tom_core_message_bus_kafka`](../../core_extension/tom_core_message_bus_kafka/README.md)
+over Kafka through a REST proxy.
 
 The contract is **at least once**: a message is delivered until a consumer of
 its group acknowledges it or it is dead-lettered, and the message id is the
@@ -78,9 +82,10 @@ its own tests. A payload class that crosses the bus through reflection needs
 | `TomBusTrace` | The trace across the bus: `publishing` adds the trace to the headers, `delivering` runs a handler in it. |
 | `TomBusHeaders` / `tomDeadLetterTopic` | The header names a bus writes, and the dead-letter topic of a topic (`<topic>.dlq`). |
 | `tomCheckSubscription` | The subscription arguments every bus refuses. |
+| `tomDispatch` / `tomDeadLetter` | The delivery step every bus shares — decode, run the handler in the published trace, read the outcome — and the dead letter it publishes. |
 | `TomMemoryMessageBus` | The contract in the memory of one process, with ordering per key; for tests and a single-process deployment. |
 | `TomBusException` | Every refusal of the bus, keyed `message_bus.*`. |
-| `tomMessageBusConformance` | The conformance suite, MB-C1 to MB-C18, in `conformance.dart`. |
+| `tomMessageBusConformance` | The conformance suite, MB-C1 to MB-C20, in `conformance.dart`. |
 
 ## Quick start
 
@@ -124,6 +129,11 @@ The points every bus keeps, each one checked by the conformance suite:
 - **Durable groups.** A group exists from its first subscription. A message
   published while none of its consumers is subscribed waits for the next; a
   message published to a topic no group has subscribed to reaches no one.
+- **Ephemeral groups.** A group subscribed with `ephemeral: true` lives only
+  while one of its consumers is subscribed in this bus: when its last consumer
+  cancels, the group and what waits for it are gone, and a later subscription
+  starts a new group. Each running process subscribing with a group of its own,
+  ephemeral, is a fan-out to every process.
 - **At least once.** A delivery is repeated until it is acknowledged or
   dead-lettered, with the same message id on every delivery.
 - **Acknowledge and reject.** Returning acknowledges; throwing or `reject()`
@@ -146,12 +156,13 @@ The [guide](doc/message_bus.md) goes through each point.
 An adapter over a broker implements `TomMessageBus` and keeps four rules, so
 every bus behaves the same way above it:
 
-1. Publish through `TomBusTrace.publishing`, and run every handler through
+1. Publish through `TomBusTrace.publishing`, and hand every delivery to
+   `tomDispatch`, which decodes it and runs the handler through
    `TomBusTrace.delivering` — the trace crosses every broker the same way.
 2. Check the arguments of `subscribe` with `tomCheckSubscription`.
-3. Encode and decode payloads with the `TomBusCodec` given, or
-   `TomBusCodec.reflected()`; a payload that does not decode is dead-lettered
-   with the reason `undecodable`.
+3. Encode payloads with the `TomBusCodec` given, or `TomBusCodec.reflected()`;
+   map the outcome `tomDispatch` answers onto the broker, publishing
+   `tomDeadLetter(message, ...)` for a dead letter.
 4. Run `tomMessageBusConformance` in the adapter's own tests, against the
    broker.
 
@@ -175,7 +186,7 @@ Each test makes a bus with `create`, uses topics and groups named with a random
 suffix (so a persistent broker is not polluted by an earlier run) and closes the
 bus. `timeout` bounds the wait for a delivery that must happen and `quiet` the
 wait for one that must not; raise both for a broker with slow round trips. The
-ordering test runs only for a bus that declares `orderedPerKey`. The eighteen
+ordering test runs only for a bus that declares `orderedPerKey`. The twenty
 tests are listed in the [guide](doc/message_bus.md#the-conformance-suite).
 
 ## Example
@@ -203,6 +214,10 @@ dart run example/message_bus_example.dart
   published to a bus after the commit.
 - [`tom_core_message_bus_nats`](../../core_extension/tom_core_message_bus_nats/README.md)
   — the adapter over NATS JetStream, in `tom_core_extensions`.
+- [`tom_core_message_bus_rabbitmq`](../../core_extension/tom_core_message_bus_rabbitmq/README.md)
+  — the adapter over RabbitMQ, in `tom_core_extensions`.
+- [`tom_core_message_bus_kafka`](../../core_extension/tom_core_message_bus_kafka/README.md)
+  — the adapter over Kafka through a REST proxy, in `tom_core_extensions`.
 
 ## Dependencies
 
@@ -216,6 +231,8 @@ dart run example/message_bus_example.dart
 
 - **Version:** 0.1.0
 - **Tests:** run with `testkit :test` or `dart test`: the conformance suite and
-  the in-memory bus's own tests (`test/memory_bus_test.dart`), and the
-  reflection codec (`test/codec_test.dart`). None needs a broker or a database.
+  the in-memory bus's own tests (`test/memory_bus_test.dart`), the refusals
+  (`test/refusals_test.dart`), the reflection codec (`test/codec_test.dart`)
+  and the delivery step every bus shares (`test/dispatch_test.dart`). None
+  needs a broker or a database.
 - **License:** BSD-3-Clause — see [LICENSE](LICENSE).

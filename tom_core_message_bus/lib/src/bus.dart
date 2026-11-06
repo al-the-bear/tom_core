@@ -67,6 +67,12 @@ abstract final class TomBusHeaders {
 /// - **Durable groups.** A group exists from its first subscription. A message
 ///   published while none of its consumers is subscribed waits for the next;
 ///   a message published to a topic no group has subscribed to reaches no one.
+/// - **Ephemeral groups.** A group subscribed `ephemeral` lives only while one
+///   of its consumers is subscribed in this bus: when its last consumer
+///   cancels, the group and what waits for it are gone, and a later
+///   subscription starts a new group. The shape of a fan-out to every running
+///   process — each subscribes with a group of its own, ephemeral, so a process
+///   that stops leaves nothing behind on the broker.
 /// - **At least once.** A delivery is repeated until it is acknowledged or
 ///   dead-lettered, and may be repeated even then after a failure: the message
 ///   [TomBusMessage.id] is the same on every delivery, for a consumer to
@@ -110,8 +116,9 @@ abstract class TomMessageBus {
 
   /// Subscribes [handler] to [topic] as a consumer of [group], decoding each
   /// payload with [codec] (the reflection codec unless given). A message is
-  /// dead-lettered on its [maxDeliveries]th
-  /// failed delivery.
+  /// dead-lettered on its [maxDeliveries]th failed delivery. With [ephemeral]
+  /// the group lives only while it has a consumer in this bus — see the
+  /// contract; a group's first subscription decides whether it is.
   ///
   /// Throws `message_bus.subscribe.invalid` for an empty topic or group, or a
   /// [maxDeliveries] below 1, and `message_bus.closed` once the bus is
@@ -122,6 +129,7 @@ abstract class TomMessageBus {
     required TomBusHandler<T> handler,
     TomBusCodec<T>? codec,
     int maxDeliveries = 5,
+    bool ephemeral = false,
   });
 
   /// Stops every subscription, lets the deliveries under way finish, and

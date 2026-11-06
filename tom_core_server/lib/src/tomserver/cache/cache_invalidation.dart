@@ -17,7 +17,10 @@
 ///   right channel for one process, and a bound of zero;
 /// * `TomSqlInvalidationChannel` writes each invalidation to a table in a
 ///   database every node already has, and every node polls it; the poll
-///   interval is the bound.
+///   interval is the bound;
+/// * `TomBusInvalidationChannel` publishes each invalidation on a message bus
+///   every node subscribes to, and remembers the revocations in a log; the
+///   bound is the broker's delivery time.
 library;
 
 import 'dart:async';

@@ -11,6 +11,7 @@ library;
 
 export 'src/bus.dart';
 export 'src/codec.dart';
+export 'src/dispatch.dart';
 export 'src/memory_bus.dart';
 export 'src/message.dart';
 export 'src/trace.dart';

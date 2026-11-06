@@ -530,7 +530,8 @@ tom_basics · tom_crypto · tom_reflection
 `tom_core_server` sits directly on `tom_core_kernel` and re-exports it, so server
 apps get the full kernel API through one dependency. It also depends on
 [`tom_core_message_bus`](../tom_core_message_bus/README.md), the broker-neutral
-message bus its bus relay publishes to; the bus is not re-exported, so an
+message bus its bus relay publishes to and its bus invalidation channel
+(`TomBusInvalidationChannel`) subscribes to; the bus is not re-exported, so an
 application that publishes or subscribes imports it itself. See the
 [repository map](../README.md) for the full picture.
 

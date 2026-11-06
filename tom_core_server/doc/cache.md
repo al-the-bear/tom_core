@@ -7,7 +7,7 @@ and unbounded on request, and can expire entries by age or clear itself on a
 schedule. On a cluster, `TomCacheInvalidator` carries an invalidation — of an
 entry, of a whole cache, of a user's tokens in the authorization cache, or of
 the item-authorization answers an item and a subject name — to every node
-through an installed channel. Those answers come from a remote authority such
+through an installed channel — a polled table or a message bus. Those answers come from a remote authority such
 as Tom UAM, and its webhook and change feed say when they changed.
 
 ## Table of Contents
@@ -36,9 +36,11 @@ as Tom UAM, and its webhook and change feed say when they changed.
 - [Tenant-Scoped Entries](#tenant-scoped-entries)
 - [Cross-Node Invalidation](#cross-node-invalidation)
   - [Channels and their staleness bound](#channels-and-their-staleness-bound)
+  - [Choosing an invalidation channel](#choosing-an-invalidation-channel)
   - [Installing a channel at start-up](#installing-a-channel-at-start-up)
   - [What each kind does](#what-each-kind-does)
   - [The SQL channel](#the-sql-channel)
+  - [The bus channel](#the-bus-channel)
   - [Failures](#failures)
 - [Item-Authorization Answers](#item-authorization-answers)
   - [The answer cache](#the-answer-cache)
@@ -69,7 +71,11 @@ as Tom UAM, and its webhook and change feed say when they changed.
 | `TomInvalidationKind` | enum | `principal`, `cacheEntry`, `cache`, `item` |
 | `TomInvalidationChannel` | abstract interface class | How invalidations reach the other nodes, and how fast (`stalenessBound`) |
 | `TomLocalInvalidationChannel` | class | The default channel for a single process; bound zero |
-| `TomSqlInvalidationChannel` | class | A channel over a table every node polls; bound is the poll interval |
+| `TomSqlInvalidationChannel` | class | A channel over a table every node polls; bound is the poll interval. Also a `TomInvalidationLog` |
+| `TomBusInvalidationChannel` | class | A channel over a `TomMessageBus`, each node its own ephemeral group; bound is stated, one second by default |
+| `TomInvalidationLog` | abstract interface class | Where the bus channel remembers the revocations still in force |
+| `TomMemoryInvalidationLog` | class | An invalidation log in memory, for one process and tests |
+| `tomInvalidationTopic` | const String | `tom.cache.invalidation` — the bus channel's default topic |
 | `TomCacheInvalidateMessage` | class | Cross-isolate invalidation, run in the main isolate |
 | `TomCacheInvalidationRow` | class | One row of the invalidation log, as the SQL channel reads it |
 | `TomItemAuthorizationCache` | abstract final class | The answers a remote authority gave on items, keyed by item and subject |
@@ -744,13 +750,58 @@ node to delivery on another.
 | ------- | ------- | ---------------- |
 | `TomLocalInvalidationChannel` — the default | no other node | zero: on one node an invalidation applied here is applied everywhere there is |
 | `TomSqlInvalidationChannel` | every node polling the same table | the poll interval (default two seconds), plus one query |
+| `TomBusInvalidationChannel` | every node subscribed to the same topic of a message bus | the broker's delivery time, stated by the channel: one second by default |
 
 A deployment of one process needs nothing. A deployment of several installs the
-SQL channel on every node, over a data source they all share.
+same channel on every node: the SQL channel over a data source they all share,
+or the bus channel over a broker they all reach.
 
 A channel never delivers a node's own invalidations back to it: each carries
 its `origin`, the `TomCacheInvalidator.nodeId` of the process that raised it,
 which is random per process.
+
+### Choosing an invalidation channel
+
+| | `TomLocalInvalidationChannel` | `TomSqlInvalidationChannel` | `TomBusInvalidationChannel` |
+| --- | --- | --- | --- |
+| Deployment | one process | several nodes sharing a database | several nodes sharing a message broker |
+| Infrastructure | none | a data source every node reaches — none a deployment does not already have | a broker with a `TomMessageBus` adapter (`tom_core_message_bus_nats` over NATS JetStream, `tom_core_message_bus_rabbitmq` over RabbitMQ, `tom_core_message_bus_kafka` over Kafka), and a `TomInvalidationLog` |
+| `stalenessBound` | zero | the poll interval, two seconds by default, plus one query | near-immediate; stated as one second by default (`stalenessBound:`), the delivery time expected of the broker |
+| Load while idle | none | one query per node every poll interval | none: the broker pushes |
+| A node starting later | nothing to catch up | reads the revocations in force from the table | reads the revocations in force from its log |
+
+**The local channel** is the default and the whole answer for one process.
+
+**The SQL channel** needs nothing a clustered deployment does not already have,
+and its bound is the poll interval: shorter for fresher nodes, at the cost of
+one query per node per interval.
+
+**The bus channel** evicts on every node as soon as the broker delivers. It
+needs a broker every node reaches, and a log: the bus delivers a message only to
+the groups subscribed when it was published, so the revocations a node starting
+later must still apply are read from the log, not from the broker. The log is
+normally the SQL channel's table — `TomSqlInvalidationChannel` is a
+`TomInvalidationLog`, and as the log it is written and read, never polled.
+`TomMemoryInvalidationLog` keeps the log in memory instead: for one process, and
+for tests. The bound is stated rather than measured, because the bus contract
+promises delivery at least once, not a latency; pass the bound your broker
+keeps.
+
+```dart
+import 'package:tom_core_message_bus_nats/tom_core_message_bus_nats.dart';
+import 'package:tom_core_server/tom_core_server.dart';
+
+// After the data sources are initialised, before the server starts serving.
+final bus = await TomNatsMessageBus.connect(Uri.parse('nats://nats.internal:4222'));
+await TomCacheInvalidator.install(
+  TomBusInvalidationChannel(
+    bus: bus,
+    log: TomSqlInvalidationChannel.named('main'),
+  ),
+);
+```
+
+See [The bus channel](#the-bus-channel) for what it does.
 
 ### Installing a channel at start-up
 
@@ -837,6 +888,47 @@ What the channel does, in order:
 revocation has to be remembered as long as a token issued before it can still
 be live, so a node starting up must see every revocation that young.
 
+### The bus channel
+
+`TomBusInvalidationChannel({bus, log, topic, stalenessBound, nodeId})` carries
+invalidations on a `TomMessageBus` — the contract of
+[`tom_core_message_bus`](../../tom_core_message_bus/doc/message_bus.md), over
+whichever broker its adapter reaches.
+
+- **`publish`** records the invalidation in `log`, then publishes it on
+  `topic` — `tomInvalidationTopic`, `tom.cache.invalidation`, unless the
+  channel names another — as the JSON `invalidationToJson` writes.
+- **Every node subscribes with a group of its own**, `group`:
+  `tom-cache-invalidation-<node id>`, subscribed `ephemeral`. Groups of their
+  own make it a fan-out — every node receives every invalidation, where one
+  shared group would hand each to one node only — and an ephemeral group lives
+  only while its node is subscribed, so a node that stops leaves nothing behind
+  on the broker (see the bus guide's
+  [Ephemeral groups](../../tom_core_message_bus/doc/message_bus.md#ephemeral-groups)).
+  A node drops the invalidations whose `origin` is its own `nodeId`
+  (`TomCacheInvalidator.nodeId` unless the channel is given one).
+- **`start`** subscribes first and then delivers the revocations in force from
+  `log.revocationsInForce()` that other nodes raised. A revocation raised while
+  the node was starting arrives both ways — applied twice at worst, which
+  revocation tolerates — and none falls between the two.
+- **`stop`** cancels the subscription; `isRunning` answers whether the channel
+  is subscribed.
+
+**The log, not the broker, is the memory.** How long a broker keeps a message
+differs per broker; the log holds exactly the revocation window.
+`TomInvalidationLog` is two methods: `record(invalidation)` and
+`revocationsInForce()`, the principal revocations raised within the log's
+retention, oldest first. `TomSqlInvalidationChannel` implements it over its
+table — `record` writes a row, `revocationsInForce` reads the `principal` rows
+within `retention` — so the SQL table serves as the bus channel's log without
+polling. `TomMemoryInvalidationLog({retention, clock})` keeps the principal
+revocations of one process for `retention`
+(`TomAuthorizationCache.revocationRetention` by default).
+
+**The bound is stated.** `stalenessBound` is one second unless the channel is
+given another: the delivery time the deployment expects of its broker. Over
+NATS a revocation on one node is refused on another well within it.
+
 ### Failures
 
 **A publish failure propagates.** The invalidation has already been applied on
@@ -848,6 +940,10 @@ the database does — and then the exception reaches the caller of
 level and the next poll reads again from the same row, so no invalidation is
 skipped by a transient database error; the cost is staleness for as long as
 the database is unreachable.
+
+**With the bus channel, a failure to record or to publish propagates** the same
+way. A delivery the broker repeats is applied again, which is harmless: every
+invalidation is idempotent.
 
 | Key | Raised when |
 | --- | ----------- |
@@ -998,7 +1094,7 @@ together: the webhook for speed, the feed for what the webhook missed.
 
 | Path | Delay until every node stops granting |
 | ---- | ------------------------------------- |
-| webhook delivered | the invalidation channel's `stalenessBound` (two seconds with the SQL channel) |
+| webhook delivered | the invalidation channel's `stalenessBound` (two seconds with the SQL channel, one second as stated by the bus channel) |
 | webhook lost, feed followed | `follower.stalenessBound`: the poll interval plus the channel's bound — 32 seconds with the defaults |
 | neither | the cache's `timeToLive`, five minutes by default; for a local copy its `copyTimeToLive`, twelve hours by default |
 
@@ -1025,8 +1121,11 @@ together: the webhook for speed, the feed for what the webhook missed.
 - **`TomCacheInvalidation` + `TomInvalidationKind`** — one invalidation and what
   it invalidates; `TomCacheInvalidateMessage` carries one from a worker.
 - **`TomInvalidationChannel`** — the transport seam, with
-  `TomLocalInvalidationChannel` (the default) and `TomSqlInvalidationChannel`
-  (the polled log, read through `TomCacheInvalidationRow`).
+  `TomLocalInvalidationChannel` (the default), `TomSqlInvalidationChannel`
+  (the polled log, read through `TomCacheInvalidationRow`) and
+  `TomBusInvalidationChannel` (a message bus, with `tomInvalidationTopic`).
+- **`TomInvalidationLog` / `TomMemoryInvalidationLog`** — where the bus channel
+  remembers the revocations in force; `TomSqlInvalidationChannel` is one too.
 - **`invalidationTable` / `invalidationTableDdl` / `defaultInvalidationTable`**
   — the log's single declaration.
 - **`TomItemAuthorizationCache` + `TomCachedItemLevel`** — the answers a remote
@@ -1043,11 +1142,6 @@ together: the webhook for speed, the feed for what the webhook missed.
 The module's two standing decisions — what `getEntry` answers, and the cost of
 a crossing — are stated where the behaviour is, under [Expiry and
 Bounds](#expiry-and-bounds) and [Isolate Model](#isolate-model) respectively.
-
-- **No channel over a message bus.** Invalidations travel between nodes by
-  polling a table, so a cluster is as stale as its poll interval. A channel that
-  delivers them as messages, for near-immediate eviction, is not offered.
-  <!-- unpinned: absence — no message-bus channel exists -->
 
 ## Verification
 
@@ -1089,7 +1183,20 @@ tagged `db`, runs `TomSqlInvalidationChannel` against MariaDB or PostgreSQL: own
 skipped, the start-up catch-up of revocations in force, retention pruning, and
 a revoked item share that drops the cached answer on the reading node, and a
 grant revoked on one node refused on a second — a spawned isolate, whose
-static caches are its own — within the poll interval.
+static caches are its own — within the poll interval, and the table as the bus
+channel's log: principal revocations within the retention only, applied by a
+node starting later.
+
+`test/bus_invalidation_channel_test.dart` runs `TomBusInvalidationChannel` over
+the in-memory bus, with no broker and no database: BI-1 an invalidation reaches
+every other node, and not its own; BI-2 a grant revoked on one node is refused
+on the other within the channel's bound; BI-3 a node starting later applies the
+revocations still in force from the log; BI-4 a stopped node leaves nothing
+behind on the bus; BI-5 the memory log keeps revocations for its retention;
+BI-6 the bound is stated, a second by default; BI-7 an invalidation survives
+its JSON form. Over a real broker, `tom_core_message_bus_nats`'s NB-V1 runs the
+channel between two isolates over NATS: a grant revoked on one node is refused
+on the other within the channel's bound.
 
 The two are linked in both directions — the example's header names the suite,
 and the suite runs the example, under exactly the command that header documents,
@@ -1104,21 +1211,21 @@ module is the one that makes that easy — and a hang reported as a hang says le
 than a hang reported as a named failure.
 
 So each of this module's prose artefacts is falsifiable from the suite: the
-example, the walkthrough above, the readme's quick start, and all but one of the
-[Not Yet Implemented](#not-yet-implemented) items above, which that section
-itself accounts for. None of them can drift quietly while nobody is reading.
+example, the walkthrough above and the readme's quick start. None of them can
+drift quietly while nobody is reading.
 
 ## Dependencies
 
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
-| `dart:async` | dart | `cache_invalidation.dart`, `item_authorization_changes.dart`, `server_cache.dart`, `sql_invalidation_channel.dart` | `Future`, `Timer`, `Zone` |
+| `dart:async` | dart | `bus_invalidation_channel.dart`, `cache_invalidation.dart`, `item_authorization_changes.dart`, `server_cache.dart`, `sql_invalidation_channel.dart` | `Future`, `Timer`, `Zone` |
 | `dart:convert` | dart | `item_authorization_changes.dart` | `jsonDecode` and `utf8`, for a webhook body and its signature |
 | `dart:isolate` | dart | `server_cache.dart` | `Isolate` |
 | `dart:math` | dart | `cache_invalidation.dart` | `Random.secure`, for the per-process `nodeId` |
 | `crypto` | package | `item_authorization_changes.dart` | `Hmac` and `sha256`, for the webhook signature |
 | `tom_core_kernel` | package | `cache_invalidation.dart`, `item_authorization_changes.dart`, `server_cache.dart`, `sql_invalidation_channel.dart` | `TomWorker`, `TomCommand`, `TomTenantContext`, and the logging helpers |
-| [authorization](authorization.md) | module | `cache_invalidation.dart`, `sql_invalidation_channel.dart` | `TomAuthorizationCache` — `revokeLocally`, which a principal invalidation applies, and `revocationRetention`, the SQL channel's default retention |
+| `tom_core_message_bus` | package | `bus_invalidation_channel.dart` | `TomMessageBus` and `TomBusSubscription`, which the bus channel publishes and subscribes through |
+| [authorization](authorization.md) | module | `bus_invalidation_channel.dart`, `cache_invalidation.dart`, `sql_invalidation_channel.dart` | `TomAuthorizationCache` — `revokeLocally`, which a principal invalidation applies, and `revocationRetention`, the default retention of the SQL channel and of `TomMemoryInvalidationLog` |
 | [datasources](datasources.md) | module | `invalidation_sql.dart`, `sql_invalidation_channel.dart` | `TomFrameworkTable` (the log's declaration), `TomDataSource` and `TomDataSourceInfo` (named data sources), `parseSqlInstant` |
 | [little_things](little_things.md) | module | `item_authorization_changes.dart`, `server_cache.dart` | `TomServerException`, the base of `TomCacheException` and the item-authorization exceptions |
 | [object_persistence](object_persistence.md) | module | `sql_invalidation_channel.dart` | `TomDbTable` / `TomDbColumn` on `TomCacheInvalidationRow` |

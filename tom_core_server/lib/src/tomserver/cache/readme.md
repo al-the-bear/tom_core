@@ -19,8 +19,13 @@ the item-authorization answers an item and a subject name. The default `TomLocal
 reaches no other node, for a single process; `TomSqlInvalidationChannel` writes
 each invalidation to the `tom_cache_invalidation` table — declared once by
 `invalidationTable` — and every node polls it,
-so its poll interval (two seconds by default) is the staleness bound. Install
-the channel once at start-up, before serving requests.
+so its poll interval (two seconds by default) is the staleness bound;
+`TomBusInvalidationChannel` publishes each invalidation on a message bus
+(`tom_core_message_bus`) every node subscribes to with an ephemeral group of
+its own, for near-immediate eviction, and reads the revocations still in force
+from a `TomInvalidationLog` — normally the SQL channel's table — when it starts;
+its bound is stated, one second by default. Install the channel once at
+start-up, before serving requests.
 
 **Forwarding is one crossing per operation.** There is no batch command and no
 worker-side copy, so ten cached lookups from a worker are ten round trips and
@@ -42,7 +47,8 @@ being the deployment's decision rather than the framework's.
 | Static helpers | `TomCache.toTypeCache<T>` / `fromTypeCache<T>` / `removeFromTypeCache<T>` and the `*NameCache` variants store/retrieve/remove by type or name. |
 | `TomCacheManager` | Per-isolate registry; `getCache(name)` / `addCache` / `removeCache(name)`, `dispose()`, and the cross-isolate forwarding decision (`useInThisIsolate`). A cache installs its timers in its constructor, so leaving the registry has to stop them too — `removeCache` and `dispose` do, while `setCurrent` stays a pure swap and hands back the displaced manager for the caller to `dispose` when the swap is final. |
 | `TomCacheInvalidator` | The cluster-wide entry point: `install(channel)` at start-up, then `revokePrincipal`, `invalidateCacheEntry`, `invalidateCache` and `invalidateItemAuthorization`. Applies each invalidation here first, then publishes it; a publish failure propagates. Callable from any isolate. |
-| `TomInvalidationChannel` · `TomLocalInvalidationChannel` · `TomSqlInvalidationChannel` | How invalidations reach the other nodes, each stating its `stalenessBound`: zero for the local channel, the poll interval for the SQL one, which also applies the revocations still in force when it starts. |
+| `TomInvalidationChannel` · `TomLocalInvalidationChannel` · `TomSqlInvalidationChannel` · `TomBusInvalidationChannel` | How invalidations reach the other nodes, each stating its `stalenessBound`: zero for the local channel, the poll interval for the SQL one, the expected broker delivery time (one second by default) for the bus one. The SQL and bus channels apply the revocations still in force when they start. |
+| `TomInvalidationLog` · `TomMemoryInvalidationLog` · `tomInvalidationTopic` | Where the bus channel remembers revocations — `TomSqlInvalidationChannel` is a log too, `TomMemoryInvalidationLog` keeps one in memory — and the topic it publishes on, `tom.cache.invalidation`. |
 | `TomCacheInvalidation` · `TomInvalidationKind` | One invalidation — `principal`, `cacheEntry`, `cache` or `item` — with its target, instant and originating node. |
 | `TomItemAuthorizationCache` · `TomCachedItemLevel` | The answers a remote authority (Tom UAM) gave on items — which level a subject holds — keyed by item and subject, kept until a change names them or their lifetime ends. |
 | `TomItemAuthorizationWebhook` · `TomItemAuthorizationFeedFollower` · `TomItemAuthorizationChange` · `TomItemAuthorizationChangePage` | How the authority's change reports arrive: a verified `itemAuthorization.changed` delivery, and the change feed read on a timer as the catch-up. Each change raises `invalidateItemAuthorization`. Failures: `TomItemAuthorizationWebhookException`, `TomItemAuthorizationFeedExpiredException`. |

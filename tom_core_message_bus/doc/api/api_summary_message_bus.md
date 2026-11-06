@@ -29,7 +29,8 @@ guide is [message_bus.md](../message_bus.md).
 ## Overview
 
 Source: `lib/src/bus.dart`, `lib/src/message.dart`, `lib/src/codec.dart`,
-`lib/src/trace.dart`, `lib/src/memory_bus.dart`, exported by
+`lib/src/trace.dart`, `lib/src/dispatch.dart`, `lib/src/memory_bus.dart`,
+exported by
 `lib/tom_core_message_bus.dart`; `lib/conformance.dart`, a library of its own.
 
 `TomMessageBus` is the contract: `publish` a payload to a topic, `subscribe` a
@@ -46,6 +47,9 @@ without requeue, out of attempts, or undecodable is published to
 `TomBusCodec.reflected()` through the kernel's reflection unless a codec is
 given. `TomBusTrace` carries the trace context across the bus: every bus
 publishes through `publishing` and handles through `delivering`.
+`tomDispatch` is the delivery step every bus shares — decode, run the handler
+in `delivering`, answer the outcome — and `tomDeadLetter` the dead letter a bus
+publishes.
 `tomCheckSubscription` is the argument check every bus makes, and
 `TomBusException` every refusal.
 
@@ -79,9 +83,9 @@ TomBusOutcome  (enum)
 ### TomMessageBus
 
 A message bus: the contract every bus keeps — publish and subscribe, consumer
-groups, durable groups, at least once, acknowledge and reject, dead letters,
-headers and trace, typed payloads — with ordering per key as a declared
-capability.
+groups, durable and ephemeral groups, at least once, acknowledge and reject,
+dead letters, headers and trace, typed payloads — with ordering per key as a
+declared capability.
 
 - **Extends:** none (abstract)
 
@@ -96,7 +100,7 @@ capability.
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `publish` | `Future<String> publish<T>(String topic, T payload, {String? key, Map<String, String> headers = const {}, String? id, TomBusCodec<T>? codec})` | Publishes `payload` to `topic`, encoded by `codec` (the reflection codec unless given), and answers the message id — `id` when given, a new one otherwise. `key` orders the message among those of the same key where `capabilities` say so. Published in a trace, the message carries the trace in its headers. Throws `message_bus.closed` once the bus is closed. |
-| `subscribe` | `Future<TomBusSubscription> subscribe<T>(String topic, {required String group, required TomBusHandler<T> handler, TomBusCodec<T>? codec, int maxDeliveries = 5})` | Subscribes `handler` to `topic` as a consumer of `group`, decoding each payload with `codec` (the reflection codec unless given). A message is dead-lettered on its `maxDeliveries`th failed delivery. Throws `message_bus.subscribe.invalid` for an empty topic or group or a `maxDeliveries` below 1, and `message_bus.closed` once the bus is closed. |
+| `subscribe` | `Future<TomBusSubscription> subscribe<T>(String topic, {required String group, required TomBusHandler<T> handler, TomBusCodec<T>? codec, int maxDeliveries = 5, bool ephemeral = false})` | Subscribes `handler` to `topic` as a consumer of `group`, decoding each payload with `codec` (the reflection codec unless given). A message is dead-lettered on its `maxDeliveries`th failed delivery. With `ephemeral` the group lives only while it has a consumer in this bus; a group's first subscription decides whether it is. Throws `message_bus.subscribe.invalid` for an empty topic or group or a `maxDeliveries` below 1, and `message_bus.closed` once the bus is closed. |
 | `close` | `Future<void> close()` | Stops every subscription, lets the deliveries under way finish, and refuses further publishing and subscribing. Idempotent. |
 
 ### TomBusCapabilities
@@ -337,7 +341,7 @@ TomMemoryMessageBus({
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `publish` | `Future<String> publish<T>(String topic, T payload, {String? key, Map<String, String> headers = const {}, String? id, TomBusCodec<T>? codec})` | *(override)* Encodes the payload, routes the message to every group of the topic and answers its id — `id`, or `msg-` and 32 hexadecimal digits. |
-| `subscribe` | `Future<TomBusSubscription> subscribe<T>(String topic, {required String group, required TomBusHandler<T> handler, TomBusCodec<T>? codec, int maxDeliveries = 5})` | *(override)* Adds a consumer to the group, creating the group on its first subscription. A handler that throws is logged as a warning and its delivery rejected with the error as reason; a rejection without requeue and without a reason is dead-lettered as `rejected`. |
+| `subscribe` | `Future<TomBusSubscription> subscribe<T>(String topic, {required String group, required TomBusHandler<T> handler, TomBusCodec<T>? codec, int maxDeliveries = 5, bool ephemeral = false})` | *(override)* Adds a consumer to the group, creating the group on its first subscription. When the last consumer of an ephemeral group cancels, the group and the messages waiting for it are dropped. A handler that throws is logged as a warning and its delivery rejected with the error as reason; a rejection without requeue and without a reason is dead-lettered as `rejected`. |
 | `settled` | `Future<void> settled()` | Completes when nothing is being handled and no message waits for a free consumer of its group. A message waiting for a redelivery delay, or for a group with no consumer, does not hold it up. |
 | `close` | `Future<void> close()` | *(override)* Cancels pending redeliveries, drops every consumer and waits for the deliveries under way. Idempotent. |
 
@@ -390,5 +394,7 @@ What a consumer decided about a delivery.
 | Name | Signature | Description |
 | ---- | --------- | ----------- |
 | `tomDeadLetterTopic` | `String tomDeadLetterTopic(String topic)` | The topic a message of `topic` is dead-lettered to: `<topic>.dlq`. |
+| `tomDispatch` | `Future<(TomBusOutcome, String?)> tomDispatch<T>(TomBusMessage message, {required int attempt, required String group, required TomBusCodec<T> codec, required TomBusHandler<T> handler})` | Decodes `message` with `codec`, runs `handler` on it inside `TomBusTrace.delivering` as delivery `attempt` to `group`, and answers how the delivery ended, with the reason a rejection gave. A payload `codec` cannot decode answers `(deadLettered, 'undecodable')` without calling `handler`; a handler that throws without settling is logged and answers `(requeued, '<error>')`; one that returns without settling answers `(acknowledged, null)`. In `dispatch.dart`. |
+| `tomDeadLetter` | `TomBusMessage tomDeadLetter(TomBusMessage message, {required String group, required String reason, required int attempts})` | The dead letter of `message`: the same message on `tomDeadLetterTopic(message.topic)`, with `TomBusHeaders.deadLetterTopic`, `deadLetterGroup`, `deadLetterReason` and `deadLetterAttempts` added to its headers. In `dispatch.dart`. |
 | `tomCheckSubscription` | `void tomCheckSubscription(String topic, String group, int maxDeliveries)` | Throws `message_bus.subscribe.invalid` (parameters `topic`, `group`, `maxDeliveries`) for an empty topic or group, or a `maxDeliveries` below 1. |
-| `tomMessageBusConformance` | `void tomMessageBusConformance({required Future<TomMessageBus> Function() create, Duration timeout = const Duration(seconds: 10), Duration quiet = const Duration(milliseconds: 300)})` | Defines the conformance tests MB-C1 to MB-C18 against the bus `create` makes, one bus per test, closed after it. `timeout` bounds the wait for an expected delivery; `quiet` is how long a test waits to see that a delivery that must not happen does not. The ordering test is skipped for a bus that does not declare `orderedPerKey`. In `conformance.dart`. |
+| `tomMessageBusConformance` | `void tomMessageBusConformance({required Future<TomMessageBus> Function() create, Duration timeout = const Duration(seconds: 10), Duration quiet = const Duration(milliseconds: 300)})` | Defines the conformance tests MB-C1 to MB-C20 against the bus `create` makes, one bus per test, closed after it. `timeout` bounds the wait for an expected delivery; `quiet` is how long a test waits to see that a delivery that must not happen does not. The ordering test is skipped for a bus that does not declare `orderedPerKey`. In `conformance.dart`. |

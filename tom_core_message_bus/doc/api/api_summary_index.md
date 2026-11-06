@@ -14,7 +14,7 @@ declarations are omitted.
 
 | Module | Summary | What it provides |
 | ------ | ------- | ---------------- |
-| Message Bus | [api_summary_message_bus.md](api_summary_message_bus.md) | The `TomMessageBus` contract, messages and deliveries, dead letters, typed payloads through a codec, the trace across the bus, the in-memory bus, and the conformance suite. |
+| Message Bus | [api_summary_message_bus.md](api_summary_message_bus.md) | The `TomMessageBus` contract, messages and deliveries, dead letters, typed payloads through a codec, the trace across the bus, the delivery step every bus shares, the in-memory bus, and the conformance suite. |
 
 ## Modules
 
@@ -36,8 +36,10 @@ declarations are omitted.
 | `TomMemoryMessageBus` | class | The contract in one process, with ordering per key. |
 | `TomConformanceOrder` | class | The conformance suite's typed payload, with its codec. |
 | `tomDeadLetterTopic` | function | `<topic>.dlq`. |
+| `tomDispatch` | function | The delivery step every bus shares: decode, run the handler in the published trace, answer the outcome. |
+| `tomDeadLetter` | function | The dead letter of a message, with the four dead-letter headers. |
 | `tomCheckSubscription` | function | The subscription arguments every bus refuses. |
-| `tomMessageBusConformance` | function | The conformance suite, MB-C1 to MB-C18. |
+| `tomMessageBusConformance` | function | The conformance suite, MB-C1 to MB-C20. |
 
 ## Alphabetical Type Index
 
@@ -55,7 +57,9 @@ declarations are omitted.
 | `TomBusTrace` | Message Bus |
 | `tomCheckSubscription` | Message Bus |
 | `TomConformanceOrder` | Message Bus |
+| `tomDeadLetter` | Message Bus |
 | `tomDeadLetterTopic` | Message Bus |
+| `tomDispatch` | Message Bus |
 | `TomMemoryMessageBus` | Message Bus |
 | `TomMessageBus` | Message Bus |
 | `tomMessageBusConformance` | Message Bus |

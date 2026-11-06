@@ -13,6 +13,7 @@ import 'dart:convert';
 import 'dart:isolate';
 
 import 'package:test/test.dart';
+import 'package:tom_core_message_bus/tom_core_message_bus.dart';
 import 'package:tom_core_server/tom_core_server.dart';
 
 import 'fixtures/reflection_fixture.reflection.dart';
@@ -221,6 +222,49 @@ void main() async {
         'SELECT target FROM $defaultInvalidationTable',
       );
       expect(left.map((r) => r.target), ['alice']);
+    });
+
+    test('the table is the bus channel\'s log: a node starting later applies '
+        'the revocations in force from it', () async {
+      final sqlLog = TomSqlInvalidationChannel(ds, pollInterval: _pollInterval);
+      final bus = TomMemoryMessageBus();
+      addTearDown(bus.close);
+      final nodeA = TomBusInvalidationChannel(
+        bus: bus,
+        log: sqlLog,
+        nodeId: 'node-a',
+      );
+      await nodeA.publish(
+        TomCacheInvalidation.principal('alice', origin: 'node-a'),
+      );
+      await nodeA.publish(
+        TomCacheInvalidation.cache('settings', origin: 'node-a'),
+      );
+      await nodeA.publish(
+        TomCacheInvalidation.principal(
+          'old',
+          at: DateTime.now().subtract(
+            TomAuthorizationCache.revocationRetention +
+                const Duration(hours: 1),
+          ),
+          origin: 'node-a',
+        ),
+      );
+      expect(
+        (await sqlLog.revocationsInForce()).map((i) => i.target),
+        ['alice'],
+        reason: 'principal revocations within the retention only',
+      );
+
+      final received = <TomCacheInvalidation>[];
+      final late = TomBusInvalidationChannel(
+        bus: bus,
+        log: sqlLog,
+        nodeId: 'node-late',
+      );
+      await late.start((i) async => received.add(i));
+      expect(received.map((i) => i.target), ['alice']);
+      await late.stop();
     });
 
     test('the staleness bound is the poll interval', () {

@@ -259,8 +259,9 @@ because a revocation has to reach every node: it applies the revocation here
 and publishes it through the installed invalidation channel, and every other
 node applies it on delivery. How quickly is the channel's staleness bound —
 zero with the default single-process channel, the poll interval (default two
-seconds) plus one query with `TomSqlInvalidationChannel`. See the cache
-guide's "Cross-Node Invalidation".
+seconds) plus one query with `TomSqlInvalidationChannel`, the broker's delivery
+time — stated as one second by default — with `TomBusInvalidationChannel`. See
+the cache guide's "Cross-Node Invalidation".
 
 On each node the revocation lands in `TomAuthorizationCache.revokeLocally(username,
 at)`, which records the instant per username — of two revocations of one user

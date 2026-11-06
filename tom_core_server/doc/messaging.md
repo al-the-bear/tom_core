@@ -1208,8 +1208,10 @@ uses it the same way: a queue client acknowledges a delivery, a log-based client
 commits an offset, a webhook receiver answers `200`. A handler of the
 [message bus](../../tom_core_message_bus/doc/message_bus.md) wraps its work in
 `process` the same way, with the delivery's `ack` as the acknowledgement and
-`TomBusMessage.id` as the message id; the bus's broker adapters — NATS
-JetStream's is `tom_core_message_bus_nats` — live in `tom_core_extensions`.
+`TomBusMessage.id` as the message id; the bus's broker adapters —
+`tom_core_message_bus_nats` (NATS JetStream), `tom_core_message_bus_rabbitmq`
+(RabbitMQ) and `tom_core_message_bus_kafka` (Kafka through a REST proxy) —
+live in `tom_core_extensions`.
 
 ### Inbox failure keys
 

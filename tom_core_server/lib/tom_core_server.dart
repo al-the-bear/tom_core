@@ -81,6 +81,7 @@ export 'src/tomserver/configuration/runtime_environment.dart';
 export 'src/tomserver/configuration/secrets.dart';
 export 'src/tomserver/configuration/tom_config.dart';
 export 'src/tomserver/configuration/yaml_resources.dart';
+export 'src/tomserver/cache/bus_invalidation_channel.dart';
 export 'src/tomserver/cache/cache_invalidation.dart';
 export 'src/tomserver/cache/invalidation_sql.dart';
 export 'src/tomserver/cache/item_authorization_cache.dart';

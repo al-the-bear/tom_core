@@ -2,6 +2,26 @@
 
 ### Added
 
+- **The bus invalidation channel** (`cache` module,
+  `cache/bus_invalidation_channel.dart`). `TomBusInvalidationChannel({bus, log,
+  topic, stalenessBound, nodeId})`, a `TomInvalidationChannel` over a
+  `TomMessageBus`: `publish` records the invalidation in `log` and publishes it
+  on `topic` (`tomInvalidationTopic`, `tom.cache.invalidation`, by default);
+  every node subscribes with an ephemeral consumer group of its own,
+  `tom-cache-invalidation-<node id>` (`group`), so every node receives every
+  invalidation and a stopped node leaves nothing on the broker; a node drops
+  its own invalidations. `start` subscribes, then applies the revocations in
+  force from the log. `stalenessBound` is stated, one second by default — the
+  delivery time expected of the broker. `isRunning`, `nodeId`, and the static
+  `invalidationToJson` / `invalidationFromJson`. `TomInvalidationLog`
+  (`record`, `revocationsInForce`) is where it remembers revocations;
+  `TomMemoryInvalidationLog({retention, clock})` keeps one in memory, and
+  `TomSqlInvalidationChannel` implements it over its table (`record` writes a
+  row and is what `publish` does; `revocationsInForce` reads the principal
+  revocations within `retention`). Documented in `doc/cache.md` (Choosing an
+  invalidation channel, The bus channel); tests in
+  `test/bus_invalidation_channel_test.dart` (BI-1 to BI-7) and
+  `test/cache_invalidation_db_test.dart` (the table as the bus channel's log).
 - **The bus relay** (`messaging` module). `TomBusRelay({bus, store, jobName,
   retryPolicy, timeout, tickInterval, clock, onAlert, lock})`, the
   transactional outbox for a `TomMessageBus` of the new `tom_core_message_bus`
