@@ -21,7 +21,8 @@ library;
 import 'dart:async';
 import 'dart:math';
 
-import 'package:test/test.dart';
+import 'package:matcher/expect.dart';
+import 'package:test_api/scaffolding.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import 'tom_core_message_bus.dart';

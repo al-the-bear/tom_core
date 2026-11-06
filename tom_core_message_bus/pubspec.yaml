@@ -18,11 +18,16 @@ dependencies:
   tom_core_kernel:
     path: ../tom_core_kernel
   # The conformance suite (conformance.dart) is a library adapters import into
-  # their own tests, so the test package is a dependency of the library, not
-  # only of this package's tests.
-  test: ^1.28.0
+  # their own tests, so what it uses of the test framework is a dependency of
+  # the library: test_api (group, test, setUp) and matcher (expect), not the
+  # test runner. A Flutter package's flutter_test pins test_api, and the test
+  # release accepting the pinned one caps analyzer below 14, so a dependency
+  # on test would hold every Flutter app that reaches this package there.
+  matcher: ^0.12.16
+  test_api: ">=0.7.0 <0.8.0"
 
 dev_dependencies:
+  test: ^1.28.0
   lints: ^6.0.0
   build_runner: ^2.10.4
   build: ^4.0.3
