@@ -37,6 +37,7 @@ desktop.ini
 *.sql
 # Reference DDL migrations shipped as example artifacts are tracked despite *.sql
 !**/example/**/migrations/**/*.sql
+!**/example/**/migrations_postgresql/**/*.sql
 # Server-sample migration trees are deliverables (schema + seed), not local DBs
 !**/database_migrations/**/*.sql
 # SQL under a test fixtures folder is committed input, not a local DB dump —

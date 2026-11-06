@@ -3,12 +3,19 @@ description: Server library for the TOM framework.
 version: 1.3.0
 repository: https://github.com/al-the-bear/tom_core
 
-# The development TLS key in base_server_configuration.dart is published on
-# purpose: it is the default a fresh server starts with, and
-# usesDevelopmentTlsMaterial exists so a deployment can refuse it. pub's secret
-# scan would otherwise refuse the package for carrying it.
+# Private keys published on purpose, which pub's secret scan would otherwise
+# refuse the package for. The development TLS key in
+# base_server_configuration.dart is the default a fresh server starts with, and
+# usesDevelopmentTlsMaterial exists so a deployment can refuse it. The test
+# fixtures are keys generated for the suites and trusted by nothing else: JWT
+# signing, mutual TLS (a CA, its clients and a rogue one) and SAML.
 false_secrets:
   - /lib/src/tomserver/configuration/base_server_configuration.dart
+  - /test/fixtures/jwt/*.pem
+  - /test/fixtures/mtls/*.key
+  - /test/fixtures/saml/*.pem
+  - /test/file_storage_test.dart
+  - /test/jwt_signing_test.dart
 
 environment:
   sdk: ^3.10.0

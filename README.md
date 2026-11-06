@@ -367,6 +367,7 @@ one.
 | [`tool/check_doc_source_paths.py`](tool/check_doc_source_paths.py) | Checks that every `**Source:**` pointer in documentation names a path that exists |
 | [`tool/check_doc_links.py`](tool/check_doc_links.py) | Finds markdown links that open nothing, references that point at nothing, and links from a package's documentation into `_copilot_guidelines/` |
 | [`tool/check_doc_artifacts.py`](tool/check_doc_artifacts.py) | Finds machine-generated artifacts tracked under a package's `doc/` |
+| [`tool/check_shipped_imports.py`](tool/check_shipped_imports.py) | Finds a Dart file a publishable package ships whose relative import, export or part resolves outside the package, so it cannot load from the installed archive |
 | [`tool/check_doc_ai_citations.py`](tool/check_doc_ai_citations.py) | Finds shipped files citing a document under `_ai/` — by path or by bare name — which no reader of the package can open |
 | [`tool/package_gate.dart`](tool/package_gate.dart) | Runs a `tool/` checker scoped to one package from inside that package's suite, and the Python launcher the suites share |
 | [`tool/check_reflection_artifacts.py`](tool/check_reflection_artifacts.py) | Analyzes the checked-in reflection artifacts, which the analysis options exclude, and fails on a name that no longer resolves |
@@ -2105,6 +2106,25 @@ Documentation is markdown, with diagrams and the occasional released PDF beside
 it; anything else under `doc/` was put there by a tool. And the question is what
 version control carries, so the inventory comes from `git ls-files` — a tool
 writing under `doc/` on one machine costs nobody anything until it is committed.
+
+```bash
+python3 tool/check_shipped_imports.py              # every publishable package
+python3 tool/check_shipped_imports.py --self-test  # prove the check still fires
+```
+
+Finds a Dart file a publishable package ships whose relative `import`, `export`
+or `part` resolves outside the package. An archive holds the package directory
+and nothing above it, so such a file loads here and fails to load from the
+archive a consumer installs. The repository's own gates run as package tests
+(`test/ai_citation_test.dart`, `test/formatting_test.dart` and the like import
+`tool/`), and they are bound to this repository by design; the answer is not to
+ship them, so each package's `.pubignore` names them.
+
+A package is publishable unless its pubspec says `publish_to: none`, and
+`tom_core_samples/` is left out. What ships is computed as pub computes it: the
+tracked files minus `.pubignore` when the package has one, else `.gitignore` —
+pub reads one or the other, so a `.pubignore` repeats the `.gitignore` lines it
+still needs. `dart pub publish --dry-run` in a package lists the same files.
 
 ```bash
 python3 tool/check_doc_links.py                  # the whole repository

@@ -221,6 +221,11 @@
    "measured": "2026-09-04",
    "note": "Zero from the day it landed, which took six repairs. Eight groups of file are copied between packages on purpose -- the four showcase samples' chrome, the DTO reflection helpers, the client-local login credentials -- and every copy now names its whole group in its header comment. Two demo_box.dart copies named each other and not the third, so a developer editing either was told about one other copy out of two; two further groups were identical in code and declared nowhere at all. Both halves of the rule earn their place: the declaration carries showcase_cell.dart's fourth copy, which has drifted in code, and content discovery found the two groups no declaration mentioned. The next copy to arrive undeclared, or the next pointer to fall out of step with its siblings, is a failure."
   },
+  "check_shipped_imports": {
+   "faults": 0,
+   "measured": "2026-11-07",
+   "note": "Zero from the start: every repository-bound test (the gate tests importing tool/, and tom_core_server's scheduling_db_test importing tom_core_kernel's test contract) is named in its package's .pubignore, so no publishable package ships a file whose relative import leaves the package."
+  },
   "check_source_citations": {
    "faults": 0,
    "measured": "2026-09-04",
