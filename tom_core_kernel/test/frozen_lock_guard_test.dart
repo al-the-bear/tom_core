@@ -24,6 +24,17 @@
 // packages moved every one; none was held by a constraint or by unpublished
 // sibling work.
 //
+// THE CACHE PROVES A VERSION WAS ON HAND, NOT THAT IT WAS ADMISSIBLE. A newer
+// release can require something a package here cannot take: the Flutter
+// packages resolve analyzer 10, because the Flutter SDK pins meta 1.18.0, so
+// they cannot take tom_analyzer_shared 0.8 or tom_reflection_generator 1.9,
+// which need analyzer 14. Such a range is HELD BACK for the packages it binds,
+// with its owner (the d4rt model's `tom_d4rt_ast/tool/stale_locks.dart`
+// `heldBackVersions`, as in the tom_ai/devops copy, here scoped to packages);
+// FL-4 fails once a hold no longer holds any lock back. A hold is scoped so
+// that it hides nothing in the packages it does not bind: the Dart packages
+// here resolve analyzer 14 and must take the newest tom_analyzer_shared.
+//
 // WHY IT LIVES HERE. `tom_core_kernel` is the foundation every other package
 // in the repo depends on, and its suite is the first `tool/run_suites.py`
 // runs; the repo is `publish_to: none`, so a guard that walks sibling packages
@@ -47,15 +58,94 @@ const _repoMarkers = ['tom_core_kernel', 'tom_core_server', 'tom_flutter_ui'];
 /// an unpropagated publish from here.
 const _ownedPrefix = 'tom_';
 
-/// Packages exempted from FL-2, each with the reason it is frozen and who will
+/// Freezes exempted from FL-2, each with the reason it is frozen and who will
 /// unfreeze it. AN EXCEPTION WITHOUT AN OWNER IS A LEAK: if you add one and
 /// cannot name who unfreezes it, find that out first.
 ///
-/// EMPTY, and that is the intended resting state — FL-3 deletes any entry
-/// that stops describing a frozen lock. Keep the map rather than removing it:
+/// A key is a package path relative to the repo root — exempting that package
+/// and every package under it — or `<path>:<dependency>`, exempting that one
+/// dependency of those packages and nothing else. Prefer the narrow form: a
+/// whole-package exemption also hides every other freeze in it. A version a
+/// package cannot take is not a freeze: hold it in [_heldBackVersions].
+///
+/// EMPTY, and that is the intended resting state — FL-3 deletes any entry that
+/// stops describing a frozen lock. Keep the map rather than removing it:
 /// re-deriving the shape under time pressure is how an exemption gets added
 /// without an owner.
 const Map<String, String> _frozenLockExceptions = <String, String>{};
+
+/// Whether the exception [key] covers [dependency] of the package at [rel].
+bool _exempts(String key, String rel, String dependency) {
+  final colon = key.indexOf(':');
+  final path = colon < 0 ? key : key.substring(0, colon);
+  if (rel != path && !rel.startsWith('$path/')) return false;
+  return colon < 0 || key.substring(colon + 1) == dependency;
+}
+
+/// A range of cached versions of one package that the [packages] it binds
+/// cannot take.
+class _HeldBack {
+  const _HeldBack({
+    required this.from,
+    required this.packages,
+    required this.owner,
+    required this.reason,
+  });
+
+  /// The first held-back version: it and every later one are ignored.
+  final String from;
+
+  /// The packages it binds, as paths relative to the repo root, each covering
+  /// the package and every package under it. Elsewhere the range counts.
+  final List<String> packages;
+
+  /// The todo whose work lets the locks take them, and deletes this entry.
+  final String owner;
+
+  /// Why those packages cannot resolve them.
+  final String reason;
+
+  /// Whether the hold binds the package at [rel].
+  bool binds(String rel) =>
+      packages.any((path) => rel == path || rel.startsWith('$path/'));
+}
+
+/// Cached versions FL-2 ignores, by package name. FL-4 fails once one no
+/// longer holds any lock back.
+const Map<String, _HeldBack> _heldBackVersions = <String, _HeldBack>{
+  'tom_analyzer_shared': _HeldBack(
+    from: '0.8.0',
+    packages: _flutterPackages,
+    owner: 'tom_core frzhold2_akgk-flutter-packages-onto-analyzer-14',
+    reason: 'tom_analyzer_shared 0.8.0 needs analyzer ^14.1. $_flutterMetaPin',
+  ),
+  'tom_reflection_generator': _HeldBack(
+    from: '1.9.0',
+    packages: _flutterPackages,
+    owner: 'tom_core frzhold2_akgk-flutter-packages-onto-analyzer-14',
+    reason:
+        'tom_reflection_generator 1.9.0 needs analyzer ^14.5. '
+        '$_flutterMetaPin',
+  ),
+};
+
+/// The Flutter packages of the repo: the ones the Flutter SDK's meta pin
+/// keeps on analyzer 10.
+const List<String> _flutterPackages = [
+  'tom_flutter_ui',
+  'tom_core_flutter',
+  'tom_core_samples/advanced_app_client',
+  'tom_core_samples/advanced_authadmin_client',
+  'tom_core_samples/core_client_sample',
+  'tom_core_samples/core_flutter_acl_responsive',
+  'tom_core_samples/core_flutter_form_showcase',
+  'tom_core_samples/tom_flutter_form_test',
+];
+
+/// Why the Flutter packages resolve analyzer 10.
+const String _flutterMetaPin =
+    'The Flutter packages resolve analyzer 10: analyzer 14.5 needs meta '
+    '^1.18.3, and the Flutter SDK pins meta 1.18.0.';
 
 /// Below this many distinct cached `tom_*` packages, a pass means nothing: the
 /// discriminator can only see a freeze whose newer version is cached here.
@@ -72,6 +162,20 @@ class _Resolution {
   final String dependency;
 
   bool get isDirect => dependency.startsWith('direct');
+}
+
+/// A hosted `tom_*` resolution older than a version already in the cache.
+class _StaleLock {
+  const _StaleLock(this.package, this.dependency, this.locked, this.cached);
+  final String package;
+  final String dependency;
+  final String locked;
+  final String cached;
+
+  @override
+  String toString() =>
+      '$package locks $dependency $locked while $cached is already in the '
+      'pub cache';
 }
 
 Directory? _repoRoot() {
@@ -199,7 +303,9 @@ Directory _pubCacheRoot() {
 Directory get _hostedCache =>
     Directory('${_pubCacheRoot().path}/hosted/pub.dev');
 
-String? _newestCachedVersion(String name) {
+/// The newest stable cached version of [name], or with [below] the newest one
+/// older than it.
+String? _newestCachedVersion(String name, {String? below}) {
   final dir = _hostedCache;
   if (!dir.existsSync()) return null;
   final prefix = '$name-';
@@ -210,6 +316,7 @@ String? _newestCachedVersion(String name) {
       .where((n) => n.startsWith(prefix))
       .map((n) => n.substring(prefix.length))
       .where((v) => !v.contains('-') && RegExp(r'^\d').hasMatch(v))
+      .where((v) => below == null || _compareVersions(v, below) < 0)
       .toList();
   if (stable.isEmpty) return null;
   stable.sort(_compareVersions);
@@ -225,20 +332,26 @@ String _relativeTo(Directory root, Directory dir) =>
 /// Every lock under [root] resolving a hosted `tom_*` older than the cache
 /// holds. THE CACHE IS THE DISCRIMINATOR: comparing against a sibling's pubspec
 /// cannot tell a frozen lock from an unpublished sibling, while a newer version
-/// sitting in the cache proves pub had it and did not take it.
-List<String> _staleLocks(Directory root, Map<String, String> exceptions) {
-  final out = <String>[];
+/// sitting in the cache proves pub had it and did not take it. Versions in a
+/// [heldBack] range are not counted: no lock here can take them.
+List<_StaleLock> _staleLocks(
+  Directory root, {
+  Map<String, String> exceptions = const {},
+  Map<String, _HeldBack> heldBack = _heldBackVersions,
+}) {
+  final out = <_StaleLock>[];
   for (final package in _packagesUnder(root)) {
     final rel = _relativeTo(root, package);
-    if (exceptions.containsKey(rel.split('/').first)) continue;
     for (final res in _lockedTomPackages(package)) {
       if (res.source != 'hosted') continue;
-      final newest = _newestCachedVersion(res.name);
+      if (exceptions.keys.any((key) => _exempts(key, rel, res.name))) continue;
+      final hold = heldBack[res.name];
+      final newest = _newestCachedVersion(
+        res.name,
+        below: hold != null && hold.binds(rel) ? hold.from : null,
+      );
       if (newest != null && _compareVersions(res.version, newest) < 0) {
-        out.add(
-          '$rel locks ${res.name} ${res.version} while $newest is '
-          'already in the pub cache',
-        );
+        out.add(_StaleLock(rel, res.name, res.version, newest));
       }
     }
   }
@@ -366,7 +479,10 @@ void main() {
         return;
       }
       if (!canDiscriminate('FL-2')) return;
-      final offenders = _staleLocks(root, _frozenLockExceptions);
+      final offenders = _staleLocks(
+        root,
+        exceptions: _frozenLockExceptions,
+      ).map((s) => s.toString()).toList();
       expect(
         offenders,
         isEmpty,
@@ -376,9 +492,10 @@ void main() {
             'REMEDY: `dart pub upgrade` (or `flutter pub upgrade`) in each '
             'package, AND in every nested sample or fixture under it; then '
             'run the suite. If an upgrade does NOT move a version, the cause '
-            'is the other one — a constraint holding it, or unpublished work '
-            'in the sibling working tree — and the fix is to raise or '
-            'publish, not to re-resolve.\n${offenders.join('\n')}',
+            'is the other one — a constraint holding it (hold the range in '
+            '`_heldBackVersions`, naming its owner), or '
+            'unpublished work in the sibling working tree (publish it) — not '
+            'something a re-resolve fixes.\n${offenders.join('\n')}',
       );
     });
 
@@ -391,13 +508,12 @@ void main() {
       }
       // Measured with NO exceptions applied: the question is which packages
       // are still frozen, and the exception list would hide exactly those.
-      final stillFrozen = _staleLocks(
-        root,
-        const {},
-      ).map((line) => line.split(' ').first.split('/').first).toSet();
-      final obsolete = _frozenLockExceptions.keys.toSet().difference(
-        stillFrozen,
-      );
+      final stillFrozen = _staleLocks(root);
+      final obsolete = {
+        for (final key in _frozenLockExceptions.keys)
+          if (!stillFrozen.any((f) => _exempts(key, f.package, f.dependency)))
+            key,
+      };
       expect(
         obsolete,
         isEmpty,
@@ -405,6 +521,42 @@ void main() {
             'Exempted but no longer frozen — the exemption now grants '
             'only the right to freeze again unnoticed. Delete: '
             '${obsolete.join(', ')}',
+      );
+    });
+
+    test('FL-4: every held-back range still holds a lock back', () {
+      if (root == null) {
+        markTestSkipped(
+          'tom_ai/core repo root not reachable — nothing to check',
+        );
+        return;
+      }
+      if (!canDiscriminate('FL-4')) return;
+      // Measured with NO holds applied, for the reason FL-3 measures without
+      // exceptions: the holds would hide exactly the locks being asked about.
+      final lagging = _staleLocks(
+        root,
+        exceptions: _frozenLockExceptions,
+        heldBack: const {},
+      );
+      final obsolete = [
+        for (final entry in _heldBackVersions.entries)
+          if (!lagging.any(
+            (s) =>
+                s.dependency == entry.key &&
+                entry.value.binds(s.package) &&
+                _compareVersions(s.cached, entry.value.from) >= 0,
+          ))
+            '${entry.key} >= ${entry.value.from} (owner ${entry.value.owner})',
+      ];
+      expect(
+        obsolete,
+        isEmpty,
+        reason:
+            'These holds no longer hold any lock back: every package now '
+            'resolves the held-back range, so its constraint has been '
+            'lifted. Delete the entries; a hold that outlives its reason '
+            'hides the next real lag.\n${obsolete.join('\n')}',
       );
     });
   });
