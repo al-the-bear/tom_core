@@ -68,8 +68,13 @@ The barrel `package:tom_core_message_bus/tom_core_message_bus.dart` exports
 `bus.dart`, `message.dart`, `codec.dart`, `trace.dart`, `dispatch.dart` and
 `memory_bus.dart`.
 The conformance suite is the second library,
-`package:tom_core_message_bus/conformance.dart`; it imports `package:test`, so
-only test code imports it.
+`package:tom_core_message_bus/conformance.dart`; it declares its tests through
+`package:test_api` and checks them with `package:matcher`, so only test code
+imports it, and an adapter's test, which imports `package:test`, runs it. It
+takes `test_api` and `matcher` rather than `test` because a Flutter package's
+`flutter_test` pins `test_api`, and the `test` release accepting the pinned one
+caps analyzer below 14: a dependency on `test` would hold every Flutter
+application reaching this package below analyzer 14.
 
 ## The Contract
 
@@ -374,17 +379,22 @@ a partitioned log orders a partition, a queue with competing consumers
 generally does not — so a consumer that relies on ordering checks
 `bus.capabilities.orderedPerKey` rather than assuming it.
 
-Of the adapters, the Kafka one declares it and the other two do not:
+Of the adapters, the Kafka and Pub/Sub ones declare it and the other four do
+not; the conformance suite's ordering test, MB-C18, runs for the first two and
+is skipped for the others:
 
-| Adapter | `orderedPerKey` | Why |
-| ------- | --------------- | --- |
-| `TomKafkaMessageBus` | `true` | A key's records go to one partition, read by one consumer of the group at a time, and a redelivery is made in place, before the records behind it |
-| `TomNatsMessageBus` | `false` | A NAK redelivers one message while the next is already with another consumer of the group |
-| `TomRabbitMqMessageBus` | `false` | A redelivery is a copy at the back of the group's queue, behind the messages published after it |
+| Adapter | `orderedPerKey` | MB-C18 | Why |
+| ------- | --------------- | ------ | --- |
+| `TomKafkaMessageBus` | `true` | passes | A key's records go to one partition, read by one consumer of the group at a time, and a redelivery is made in place, before the records behind it |
+| `TomPubSubMessageBus` | `true` | passes (on the emulator) | The key is the message's ordering key on a subscription with message ordering enabled, which hands a key's messages over one at a time, and a redelivery is made in place, before the messages behind it |
+| `TomNatsMessageBus` | `false` | skipped | A NAK redelivers one message while the next is already with another consumer of the group |
+| `TomRabbitMqMessageBus` | `false` | skipped | A redelivery is a copy at the back of the group's queue, behind the messages published after it |
+| `TomAwsMessageBus` | `false` | skipped | A standard SQS queue hands messages to the group's consumers in no fixed order, and a redelivery goes back among the messages behind it |
+| `TomServiceBusMessageBus` | `false` | skipped | Service Bus orders messages within a session, and the bus uses no sessions: a subscription hands messages to the group's consumers in no fixed order |
 
 ## Writing an Adapter
 
-An adapter over a broker implements `TomMessageBus`. Three are built, in
+An adapter over a broker implements `TomMessageBus`. Six are built, in
 `tom_core_extensions`:
 
 | Adapter | Package | Broker |
@@ -392,6 +402,9 @@ An adapter over a broker implements `TomMessageBus`. Three are built, in
 | `TomNatsMessageBus` | [`tom_core_message_bus_nats`](../../../core_extension/tom_core_message_bus_nats/doc/nats_message_bus.md) | NATS JetStream: a stream per topic, a durable pull consumer per group |
 | `TomRabbitMqMessageBus` | [`tom_core_message_bus_rabbitmq`](../../../core_extension/tom_core_message_bus_rabbitmq/doc/rabbitmq_message_bus.md) | RabbitMQ: a fanout exchange per topic, a queue per group, publisher confirms |
 | `TomKafkaMessageBus` | [`tom_core_message_bus_kafka`](../../../core_extension/tom_core_message_bus_kafka/doc/kafka_message_bus.md) | Kafka through a REST proxy: a topic per topic, a consumer group per group, ordering per key |
+| `TomAwsMessageBus` | [`tom_core_message_bus_aws`](../../../core_extension/tom_core_message_bus_aws/doc/aws_message_bus.md) | Amazon SNS and SQS over their HTTP APIs: an SNS topic per topic, a standard SQS queue per group |
+| `TomPubSubMessageBus` | [`tom_core_message_bus_gcp`](../../../core_extension/tom_core_message_bus_gcp/doc/gcp_message_bus.md) | Google Cloud Pub/Sub over its REST API: a topic per topic, a subscription per group, ordering per key |
+| `TomServiceBusMessageBus` | [`tom_core_message_bus_azure`](../../../core_extension/tom_core_message_bus_azure/doc/azure_message_bus.md) | Azure Service Bus over AMQP 1.0, with a client of its own: a topic per topic, a subscription per group |
 
 Four rules keep every bus the same above it:
 
@@ -560,12 +573,6 @@ closed relay (see the server's
 
 ## Not Yet Implemented
 
-- **No adapter over a cloud broker.** The package holds the contract, the
-  in-memory bus and the conformance suite; the broker adapters in
-  `tom_core_extensions` cover NATS JetStream, RabbitMQ and Kafka (see
-  [Writing an Adapter](#writing-an-adapter)). An adapter over another broker —
-  a cloud queue — is written against the contract as that section describes.
-  <!-- unpinned: absence — no adapter over a cloud broker -->
 - **No message priority.** Messages of a group are delivered in the order they
   wait, and nothing lets a message overtake another.
   <!-- unpinned: absence — TomMessageBus.publish takes no priority -->
@@ -645,4 +652,5 @@ result, and the run fails when one does not hold.
 | `dart:convert` | dart | `codec.dart` | `jsonEncode` / `jsonDecode`, the JSON round trip of a payload |
 | `dart:math` | dart | `memory_bus.dart`, `conformance.dart` | `Random` — message ids, and the suite's unique names |
 | `tom_core_kernel` | package | `message.dart`, `codec.dart`, `trace.dart`, `dispatch.dart`, `conformance.dart` | `TomException`, `tomReflector` / `tomReflectionInfo` / `ClassMirror`, `TomTraceContext`, `TomRequestId`, `TomTracing` / `TomSpanKind`, `tomLog` |
-| `test` | package | `conformance.dart` | `group`, `test`, `setUp`, `tearDown`, `expect`, `markTestSkipped` |
+| `test_api` | package | `conformance.dart` | `group`, `test`, `setUp`, `tearDown`, `markTestSkipped` (`package:test_api/scaffolding.dart`) |
+| `matcher` | package | `conformance.dart` | `expect`, `expectLater`, `fail` and the matchers (`package:matcher/expect.dart`) |

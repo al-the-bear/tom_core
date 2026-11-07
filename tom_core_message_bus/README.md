@@ -26,9 +26,15 @@ adapters live in `tom_core_extensions`:
 [`tom_core_message_bus_nats`](../../core_extension/tom_core_message_bus_nats/README.md)
 over NATS JetStream,
 [`tom_core_message_bus_rabbitmq`](../../core_extension/tom_core_message_bus_rabbitmq/README.md)
-over RabbitMQ, and
+over RabbitMQ,
 [`tom_core_message_bus_kafka`](../../core_extension/tom_core_message_bus_kafka/README.md)
-over Kafka through a REST proxy.
+over Kafka through a REST proxy,
+[`tom_core_message_bus_aws`](../../core_extension/tom_core_message_bus_aws/README.md)
+over Amazon SNS and SQS,
+[`tom_core_message_bus_gcp`](../../core_extension/tom_core_message_bus_gcp/README.md)
+over Google Cloud Pub/Sub, and
+[`tom_core_message_bus_azure`](../../core_extension/tom_core_message_bus_azure/README.md)
+over Azure Service Bus.
 
 The contract is **at least once**: a message is delivered until a consumer of
 its group acknowledges it or it is dead-lettered, and the message id is the
@@ -62,10 +68,17 @@ An adapter's tests also import the conformance suite:
 import 'package:tom_core_message_bus/conformance.dart';
 ```
 
-**SDK:** Dart `^3.10.0`. `test` is a regular dependency of the package, not a
-dev dependency, because `conformance.dart` is a library an adapter imports into
-its own tests. A payload class that crosses the bus through reflection needs
-`dart run build_runner build` to generate its `*.reflection.dart`.
+**SDK:** Dart `^3.10.0`. `conformance.dart` is a library an adapter imports
+into its own tests, so what it uses of the test framework is a regular
+dependency of the package: `test_api` (`group`, `test`, `setUp`, `tearDown`,
+`markTestSkipped`) and `matcher` (`expect` and the matchers). It does not
+depend on the `test` runner: a Flutter package's `flutter_test` pins
+`test_api`, and the `test` release accepting the pinned one caps analyzer below
+14, so a dependency on `test` would hold every Flutter application that reaches
+this package — through `tom_core_server`, for one — below analyzer 14. An
+adapter's own test still imports `package:test`, which runs the suite. A payload
+class that crosses the bus through reflection needs `dart run build_runner
+build` to generate its `*.reflection.dart`.
 
 ## Features
 
@@ -218,13 +231,19 @@ dart run example/message_bus_example.dart
   — the adapter over RabbitMQ, in `tom_core_extensions`.
 - [`tom_core_message_bus_kafka`](../../core_extension/tom_core_message_bus_kafka/README.md)
   — the adapter over Kafka through a REST proxy, in `tom_core_extensions`.
+- [`tom_core_message_bus_aws`](../../core_extension/tom_core_message_bus_aws/README.md)
+  — the adapter over Amazon SNS and SQS, in `tom_core_extensions`.
+- [`tom_core_message_bus_gcp`](../../core_extension/tom_core_message_bus_gcp/README.md)
+  — the adapter over Google Cloud Pub/Sub, in `tom_core_extensions`.
 
 ## Dependencies
 
 | Dependency | Kind | For |
 | ---------- | ---- | --- |
 | `tom_core_kernel` | runtime | `TomException`, reflection for `TomBusCodec.reflected()`, `TomTraceContext`, `TomRequestId`, `TomTracing` and `tomLog` |
-| `test` | runtime | `conformance.dart`, which adapters import into their tests |
+| `test_api` | runtime | `conformance.dart`, which adapters import into their tests: `group`, `test`, `setUp`, `tearDown`, `markTestSkipped` |
+| `matcher` | runtime | `conformance.dart`: `expect`, `expectLater`, `fail` and the matchers |
+| `test` | dev | this package's own suites |
 | `lints`, `build_runner`, `build`, `tom_reflection_generator` | dev | analysis, and the reflection of the test and example payload classes |
 
 ## Status
