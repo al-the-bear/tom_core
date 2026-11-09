@@ -54,6 +54,10 @@ const String opsReportFormat = 'csv';
 /// year" is expressible as a prefix rather than a query.
 const String opsExportKeyPrefix = 'exports';
 
+/// The blob-key prefix delivered audit reports are stored under — beside the
+/// weekly export, apart from it, so a retention rule can tell them apart.
+const String opsAuditReportKeyPrefix = 'audit-reports';
+
 /// What one report pass produced.
 class OpsReportOutcome {
   /// Creates an outcome.

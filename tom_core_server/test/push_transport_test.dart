@@ -301,16 +301,12 @@ void main() {
         'apns-priority': '10',
         'content-type': 'application/json',
       });
-      expect(
-        jsonDecode(request.body),
-        {
-          'taskId': '42',
-          'aps': {
-            'alert': {'title': 'Assigned', 'body': 'Alpha is yours.'},
-          },
+      expect(jsonDecode(request.body), {
+        'taskId': '42',
+        'aps': {
+          'alert': {'title': 'Assigned', 'body': 'Alpha is yours.'},
         },
-        reason: 'a data key named aps must not replace the alert',
-      );
+      }, reason: 'a data key named aps must not replace the alert');
       expect(apns.requiresHttp2, isTrue);
     });
 

@@ -16,11 +16,11 @@ deliverable — they do not exist elsewhere in the framework yet.
 > [10 · Servers & the secured endpoint pipeline](../README_advanced_10_servers_endpoints.md).
 
 **There is no `example/` directory, and that is deliberate: this package is
-itself the runnable example.** It is one of the nine `advanced_*` packages
+itself the runnable example.** It is one of the ten `advanced_*` packages
 that together form the full-stack sample, so
 `dart run bin/auth_server_start.dart` — the JWT issuer and the admin API — is
 the demonstration, and an `example/` beside it would duplicate the entry point.
-[The family's index](../README_advanced_sample.md#the-nine-packages) says which of the nine carry an `example/`, and why.
+[The family's index](../README_advanced_sample.md#the-ten-packages) says which of the ten carry an `example/`, and why.
 
 Read instead, in the order a newcomer wants them: [Running it](#running-it)
 for the boot and its database, the [`curl` tour](#curl-tour) for login,
@@ -133,6 +133,7 @@ The seeded credentials are (sample only — never ship them):
 | `carol` | `carol-pass` | — | `@dev,test` `[003]` demo seed |
 | `dave` | `dave-pass` | `two_factor_required` | `@dev,test` `[005]` seed — **enrolled in TOTP**, so the password only gets him through pass 1 |
 | `erin` | `erin-pass` | `two_factor_optional` | `@dev,test` `[005]` seed — holds **no** factor, so her login is *offered* one she may decline or enrol |
+| `audrey` | `audrey-pass` | `auditor` | `@dev,test` `[010]` seed — the audit-report API's caller, as which `advanced_audit_client` signs in |
 
 <!-- /account-roster -->
 

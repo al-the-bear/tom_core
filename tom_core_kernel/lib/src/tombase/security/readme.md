@@ -59,6 +59,9 @@ an element is hidden, locked, read-only, or fully editable.
 | `TomOAuthProviderDto` | One configured external provider, as offered to a client. |
 | `TomOAuthAuthorizationRequest` / `TomOAuthAuthorizationDto` | Starting an external authorization, and what comes back. |
 | `TomOAuthCallbackRequest` | The provider's callback, handed back to the server to complete. |
+| `tomAuditReportsApi` · `TomAuditReportsApiService` · `tomAuditorRole` · `tomAuditorAccess` | The audit-report API under `/audit-reports`, every route requiring the `auditor` role, and its service interface. |
+| `TomAuditReportQueryRequest` · `TomAuditReportResultDto` · `TomAuditReportEntryDto` · `TomAuditReportWritersDto` | A question asked once of the audit trail, its answer across the trail's writers, and the writers. |
+| `TomAuditQuestionDto` · `TomAuditQuestionsDto` · `TomAuditQuestionIdRequest` | A saved question with its schedule, recipients and format; the caller's questions; the id a route names. |
 
 ## Quick start
 

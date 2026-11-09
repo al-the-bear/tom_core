@@ -83,14 +83,17 @@ void main() {
         // The scheduler's idempotence key. As a convention it holds until two
         // nodes plan the same window at the same moment; as a unique index it
         // holds always. The tenant is part of it: two tenants' events in one
-        // instant are two runs.
+        // instant are two runs. The window is `window_at`, which a run
+        // enqueued under an id of its own leaves NULL: a unique key holds any
+        // number of NULLs, so two such runs of one instant never meet.
         expect(
           ddl,
           contains(
             'UNIQUE KEY uq_tom_job_run_window '
-            '(job_name, tenant, scheduled_for)',
+            '(job_name, tenant, window_at)',
           ),
         );
+        expect(ddl, matches(RegExp(r'window_at +DATETIME\(6\) +NULL,')));
       },
     );
 

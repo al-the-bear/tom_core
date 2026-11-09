@@ -8,3 +8,10 @@ analyzer:
     #   machine-written file out of the LINT surface; nothing hand-written is
     #   behind it.
     - lib/main.reflection.dart
+    - build/**
+    - android/**
+    - ios/**
+    - web/**
+    - windows/**
+    - macos/**
+    - linux/**

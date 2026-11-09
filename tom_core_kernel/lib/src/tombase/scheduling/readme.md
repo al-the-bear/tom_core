@@ -43,10 +43,10 @@ names the tenant through a `TomTenantEvent`.
 
 | Type | Responsibility |
 | ---- | -------------- |
-| `TomJobStore` | Durable storage for job runs; the queue the scheduler works from. `findRun(id)` answers the run under an id in any state, which a component enqueueing runs under ids of its own — the messaging outbox — asks before enqueueing. |
+| `TomJobStore` | Durable storage for job runs; the queue the scheduler works from. `enqueue` adds a run or replaces the one recorded under its id. `findWindow` answers the windowed run of a job, tenant and window; `findRun(id)` answers the run under an id in any state, which a component enqueueing runs under ids of its own — the messaging outbox — asks before enqueueing. |
 | `TomMemoryJobStore` | Keeps everything in memory and nothing across restarts. For tests and single-shot processes. |
 | `TomFileJobStore` | Keeps the queue in a JSON file that survives a restart. Several stores over one file share one queue: every operation holds a file mutex and re-reads the file, so a claim is atomic between processes and isolates. |
-| `TomJobRun` | One attempt-carrying occurrence of a job: its window, attempt count, state, claim, tenant, priority and checkpoint. |
+| `TomJobRun` | One attempt-carrying occurrence of a job: its window, attempt count, state, claim, tenant, priority and checkpoint. `windowed` (default `true`) says whether it realises a window — one run per job, tenant and `scheduledFor` — or, `false`, is a run a component enqueued under an id of its own, which takes no window. |
 | `TomJobRunState` | The lifecycle of a single `TomJobRun`. |
 | `TomJobClaim` | A ticket proving one particular claim of a run was won — the fencing token a displaced node fails to present. |
 | `TomJobBacklog` | One job's due, unclaimed runs — how many and since when — as `TomJobStore.backlog` answers them. |

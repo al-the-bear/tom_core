@@ -3,7 +3,8 @@
 Server entities kept on the device: the storage-engine contract an application
 implements over the database it chose, the device-side repository whose every
 write is queued for the server, the sync protocol, the sync engine that pushes,
-resolves conflicts and pulls, and the protocol's server side in memory.
+resolves conflicts and pulls, the protocol's server side in memory, and the
+protocol as a remote API with its HTTP transport.
 
 ## Table of Contents
 
@@ -27,6 +28,12 @@ resolves conflicts and pulls, and the protocol's server side in memory.
   - [TomSyncReport](#tomsyncreport)
   - [TomSyncEngine](#tomsyncengine)
   - [TomMemorySyncServer](#tommemorysyncserver)
+  - [TomHttpSyncTransport](#tomhttpsynctransport)
+  - [TomSyncPushRequest](#tomsyncpushrequest)
+  - [TomSyncPushResponse](#tomsyncpushresponse)
+  - [TomSyncPullRequest](#tomsyncpullrequest)
+  - [TomSyncPullResponse](#tomsyncpullresponse)
+  - [TomSyncApiService](#tomsyncapiservice)
 - [Enums](#enums)
   - [TomChangeOperation](#tomchangeoperation)
   - [TomPushOutcome](#tompushoutcome)
@@ -38,7 +45,9 @@ Sources: `lib/src/tombase/offline/local_store.dart`,
 `lib/src/tombase/offline/sync_protocol.dart`,
 `lib/src/tombase/offline/local_repository.dart`,
 `lib/src/tombase/offline/sync_engine.dart`,
-`lib/src/tombase/offline/memory_sync_server.dart`.
+`lib/src/tombase/offline/memory_sync_server.dart`,
+`lib/src/tombase/offline/sync_contract.dart`,
+`lib/src/tombase/offline/http_sync_transport.dart`.
 
 The server is authoritative. A device keeps a copy of the entities it works
 with, each with the server version it is based on, in a `TomLocalStoreEngine`
@@ -50,6 +59,13 @@ under optimistic locking and answers `applied`, `conflict` or `rejected`. A
 conflict goes to the application's `TomConflictResolver`. The engine then pulls
 each collection's changes after the cursor it saved, by the server's change
 sequence. `TomMemorySyncServer` is the protocol's server side in memory.
+
+`tomSyncApi` declares the protocol as a remote API, `POST /sync/push` and
+`POST /sync/pull` for an authenticated caller, with its bodies
+(`TomSyncPushRequest`, `TomSyncPushResponse`, `TomSyncPullRequest`,
+`TomSyncPullResponse`) and the service interface a server implements
+(`TomSyncApiService`). `tom_core_server`'s `sync` module implements it, and
+`TomHttpSyncTransport` calls it from the device.
 
 The framework never picks the device database. Collections whose name starts
 with `_tom` are the framework's own (`_tom_pending`, `_tom_meta`). Failures are
@@ -72,7 +88,14 @@ TomLocalRepository<T>  (reads and writes through a TomOfflineStore)
 TomPendingChange · TomPushResult · TomPulledChange · TomPullBatch  (protocol data)
 
 TomSyncTransport  (abstract — the way to the server)
-    └── TomMemorySyncServer
+    ├── TomMemorySyncServer
+    └── TomHttpSyncTransport
+
+TomJsonSerializable  (json)
+    ├── TomSyncPushRequest · TomSyncPushResponse  (implements)
+    └── TomSyncPullRequest · TomSyncPullResponse  (implements)
+
+TomSyncApiService  (abstract — implemented by tom_core_server's TomSyncServer)
 
 TomSyncConflict
 TomConflictResolution  (sealed: keepServer, keepLocal, merge)
@@ -98,6 +121,7 @@ TomOfflineException(String key, String defaultUserMessage, {Map<String, Object?>
 | `offline.document.not_json` | `TomMemoryLocalStoreEngine.write` | The document holds a value JSON cannot encode. | `collection`, `id` |
 | `offline.collection.reserved` | `TomOfflineStore.checkCollection`, the `TomLocalRepository` and `TomSyncEngine` constructors | The collection name is empty or starts with `_tom`. | `collection` |
 | `offline.sync.transport_failed` | `TomSyncEngine.sync` | The transport threw on a push or a pull. The queue is unchanged. | `changes` (push) or `collection`, `since` (pull) |
+| `offline.http.failed` | `TomHttpSyncTransport.push`, `.pull` | The server answered with a status other than `200`. | `endpoint`, `status`, `errorKey` (when the answer carried one) |
 
 ### TomLocalStoreEngine
 
@@ -293,6 +317,7 @@ The server's answer to one pushed change.
 
 ```dart
 const TomPushResult({required String changeId, required TomPushOutcome outcome, int? version, Map<String, Object?>? serverData, String? reason})
+factory TomPushResult.fromJson(Map<String, Object?> json)
 ```
 
 #### Properties
@@ -305,6 +330,12 @@ const TomPushResult({required String changeId, required TomPushOutcome outcome, 
 | `serverData` | `final Map<String, Object?>?` | For a conflict or a refusal, the entity as the server holds it; `null` when it does not have it. |
 | `reason` | `final String?` | For `rejected`, why. |
 
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `toJson` | `Map<String, Object?> toJson()` | The result as JSON: `changeId`, `outcome` by name, and `version`, `serverData`, `reason` left out when `null`. |
+
 ### TomPulledChange
 
 One change the server applied, as a device pulls it.
@@ -313,6 +344,7 @@ One change the server applied, as a device pulls it.
 
 ```dart
 const TomPulledChange({required String id, required Map<String, Object?>? data, required int version, required int sequence})
+factory TomPulledChange.fromJson(Map<String, Object?> json)
 ```
 
 #### Properties
@@ -325,6 +357,12 @@ const TomPulledChange({required String id, required Map<String, Object?>? data, 
 | `sequence` | `final int` | The change's number in the collection's change sequence. |
 | `deleted` | `bool` *(getter)* | Whether the change deleted the entity. |
 
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `toJson` | `Map<String, Object?> toJson()` | The change as JSON: `id`, `data` (`null` for a deletion), `version`, `sequence`. |
+
 ### TomPullBatch
 
 The answer to a pull: the changes after the cursor asked for, in sequence
@@ -334,6 +372,7 @@ order.
 
 ```dart
 TomPullBatch({required List<TomPulledChange> changes, required int cursor, bool hasMore = false})
+factory TomPullBatch.fromJson(Map<String, Object?> json)
 ```
 
 #### Properties
@@ -344,13 +383,19 @@ TomPullBatch({required List<TomPulledChange> changes, required int cursor, bool 
 | `cursor` | `final int` | The cursor to ask from next time: the last sequence number included. |
 | `hasMore` | `final bool` | Whether more changes follow this batch. |
 
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `toJson` | `Map<String, Object?> toJson()` | The batch as JSON: `changes`, `cursor`, `hasMore`. |
+
 ### TomSyncTransport
 
 How a device reaches the server's sync endpoint. The framework defines the
 exchange; the transport is the wire.
 
 - **Kind:** abstract class
-- **Implemented by:** `TomMemorySyncServer`
+- **Implemented by:** `TomMemorySyncServer`, `TomHttpSyncTransport`
 
 #### Constructors
 
@@ -488,6 +533,159 @@ TomMemorySyncServer({String? Function(String collection, Map<String, Object?> da
 | `push` | `Future<List<TomPushResult>> push(List<TomPendingChange> changes)` | Applies each change only when the entity's version is its base; otherwise answers a conflict with what the server holds. |
 | `pull` | `Future<TomPullBatch> pull(String collection, int since, {int limit = 500})` | The changes after `since`, at most `limit`. |
 
+### TomHttpSyncTransport
+
+A `TomSyncTransport` calling a Tom server's sync API (`tomSyncApi`) at
+`baseUri`, the server root; the API's path is appended from the contract. Every
+request carries the headers `headers` answers, computed per request; without an
+`Authorization` among them the bearer token of `TomBearerAuthentication` is
+sent. Requests go through `client`, by default a `TomResilientClient`, which
+does not retry a push. A status other than `200` throws `TomOfflineException`
+`offline.http.failed`. Constructing it registers `tomSyncApi`.
+
+- **Extends:** `TomSyncTransport`
+
+#### Constructors
+
+```dart
+TomHttpSyncTransport({required Uri baseUri, http.Client? client, Map<String, String> Function()? headers})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `baseUri` | `final Uri` | The server root. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `push` | `Future<List<TomPushResult>> push(List<TomPendingChange> changes)` | *(override)* `POST /sync/push` with the changes; answers the server's results. |
+| `pull` | `Future<TomPullBatch> pull(String collection, int since, {int limit = 500})` | *(override)* `POST /sync/pull` with the collection, cursor and limit; answers the server's batch. |
+| `close` | `void close()` | Closes the HTTP client. |
+
+### TomSyncPushRequest
+
+The body of a push: the pending changes, in the order they are applied.
+
+- **Implements:** `TomJsonSerializable`
+- **Annotations:** `@tomReflector`
+
+#### Constructors
+
+```dart
+TomSyncPushRequest({List<TomPendingChange>? changes})
+factory TomSyncPushRequest.fromJson(Map<String, Object?> json)
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `changes` | `List<TomPendingChange>` | The changes. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `toJson` | `Map<String, Object?> toJson()` | *(override)* `{"changes": [...]}`. |
+
+### TomSyncPushResponse
+
+The answer to a push: one result per change, in the order pushed.
+
+- **Implements:** `TomJsonSerializable`
+- **Annotations:** `@tomReflector`
+
+#### Constructors
+
+```dart
+TomSyncPushResponse({List<TomPushResult>? results})
+factory TomSyncPushResponse.fromJson(Map<String, Object?> json)
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `results` | `List<TomPushResult>` | The results. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `toJson` | `Map<String, Object?> toJson()` | *(override)* `{"results": [...]}`. |
+
+### TomSyncPullRequest
+
+The body of a pull: the changes of `collection` after sequence number `since`,
+at most `limit`.
+
+- **Implements:** `TomJsonSerializable`
+- **Annotations:** `@tomReflector`
+
+#### Constructors
+
+```dart
+TomSyncPullRequest({String collection = '', int since = 0, int limit = 500})
+factory TomSyncPullRequest.fromJson(Map<String, Object?> json)
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `collection` | `String` | The collection. |
+| `since` | `int` | The last sequence number the device has. |
+| `limit` | `int` | The most changes to answer. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `toJson` | `Map<String, Object?> toJson()` | *(override)* `{"collection": ..., "since": ..., "limit": ...}`. |
+
+### TomSyncPullResponse
+
+The answer to a pull: a `TomPullBatch`, in the batch's own JSON form.
+
+- **Implements:** `TomJsonSerializable`
+- **Annotations:** `@tomReflector`
+
+#### Constructors
+
+```dart
+TomSyncPullResponse(TomPullBatch batch)
+factory TomSyncPullResponse.fromJson(Map<String, Object?> json)
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `batch` | `TomPullBatch` | The batch. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `toJson` | `Map<String, Object?> toJson()` | *(override)* The batch's `toJson`. |
+
+### TomSyncApiService
+
+The typed service interface behind `tomSyncApi`. A server implements it;
+`tom_core_server`'s `TomSyncServer` is the shipped implementation.
+
+- **Kind:** abstract class
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `push` | `Future<TomSyncPushResponse> push(TomSyncPushRequest request)` | `tomSyncPushEndpointId`: applies the request's changes in order. |
+| `pull` | `Future<TomSyncPullResponse> pull(TomSyncPullRequest request)` | `tomSyncPullEndpointId`: the changes the request asks for. |
+
 ## Enums
 
 ### TomChangeOperation
@@ -511,4 +709,11 @@ How the server took a pushed change.
 
 ## Global Functions and Constants
 
-None — this module exports types only.
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| `tomSyncApi` | `TomApi` | The sync API: `POST /sync/push` and `POST /sync/pull` under `/sync`, both `TomAuthenticatedAccess`. Both are `POST`s so a pull right after a push is answered by the primary, not a read replica. |
+| `registerTomSyncApi` | `void registerTomSyncApi()` | Registers `tomSyncApi` in the remote-API registry; idempotent. |
+| `tomSyncApiId` | `String` | `'tomSync'`, the API's id in the registry. |
+| `tomSyncPushEndpointId` | `String` | `'push'`, the push endpoint's id. |
+| `tomSyncPullEndpointId` | `String` | `'pull'`, the pull endpoint's id. |
+| `tomSyncUnknownCollectionErrorKey` | `String` | `'sync.collection.unknown'`, the error key of a pull of a collection the server does not sync. |

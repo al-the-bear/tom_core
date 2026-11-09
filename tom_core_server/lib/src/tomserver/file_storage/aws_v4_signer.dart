@@ -25,6 +25,12 @@ import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
 
+/// Supplies the credentials an AWS request is signed with — called for every
+/// request, so a source can hand out refreshed temporary credentials (an
+/// instance or task role's). Used by the AWS secrets provider and the SQS/SNS
+/// message bus.
+typedef TomAwsCredentialsSource = Future<TomAwsCredentials> Function();
+
 /// The credentials a signer presents.
 class TomAwsCredentials {
   /// Creates a credential pair, optionally with a session [sessionToken] for

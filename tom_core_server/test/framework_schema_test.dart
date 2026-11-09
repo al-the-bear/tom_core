@@ -155,6 +155,12 @@ void main() {
       ]);
     });
 
+    test('the audit_reports chain builds the saved-question descriptor', () {
+      converges('example/audit_reports/migrations/main/tomcore', [
+        auditQuestionTable(defaultAuditQuestionTable),
+      ]);
+    });
+
     test('the authentication chain builds the OAuth state descriptor', () {
       // Only `[2]` builds a descriptor table. The chain's `[1]`, `[3]` and `[4]`
       // create the two-factor enrolment, retained-token and identity-link
@@ -167,11 +173,12 @@ void main() {
       ]);
     });
 
-    test('the messaging chain builds the delivery-report and inbox '
-        'descriptors', () {
+    test('the messaging chain builds the delivery-report, inbox and '
+        'suppression descriptors', () {
       converges('example/messaging/migrations/main/tomcore', [
         deliveryReportTable(defaultDeliveryReportTable),
         inboxTable(defaultInboxTable),
+        suppressionTable(defaultSuppressionTable),
       ]);
     });
 
@@ -197,6 +204,13 @@ void main() {
     test('the privacy chain builds the subject-key descriptor', () {
       converges('example/privacy/migrations/main/tomcore', [
         subjectKeyTable(defaultSubjectKeyTable),
+      ]);
+    });
+
+    test('the sync chain builds the change-log descriptors', () {
+      converges('example/sync/migrations/main/tomcore', [
+        syncChangeTable(defaultSyncChangeTable),
+        syncSequenceTable(defaultSyncSequenceTable),
       ]);
     });
 
@@ -279,6 +293,16 @@ void main() {
       maps(inboxTable(defaultInboxTable), [TomInboxRow]);
     });
 
+    test('the suppression list', () {
+      maps(suppressionTable(defaultSuppressionTable), [TomSuppressionRow]);
+    });
+
+    test('the saved audit questions', () {
+      maps(auditQuestionTable(defaultAuditQuestionTable), [
+        TomAuditQuestionRow,
+      ]);
+    });
+
     test('the idempotency keys', () {
       maps(idempotencyTable(defaultIdempotencyTable), [TomIdempotencyRow]);
     });
@@ -294,6 +318,14 @@ void main() {
 
     test('the subject keys', () {
       maps(subjectKeyTable(defaultSubjectKeyTable), [TomSubjectKeyRow]);
+    });
+
+    test('the sync change log', () {
+      maps(syncChangeTable(defaultSyncChangeTable), [
+        TomSyncChangeRow,
+        TomSyncChangeIdRow,
+      ]);
+      maps(syncSequenceTable(defaultSyncSequenceTable), [TomSyncSequenceRow]);
     });
 
     test('the roll call', () {
@@ -645,6 +677,63 @@ void main() {
       );
     });
 
+    test('the suppression list', () async {
+      final datasource = _RecordingDataSource();
+      final list = TomSqlSuppressionList(datasource);
+      await audit(
+        datasource,
+        [suppressionTable(defaultSuppressionTable)],
+        () async {
+          await _issuing(
+            () => list.suppress(
+              TomSuppressedAddress(
+                channel: TomMessageChannel.sms,
+                address: '+44 7700 900000',
+              ),
+            ),
+          );
+          await _issuing(
+            () => list.find(TomMessageChannel.sms, '+447700900000'),
+          );
+          await _issuing(
+            () =>
+                list.suppressedAmong(TomMessageChannel.sms, ['+447700900000']),
+          );
+          await _issuing(() => list.all());
+          await _issuing(() => list.all(channel: TomMessageChannel.sms));
+          await _issuing(
+            () => list.release(TomMessageChannel.sms, '+447700900000'),
+          );
+          await _issuing(() => list.deleteAll());
+        },
+      );
+    });
+
+    test('the saved audit questions', () async {
+      final datasource = _RecordingDataSource();
+      final store = TomSqlAuditQuestionStore(datasource);
+      await audit(
+        datasource,
+        [auditQuestionTable(defaultAuditQuestionTable)],
+        () async {
+          await _issuing(
+            () => store.save(
+              TomAuditQuestion(
+                id: 'q1',
+                name: 'denied',
+                owner: 'u:audrey',
+                filter: TomAuditQuestionFilter(lastHours: 24),
+              ),
+            ),
+          );
+          await _issuing(() => store.find('q1'));
+          await _issuing(() => store.ownedBy('u:audrey'));
+          await _issuing(() => store.due(DateTime.utc(2026, 11, 7)));
+          await _issuing(() => store.remove('q1'));
+        },
+      );
+    });
+
     test('the inbox', () async {
       final datasource = _RecordingDataSource();
       final inbox = TomSqlInbox(datasource);
@@ -708,7 +797,6 @@ void main() {
         step: 0,
         version: 0,
         data: const {'order': 1},
-        runWindow: now,
         createdAt: now,
         updatedAt: now,
       );
@@ -776,6 +864,32 @@ void main() {
           );
           await _issuing(() => store.delete('42'));
           await _issuing(() => store.deleteAll());
+        },
+      );
+    });
+
+    test('the sync change log', () async {
+      final datasource = _RecordingDataSource();
+      final log = TomSqlSyncLog(createSchema: false);
+      await audit(
+        datasource,
+        [
+          syncChangeTable(defaultSyncChangeTable),
+          syncSequenceTable(defaultSyncSequenceTable),
+        ],
+        () async {
+          await _issuing(
+            () => log.append(
+              datasource,
+              collection: 'notes',
+              entityId: 'a',
+              version: 1,
+              deleted: false,
+              at: DateTime.utc(2026, 11, 6, 12),
+            ),
+          );
+          await _issuing(() => log.prepare(datasource, 'notes'));
+          await _issuing(() => log.after(datasource, 'notes', 0, 10));
         },
       );
     });

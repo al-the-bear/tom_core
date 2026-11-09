@@ -12,7 +12,6 @@ import 'package:uuid/v4.dart';
 import '../messaging/message.dart';
 import '../messaging/outbox.dart';
 import '../resources/localized_text_resources.dart';
-import '../scheduling/event_instants.dart';
 import 'notification.dart';
 import 'notification_renderer.dart';
 
@@ -245,10 +244,12 @@ class TomNotificationDigests implements TomClosable {
       TomJobRun(
         id: runId,
         jobName: jobName,
-        scheduledFor: existing?.scheduledFor ?? TomEventInstants.next(now),
+        scheduledFor: existing?.scheduledFor ?? now,
         runAt: dueAt,
         payload: {...payload, 'items': items},
         tenant: existing?.tenant ?? TomTenantContext.currentId,
+        // Keyed by the digest's run id, not a window.
+        windowed: false,
       ),
     );
     return true;

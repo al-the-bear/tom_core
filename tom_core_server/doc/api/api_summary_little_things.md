@@ -15,6 +15,7 @@ the kernel's `TomRequestId` (context module).
 - [Class Hierarchy](#class-hierarchy)
 - [Classes](#classes)
   - [TomServerException](#tomserverexception)
+  - [TomRequestCache](#tomrequestcache)
 - [Global Functions and Constants](#global-functions-and-constants)
   - [tomErrorEnvelope](#tomerrorenvelope)
   - [tomErrorResponse](#tomerrorresponse)
@@ -22,7 +23,8 @@ the kernel's `TomRequestId` (context module).
 ## Overview
 
 Source: `lib/src/tomserver/little_things/server_exception.dart`,
-`lib/src/tomserver/little_things/error_response.dart`.
+`lib/src/tomserver/little_things/error_response.dart`,
+`lib/src/tomserver/little_things/request_cache.dart`.
 
 Everything here is what the rest of the package is built on top of: the base
 exception, the function that turns it into the body a client receives, and the
@@ -34,9 +36,10 @@ response and its two formats.
 server exception type (e.g. `TomEndpointHandlerException`, `TomCacheException`,
 `MariadbMigrationException`, and `TomLoginException`) subtypes it, so a single
 `on TomServerException catch (e)` clause reaches all of them. It is raised
-directly at seven sites and no others — the `.named(...)` constructors of the
+directly at eight sites and no others — the `.named(...)` constructors of the
 audit sink, the OAuth state store, the SCIM store, the delivery-report store,
-the job store, the lease lock and the scheduler roll call, each refusing a data
+the suppression list, the job store, the lease lock and the scheduler roll call,
+each refusing a data
 source the registry does not hold.
 Those fail at construction, where no `catch` clause is running for a subtype to
 serve; everywhere else a subtype is named. Over the kernel's
@@ -127,6 +130,32 @@ this one's id.
 | ------ | --------- | ----------- |
 | `clientMessage` | `String clientMessage(String maskedFallback)` | The message this exception may be shown to a client as: `defaultUserMessage` when `clientThrow` is true, `maskedFallback` when it is not. **Every response that carries a message reads it from here** — a handler reading `defaultUserMessage` directly breaks the thrower's promise by omission, and five types in the package set the flag `false` precisely because their messages describe server internals. The fallback is required and has no default: text belongs to the rendering tier, reached through a resource key. Only the *message* is masked; `key` stays on the wire for every exception. |
 | `toString` | `String toString()` | *(override)* The base `TomException` string extended with `isolateName`, the `clientThrow` flag, and — only when the exception was raised inside a request — a labelled ` request: <request-id>` segment. The segment is omitted entirely when `requestUuid` is null. |
+
+### TomRequestCache
+
+Values a request computes once. The endpoint pipeline runs every handler in
+`run`; the authorization lookups and the async row scopes keep their answers
+here, and every statement that changes data, and every rollback, empties it.
+
+```dart
+abstract final class TomRequestCache
+```
+
+#### Static Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `run` | `static Future<T> run<T>(FutureOr<T> Function() body)` | Runs `body` with a fresh cache on a zone of its own. |
+| `memo` | `static Future<V> memo<V>(Object key, Future<V> Function() compute)` | The value `compute` answers for `key`, computed once while the cache lasts; a concurrent lookup shares the pending result, a failed one is not kept. Outside `run`, computes every time. |
+| `invalidate` | `static void invalidate()` | Empties the current cache, if any. |
+| `invalidateAfter` | `static void invalidateAfter(String statement)` | Empties the current cache after `statement` changed data, unless the table it wrote is one of `bookkeepingTables`. Called by the SQL data source. |
+
+#### Static Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `isActive` | `static bool` | Whether the current zone has a cache. |
+| `bookkeepingTables` | `static const Set<String>` | The framework-owned tables at their default names — the tables `frameworkOwnedTables` lists. A write to one does not empty the cache. |
 
 ## Global Functions and Constants
 

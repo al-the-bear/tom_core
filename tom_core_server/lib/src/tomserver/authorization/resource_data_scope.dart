@@ -27,7 +27,8 @@ import 'principal_delegation.dart';
 /// **Resolution is live, not from the token.** The keys are read from the grant
 /// and delegation tables on every request, deliberately: a revoked share must
 /// stop granting access at revocation, not at token expiry. The cost of that
-/// choice is a read per resolution, which [runCached] amortises over a request.
+/// choice is a read per resolution, which the delegation resolver keeps for the
+/// request (`TomRequestCache`), so one request reads the tables once.
 ///
 /// Delegations are folded in *through* [TomDelegationResolver] rather than
 /// around it, so every rule the delegation model already enforces — validity
@@ -101,39 +102,6 @@ class TomResourceDataScope implements TomResourceScopeSource {
   static bool get isInstalled =>
       TomDataScopeRegistry.resourceScopeSource != null;
 
-  /// Runs [body] with the resolved grants **cached per principal** for its
-  /// duration — the request-scoped amortisation of live resolution.
-  ///
-  /// A single request typically resolves the scope several times (one read per
-  /// repository call, plus the write check), and each resolution otherwise
-  /// re-reads the grant and delegation tables. Wrapping the request body in
-  /// this collapses them into one read per principal while keeping resolution
-  /// live *across* requests, which is where liveness actually matters: a
-  /// revocation still takes effect on the next request, never mid-request.
-  ///
-  /// **Two requests never share a cache.** Each call builds a fresh map and
-  /// installs it on a child zone of its own, so concurrently-served requests
-  /// hold sibling zones with nothing in common. The isolation is by
-  /// construction rather than by discipline: there is no shared map to clear
-  /// and no window in which one could be reused.
-  ///
-  /// **The zone bounds reachability, not lifetime**, which is the part a
-  /// caller has to hold. Anything [body] schedules without awaiting — a
-  /// `Future`, a `Timer`, a stream subscription — inherits the zone, so it
-  /// reads *this* cache whenever it later runs, however long after the request
-  /// returned. Such a continuation resolves grants against a snapshot taken
-  /// during the request, and a revocation that lands afterwards is invisible
-  /// to it for as long as it lives. The cache is request-scoped only if the
-  /// request is the whole of what runs in the zone: start background work
-  /// outside [body], or let it resolve its own grants.
-  static Future<T> runCached<T>(Future<T> Function() body) =>
-      runZoned(body, zoneValues: {_cacheKey: <String, Map<String, String>>{}});
-
-  static const Object _cacheKey = #tomResourceDataScopeCache;
-
-  static Map<String, Map<String, String>>? get _cache =>
-      Zone.current[_cacheKey] as Map<String, Map<String, String>>?;
-
   @override
   Future<List<Object?>> readableResourceKeys(TomPrincipal? principal) =>
       _keysAtLeast(principal, TomAuthState.read);
@@ -167,22 +135,19 @@ class TomResourceDataScope implements TomResourceScopeSource {
     return state != null && state.index >= minimum.index;
   }
 
-  /// The principal's `resourceKey → role` map, from the zone cache when
-  /// [runCached] installed one.
+  /// The principal's `resourceKey → role` map — read once per request, since
+  /// the delegation resolver's reads are kept for the request
+  /// (`TomRequestCache`).
   ///
   /// The resolution reads the grant and delegation tables through the ordinary
   /// repositories, which are themselves row-scoped; running it inside
   /// [TomDataScope.runUnscoped] is what stops the scope from recursing into
   /// itself while computing its own input.
-  Future<Map<String, String>> _effectiveRoles(TomPrincipal principal) async {
-    final id = principalId(principal);
-    final cache = _cache;
-    final cached = cache?[id];
-    if (cached != null) return cached;
-    final roles = await TomDataScope.runUnscoped(
-      () => delegationResolver.resolveEffectiveRoles(id, now()),
-    );
-    cache?[id] = roles;
-    return roles;
-  }
+  Future<Map<String, String>> _effectiveRoles(TomPrincipal principal) =>
+      TomDataScope.runUnscoped(
+        () => delegationResolver.resolveEffectiveRoles(
+          principalId(principal),
+          now(),
+        ),
+      );
 }

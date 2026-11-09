@@ -729,11 +729,9 @@ void main() {
       );
       final database = TomDatabaseBlobStore(source, createSchema: false);
       await database.getBytes('k.bin', range: tail);
-      expect(
-        source.chunksRead,
-        [9],
-        reason: 'the rows before the range were fetched and thrown away',
-      );
+      expect(source.chunksRead, [
+        9,
+      ], reason: 'the rows before the range were fetched and thrown away');
     });
 
     test('the S3 range header is inclusive at the end, and is signed', () {
@@ -2485,27 +2483,23 @@ void main() {
       // caller as the platform's own exception type, so a pipeline catching
       // `TomServerException` did not catch it at all.
 
-      test(
-        'reading a file the filesystem refuses is a read failure',
-        () async {
-          final file = File('${root.path}/locked.bin')
-            ..writeAsStringSync('secret');
-          Process.runSync('chmod', ['000', file.path]);
-          addTearDown(() => Process.runSync('chmod', ['600', file.path]));
+      test('reading a file the filesystem refuses is a read failure', () async {
+        final file = File('${root.path}/locked.bin')
+          ..writeAsStringSync('secret');
+        Process.runSync('chmod', ['000', file.path]);
+        addTearDown(() => Process.runSync('chmod', ['600', file.path]));
 
-          await expectLater(
-            store.getBytes('locked.bin'),
-            throwsA(
-              isA<TomStorageException>().having(
-                (e) => e.key,
-                'key',
-                'storage.blob.read_failed',
-              ),
+        await expectLater(
+          store.getBytes('locked.bin'),
+          throwsA(
+            isA<TomStorageException>().having(
+              (e) => e.key,
+              'key',
+              'storage.blob.read_failed',
             ),
-          );
-        },
-        skip: chmodSkipReason,
-      );
+          ),
+        );
+      }, skip: chmodSkipReason);
 
       test('describing a file the filesystem refuses is a probe '
           'failure', () async {

@@ -1113,11 +1113,12 @@ void main() {
           isTrue,
           reason: 'the work committed; a connection is what leaked',
         );
-        expect(
-          behind.calls,
-          ['start', 'prepare', 'commit', 'end'],
-          reason: 'the participant behind the throw was never released',
-        );
+        expect(behind.calls, [
+          'start',
+          'prepare',
+          'commit',
+          'end',
+        ], reason: 'the participant behind the throw was never released');
         expect(written(), contains('thrower'));
       },
     );
@@ -1616,11 +1617,11 @@ void main() {
           await next.rollbackTransaction();
         });
 
-        expect(
-          p.calls,
-          ['start', 'rollback', 'end'],
-          reason: 'and the participant was released rather than left holding',
-        );
+        expect(p.calls, [
+          'start',
+          'rollback',
+          'end',
+        ], reason: 'and the participant was released rather than left holding');
       },
     );
 
@@ -1715,11 +1716,9 @@ void main() {
           same(txn),
           reason: 'the helper opened a second transaction',
         );
-        expect(
-          inner.calls,
-          ['start'],
-          reason: 'the joined transaction was concluded by the helper',
-        );
+        expect(inner.calls, [
+          'start',
+        ], reason: 'the joined transaction was concluded by the helper');
         expect(txn.isRunning, isTrue);
         expect(TomTransactionManager.getCurrentTransaction(), same(txn));
 

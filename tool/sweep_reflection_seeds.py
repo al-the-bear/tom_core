@@ -10,7 +10,7 @@ Run from anywhere, by hand::
 
 Exits 0 only when every selected seed was measured and is up to date.
 
-**Why this exists.** The thirteen `*.reflection.dart` seeds under
+**Why this exists.** The `*.reflection.dart` seeds under
 `tom_core_samples/` mirror every type reachable from their roots, the
 framework's included, so they go stale **without any edit in their own
 package**: a `tom_core_kernel` or `tom_core_server` member added, or a new

@@ -20,8 +20,8 @@
 --  * `version` grows with every transition, which is written only over the
 --    version it was made from — of two nodes advancing a saga, one wins.
 --  * `data` is the saga's JSON data; `error` why it compensates or failed.
---  * `run_window` is the window instant of the job run carrying the current
---    version, its key in the job store: how a resumption tells whether that
+--  * the job run carrying the current version is found by its id,
+--    `saga:<tenant>:<saga_id>:<version>`: how a resumption tells whether that
 --    run still exists.
 --  * `(status, updated_at)` serves resumption and the purge, so it is indexed.
 CREATE TABLE IF NOT EXISTS tom_saga (
@@ -33,7 +33,6 @@ CREATE TABLE IF NOT EXISTS tom_saga (
   version    INT          NOT NULL,
   data       LONGTEXT     NOT NULL,
   error      TEXT         NULL,
-  run_window DATETIME(6)  NOT NULL,
   created_at DATETIME(6)  NOT NULL,
   updated_at DATETIME(6)  NOT NULL,
   PRIMARY KEY (tenant, saga_id),

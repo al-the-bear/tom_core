@@ -2650,18 +2650,18 @@ void main() {
       // function — `raw == 'true'` answers for every input — and a total
       // coercion gives the refusing branch no null to act on.
       for (final raw in const ['true', 'TRUE', '1', 'yes', 'on']) {
-        expect(
-          await typed.bindParameters(typedRequest('7', '1.5', raw)),
-          [7, 1.5, true],
-          reason: '"$raw" is a spelling of true',
-        );
+        expect(await typed.bindParameters(typedRequest('7', '1.5', raw)), [
+          7,
+          1.5,
+          true,
+        ], reason: '"$raw" is a spelling of true');
       }
       for (final raw in const ['false', 'FALSE', '0', 'no', 'off']) {
-        expect(
-          await typed.bindParameters(typedRequest('7', '1.5', raw)),
-          [7, 1.5, false],
-          reason: '"$raw" is a spelling of false',
-        );
+        expect(await typed.bindParameters(typedRequest('7', '1.5', raw)), [
+          7,
+          1.5,
+          false,
+        ], reason: '"$raw" is a spelling of false');
       }
     });
 
@@ -2948,11 +2948,12 @@ void main() {
         final response = await router.call(_get('/fixture/transactional'));
 
         expect(response.statusCode, isNot(200));
-        expect(
-          vetoing.calls,
-          ['start', 'prepare', 'rollback', 'end'],
-          reason: 'rolled back once by the coordinator, never a second time',
-        );
+        expect(vetoing.calls, [
+          'start',
+          'prepare',
+          'rollback',
+          'end',
+        ], reason: 'rolled back once by the coordinator, never a second time');
       },
     );
 

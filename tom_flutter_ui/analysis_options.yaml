@@ -15,6 +15,7 @@ analyzer:
     # mirrors the whole Flutter surface, so it carries every deprecation the
     # SDK still exposes; none of that is actionable here.
     - test/support/list_form_fixtures.reflection.dart
+    - build/**
 
 linter:
   rules:

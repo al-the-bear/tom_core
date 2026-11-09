@@ -105,6 +105,11 @@ const _quickStarts = <_QuickStart>[
     reasonPrefix: '> **A fragment, not a program.**',
   ),
   _QuickStart.notRunnable(
+    'audit_reports',
+    _NotRunnable.fragment,
+    reasonPrefix: '> **A fragment, not a program.**',
+  ),
+  _QuickStart.notRunnable(
     'item_authorization',
     _NotRunnable.fragment,
     reasonPrefix: '> **A fragment, not a program.**',

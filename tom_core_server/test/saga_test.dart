@@ -434,7 +434,6 @@ void main() {
                       step: 1,
                       version: 1,
                       data: {...state.data, 'by': 'other node'},
-                      runWindow: now.add(const Duration(minutes: 1)),
                       createdAt: state.createdAt,
                       updatedAt: now,
                     ),
@@ -572,16 +571,7 @@ void main() {
     });
   });
 
-  group('TomEventInstants', () {
-    test('gives every call its own instant, even for one clock reading', () {
-      final at = DateTime.utc(2026, 10, 20, 12);
-      final a = TomEventInstants.next(at);
-      final b = TomEventInstants.next(at);
-      expect(b.isAfter(a), isTrue);
-      final later = DateTime.utc(2030);
-      expect(TomEventInstants.next(later), later);
-    });
-
+  group('runs enqueued under ids of their own', () {
     test(
       'outbox messages queued in one instant get runs of their own',
       () async {
@@ -601,10 +591,12 @@ void main() {
             ),
           );
         }
-        final instants = {
-          for (final run in await queue.all()) run.scheduledFor,
-        };
-        expect(instants, hasLength(2));
+        // One instant, two runs: each is keyed by its message, and neither
+        // takes the window of that instant.
+        final runs = await queue.all();
+        expect(runs, hasLength(2));
+        expect(runs.map((r) => r.scheduledFor).toSet(), {now});
+        expect(runs.every((r) => !r.windowed), isTrue);
       },
     );
   });

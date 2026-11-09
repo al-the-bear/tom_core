@@ -190,11 +190,9 @@ void main() {
     'picking TomLabelPlacement.below updates the segmented selection',
     (tester) async {
       await openDemo6(tester);
-      expect(
-        selectedOf<TomLabelPlacement>(tester),
-        {TomLabelPlacement.above},
-        reason: 'baseline TomLabelPlacement is `above`',
-      );
+      expect(selectedOf<TomLabelPlacement>(tester), {
+        TomLabelPlacement.above,
+      }, reason: 'baseline TomLabelPlacement is `above`');
       await tapSegment<TomLabelPlacement>(tester, 'below');
       expect(selectedOf<TomLabelPlacement>(tester), {TomLabelPlacement.below});
     },
@@ -224,11 +222,9 @@ void main() {
     tester,
   ) async {
     await openDemo6(tester);
-    expect(
-      selectedOf<TomDescriptionPlacement>(tester),
-      {TomDescriptionPlacement.below},
-      reason: 'baseline TomDescriptionPlacement is `below`',
-    );
+    expect(selectedOf<TomDescriptionPlacement>(tester), {
+      TomDescriptionPlacement.below,
+    }, reason: 'baseline TomDescriptionPlacement is `below`');
     await tapSegment<TomDescriptionPlacement>(tester, 'above');
     expect(selectedOf<TomDescriptionPlacement>(tester), {
       TomDescriptionPlacement.above,

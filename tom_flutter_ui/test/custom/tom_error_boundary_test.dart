@@ -605,15 +605,11 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(ErrorWidget), findsOneWidget);
-      expect(
-        caught.map((c) => c.exception.toString()),
-        [
-          contains('first'),
-          contains('from-the-fallback'),
-          contains('from-the-default'),
-        ],
-        reason: 'once per stage, then it stops',
-      );
+      expect(caught.map((c) => c.exception.toString()), [
+        contains('first'),
+        contains('from-the-fallback'),
+        contains('from-the-default'),
+      ], reason: 'once per stage, then it stops');
       expect(tester.binding.hasScheduledFrame, isFalse);
       while (tester.takeException() != null) {}
     });

@@ -24,7 +24,7 @@ declarations are omitted.
 | Logging | [api_summary_logging.md](api_summary_logging.md) | Cross-isolate and remote log transport, outputs, and log servers, and the structured JSON line output with its zone-read context fields. |
 | Metrics | [api_summary_metrics.md](api_summary_metrics.md) | Counters, gauges, histograms and observed gauges in a per-isolate registry, and the Prometheus text rendering of its snapshot. |
 | Observable | [api_summary_observable.md](api_summary_observable.md) | Observable base, observers, and the boxed `TomObject<T>` value/collection hierarchy. |
-| Offline | [api_summary_offline.md](api_summary_offline.md) | Server entities cached on the device: the storage-engine contract, the device-side repository with its queue of pending changes, the sync protocol, the sync engine with conflict resolution, and the protocol's in-memory reference server. |
+| Offline | [api_summary_offline.md](api_summary_offline.md) | Server entities cached on the device: the storage-engine contract, the device-side repository with its queue of pending changes, the sync protocol, the sync engine with conflict resolution, the protocol's in-memory reference server, and the protocol as a remote API with its HTTP transport. |
 | Preferences | [api_summary_preferences.md](api_summary_preferences.md) | Well-known preference keys, wire DTOs, the value codec, and the `/preferences` API declaration; the notification-preference keys and the `/notification-preferences` API declaration. |
 | Reflection | [api_summary_reflection.md](api_summary_reflection.md) | The kernel reflector, reflection info, and JSON (de)serialization via mirrors. |
 | Resources | [api_summary_resources.md](api_summary_resources.md) | Text and config resource providers over a JSON tree. |
@@ -273,6 +273,12 @@ declarations are omitted.
 | `TomSyncReport` | class | What one sync did: applied, conflicts, discarded, rejected, pulled, still pending. |
 | `TomSyncEngine` | class | Pushes the queued changes, resolves conflicts, pulls the server's changes. |
 | `TomMemorySyncServer` | class | The sync protocol's server side in memory: the reference semantics, and a transport for tests. |
+| `TomHttpSyncTransport` | class | The transport to a Tom server's sync API over HTTP. |
+| `TomSyncPushRequest` / `TomSyncPushResponse` | class | A push's body and its answer. |
+| `TomSyncPullRequest` / `TomSyncPullResponse` | class | A pull's body and its answer. |
+| `TomSyncApiService` | abstract class | The service interface behind `tomSyncApi`; a server implements it. |
+| `tomSyncApi` / `registerTomSyncApi` | top-level | The sync API's declaration (`POST /sync/push`, `POST /sync/pull`), and its registration. |
+| `tomSyncApiId` / `tomSyncPushEndpointId` / `tomSyncPullEndpointId` / `tomSyncUnknownCollectionErrorKey` | constant | The API's and its endpoints' ids, and `sync.collection.unknown`. |
 
 ### Preferences (`lib/src/tombase/preferences/`)
 
@@ -424,6 +430,15 @@ declarations are omitted.
 | `TomTokenLifetimeException` | class | A token refused because it is not live: expired, carrying no usable `exp`, or contradicting itself about when it expires. |
 | `registerTomOAuthApi` | function | Registers `tomOAuthApi` with the global `tomRemoteApis` registry. |
 | `tomResourceState` | function | Convenience function for the `TomAuthState` the current user holds on `resourceKey` — a shorthand for `TomResourceKeyProtection.resourceState`. |
+| `TomAuditQuestionDto` | class | A saved question. |
+| `TomAuditQuestionIdRequest` | class | Names one saved question. |
+| `TomAuditQuestionsDto` | class | The caller's saved questions, by name. |
+| `TomAuditReportEntryDto` | class | One record of an answer: the writer whose chain holds it, its position in that chain, its hash, and the record itself as JSON. |
+| `TomAuditReportQueryRequest` | class | A question asked of the audit trail once, without saving it. |
+| `TomAuditReportResultDto` | class | The answer to a question: the matching records across the writers asked, newest first. |
+| `TomAuditReportWritersDto` | class | The writers (hash chains) the audit trail holds records of. |
+| `TomAuditReportsApiService` | abstract class | The typed service interface behind [tomAuditReportsApi]; the server implements it. |
+| `registerTomAuditReportsApi` | function | Registers [tomAuditReportsApi] in the remote-API registry; idempotent. |
 
 ### Settings (`lib/src/tombase/settings/`)
 

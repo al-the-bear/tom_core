@@ -135,11 +135,9 @@ void main() {
     final received = <TomCacheInvalidation>[];
     final late = node('node-late');
     await late.start((i) async => received.add(i));
-    expect(
-      received.map((i) => (i.kind, i.target)),
-      [(TomInvalidationKind.principal, 'alice')],
-      reason: 'revocations only: a cache flush before the start is moot',
-    );
+    expect(received.map((i) => (i.kind, i.target)), [
+      (TomInvalidationKind.principal, 'alice'),
+    ], reason: 'revocations only: a cache flush before the start is moot');
     await late.stop();
     await nodeA.stop();
   });

@@ -50,7 +50,7 @@ void run() {
   check(
     queueDdl.contains(
       'UNIQUE KEY uq_tom_job_run_window '
-      '(job_name, tenant, scheduled_for)',
+      '(job_name, tenant, window_at)',
     ),
     'the database itself enforces one run per job per window and tenant',
   );

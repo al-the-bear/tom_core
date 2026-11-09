@@ -107,7 +107,7 @@ background housekeeping.
 | Span | Span kind | Opened by | Attributes |
 | ---- | --------- | --------- | ---------- |
 | `<METHOD> <route>` | server | `tomRequestContextMiddleware` | `http.request.method`, `url.path`, `url.scheme`, `network.protocol.version`, `http.route`, `http.response.status_code` |
-| `SELECT`, `INSERT`, … | client | `TomSqlDatasource` | `db.system.name`, `db.operation.name`, `db.query.text`, `tom.datasource` |
+| `SELECT`, `INSERT`, …, `PREPARE` | client | `TomSqlDatasource` | `db.system.name`, `db.operation.name`, `db.query.text`, `tom.datasource` |
 | `transaction` | internal | `TomTransaction` | `tom.transaction.id`, `tom.transaction.read_only`, `tom.transaction.outcome`, `tom.transaction.participants` |
 | `GET`, `POST`, … | client | `TomResilientClient` (kernel) | `http.request.method`, `url.full`, `server.address`, `server.port`, `http.response.status_code` |
 | `job <jobName>` | internal | `TomJobRunCommand` (kernel) | `tom.job.name`, `tom.job.run_id` |
@@ -139,11 +139,14 @@ following the OpenTelemetry database conventions:
 | Attribute | Value |
 | --------- | ----- |
 | `db.system.name` | `TomSqlDatasource.dbSystemName`: `mariadb` or `postgresql` |
-| `db.operation.name` | The statement's first keyword, upper-cased — `SELECT`, `INSERT`, `WITH` |
+| `db.operation.name` | The statement's first keyword, upper-cased — `SELECT`, `INSERT`, `WITH` — or `PREPARE` for preparing a statement |
 | `db.query.text` | The statement as written, with its placeholders — see [Bound Values Are Never Recorded](#bound-values-are-never-recorded) |
 | `tom.datasource` | The data source's registered name (`<base>@<tenant>` for a tenant's own pool) |
 
-The span is named after the first keyword; a statement opening with none, or a
+The span is named after the first keyword, and preparing a statement is a
+`PREPARE` span — most prepares answer from the statements the connection
+already holds and run nothing, so counting a request's statements leaves them
+out. A statement opening with no keyword, or a
 connection used without a statement (`withDriverConnection`), is named after
 the operation — `query`, `command`, `prepared`, `prepare`, `driver`. A
 statement run outside any trace records no span. It covers

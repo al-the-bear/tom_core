@@ -12,6 +12,8 @@
 /// cannot come apart.
 library;
 
+import 'dart:convert';
+
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../datasources/datasource_initialization.dart';
@@ -93,6 +95,8 @@ class TomSqlDeliveryReportStore extends TomDeliveryReportStore {
     'reported_at': ':reportedAt',
     'detail': ':detail',
     'tenant': ':tenant',
+    'addresses': ':addresses',
+    'provider_code': ':providerCode',
   };
 
   /// Creates the correlation table if it does not exist.
@@ -134,11 +138,13 @@ class TomSqlDeliveryReportStore extends TomDeliveryReportStore {
     // two callbacks for one id could both read "not yet reported".
     await datasource.executeCommand(
       'UPDATE $table SET state = :state, reported_at = :reportedAt, '
-      'detail = :detail WHERE remote_id = :remoteId',
+      'detail = :detail, provider_code = :providerCode '
+      'WHERE remote_id = :remoteId',
       {
         'state': report.state.name,
         'reportedAt': sqlInstant(report.at),
         'detail': report.detail,
+        'providerCode': report.providerCode,
         'remoteId': report.remoteId,
       },
     );
@@ -178,6 +184,8 @@ class TomSqlDeliveryReportStore extends TomDeliveryReportStore {
     'reportedAt': row.reportedAt == null ? null : sqlInstant(row.reportedAt!),
     'detail': row.detail,
     'tenant': row.tenant,
+    'addresses': row.addresses.isEmpty ? null : jsonEncode(row.addresses),
+    'providerCode': row.providerCode,
   };
 
   static TomDeliveryCorrelation _correlationOf(TomDeliveryReportRow row) =>
@@ -192,6 +200,10 @@ class TomSqlDeliveryReportStore extends TomDeliveryReportStore {
             : parseSqlInstant(row.reportedAt!),
         detail: row.detail,
         tenant: row.tenant,
+        addresses: row.addresses == null
+            ? const []
+            : (jsonDecode(row.addresses!) as List).cast<String>(),
+        providerCode: row.providerCode,
       );
 }
 
@@ -239,4 +251,13 @@ class TomDeliveryReportRow {
   /// The message's tenant, or `null`.
   @TomDbColumn(columnName: "tenant")
   String? tenant;
+
+  /// `addresses` — the JSON array of the addresses the message was sent to, or
+  /// `null` for none.
+  @TomDbColumn(columnName: "addresses")
+  String? addresses;
+
+  /// `provider_code` — the carrier's code from the last report.
+  @TomDbColumn(columnName: "provider_code")
+  String? providerCode;
 }

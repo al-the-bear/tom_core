@@ -22,7 +22,6 @@ runs a component enqueues itself.
   - [TomSchedulerNode](#tomschedulernode)
   - [TomSqlSchedulerNodes](#tomsqlschedulernodes)
   - [TomSchedulerNodeRow](#tomschedulernoderow)
-  - [TomEventInstants](#tomeventinstants)
 - [Global Functions and Constants](#global-functions-and-constants)
 
 ## Overview
@@ -30,8 +29,7 @@ runs a component enqueues itself.
 Source: `lib/src/tomserver/scheduling/sql_job_store.dart`,
 `lib/src/tomserver/scheduling/sql_lease_lock.dart`,
 `lib/src/tomserver/scheduling/sql_scheduler_nodes.dart`,
-`lib/src/tomserver/scheduling/sql_scheduling_sql.dart`,
-`lib/src/tomserver/scheduling/event_instants.dart`.
+`lib/src/tomserver/scheduling/sql_scheduling_sql.dart`.
 
 This module contains only the SQL-backed persistence half of scheduling. It
 implements two contracts and defines none of them: the scheduling *model* —
@@ -81,11 +79,14 @@ Instants are stored as UTC `DATETIME(6)` and carried through `String` fields in
 the row types, because the driver materialises a `DATETIME` as a *local*
 `DateTime` that would not compare equal to the UTC value written.
 
-`TomEventInstants` serves the components that enqueue runs themselves rather
-than through a schedule — the messaging outbox and the saga orchestrator. A job
-store keeps one run per job, tenant and scheduled instant, so two such runs of
-one job enqueued in the same microsecond would share that key and the second
-would replace the first; `TomEventInstants.next` gives each its own instant.
+A run realises a window only when it is windowed (`TomJobRun.windowed`): its
+`window_at` column is then `scheduled_for`, and the unique key on
+`(job_name, tenant, window_at)` keeps one run per job, tenant and window. The
+components that enqueue runs themselves rather than through a schedule — the
+messaging outbox, the bus relay, the notification digests and the saga
+orchestrator — enqueue with `windowed: false` under an id of their own;
+`window_at` is then `NULL`, a unique key holds any number of `NULL`s, and two
+such runs of one job and tenant enqueued in the same instant are two runs.
 
 ## Class Hierarchy
 
@@ -108,8 +109,6 @@ TomJobRunWindowRow
 TomJobBacklogRow
 TomLeaseRow
 TomSchedulerNodeRow
-
-TomEventInstants  (abstract final, static-only)
 ```
 
 ## Classes
@@ -173,10 +172,10 @@ tick.
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `ensureSchema` | `Future<void> ensureSchema()` | Creates the queue, pause and archive tables if they do not exist. Idempotent, called by every operation, and exposed so a start-up sequence can provision the schema before serving traffic. Never inside the caller's transaction: the DDL runs in a transaction scope of its own (`TomTransactionManager.runInTransactionScope`), on a connection of its own, because on MariaDB a `CREATE TABLE` commits the transaction its connection holds. |
-| `enqueue` | `Future<void> enqueue(TomJobRun run)` | *(override)* Writes the run with a replacing write (`TomFrameworkTable.replaceRow`: `REPLACE` on MariaDB; on PostgreSQL a `DELETE` of the rows it supersedes and an upsert, in one transaction), so re-planning a window overwrites it; the unique key on `(job_name, tenant, scheduled_for)` keeps one-run-per-window — per tenant — a database invariant. A payload that is not JSON-encodable is refused by `TomJobStore.encodePayload` while the bind map is built, so no statement is sent. Inside a transaction the run is written in it and commits or rolls back with it: in the transaction's branch when it writes to this store's data source, else as a participant of its own; for a tenant whose data source is routed (`TomDataSourceInfo.route`) to one that `TomSqlDatasource.canQualify` this store's, on the tenant's data source against this store's table qualified by its schema (`TomSqlDatasource.qualify`), so the row rides the tenant's branch and lands in the table the scheduler polls. |
+| `enqueue` | `Future<void> enqueue(TomJobRun run)` | *(override)* Writes the run with a replacing write (`TomFrameworkTable.replaceRow`: `REPLACE` on MariaDB; on PostgreSQL a `DELETE` of the rows it supersedes and an upsert, in one transaction), so re-planning a window overwrites it; the unique key on `(job_name, tenant, window_at)` keeps one-run-per-window — per tenant — a database invariant; a run that is not `windowed` writes `window_at` `NULL` and is keyed by its id alone. A payload that is not JSON-encodable is refused by `TomJobStore.encodePayload` while the bind map is built, so no statement is sent. Inside a transaction the run is written in it and commits or rolls back with it: in the transaction's branch when it writes to this store's data source, else as a participant of its own; for a tenant whose data source is routed (`TomDataSourceInfo.route`) to one that `TomSqlDatasource.canQualify` this store's, on the tenant's data source against this store's table qualified by its schema (`TomSqlDatasource.qualify`), so the row rides the tenant's branch and lands in the table the scheduler polls. |
 | `findRun` | `Future<TomJobRun?> findRun(String id)` | *(override)* The queued run whose `id` column is `id`, in any state, or `null`; a run `purgeFinished` moved out of the queue is not found. Read where `enqueue` writes, so a transaction sees the runs it queued itself. |
-| `findWindow` | `Future<TomJobRun?> findWindow(String jobName, DateTime scheduledFor, {String? tenant})` | *(override)* The run recorded for that job and window for `tenant` (`null` matching the stored `''` of a run of no tenant), or `null`. |
-| `lastWindow` | `Future<DateTime?> lastWindow(String jobName)` | *(override)* The greatest `scheduled_for` recorded for the job, as a UTC instant, or `null` when it has no runs. |
+| `findWindow` | `Future<TomJobRun?> findWindow(String jobName, DateTime scheduledFor, {String? tenant})` | *(override)* The windowed run recorded for that job and window for `tenant` (`null` matching the stored `''` of a run of no tenant), read on `window_at`, or `null`. |
+| `lastWindow` | `Future<DateTime?> lastWindow(String jobName)` | *(override)* The greatest `window_at` recorded for the job — of its windowed runs — as a UTC instant, or `null` when it has none. |
 | `claimDue` | `Future<List<TomJobClaim>> claimDue(DateTime now, String owner, {int limit = 16, bool Function(TomJobRun run)? accept})` | *(override)* Scans pending runs due at `now` whose job is not paused, ordered by `priority` descending and `seq` among equals, applies `accept` in Dart, and issues one conditional compare-and-set per survivor; a candidate a peer claimed first is skipped. Returns a ticket per run actually won, at most `limit`. |
 | `release` | `Future<void> release(TomJobClaim claim)` | *(override)* Returns a claimed run to `pending` and clears its lease, fenced on the claim so a completion that raced the release wins. `claim_token` is left where it is — the next claim raises it, and a token that repeats is not a fence. |
 | `markStarted` | `Future<void> markStarted(TomJobClaim claim, DateTime now)` | *(override)* Stamps `started_at` at the moment the dispatcher takes the run, fenced on the claim; this is what lets recovery tell an interrupted execution from an abandoned reservation. |
@@ -234,7 +233,8 @@ TomJobRunRow()
 | `id` | `String` | The run's stable id, and the primary key every other statement addresses. |
 | `jobName` | `String` | The job this run belongs to. |
 | `tenant` | `String` | The run's tenant, or `''` for a run of no tenant — `''` rather than `NULL` because a unique key never treats two `NULL`s as equal. |
-| `scheduledFor` | `String` | The schedule window, as stored UTC text. |
+| `scheduledFor` | `String` | The run's scheduled instant, as stored UTC text. |
+| `windowAt` | `String?` | `scheduledFor` for a windowed run, `null` for one enqueued under an id of its own. |
 | `runAt` | `String` | When the run may next be attempted, as stored UTC text. |
 | `state` | `String` | The `TomJobRunState` name. |
 | `attempt` | `int` | How many times the run has been attempted, counting from one. |
@@ -269,7 +269,8 @@ TomJobRunArchiveRow()
 | `id` | `String` | The run's stable id. |
 | `jobName` | `String` | The job the run belonged to. |
 | `tenant` | `String` | The run's tenant, or `''` for a run of no tenant. |
-| `scheduledFor` | `String` | The schedule window, as stored UTC text. |
+| `scheduledFor` | `String` | The run's scheduled instant, as stored UTC text. |
+| `windowAt` | `String?` | `scheduledFor` for a windowed run, `null` for one enqueued under an id of its own. |
 | `runAt` | `String` | When the run was last due, as stored UTC text. |
 | `state` | `String` | The `TomJobRunState` name. |
 | `attempt` | `int` | How many times the run was attempted, counting from one. |
@@ -325,7 +326,7 @@ TomJobRunWindowRow()
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `scheduledFor` | `String?` | The latest window, as stored UTC text, or `null` when the job has no runs at all. |
+| `scheduledFor` | `String?` | The latest window (`MAX(window_at)`, projected under this name), as stored UTC text, or `null` when the job has no windowed runs. |
 
 ### TomJobBacklogRow
 
@@ -539,28 +540,6 @@ TomSchedulerNodeRow()
 | `checkinAt` | `String` | When the node last checked in, as stored UTC text. |
 | `checkinInterval` | `int` | The node's published cadence, in milliseconds. |
 
-### TomEventInstants
-
-Strictly increasing instants for runs enqueued outside a schedule. A job store
-keeps one run per `(job, tenant, scheduled instant)` — what makes a
-clock-driven window idempotent, enforced by `tom_job_run`'s unique key and the
-replacing write. A component that enqueues runs of its own gives each its own
-id, but two runs of one job enqueued in the same microsecond would still share
-an instant, and the second would replace the first. `TomMessageOutbox` and
-`TomSagaOrchestrator` take their runs' `scheduledFor` from here; the instant is
-the run's identity in the store, not when it is due.
-
-It holds within one isolate. Two nodes, or two isolates, enqueueing runs of one
-job for one tenant in the same microsecond can still meet.
-
-- **Abstract final.** Not instantiable or extendable; statics only.
-
-#### Static Methods
-
-| Method | Signature | Description |
-| ------ | --------- | ----------- |
-| `next` | `static DateTime next(DateTime now)` | `now`, or one microsecond past the last instant answered when that is not before `now`; always in UTC. |
-
 ## Global Functions and Constants
 
 ### Constants
@@ -580,7 +559,7 @@ job for one tenant in the same microsecond can still meet.
 | -------- | --------- | ----------- |
 | `schedulerNodeFailedAfter` | `DateTime schedulerNodeFailedAfter({required TomSchedulerNode peer, required DateTime now, required DateTime lastSelfCheckin, Duration slack = defaultNodeFailureSlack})` | The instant after which `peer` counts as failed: its last check-in plus the greater of its own published interval and the asking node's lateness, plus `slack`. Pure, so the judgement is assertable without a database. |
 | `isSchedulerNodeFailed` | `bool isSchedulerNodeFailed({required TomSchedulerNode peer, required DateTime now, required DateTime lastSelfCheckin, Duration slack = defaultNodeFailureSlack})` | Whether `now` is past `schedulerNodeFailedAfter` for that peer. |
-| `jobRunTable` | `TomFrameworkTable jobRunTable(String table)` | The one declaration of the job queue table: `seq` as an auto-increment ordering surrogate, `id` as the key, the `tenant` column (`VARCHAR(32)`, default `''`), the unique key on `(job_name, tenant, scheduled_for)`, and the `(state, run_at)` and `(state, claimed_at)` indexes the claim and recovery scans ride; `priority` (`INT`, default `0`) and the nullable `checkpoint` text. |
+| `jobRunTable` | `TomFrameworkTable jobRunTable(String table)` | The one declaration of the job queue table: `seq` as an auto-increment ordering surrogate, `id` as the key, the `tenant` column (`VARCHAR(32)`, default `''`), the nullable `window_at` (`scheduled_for` for a windowed run), the unique key on `(job_name, tenant, window_at)`, and the `(state, run_at)` and `(state, claimed_at)` indexes the claim and recovery scans ride; `priority` (`INT`, default `0`) and the nullable `checkpoint` text. |
 | `jobPauseTable` | `TomFrameworkTable jobPauseTable(String table)` | The one declaration of the paused-job table: `job_name` as the key and `paused_at`. |
 | `jobRunArchiveTable` | `TomFrameworkTable jobRunArchiveTable(String table)` | The one declaration of the archive table: every column of `jobRunTable` (`seq` a plain `BIGINT`) plus `archived_at`, keyed by `id`, indexed on `archived_at` and on `(job_name, scheduled_for)`, with no unique window key. |
 | `leaseTable` | `TomFrameworkTable leaseTable(String table)` | The one declaration of the lease table, keyed by `resource`, carrying the fencing `token` and the `version` write counter. |

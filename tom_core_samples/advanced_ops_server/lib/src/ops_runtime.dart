@@ -67,6 +67,7 @@ class OpsRuntime {
     required this.anchoring,
     required this.auditSink,
     this.nodes,
+    this.auditReports,
   });
 
   /// Builds the production arrangement over the registered `app_db`.
@@ -139,11 +140,32 @@ class OpsRuntime {
       onAlert: _logAlert,
     );
 
+    // The saved audit questions the app server's `/audit-reports` API keeps
+    // are delivered here: this is the process with the scheduler, the outbox
+    // and the export store. The questions table and the trail are `app_db`'s
+    // ([100], [101]); the trail is read across every writer, the app server's
+    // and this process's alike.
+    final reportExports = TomBlobExportStore.named(
+      null,
+      keyPrefix: opsAuditReportKeyPrefix,
+    );
+    final auditReports = TomAuditReports(
+      view: TomAuditView(TomSqlAuditTrailSource(datasource)),
+      questions: TomSqlAuditQuestionStore(datasource, createSchema: false),
+      exports: TomExportService(store: reportExports),
+      email: TomExportEmailDelivery(
+        store: reportExports,
+        outbox: outbox,
+        from: digestSender,
+      ),
+    );
+
     return OpsRuntime(
       scheduler: scheduler,
       outbox: outbox,
       auditSink: auditSink,
       nodes: nodes,
+      auditReports: auditReports,
       anchoring: OpsAnchoring.toDirectory(
         anchorDirectory,
         sink: auditSink,
@@ -193,6 +215,10 @@ class OpsRuntime {
   /// The cluster roll call, when this runtime has one.
   final TomSqlSchedulerNodes? nodes;
 
+  /// Delivers the saved audit questions that fall due, when this runtime does;
+  /// [start] registers its pass on [scheduler].
+  final TomAuditReports? auditReports;
+
   /// Publishes the four services under the names the job classes resolve.
   ///
   /// Separate from the constructor because the job classes cannot be handed
@@ -227,7 +253,10 @@ class OpsRuntime {
   Future<List<TomJobDefinition>> start() async {
     TomAuditTrail.install(auditSink);
     installOpsDeploymentPrincipal();
-    final definitions = TomScheduledJobs.registerAll(scheduler);
+    final definitions = [
+      ...TomScheduledJobs.registerAll(scheduler),
+      ?auditReports?.registerOn(scheduler),
+    ];
     await scheduler.start();
     outbox.start();
     await anchoring.start();

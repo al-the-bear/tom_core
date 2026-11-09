@@ -44,6 +44,7 @@ remembering to ask.
   - [The projection narrows, the record decides](#the-projection-narrows-the-record-decides)
   - [Paging is by window, not by offset](#paging-is-by-window-not-by-offset)
   - [Exporting a result](#exporting-a-result)
+  - [Reports above the query](#reports-above-the-query)
 - [Core Components](#core-components)
 - [Not Yet Implemented](#not-yet-implemented)
 - [Dependencies](#dependencies)
@@ -1140,6 +1141,11 @@ trail table declares.
 shipped DDL, the trail schema encodes the invariants the chain relies on, and the
 guard triggers reject rather than silently ignore.
 
+The questions an auditor asks of the trail across its writers, and their
+scheduled deliveries, are the [audit_reports](audit_reports.md) module's to
+test: `test/audit_reports_test.dart` without a database, and
+`test/audit_reports_db_test.dart` against the relational trail of two writers.
+
 The sealing of personal values is the privacy module's to test:
 `test/privacy_test.dart` records a mutation through a memory sink with subject
 keys installed and without, reveals it, shreds the subject and verifies the
@@ -1283,6 +1289,14 @@ Nothing in `audit` depends on `export` for this, and that is the point: the audi
 module owns the trail and the question, the export module owns the rendering, and
 a result is the value that crosses between them.
 
+### Reports above the query
+
+The auditor's product above the query — questions asked across every writer of
+a trail, saved with a schedule, recipients and a format, and delivered as an
+export by email — is the [audit_reports](audit_reports.md) module. It reads the
+trail through this module's sink and records each delivery in it, so this
+module gains a consumer rather than a dependency.
+
 ## Core Components
 
 - **`TomAuditRecord` / `TomAuditActor` / `TomAuditAction` / `TomAuditOutcome`**
@@ -1320,14 +1334,6 @@ a result is the value that crosses between them.
 
 ## Not Yet Implemented
 
-- **An audit reporting *application*** — a screen an auditor uses, with saved
-  questions, scheduled deliveries and a cross-writer view. The query underneath
-  it is [here now](#querying-the-trail), and export is
-  [the export module's](#exporting-a-result); what is missing is the product
-  above them, which is CE-RP reporting's subject rather than this module's. The
-  seam is the result value: a reporting surface asks `TomAuditQuery` and renders
-  `TomAuditQueryResult`.
-  <!-- unpinned: absence — the reporting product above the query is CE-RP reporting's, not this module's -->
 - ~~Anchor stores for specific external services.~~ **Decided: none ship here,
   and the question is closed.** An external store's guarantee lives in its
   configuration — an object-lock mode, a retention period, a credential that

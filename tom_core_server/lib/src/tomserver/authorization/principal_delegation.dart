@@ -31,6 +31,7 @@ library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../little_things/request_cache.dart';
 import '../object_persistence/persistence_annotations.dart';
 import '../object_persistence/crud_repository.dart';
 import 'principal_resource_grant.dart';
@@ -256,11 +257,20 @@ class TomDelegationResolver {
   /// Costs one grant read per *distinct delegator* named by the active rows, not
   /// one per row: lending several resources means one row each, so a delegator
   /// who lends four resources appears four times and their grants are read once.
-  /// The reuse lasts exactly this call — it is a way of not asking the same
-  /// question twice in one resolution, not a cache, and nothing it holds
-  /// survives to be served stale to the next one. (Amortising across a whole
-  /// request is [TomResourceDataScope.runCached]'s job, one layer up.)
+  ///
+  /// Resolved once per request ([TomRequestCache]), at the instant [at] of the
+  /// request's first resolution: the row scope and every containment check of
+  /// one request ask the same question. The map answered is unmodifiable.
   Future<Map<String, String>> resolveDelegatedRoles(
+    String delegateId,
+    DateTime at,
+  ) => TomRequestCache.memo(
+    (this, #resolveDelegatedRoles, delegateId),
+    () async =>
+        Map<String, String>.unmodifiable(await _delegatedRoles(delegateId, at)),
+  );
+
+  Future<Map<String, String>> _delegatedRoles(
     String delegateId,
     DateTime at,
   ) async {

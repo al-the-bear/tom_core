@@ -258,11 +258,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tagsOf('Material concretes'), ['alpha', 'beta']);
-    expect(
-      tagsOf('Cupertino concretes'),
-      ['alpha', 'beta'],
-      reason: '_pairList must propagate the list edit across the panels',
-    );
+    expect(tagsOf('Cupertino concretes'), [
+      'alpha',
+      'beta',
+    ], reason: '_pairList must propagate the list edit across the panels');
     expect(sharedStateValue(tester, 'tags'), 'alpha, beta');
   });
 

@@ -367,7 +367,7 @@ class TomAuthenticationServer {
       );
 
       if (accepted) {
-        return _issueTokens(principal, null, m, twoFactorSatisfied: true);
+        return await _issueTokens(principal, null, m, twoFactorSatisfied: true);
       }
 
       if (consumed.isExhausted) {
@@ -759,7 +759,7 @@ class TomAuthenticationServer {
       final context = _contextFor(principal, m);
       final offer = await support.beginEnrolment(context);
 
-      return _issueTokens(
+      return await _issueTokens(
         principal,
         null,
         m,
@@ -904,7 +904,7 @@ class TomAuthenticationServer {
         existing.isEmpty ? confirmed.copyWith(isPrimary: true) : confirmed,
       );
 
-      return _issueTokens(principal, null, m, twoFactorSatisfied: true);
+      return await _issueTokens(principal, null, m, twoFactorSatisfied: true);
     } catch (ex, s) {
       return _failedResult(ex, s);
     }
@@ -949,7 +949,7 @@ class TomAuthenticationServer {
         }
       }
 
-      return _issueTokens(principal, null, m, twoFactorSatisfied: true);
+      return await _issueTokens(principal, null, m, twoFactorSatisfied: true);
     } catch (ex, s) {
       return _failedResult(ex, s);
     }

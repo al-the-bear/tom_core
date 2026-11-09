@@ -53,7 +53,12 @@ and hands each to the outbox. This module does not know that layer exists.
   - [Wiring it](#wiring-it)
   - [Why an index rather than the job store](#why-an-index-rather-than-the-job-store)
   - [The correlation table](#the-correlation-table)
-  - [The endpoint is public, and gated by a secret](#the-endpoint-is-public-and-gated-by-a-secret)
+  - [Carrier presets](#carrier-presets)
+  - [Acting on a failure: the suppression list](#acting-on-a-failure-the-suppression-list)
+  - [The endpoint is public, and gated by a verifier](#the-endpoint-is-public-and-gated-by-a-verifier)
+    - [A shared secret](#a-shared-secret)
+    - [Twilio's request signature](#twilios-request-signature)
+    - [Vonage's request signature](#vonages-request-signature)
     - [What a carrier is told](#what-a-carrier-is-told)
     - [Failure keys](#failure-keys-1)
 - [Idempotent Receiver (Inbox)](#idempotent-receiver-inbox)
@@ -123,7 +128,7 @@ and hands each to the outbox. This module does not know that layer exists.
 | `TomMessageTransport` | abstract class | One delivery channel: one attempt at one message |
 | `TomDeliveryReceipt` / `TomDeliveryOutcome` | class / enum | What became of an attempt, including partial delivery |
 | `TomDeliveryException` / `TomPermanentDeliveryException` / `TomTransientDeliveryException` | abstract class / classes | A failure, classified transient or permanent |
-| `TomMessageRouter` | class | Maps a channel to its transport |
+| `TomMessageRouter` | class | Maps a channel to its transport, leaving suppressed addresses out |
 | `TomMemoryMessageTransport` | class | Captures messages in memory; the test stand-in |
 | `TomNoOpMessageTransport` | class | Accepts and discards; the local-run stand-in |
 | `TomFileMessageTransport` | class | Writes each message to a `.eml` file |
@@ -144,7 +149,13 @@ and hands each to the outbox. This module does not know that layer exists.
 | `TomMemoryDeliveryReportStore` / `TomSqlDeliveryReportStore` / `TomDeliveryReportRow` | classes | That index in memory and in a table, and the row the driver hands back |
 | `deliveryReportTable` / `deliveryReportTableDdl` / `defaultDeliveryReportTable` | functions / const String | The correlation table, declared once — the DDL, the statements and the convergence guard all derive from it |
 | `TomDeliveryReportProtocol` / `TomFieldMappedDeliveryReportProtocol` / `TomDeliveryCallback` | abstract class / class / class | The carrier's callback shape, described rather than coded |
-| `TomDeliveryReportService` / `TomDeliveryReportServer` / `TomDeliveryReportEndpoint` | abstract class / classes | The inbound `POST /messaging/delivery-report` route and what answers it |
+| `TomDeliveryReportService` / `TomDeliveryReportServer` / `TomDeliveryReportEndpoint` | abstract class / classes | The inbound `POST`/`GET /messaging/delivery-report` route and what answers it |
+| `TomDeliveryCallbackVerifier` / `TomDeliveryCallbackRequest` / `tomConstantTimeEquals` | abstract class / class / function | What gates that route: whether a callback comes from the carrier |
+| `TomSharedSecretCallbackVerifier` / `TomTwilioCallbackVerifier` / `TomVonageCallbackVerifier` / `TomVonageSignatureMethod` | classes / enum | The three gates: a shared secret in a header, Twilio's and Vonage's request signatures |
+| `TomSuppressionList` / `TomSuppressedAddress` | abstract class / class | The addresses a failure report suppresses and no message is sent to, and why each is there |
+| `TomMemorySuppressionList` / `TomSqlSuppressionList` / `TomSuppressionRow` | classes | That list in memory and in a table, and the row the driver hands back |
+| `suppressionTable` / `suppressionTableDdl` / `defaultSuppressionTable` | functions / const String | The suppression table, declared once |
+| `tomSuppressedDetail` | function | The detail of a receipt whose every recipient was suppressed |
 | `TomInbox` / `TomInboxOutcome` | abstract class / enum | The idempotent receiver: records a message and runs the consumer's work in one transaction, acknowledges after the commit, and skips a message already processed |
 | `TomMemoryInbox` / `TomSqlInbox` / `TomInboxRow` | classes | That inbox in memory and in a table, and the row the driver hands back |
 | `inboxTable` / `inboxTableDdl` / `defaultInboxTable` | functions / const String | The inbox table, declared once |
@@ -337,6 +348,11 @@ returned future rather than being thrown synchronously out of the call. A caller
 who handles failures the way a future-returning API invites — `.catchError`, or
 `await` inside a `try` — would otherwise miss the one failure most likely in a
 half-configured deployment.
+
+A router given a `TomSuppressionList` (`TomMessageRouter(transports,
+suppressions)`, or the `suppressions` field) consults it on every send and
+leaves suppressed recipients out: see
+[Acting on a failure](#acting-on-a-failure-the-suppression-list).
 
 ## Stand-In Transports
 
@@ -866,7 +882,7 @@ for delivery, and then not delivered.
 | State | Meaning | What it is worth doing about |
 | ----- | ------- | ---------------------------- |
 | `delivered` | The carrier reached the recipient | — |
-| `failed` | It did not, and will not try again | Stop using the address |
+| `failed` | It did not, and will not try again | Stop using the address — the [suppression list](#acting-on-a-failure-the-suppression-list) does |
 | `expired` | The carrier gave up after its own retry window | Worth re-sending later |
 | `unknown` | A report arrived carrying a status this module does not recognise | Read `detail`; a carrier added a status |
 
@@ -893,9 +909,10 @@ protocol and the store without the endpoint.
 
 ```dart
 final reports = TomSqlDeliveryReportStore.named('main');
+final suppressions = TomSqlSuppressionList.named('main');
 
 final outbox = TomMessageOutbox(
-  router: router,
+  router: router..suppressions = suppressions,   // leaves suppressed out
   store: jobStore,
   reportStore: reports,          // remembers each carrier id
 );
@@ -910,7 +927,8 @@ TomDeliveryReportEndpoint.install(
     codePath: 'code',
     atPath: 'occurredAt',
   ),
-  secret: config.deliveryReportSecret,
+  verifier: TomSharedSecretCallbackVerifier(config.deliveryReportSecret),
+  suppressions: suppressions,    // a failure suppresses its address
 );
 ```
 
@@ -945,43 +963,215 @@ two drift apart.
 Each correlation also records the message's `tenant` (nullable — a message of
 no tenant has none), so a report, which arrives carrying nothing but the
 carrier's id, is attributed to the tenant it belongs to. See
-[Messages per Tenant](#messages-per-tenant).
+[Messages per Tenant](#messages-per-tenant). It records the `addresses` the
+message was sent to — its envelope, less any recipient the far side refused at
+once — and the `providerCode` of the last report, which is what the
+[suppression list](#acting-on-a-failure-the-suppression-list) reads.
 
 Nothing purges automatically. `purgeSentBefore` exists so the retention decision
 can be made — the index is a delivery audit trail, and how long to keep one is a
 deployment's call, exactly as `TomMessageOutbox.purgeFinished` leaves it.
 
-### The endpoint is public, and gated by a secret
+### Carrier presets
+
+`TomFieldMappedDeliveryReportProtocol.twilio()` and
+`TomFieldMappedDeliveryReportProtocol.vonage()` are the field mapping filled in
+for the two carriers' documented delivery-report callbacks; the suite checks
+each against the sample callbacks the carriers document. Another carrier is the
+same constructor with its own field names and codes.
+
+| Preset | Reads | Recipient | Event time |
+| ------ | ----- | --------- | ---------- |
+| `twilio()` | The status callback form: `MessageSid`, `MessageStatus`, `ErrorCode` | `To` | None in the callback: the report is stamped on arrival |
+| `vonage()` | The SMS delivery receipt, as a `GET` query or a JSON post: `messageId`, `status`, `err-code` | `msisdn` | `message-timestamp`, which has no zone and is read as UTC |
+
+A carrier reports a full queue, a switched-off handset and a number that does
+not exist alike as a failure, and only its error code tells them apart. Since
+`failed` suppresses an address, the presets read the code: `codeStates` maps a
+code to the state it means, and `unlistedFailureState` says what an unlisted
+code on a failure means — `unknown` for both presets, so a code nobody has
+classified suppresses nothing.
+
+| Preset | `failed` (suppresses) | `expired` (worth a later attempt) | Unknown |
+| ------ | --------------------- | --------------------------------- | ------- |
+| `twilio()` | 30005 unknown handset, 30006 landline or unreachable carrier | 30001 queue overflow, 30003 unreachable handset, 30008 unknown error | 30002, 30007 and every unlisted code |
+| `vonage()` | 3 absent subscriber (permanent), 4 call barred, 9 illegal number, 11 unroutable, 12 destination unreachable, 14 blocked by carrier | 2 absent subscriber (temporary), 7 handset busy, 8 network error | Every other code |
+
+Without a code table — a mapping configured by hand — a status read as a
+failure stays a failure. Every mapping reads `bounce` and `bounced` as failures,
+the words email providers use.
+
+### Acting on a failure: the suppression list
+
+A report that an address does not exist was recorded and nothing acted on it,
+so the next message went to the same dead address. `TomSuppressionList` is
+what a report changes. Install one on the endpoint and give the same list to the
+router that sends:
+
+| Step | Who | What |
+| ---- | --- | ---- |
+| A `failed` report is recorded | `TomDeliveryReportEndpoint` | Suppresses its address (`applyReport`) |
+| A message is sent | `TomMessageRouter.send` | Leaves suppressed recipients out before the transport is called |
+| Every recipient is suppressed | the router | Calls no transport; the receipt is `TomDeliveryOutcome.suppressed`, final, with the recipients in `rejectedRecipients` |
+| Some recipients are suppressed | the router | Sends to the rest; the receipt reports the suppressed ones in `rejectedRecipients` |
+
+**Only `failed` suppresses.** An expiry is worth another attempt later, and an
+unknown state is not evidence. A failure suppresses the address the report
+names (the presets read it), or the message's single address. A message to
+several addresses whose report names none suppresses nothing: which of them
+failed is not known, and suppressing all of them would stop mail to the ones
+that work.
+
+**The key is the channel and the normalised address**: an email address
+without case, a phone number by its digits, so `+44 7700 900000` and Vonage's
+`447700900000` are one number. The list is the deployment's, not a tenant's —
+an address a carrier refuses is refused for every tenant — and each entry
+records the tenant, message, carrier id, code and words of the report that
+added it.
+
+`release(channel, address)` lifts a suppression, `find` and `all` read the list
+for an operator, and `suppress` adds an address by hand.
+`TomMemorySuppressionList` is right for a test; `TomSqlSuppressionList` keeps
+the list in `tom_message_suppression`, declared once as `suppressionTable()` and
+shipped as a reference migration under `example/messaging/migrations/`, in the
+same pair every framework store has. Build it over a data source that is not
+routed per tenant.
+
+### The endpoint is public, and gated by a verifier
 
 A carrier's callback is a machine on someone else's network with no account
 here. It cannot present a bearer token, so `@TomAuthenticatedAccess` — which the
 file endpoint uses and which the pipeline applies by default — would refuse
-every real report. The route is `@TomPublicAccess` and carries its own gate: a
-shared secret in the `x-tom-delivery-secret` header, compared in **constant
-time**.
+every real report. The route is `@TomPublicAccess` and carries its own gate: the
+`TomDeliveryCallbackVerifier` handed to `install`, which decides whether a
+request comes from the carrier. Three ship:
 
-That is a weaker guarantee than a token, and it is stated rather than glossed.
-What the secret buys is that a passer-by cannot mark messages delivered; what it
-does not buy is confidentiality of the secret itself, which travels on every
-callback and is only as safe as the TLS under it. A deployment wanting more puts
-the endpoint behind a gateway that does mutual TLS and leaves the secret as the
-second factor.
+| Verifier | For | What it checks |
+| -------- | --- | -------------- |
+| `TomSharedSecretCallbackVerifier` | A carrier, or a gateway in front of one, that can add a header to its callback | A shared secret in a header |
+| `TomTwilioCallbackVerifier` | Twilio status callbacks | `X-Twilio-Signature`, computed under the account's auth token |
+| `TomVonageCallbackVerifier` | Vonage (SMS API) delivery receipts | The `sig` parameter, computed under the account's signature secret, and the receipt's age |
+
+A verifier sees the callback as it arrived — a `TomDeliveryCallbackRequest` with
+the method, the URL, the headers, the body read once and the parameters (the
+query and, for an `application/x-www-form-urlencoded` body, its fields) — and
+`handle` asks it **before anything is decoded**, so an unverified body is never
+parsed. Every comparison is in constant time (`tomConstantTimeEquals`): the
+endpoint is public, and an answer that comes back sooner for a wrong first byte
+gives the secret away a byte at a time. Another carrier's signature scheme is a
+subclass implementing `verify`.
 
 **Refusing is the default.** Nothing is installed until `install` is called, and
 an uninstalled endpoint answers `503` to everything. The opposite default ships
 an open endpoint to anyone who mounts the component without reading this
-paragraph. An empty secret is refused at installation, because a gate that lets
-everything through is worse than no gate — it reads like one.
+paragraph. `verifier` has no default, and each verifier refuses an empty secret
+at construction (`messaging.delivery_report.empty_secret`), because a gate that
+lets everything through is worse than no gate — it reads like one.
+
+The route takes `POST` and `GET`: most carriers post their reports — as JSON
+or, like Twilio, as a form — and Vonage can send its receipts as a `GET` with
+the report in the query string. The report is read from a JSON body, a form
+body or the query string, whichever the callback carries.
+
+#### A shared secret
+
+```dart
+TomDeliveryReportEndpoint.install(
+  store: reports,
+  protocol: protocol,
+  verifier: TomSharedSecretCallbackVerifier(
+    config.deliveryReportSecret,
+    // header: 'x-my-gateway-secret',   // default: x-tom-delivery-secret
+  ),
+);
+```
+
+The carrier presents the secret in the header — `x-tom-delivery-secret` unless
+another is named. A header rather than a query parameter, because a URL is
+logged by every proxy between here and the carrier, and a secret in a log is a
+secret somebody has to rotate.
+
+That is a weaker guarantee than a token, and it is stated rather than glossed.
+What the secret buys is that a passer-by cannot mark messages delivered; what it
+does not buy is confidentiality of the secret itself, which travels on every
+callback and is only as safe as the TLS under it. Nor does it stop a replay: a
+captured callback presents the same secret again. A deployment wanting more puts
+the endpoint behind a gateway that does mutual TLS and keeps the verifier as the
+second factor — or, for a carrier that signs its callbacks, uses that carrier's
+signature instead.
+
+#### Twilio's request signature
+
+```dart
+TomDeliveryReportEndpoint.install(
+  store: reports,
+  protocol: TomFieldMappedDeliveryReportProtocol.twilio(),
+  verifier: TomTwilioCallbackVerifier(
+    config.twilioAuthToken,
+    publicUrl: Uri.parse('https://api.example.com/'),   // behind a proxy
+  ),
+);
+```
+
+Twilio posts a status callback as a form and signs it in `X-Twilio-Signature`:
+HMAC-SHA1 under the account's auth token, base64, over the full URL it called —
+scheme through query string — followed by the POST parameters sorted by name,
+each name and value appended with no delimiter. A JSON callback is signed over
+the URL alone, and the URL then carries `bodySHA256`, the hex SHA-256 of the
+body, which is checked too. The auth token never travels, so a captured
+callback does not give it away, and a changed parameter, URL or body fails the
+signature.
+
+The URL is the one **Twilio called**, which behind a proxy or load balancer is
+not the one this server receives. `publicUrl` names it: its scheme, host and
+port replace the received URL's, and its path is put in front of the received
+path, so `publicUrl: https://api.example.com/` in front of
+`http://app:8080/messaging/delivery-report` checks the signature over
+`https://api.example.com/messaging/delivery-report`. Twilio keeps or drops the
+port depending on the product, so a URL is accepted signed with or without it.
+
+What it does not protect against is a **replay**. Twilio puts no timestamp in
+the signature, so a captured callback can be posted again and still verifies;
+a replayed status report records the same state again, which the correlation
+index tolerates.
+
+#### Vonage's request signature
+
+```dart
+TomDeliveryReportEndpoint.install(
+  store: reports,
+  protocol: TomFieldMappedDeliveryReportProtocol.vonage(),
+  verifier: TomVonageCallbackVerifier(
+    config.vonageSignatureSecret,
+    method: TomVonageSignatureMethod.sha256,   // as set in the dashboard
+    // maxAge: const Duration(minutes: 5),     // the default
+  ),
+);
+```
+
+Vonage signs a delivery receipt in its `sig` parameter, over every other
+parameter, `timestamp` (UNIX seconds) included: each value with `&` and `=`
+replaced by `_`, the parameters sorted by name and joined as `&name=value`, then
+hashed by the method the account is set to in the Vonage dashboard —
+`TomVonageSignatureMethod.md5hash` (MD5 over the string followed by the secret,
+lowercase hex, the default) or an HMAC keyed by the secret, `md5`, `sha1`,
+`sha256` or `sha512` (uppercase hex). The parameters are read from the query, a
+form body or a flat JSON body, whichever the receipt arrived in.
+
+Because the timestamp is signed, a receipt whose `timestamp` is further than
+`maxAge` from now is refused: a captured receipt cannot be replayed after that
+window. Five minutes is the default, as Vonage's own client libraries allow;
+within the window a replay still verifies, and records the same state again.
 
 #### What a carrier is told
 
 | Situation | Status | Why |
 | --------- | ------ | --- |
-| report recorded | `200` | |
+| report recorded | `200` | A `failed` report also suppresses its address, when a suppression list is installed |
 | some of a batch matched | `200` | A carrier cannot act on "three of your five ids are unknown to me", and re-posting would re-report the ones that matched |
 | body carried no readable report | `400` | A carrier retries a `5xx` and gives up on a `4xx`; a malformed body will not parse on the second attempt either |
 | no correlation for the id | `404` | Not an error here — another deployment may share the carrier account — but the carrier's dashboard should show the mismatch |
-| secret missing or wrong | `401` | |
+| not verified: secret or signature missing or wrong, or a Vonage receipt outside `maxAge` | `401` | |
 | nothing installed | `503` | A `404` would read as "wrong URL" |
 
 #### Failure keys
@@ -990,12 +1180,13 @@ everything through is worse than no gate — it reads like one.
 | --- | ------------- | ----------- |
 | `messaging.delivery_report.recorded` | `200` | At least one report in the callback matched a remembered id |
 | `messaging.delivery_report.not_configured` | `503` | The component is mounted and `install` was never called |
-| `messaging.delivery_report.unauthorized` | `401` | The shared secret is missing or wrong |
-| `messaging.delivery_report.unreadable` | `400` | The body is not JSON |
+| `messaging.delivery_report.unauthorized` | `401` | The installed verifier refused the request: the shared secret or the signature is missing or wrong, or a Vonage receipt is older than `maxAge` |
+| `messaging.delivery_report.unreadable` | `400` | A body that is not a form is not JSON, or a form body cannot be decoded |
 | `messaging.delivery_report.no_report` | `400` | The body parsed and the protocol found no report in it |
 | `messaging.delivery_report.unknown_message` | `404` | Nothing was remembered under any id the callback named |
-| `messaging.delivery_report.empty_secret` | — | `install` was called with an empty secret; a `TomMessagingException` at installation, not a callback answer |
+| `messaging.delivery_report.empty_secret` | — | A verifier was constructed with an empty secret, auth token or signature secret; a `TomMessagingException` at construction, not a callback answer |
 | `messaging.delivery_report.unknown_datasource` | — | `TomSqlDeliveryReportStore.named` was given a data source that is not registered; a `TomServerException` at construction |
+| `messaging.suppression.unknown_datasource` | — | `TomSqlSuppressionList.named` was given a data source that is not registered; a `TomServerException` at construction |
 
 ## Idempotent Receiver (Inbox)
 
@@ -1350,12 +1541,13 @@ same `TomJobStore` as the application's scheduler and the two coexist by design
 The scheduler collapses events arriving in the same clock instant into a single
 windowed run. That is correct for a trigger — two ticks of the same moment are
 one moment — and catastrophic for an outbox, where two messages composed in the
-same microsecond are two messages. For the same reason each run gets a window
-instant of its own from `TomEventInstants.next` (see
-[scheduling.md](scheduling.md#runs-enqueued-outside-a-schedule)): a job store
-keeps one run per job, tenant and scheduled instant, and two messages queued in
-the same microsecond would otherwise share that key, the second replacing the
-first. The instant is the run's identity in the store; the run is due at once.
+same microsecond are two messages. For the same reason each run is enqueued
+with `windowed: false` (see
+[scheduling.md](scheduling.md#runs-enqueued-outside-a-schedule)): it takes no
+window, so two messages queued in the same microsecond — on one node or on two —
+keep two runs instead of sharing the store's one-run-per-window key, the second
+replacing the first. The run's `scheduledFor` is the instant it was queued; its
+id is its identity in the store, and the run is due at once.
 
 **The run id is the message id.** `'<jobName>:<messageId>'`, which makes the
 message its own idempotence key: `send` asks the store for a run under that id
@@ -1494,8 +1686,8 @@ await TomTransactionManager.runInTransaction((_) async {
 `msg-` id otherwise. It encodes the payload at once, with `codec` or the
 reflection codec, so a payload that is not JSON is refused before anything is
 queued (`message_bus.payload.not_json`). The run is
-`'<jobName>:<messageId>'` with its own window instant
-(`TomEventInstants.next`), carrying the topic, key, headers, the encoded
+`'<jobName>:<messageId>'`, enqueued with `windowed: false` so it takes no
+window and the id is its key, carrying the topic, key, headers, the encoded
 payload and the current trace position.
 
 | Constructor argument | Default | What it is |
@@ -2035,9 +2227,10 @@ hands back is a plain [`TomMessage.push`](#push-two-vendors-and-a-mapping).
 
 ## Verification
 
-Eleven suites cover the module: six split along the same seam this document
+Thirteen suites cover the module: six split along the same seam this document
 is — the substrate below the services, and the templated layer above it — one
-pinning the error vocabulary, two for the inbox, and two for the bus relay.
+pinning the error vocabulary, two for delivery reports, two for the inbox, and
+two for the bus relay.
 
 `test/messaging_error_keys_test.dart` pins the module's error vocabulary: each case reaches a raise with a real input and asserts the exact key, so a key the module stops raising, or raises for a different condition, fails by name. None needs a database.
 
@@ -2059,6 +2252,32 @@ connection carrying two notifications to a local server.
 failure that fires before anything is queued, and the segment budget. What that
 locale then *resolves* against is the resources module's rule, pinned in
 `test/resources_test.dart`; both suites render against the same fixture.
+
+`test/delivery_report_test.dart` covers delivery reports: the states, the
+correlation index, the outbox remembering a carrier id, the field mapping, the
+declared route, and the endpoint gated by a `TomSharedSecretCallbackVerifier` —
+each refusal and each answer a carrier acts on.
+`test/delivery_callback_verifier_test.dart` (DV-1 to DV-11) covers the
+verifiers: the shared secret; Twilio's signature against Twilio's own worked
+example (auth token `12345`, signature `L/OH5YylLD5NRKLltdqwSvS0BnU=`), a
+tampered form parameter, a proxy's `publicUrl` and a URL with or without its
+port, and a JSON callback's `bodySHA256`; Vonage's signature against the vectors
+of Vonage's own Ruby SDK for all five methods, the age limit, and a receipt
+posted as JSON; an empty secret refused; and the endpoint end to end, recording
+a signed Twilio form callback and a signed Vonage receipt and refusing a
+tampered and a replayed one.
+`test/delivery_suppression_test.dart` (DS-1 to DS-17) covers acting on reports:
+the Twilio and Vonage presets against the carriers' documented sample callbacks
+— states, recipients, codes read as failure, expiry or unknown, and Vonage's
+zone-less timestamp as UTC; bounces read as failures; the list's normalised keys
+and release; which reports suppress and which do not; the router leaving
+suppressed recipients out, or sending nothing; and end to end, a Twilio failure
+report suppressing the address so that the next message is not sent, while an
+expiry suppresses nothing; and a SQL list over an unregistered data source
+refused. `test/delivery_suppression_db_test.dart` (DSD-1 to DSD-4,
+`@Tags(['db'])`) runs `TomSqlSuppressionList` and the correlation's addresses
+and code against MariaDB and PostgreSQL, writing on one instance and reading on
+another.
 
 `test/inbox_test.dart` holds the inbox's contract on `TomMemoryInbox`: a
 redelivered message processed once and acknowledged each time, a failing
@@ -2209,6 +2428,11 @@ reads them: a stopped scheduler is not ready, and a message waiting past
 - **`TomDeliveryReportService` / `TomDeliveryReportServer` /
   `TomDeliveryReportEndpoint`** — the inbound route, and the static
   configuration behind it.
+- **`TomDeliveryCallbackVerifier` / `TomDeliveryCallbackRequest` /
+  `TomSharedSecretCallbackVerifier` / `TomTwilioCallbackVerifier` /
+  `TomVonageCallbackVerifier` / `TomVonageSignatureMethod` /
+  `tomConstantTimeEquals`** — what gates that route: a shared secret, or
+  Twilio's or Vonage's request signature.
 - **`TomInbox` / `TomInboxOutcome` / `TomInboxException`** — the idempotent
   receiver: a message a broker delivers more than once is processed once.
 - **`TomMemoryInbox` / `TomSqlInbox` / `TomInboxRow` / `inboxTable` /
@@ -2395,25 +2619,25 @@ was processed before, and reads nothing out of a mailbox.
 
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
-| `dart:async` | dart | 9 of 20 files | `Future`, `FutureOr`, `Stream`, `StreamController`, `unawaited` |
-| `dart:convert` | dart | 7 of 20 files | `Encoding`, `LineSplitter`, `base64`, `json`, `jsonDecode`, `jsonEncode` |
+| `dart:async` | dart | 9 of 24 files | `Future`, `FutureOr`, `Stream`, `StreamController`, `unawaited` |
+| `dart:convert` | dart | 9 of 24 files | `Encoding`, `LineSplitter`, `base64`, `json`, `jsonDecode`, `jsonEncode` |
 | `dart:io` | dart | `message_transport.dart`, `push_transport.dart`, `smtp_transport.dart` | `Socket` / `SecureSocket` |
 | `dart:math` | dart | `bus_relay.dart`, `mime_encoder.dart` | `Random`, `min` |
 | `dart:typed_data` | dart | `message.dart`, `push_transport.dart` | `Uint8List`, `BytesBuilder` |
 | `async` | package | `smtp_transport.dart` | `StreamQueue` drives the SMTP line protocol |
+| `crypto` | package | `delivery_callback_verifier.dart` | `Hmac`, `md5`, `sha1`, `sha256`, `sha512` — the carriers' callback signatures and Twilio's `bodySHA256` |
 | `dart_jsonwebtoken` | package | `push_transport.dart` | ES256 and RS256 signing of the APNs provider token and the FCM service-account assertion |
 | `http2` | package | `push_transport.dart` | the HTTP/2 client APNs requires |
 | `path` | package | `message_transport.dart` | file naming in `TomFileMessageTransport` |
 | `shelf` | package | `delivery_report_endpoint.dart` | `Request` / `Response`, because a carrier acts on the status code and the pipeline's own envelope would make every refusal a `500` |
-| `tom_core_kernel` | package | 13 of 20 files | `TomScheduler`, `TomJobStore`, `TomJobDefinition`, `TomRetryPolicy`, `TomJobAlertSink`, `TomPermanentFailure`, `TomPermanentJobFailure`, `TomCommand`, `TomClosable`, `TomPrincipal`, `TomUser`, `TomBean`, `TomDataSource`, `tomLog`, `TomHeader` / `TomMimeType`, `TomTracing` / `TomSpanKind` / `TomTraceContext` (the outbox's send and delivery spans), and `TomServerChannel` / `TomServerCall` / `TomServerCallSpecs` — the HTTP call layer `TomSmsTransport`, `TomWebhookTransport` and `TomHttp1PushExchange` reach their endpoints through, rather than a raw client |
+| `tom_core_kernel` | package | 15 of 24 files | `TomScheduler`, `TomJobStore`, `TomJobDefinition`, `TomRetryPolicy`, `TomJobAlertSink`, `TomPermanentFailure`, `TomPermanentJobFailure`, `TomCommand`, `TomClosable`, `TomPrincipal`, `TomUser`, `TomBean`, `TomDataSource`, `tomLog`, `TomHeader` / `TomMimeType`, `TomTracing` / `TomSpanKind` / `TomTraceContext` (the outbox's send and delivery spans), and `TomServerChannel` / `TomServerCall` / `TomServerCallSpecs` — the HTTP call layer `TomSmsTransport`, `TomWebhookTransport` and `TomHttp1PushExchange` reach their endpoints through, rather than a raw client |
 | `tom_core_message_bus` | package | `bus_relay.dart` | `TomMessageBus`, `TomBusCodec` and `TomBusException`, the bus the relay publishes to |
 | `uuid` | package | `message.dart` | `UuidV4`, for a message id when the caller supplies none |
 | [configuration](configuration.md) | module | `sms_transport.dart`, `smtp_transport.dart` | `TomBaseServerConfiguration` |
-| [datasources](datasources.md) | module | `delivery_report_sql.dart`, `inbox.dart`, `inbox_sql.dart`, `sql_delivery_report_store.dart` | `TomFrameworkTable` — the single declaration the DDL, the statements and the convergence guard all derive from — plus `TomDataSourceInfo`, `TomSchemaProvisioning` and `sqlInstant` |
+| [datasources](datasources.md) | module | `delivery_report_sql.dart`, `inbox.dart`, `inbox_sql.dart`, `sql_delivery_report_store.dart`, `sql_suppression_list.dart`, `suppression_sql.dart` | `TomFrameworkTable` — the single declaration the DDL, the statements and the convergence guard all derive from — plus `TomDataSourceInfo`, `TomSchemaProvisioning` and `sqlInstant` |
 | [endpoints](endpoints.md) | module | `delivery_report_endpoint.dart` | `tomService` and `TomEndpoint`, the two annotations by which the pipeline discovers the callback route |
-| [little_things](little_things.md) | module | `inbox.dart`, `message.dart`, `sql_delivery_report_store.dart` | `TomServerException` |
-| [object_persistence](object_persistence.md) | module | `inbox.dart`, `sql_delivery_report_store.dart` | `TomDbTable` / `TomDbColumn` on the reflected row types the driver maps |
+| [little_things](little_things.md) | module | `inbox.dart`, `message.dart`, `sql_delivery_report_store.dart`, `sql_suppression_list.dart` | `TomServerException` |
+| [object_persistence](object_persistence.md) | module | `inbox.dart`, `sql_delivery_report_store.dart`, `sql_suppression_list.dart` | `TomDbTable` / `TomDbColumn` on the reflected row types the driver maps |
 | [resources](resources.md) | module | `email_service.dart`, `push_service.dart`, `sms_service.dart` | `TomLocalizedTextResources` |
 | [resources](resources.md) | module | `email_service.dart`, `push_service.dart`, `sms_service.dart`, `templated_message_service.dart` | `TomLocalizedTextResources` and `TomTextLocale`, which `TomTemplatedMessageService` resolves every template through (see `doc/resources.md`) |
-| [scheduling](scheduling.md) | module | `bus_relay.dart`, `outbox.dart` | `TomEventInstants`, the window instant of each message's run |
 | [transactions](transactions.md) | module | `inbox.dart` | `TomTransactionManager.runInTransaction`, which holds the inbox's record and the consumer's work in one transaction |

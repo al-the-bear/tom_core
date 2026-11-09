@@ -2125,31 +2125,26 @@ void main() {
       );
     });
 
-    test(
-      'a read that fails after the file was found is a read failure',
-      () {
-        // Distinct from not_found: the key does hold an export, and reading it
-        // is what failed. `openRead` reports that on the stream, which a `yield*`
-        // would have forwarded straight past the translation.
-        final store = TomDirectoryExportStore(root);
-        final file = File('${root.path}/locked.csv')
-          ..writeAsStringSync('secret');
-        file.setLastModifiedSync(DateTime.now());
-        Process.runSync('chmod', ['000', file.path]);
-        addTearDown(() => Process.runSync('chmod', ['600', file.path]));
-        expect(
-          _collect(store.open('locked.csv')),
-          throwsA(
-            isA<TomExportException>().having(
-              (e) => e.key,
-              'key',
-              'export.store.read_failed',
-            ),
+    test('a read that fails after the file was found is a read failure', () {
+      // Distinct from not_found: the key does hold an export, and reading it
+      // is what failed. `openRead` reports that on the stream, which a `yield*`
+      // would have forwarded straight past the translation.
+      final store = TomDirectoryExportStore(root);
+      final file = File('${root.path}/locked.csv')..writeAsStringSync('secret');
+      file.setLastModifiedSync(DateTime.now());
+      Process.runSync('chmod', ['000', file.path]);
+      addTearDown(() => Process.runSync('chmod', ['600', file.path]));
+      expect(
+        _collect(store.open('locked.csv')),
+        throwsA(
+          isA<TomExportException>().having(
+            (e) => e.key,
+            'key',
+            'export.store.read_failed',
           ),
-        );
-      },
-      skip: chmodSkipReason,
-    );
+        ),
+      );
+    }, skip: chmodSkipReason);
 
     test('a delete that fails is a delete failure, not a raw '
         'FileSystemException', () async {

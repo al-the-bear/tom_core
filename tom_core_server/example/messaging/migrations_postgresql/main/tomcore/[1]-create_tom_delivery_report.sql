@@ -32,6 +32,9 @@
 --  * `state` is NULL until a report arrives, and that is the difference between
 --    "sent, nothing heard" and "reported". A default would erase the
 --    distinction that makes an outstanding delivery findable.
+--  * `addresses` is the JSON array of the addresses the message was sent to,
+--    which a failure report suppresses when it names no recipient itself;
+--    `provider_code` is the carrier's code from the last report.
 --  * `sent_at` carries the retention sweep, so it is indexed: pruning is
 --    otherwise a full scan of a table that grows with every message ever sent.
 --  * instants are DATETIME(6) and are always written in UTC. The width is the
@@ -48,6 +51,8 @@ CREATE TABLE IF NOT EXISTS tom_delivery_report (
   reported_at TIMESTAMP(6) NULL,
   detail TEXT NULL,
   tenant VARCHAR(32) NULL,
+  addresses TEXT NULL,
+  provider_code VARCHAR(64) NULL,
   PRIMARY KEY (remote_id)
 );
 

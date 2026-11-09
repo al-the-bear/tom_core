@@ -167,12 +167,12 @@ ID_SHAPE = re.compile(r"\b([a-z]{2,12})\d+(_[a-zäñößü]{4})?\b")
 #: count, not a real obstacle.
 KNOWN_STEMS = frozenset(
     """
-    abc address api arg arm avc base black code col command container data db
+    abc address aes api arg arm avc base black code col command container data db
     dec demo ean element es
-    fade field flex form gsm hs http image iso layer level list map march material mp
+    fade field flex form gcm gsm hs http image iso layer level list map march material md mp
     name names oauth operant opt pass pdf person phase pkcs prefix python row rs scope
     scores sha shade sigusr spacer sqlite step street strongpass subtitle time
-    total tz ucs utf value white win woff wrap
+    total tz ucs utf value west white win woff wrap
     """.split()
 )
 

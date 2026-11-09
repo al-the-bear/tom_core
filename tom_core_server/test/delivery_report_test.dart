@@ -74,7 +74,9 @@ Request _callback(Object? body, {String? secret = 'shared-secret'}) => Request(
   'POST',
   Uri.parse('https://example.com/messaging/delivery-report'),
   body: body == null ? '' : jsonEncode(body),
-  headers: {if (secret != null) TomDeliveryReportEndpoint.secretHeader: secret},
+  headers: {
+    if (secret != null) TomSharedSecretCallbackVerifier.defaultHeader: secret,
+  },
 );
 
 Future<Map<String, Object?>> _bodyOf(Response response) async =>
@@ -378,8 +380,11 @@ void main() {
       expect(annotation, isNot(contains('TomAuthenticatedAccess')));
     });
 
-    test('takes POST only', () {
-      expect(annotation, contains('methods: [TomHttpMethod.post]'));
+    test('takes POST, and GET for a carrier that reports in the query', () {
+      expect(
+        annotation,
+        contains('methods: [TomHttpMethod.post, TomHttpMethod.get]'),
+      );
     });
 
     test('keeps carrier traffic out of the request log', () {
@@ -394,7 +399,7 @@ void main() {
         TomDeliveryReportEndpoint.install(
           store: store ?? TomMemoryDeliveryReportStore(),
           protocol: _protocol,
-          secret: 'shared-secret',
+          verifier: TomSharedSecretCallbackVerifier('shared-secret'),
         );
 
     test('an unconfigured endpoint refuses, and says which refusal', () async {
@@ -438,11 +443,7 @@ void main() {
       // A gate that lets everything through is worse than no gate, because it
       // reads like one.
       expect(
-        () => TomDeliveryReportEndpoint.install(
-          store: TomMemoryDeliveryReportStore(),
-          protocol: _protocol,
-          secret: '',
-        ),
+        () => TomSharedSecretCallbackVerifier(''),
         // A messaging exception, not the kernel's base type: a server raise
         // site throws the family, so `on TomServerException` reaches it and it
         // carries the isolate and the request like every other.
@@ -525,7 +526,9 @@ void main() {
           'POST',
           Uri.parse('https://example.com/messaging/delivery-report'),
           body: 'not json',
-          headers: {TomDeliveryReportEndpoint.secretHeader: 'shared-secret'},
+          headers: {
+            TomSharedSecretCallbackVerifier.defaultHeader: 'shared-secret',
+          },
         ),
       );
       expect(response.statusCode, 400);

@@ -92,12 +92,26 @@ class TomJobRun {
   /// The [TomJobDefinition.name] this run belongs to.
   final String jobName;
 
-  /// The schedule window this run realises — the idempotence key.
+  /// The schedule window this run realises — the idempotence key of a
+  /// [windowed] run.
   ///
   /// For a catch-up run this is the window that was *missed*, not the moment
   /// the catch-up was noticed, so a job body can tell which period it is
-  /// processing.
+  /// processing. For a run enqueued under an id of its own it is the instant
+  /// it was enqueued for, and identifies nothing.
   final DateTime scheduledFor;
+
+  /// Whether this run realises a window: one run per job, tenant and
+  /// [scheduledFor], found with [TomJobStore.findWindow].
+  ///
+  /// `true` for a run the scheduler plans — a schedule's window, or an event's
+  /// instant of arrival — where the window is what makes planning idempotent.
+  /// `false` for a run a component enqueues under an id of its own (the
+  /// messaging outbox, the saga orchestrator): its id is its idempotence key,
+  /// found with [TomJobStore.findRun], and it takes no window, so two such runs
+  /// of one job and tenant enqueued in the same instant — on two nodes, say —
+  /// are two runs.
+  final bool windowed;
 
   /// When this run should next be attempted.
   ///
@@ -212,6 +226,7 @@ class TomJobRun {
     this.tenant,
     this.priority = 0,
     this.checkpoint,
+    this.windowed = true,
   });
 
   /// Whether this run has reached a terminal state.
@@ -240,6 +255,7 @@ class TomJobRun {
     'tenant': tenant,
     'priority': priority,
     'checkpoint': checkpoint,
+    'windowed': windowed,
   };
 
   /// Decodes a map produced by [toJson].
@@ -274,6 +290,7 @@ class TomJobRun {
       final Map<Object?, Object?> value => value.cast<String, Object?>(),
       _ => null,
     },
+    windowed: map['windowed'] as bool? ?? true,
   );
 
   static DateTime? _parseOrNull(Object? value) =>
@@ -493,10 +510,11 @@ abstract class TomJobStore {
     }
   }
 
-  /// Adds [run] to the queue.
+  /// Adds [run] to the queue, or replaces the run recorded under its id.
   ///
-  /// The caller is responsible for idempotence via [findWindow]; the store
-  /// stores what it is given.
+  /// The caller is responsible for idempotence — via [findWindow] for a
+  /// [TomJobRun.windowed] run, via [findRun] for one enqueued under an id of
+  /// its own; the store stores what it is given.
   ///
   /// Throws a `schedule.job.payload` [TomScheduleException], **before changing
   /// the queue**, when [TomJobRun.payload] is not JSON-encodable — see
@@ -511,20 +529,22 @@ abstract class TomJobStore {
   /// second time. A run removed by [purgeFinished] is no longer found.
   Future<TomJobRun?> findRun(String id);
 
-  /// The run already recorded for [jobName] at [scheduledFor] for [tenant]
-  /// (`null` for runs of no tenant), or `null`.
+  /// The [TomJobRun.windowed] run already recorded for [jobName] at
+  /// [scheduledFor] for [tenant] (`null` for runs of no tenant), or `null`.
   ///
   /// This is what makes enqueueing idempotent, and therefore what makes a tick
   /// safe to replay after a crash. A window belongs to one tenant: the same
-  /// instant for two tenants is two windows.
+  /// instant for two tenants is two windows. A run enqueued under an id of its
+  /// own takes no window and is never answered here.
   Future<TomJobRun?> findWindow(
     String jobName,
     DateTime scheduledFor, {
     String? tenant,
   });
 
-  /// The latest window ever enqueued for [jobName], or `null` if the job has no
-  /// history in this store.
+  /// The latest window ever enqueued for [jobName] — of its
+  /// [TomJobRun.windowed] runs — or `null` if the job has no history in this
+  /// store.
   ///
   /// The scheduler uses `null` to mean "first sight of this job" and anchors on
   /// the present instead of treating all of history as missed.
@@ -779,7 +799,8 @@ class TomMemoryJobStore implements TomJobStore {
     String? tenant,
   }) async {
     for (final run in _runs.values) {
-      if (run.jobName == jobName &&
+      if (run.windowed &&
+          run.jobName == jobName &&
           run.tenant == tenant &&
           run.scheduledFor.isAtSameMomentAs(scheduledFor)) {
         return run;
@@ -792,7 +813,7 @@ class TomMemoryJobStore implements TomJobStore {
   Future<DateTime?> lastWindow(String jobName) async {
     DateTime? latest;
     for (final run in _runs.values) {
-      if (run.jobName != jobName) continue;
+      if (run.jobName != jobName || !run.windowed) continue;
       if (latest == null || run.scheduledFor.isAfter(latest)) {
         latest = run.scheduledFor;
       }

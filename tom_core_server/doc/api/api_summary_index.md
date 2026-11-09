@@ -10,6 +10,7 @@ surface documented here.
 | Module | Summary | What it provides |
 | ------ | ------- | ---------------- |
 | Audit | [api_summary_audit.md](api_summary_audit.md) | Attributable, tamper-evident records: the hash-chained trail, its sinks, and signed anchors. |
+| Audit Reports | [api_summary_audit_reports.md](api_summary_audit_reports.md) | Questions asked of the audit trail across its writers, saved questions, their scheduled deliveries, and the `/audit-reports` API. |
 | Authentication | [api_summary_authentication.md](api_summary_authentication.md) | Login and two-factor services, adaptors, the policy deciding who owes a factor, enrolment and its stores, the authentication server, the server's own self-login, and external identity: the OAuth / OpenID Connect handshake and SAML 2.0 single sign-on, their pending-authorization stores, role mapping, and the linking table; and user provisioning over SCIM 2.0 — the service, its stores and endpoints, and the directory that resolves single sign-on to provisioned accounts; service accounts with their API keys and stores; and browser sessions held in an `HttpOnly` cookie, with the CSRF check they are held to. |
 | Authorization | [api_summary_authorization.md](api_summary_authorization.md) | Authorization cache, graded access, principal delegation and resource grants. |
 | Cache | [api_summary_cache.md](api_summary_cache.md) | Isolate-backed server cache, its command messages, cross-node invalidation and item-authorization answers. |
@@ -31,8 +32,9 @@ surface documented here.
 | Privacy | [api_summary_privacy.md](api_summary_privacy.md) | Data-protection operations: personal-data declarations on entities, erasure, subject-access export, retention, and crypto-shredding of personal values in the audit trail with per-subject keys. |
 | Rate Limiting | [api_summary_ratelimit.md](api_summary_ratelimit.md) | Request rate limits per principal, API key or client address: the rules, the sliding-window arithmetic, the per-process and shared limiters, and the middleware answering `429` with `Retry-After`. |
 | Resources | [api_summary_resources.md](api_summary_resources.md) | Locale-aware text resolution: one bundle per locale, chosen by the recipient's language. |
-| Scheduling | [api_summary_scheduling.md](api_summary_scheduling.md) | The relational half of the job scheduler: the shared job queue, fencing leases, and the node roll call; and unique window instants for runs enqueued outside a schedule. |
+| Scheduling | [api_summary_scheduling.md](api_summary_scheduling.md) | The relational half of the job scheduler: the shared job queue, fencing leases, and the node roll call. |
 | Server | [api_summary_server.md](api_summary_server.md) | The HTTP server, per-request logging state and correlation ids, middleware, the log format, the paths whose credentials belong to the endpoint, the security headers every response carries, mutual TLS between services, and the graceful shutdown on SIGTERM. |
+| Sync | [api_summary_sync.md](api_summary_sync.md) | The server side of the offline sync protocol: exposing an entity under a collection, the change log that numbers every write of it, pushes applied through the entity's repository under optimistic locking, pulls read as the caller, and `POST /sync/push` and `POST /sync/pull`. |
 | Tenancy | [api_summary_tenancy.md](api_summary_tenancy.md) | Multi-tenancy: the deployment's tenants, the three isolation models chosen per tenant, data-source routing, and the resolution of a request's tenant from its token, host or header. |
 | Tracing | [api_summary_tracing.md](api_summary_tracing.md) | The OpenTelemetry tracer behind the kernel's tracing seam: spans exported over OTLP/HTTP, parent-based sampling, the untraced export client, and an in-memory span exporter for tests. |
 | Transactions | [api_summary_transactions.md](api_summary_transactions.md) | Distributed transaction manager and participants, the recovery of prepared branches a dead process left — the decision log and the recovery — and sagas: work across services as local transactions undone by compensations, their orchestrator, stores and table. |
@@ -91,6 +93,34 @@ surface documented here.
 | `auditTrailNoUpdateTriggerName` / `auditTrailNoDeleteTriggerName` | top-level | Names of the write-once guard triggers. |
 | `auditTrailNoUpdateTriggerDdl` / `auditTrailNoDeleteTriggerDdl` | top-level | MariaDB DDL for the write-once guard triggers. |
 | `auditTrailGuardStatements` | top-level | The statements installing one write-once guard in a given dialect's database. |
+
+### Audit Reports (`lib/src/tomserver/audit_reports/`)
+
+Summary: [api_summary_audit_reports.md](api_summary_audit_reports.md)
+
+| Type | Kind | Description |
+| ---- | ---- | ----------- |
+| `TomAuditQuestion` | class | A saved question. |
+| `TomAuditQuestionFilter` | class | What a question asks: the record fields it narrows to and the window. |
+| `TomAuditQuestionRow` | class |  |
+| `TomAuditQuestionStore` | abstract class | The saved questions. |
+| `TomAuditReportDelivery` | class | What one delivery did. |
+| `TomAuditReportException` | class | Raised when a question cannot be read, saved, found or answered; [key] names which (`audit_reports.question.invalid`, `audit_reports.question.not_found`, …). |
+| `TomAuditReports` | class | Answers, keeps and delivers audit questions. |
+| `TomAuditReportsErrorHandler` | class | Maps the audit-report refusals to their statuses: a question that is not the caller's (or not there) is a `404`, one that cannot be read a `400`, one with nowhere to deliver to a `409`, a server that is not set up for audit reports a `503`. |
+| `TomAuditReportsServer` | class | The implementation of `tomAuditReportsApi`, over the installed [TomAuditReports]. |
+| `TomAuditTrailSource` | abstract class | Where a view reads: the writers a trail holds, and one writer's answer. |
+| `TomAuditView` | class | Answers a question across the writers of a trail. |
+| `TomAuditViewEntry` | class | One record of a view's answer, with the writer whose chain holds it. |
+| `TomAuditViewResult` | class | A view's answer. |
+| `TomAuditWriterRow` | class |  |
+| `TomMemoryAuditQuestionStore` | class | [TomAuditQuestionStore] in memory. |
+| `TomMemoryAuditTrailSource` | class | [TomAuditTrailSource] over in-memory sinks, one per writer — for tests and a single process. |
+| `TomSqlAuditQuestionStore` | class | [TomAuditQuestionStore] over the `tom_audit_question` table. |
+| `TomSqlAuditTrailSource` | class | [TomAuditTrailSource] over the relational trail: one table, every writer's rows. |
+| `auditQuestionTable` | function | The saved-question table, as the framework declares it. |
+| `auditQuestionTableDdl` | function | The `CREATE TABLE` of [auditQuestionTable]. |
+| `tomAuditReportsDatasource` | function | The data source registered as [name], for the `.named` constructors of this module; refuses (`audit_reports.<part>.unknown_datasource`) a name the registry does not hold. |
 
 ### Authentication (`lib/src/tomserver/authentication/`)
 
@@ -574,6 +604,7 @@ surface documented here.
 | `TomBlobStoreBackendFactory` | typedef | Creates a fresh backend of one type. |
 | `TomAwsV4Signer` | class | Signs HTTP requests with AWS Signature Version 4. |
 | `TomAwsCredentials` | class | The key pair, optionally with a session token. |
+| `TomAwsCredentialsSource` | typedef | Supplies the credentials of each AWS request; used by the AWS secrets provider and the AWS message bus. |
 | `TomBlobManifestRow` | class | One row of the blob manifest table. |
 | `TomBlobChunkRow` | class | One chunk row's payload. |
 | `TomStorageException` | class | Storage failure (extends `TomServerException`). |
@@ -626,6 +657,7 @@ surface documented here.
 | Type | Kind | Description |
 | ---- | ---- | ----------- |
 | `TomServerException` | class | Server-side base exception (extends `TomException`). |
+| `TomRequestCache` | abstract final class | Values a request computes once — its row scopes, grants and delegations — emptied by a write (static). |
 | `tomErrorEnvelope` | function | Renders any error into the package's wire error body — the shape every error response uses. |
 | `tomProblemJsonMediaType` | constant | `application/problem+json`, the media type of an RFC 9457 problem document. |
 | `tomProblemJsonContextKey` | constant | `tom.problemJson`, the request context key that answers an endpoint's errors as problem+json. |
@@ -688,19 +720,33 @@ surface documented here.
 | `tomVendorValueAt` | function | The dotted-path reader both vendor mappings share; a numeric segment indexes a list. |
 | `TomDeliveryReport` | class | What a carrier says became of a message after accepting it. |
 | `TomDeliveryState` | enum | `delivered`, `failed`, `expired`, `unknown` — not the same question as `TomDeliveryOutcome`. |
-| `TomDeliveryCorrelation` | class | The `remoteId` → message row, and the last state reported against it. |
+| `TomDeliveryCorrelation` | class | The `remoteId` → message row: the addresses it went to, and the last state and code reported against it. |
 | `TomDeliveryReportStore` | abstract class | The correlation index, addressed by the carrier's id. |
 | `TomMemoryDeliveryReportStore` | class | The index in memory; right for a test, wrong across a restart. |
 | `TomSqlDeliveryReportStore` | class | The index in a table — the durable half. |
 | `TomDeliveryReportRow` | class | One row of that table as the driver hands it back. |
 | `deliveryReportTable` | function | The correlation table, declared once. |
 | `deliveryReportTableDdl` | function | The `CREATE TABLE` for it, for a deployment that applies DDL by hand. |
+| `TomSuppressionList` | abstract class | The addresses a failure report suppresses and no message is sent to. |
+| `TomSuppressedAddress` | class | One suppressed address, and the report that added it. |
+| `TomMemorySuppressionList` | class | The list in memory; right for a test, wrong across a restart. |
+| `TomSqlSuppressionList` | class | The list in a table — the durable half. |
+| `TomSuppressionRow` | class | One row of that table as the driver hands it back. |
+| `suppressionTable` | function | The suppression table, declared once. |
+| `suppressionTableDdl` | function | The `CREATE TABLE` for it, for a deployment that applies DDL by hand. |
 | `defaultDeliveryReportTable` | constant | `tom_delivery_report`. |
 | `TomDeliveryCallback` | class | What a callback carried, independent of how it arrived. |
 | `TomDeliveryReportProtocol` | abstract class | The carrier's callback shape, behind an interface. |
 | `TomFieldMappedDeliveryReportProtocol` | class | That shape described by field names and status tokens; no vendor presets. |
-| `TomDeliveryReportEndpoint` | class | The static configuration behind the callback route, and its handler. |
-| `TomDeliveryReportService` | abstract class | The reflected `POST /messaging/delivery-report` declaration. |
+| `TomDeliveryCallbackRequest` | class | A carrier callback as a verifier sees it: method, URL, lowercased headers, the body read once, query and form parameters. |
+| `TomDeliveryCallbackVerifier` | abstract class | What gates the callback route: whether a request comes from the carrier. |
+| `TomSharedSecretCallbackVerifier` | class | A shared secret the carrier presents in a header (`x-tom-delivery-secret` by default). |
+| `TomTwilioCallbackVerifier` | class | Twilio's `X-Twilio-Signature` (HMAC-SHA1 over the URL and the sorted POST parameters); `publicUrl` for a proxy. |
+| `TomVonageSignatureMethod` | enum | `md5hash`, `md5`, `sha1`, `sha256`, `sha512` — how a Vonage account signs. |
+| `TomVonageCallbackVerifier` | class | Vonage's `sig` parameter, with a `maxAge` replay window on its `timestamp`. |
+| `tomConstantTimeEquals` | function | String equality in time that depends only on the lengths. |
+| `TomDeliveryReportEndpoint` | class | The static configuration behind the callback route, and its handler; `install` takes the store, the protocol and the verifier. |
+| `TomDeliveryReportService` | abstract class | The reflected `POST`/`GET /messaging/delivery-report` declaration. |
 | `TomDeliveryReportServer` | class | Its default implementation. |
 | `TomInboxException` | class | An empty or over-long consumer name or message id (extends `TomServerException`). |
 | `TomInboxOutcome` | enum | `processed`, `duplicate`. |
@@ -729,6 +775,7 @@ surface documented here.
 | `tomMimeLineEnding` / `tomMimeMaxLineLength` | top-level | MIME line ending and maximum line length. |
 | `tomOutboxJobName` | top-level | The default job name the outbox registers under. |
 | `tomBusRelayJobName` | top-level | The default job name the bus relay registers under. |
+| `tomSuppressedDetail` | function | Why a [TomMessageRouter] sent nothing: every recipient was suppressed. |
 
 ### Metrics (`lib/src/tomserver/metrics/`)
 
@@ -831,6 +878,7 @@ surface documented here.
 | `TomFieldKeyring` | class | The data keys, unwrapped and cached; rotates data keys, index keys and key-encryption keys. |
 | `TomKeyEncryptionKey` | abstract class | What wraps the data keys. |
 | `TomAesKeyEncryptionKey` | class | An application-held AES-256 key-encryption key. |
+| `TomKeyEncryptionKeyFactory` | typedef | Builds the key-encryption key of a `fieldEncryption.keys` entry of a registered kind (`TomFieldEncryption.registerKeyKind`). |
 | `TomAesGcm` | abstract final class | AES-256-GCM with a random nonce: the cipher of field encryption, data-key wrapping and the sealing of audit values (static). |
 | `TomDataKeyStore` | abstract class | Where the wrapped data keys are kept. |
 | `TomSqlDataKeyStore` / `TomMemoryDataKeyStore` | class | The data keys in `tom_encryption_key` of a data source resolved by name per call / in memory. |
@@ -941,7 +989,6 @@ surface documented here.
 | `defaultJobRunTable` / `defaultJobPauseTable` / `defaultJobRunArchiveTable` / `defaultLeaseTable` / `defaultSchedulerNodeTable` | top-level | Default table names. |
 | `jobRunTable` / `jobPauseTable` / `jobRunArchiveTable` / `leaseTable` / `schedulerNodeTable` | top-level | The table descriptors. |
 | `jobRunTableDdl` / `jobPauseTableDdl` / `jobRunArchiveTableDdl` / `leaseTableDdl` / `schedulerNodeTableDdl` | top-level | The `CREATE TABLE` statements. |
-| `TomEventInstants` | abstract final class | Strictly increasing window instants for runs a component enqueues itself — the outbox, the saga orchestrator. |
 
 ### Server (`lib/src/tomserver/server/`)
 
@@ -971,6 +1018,20 @@ surface documented here.
 | `noopHandler` | function | A handler returning a fixed status. |
 | `TomGracefulShutdown` | class | What the server does between SIGTERM and exiting: readiness off, new requests refused, work in flight finished, leases released, pools closed. |
 | `tomProbePaths` | constant | `health` and `ready`, the paths a draining server keeps answering. |
+
+### Sync (`lib/src/tomserver/sync/`)
+
+| Type | Kind | Description |
+| ---- | ---- | ----------- |
+| `TomSync` | abstract final class | The exposed collections, `expose`, `push` and `pull` (static). |
+| `TomSqlSyncLog` | class | The change log in each synced entity's data source: `prepare`, `append`, `number`, `after`. |
+| `TomSyncChangeRow` / `TomSyncChangeIdRow` / `TomSyncSequenceRow` | class | One change-log row / an unnumbered change's id / a counter's value, as the log reads them. |
+| `TomSyncServer` | class | `POST /sync/push` and `POST /sync/pull`, the kernel's `TomSyncApiService`. |
+| `TomSyncErrorHandler` | class | Maps a pull's refusals to `400`. |
+| `TomSyncException` | class | The module's failures, keyed `sync.*` (extends `TomServerException`). |
+| `TomSyncRejection` | class | Thrown by the application to refuse a pushed change with a reason (extends `TomSyncException`). |
+| `syncChangeTable` / `syncSequenceTable` | top-level function | The two tables' declarations. |
+| `defaultSyncChangeTable` / `defaultSyncSequenceTable` | constant | `tom_sync_change` / `tom_sync_sequence`. |
 
 ### Tenancy (`lib/src/tomserver/tenancy/`)
 
@@ -1096,6 +1157,8 @@ surface documented here.
 | `defaultScimResourceTable` | Authentication |
 | `defaultServiceAccountTable` | Authentication |
 | `defaultSubjectKeyTable` | Privacy |
+| `defaultSyncChangeTable` | Sync |
+| `defaultSyncSequenceTable` | Sync |
 | `deliveryReportTable` | Messaging |
 | `deliveryReportTableDdl` | Messaging |
 | `DoubleCol` | Object Persistence |
@@ -1200,6 +1263,8 @@ surface documented here.
 | `subjectKeyTable` | Privacy |
 | `subjectKeyTableDdl` | Privacy |
 | `Sum` | Object Persistence |
+| `syncChangeTable` | Sync |
+| `syncSequenceTable` | Sync |
 | `TimeCol` | Object Persistence |
 | `TimeLiteral` | Object Persistence |
 | `Tom2FAAdaptor` | Authentication |
@@ -1276,16 +1341,30 @@ surface documented here.
 | `TomAuditPolicy` | Audit |
 | `TomAuditQuery` | Audit |
 | `TomAuditQueryResult` | Audit |
+| `TomAuditQuestion` | Audit Reports |
+| `TomAuditQuestionFilter` | Audit Reports |
+| `TomAuditQuestionRow` | Audit Reports |
+| `TomAuditQuestionStore` | Audit Reports |
 | `TomAuditRecord` | Audit |
 | `TomAuditRecordIdGenerator` | Audit |
 | `tomAuditRedactedPlaceholder` | Audit |
+| `TomAuditReportDelivery` | Audit Reports |
+| `TomAuditReportException` | Audit Reports |
+| `TomAuditReports` | Audit Reports |
+| `TomAuditReportsErrorHandler` | Audit Reports |
+| `TomAuditReportsServer` | Audit Reports |
 | `TomAuditSeqRow` | Audit |
 | `TomAuditSink` | Audit |
 | `TomAuditTrail` | Audit |
 | `TomAuditTrailRow` | Audit |
+| `TomAuditTrailSource` | Audit Reports |
 | `TomAuditTriggerRow` | Audit |
+| `TomAuditView` | Audit Reports |
+| `TomAuditViewEntry` | Audit Reports |
+| `TomAuditViewResult` | Audit Reports |
 | `TomAuditWatchedChain` | Audit |
 | `TomAuditWriteOnceCheck` | Audit |
+| `TomAuditWriterRow` | Audit Reports |
 | `TomAuthenticationAdaptor` | Authentication |
 | `TomAuthenticationData` | Authentication |
 | `TomAuthenticationInfo` | Authentication |
@@ -1299,6 +1378,7 @@ surface documented here.
 | `TomAuthorizationCacheStoreMessage` | Authorization |
 | `TomAuthStateCodec` | Authorization |
 | `TomAwsCredentials` | File Storage |
+| `TomAwsCredentialsSource` | File Storage |
 | `TomAwsV4Signer` | File Storage |
 | `TomBaseServerConfiguration` | Configuration |
 | `TomBinaryOperator` | Object Persistence |
@@ -1420,6 +1500,8 @@ surface documented here.
 | `TomDelete` | Datasources |
 | `TomDeliveredCode2FAService` | Authentication |
 | `TomDeliveryCallback` | Messaging |
+| `TomDeliveryCallbackRequest` | Messaging |
+| `TomDeliveryCallbackVerifier` | Messaging |
 | `TomDeliveryCorrelation` | Messaging |
 | `TomDeliveryException` | Messaging |
 | `TomDeliveryOutcome` | Messaging |
@@ -1465,7 +1547,6 @@ surface documented here.
 | `tomErrorEnvelope` | Little Things |
 | `TomErrorHandler` | Endpoints |
 | `tomErrorResponse` | Little Things |
-| `TomEventInstants` | Scheduling |
 | `TomExclusiveCanonicalizer` | Authentication |
 | `TomExists` | Object Persistence |
 | `TomExportEmailDelivery` | Export |
@@ -1589,6 +1670,7 @@ surface documented here.
 | `TomJwtSigning` | Authentication |
 | `TomJwtSigningKey` | Authentication |
 | `TomKeyEncryptionKey` | Object Persistence |
+| `TomKeyEncryptionKeyFactory` | Object Persistence |
 | `TomLeaseRow` | Scheduling |
 | `TomLiteralSelect` | Datasources |
 | `TomLocalInvalidationChannel` | Cache |
@@ -1600,7 +1682,9 @@ surface documented here.
 | `TomMemory2FAGraceStore` | Authentication |
 | `TomMemoryApiKeyStore` | Authentication |
 | `TomMemoryAuditAnchorStore` | Audit |
+| `TomMemoryAuditQuestionStore` | Audit Reports |
 | `TomMemoryAuditSink` | Audit |
+| `TomMemoryAuditTrailSource` | Audit Reports |
 | `TomMemoryBlobLedger` | File Storage |
 | `TomMemoryBlobStore` | File Storage |
 | `TomMemoryBlobStoreBackend` | File Storage |
@@ -1619,6 +1703,7 @@ surface documented here.
 | `TomMemorySagaStore` | Transactions |
 | `TomMemoryScimStore` | Authentication |
 | `TomMemorySubjectKeyStore` | Privacy |
+| `TomMemorySuppressionList` | Messaging |
 | `TomMessage` | Messaging |
 | `TomMessageBody` | Messaging |
 | `TomMessageChannel` | Messaging |
@@ -1756,6 +1841,7 @@ surface documented here.
 | `TomRepository` | Object Persistence |
 | `TomRepositoryBlobReferences` | Object Persistence |
 | `TomRepositoryException` | Object Persistence |
+| `TomRequestCache` | Little Things |
 | `tomRequestContextMiddleware` | Server |
 | `TomRequestIdException` | Server |
 | `tomRequestIdHeader` | Server |
@@ -1857,6 +1943,7 @@ surface documented here.
 | `TomSessionCookie` | Authentication |
 | `TomSessionCookieException` | Authentication |
 | `TomSharedItemsPage` | Item Authorization |
+| `TomSharedSecretCallbackVerifier` | Messaging |
 | `TomShareSubjectKind` | Item Authorization |
 | `TomSigningKeyException` | Authentication |
 | `TomSignInOrganization` | Authentication |
@@ -1885,7 +1972,9 @@ surface documented here.
 | `TomSortDirection` | Object Persistence |
 | `TomSortField` | Object Persistence |
 | `TomSqlApiKeyStore` | Authentication |
+| `TomSqlAuditQuestionStore` | Audit Reports |
 | `TomSqlAuditSink` | Audit |
+| `TomSqlAuditTrailSource` | Audit Reports |
 | `tomSqlBindParams` | Datasources |
 | `tomSqlBindValue` | Datasources |
 | `TomSqlBlobLedger` | File Storage |
@@ -1921,6 +2010,8 @@ surface documented here.
 | `TomSqlSchedulerNodes` | Scheduling |
 | `TomSqlScimStore` | Authentication |
 | `TomSqlSubjectKeyStore` | Privacy |
+| `TomSqlSuppressionList` | Messaging |
+| `TomSqlSyncLog` | Sync |
 | `TomSqlTwoPhaseRecovery` | Datasources |
 | `TomSqlTypeFamily` | Datasources |
 | `TomSqlTypeFamilyCompatibility` | Database Migration |
@@ -1939,6 +2030,17 @@ surface documented here.
 | `TomSubjectKeys` | Privacy |
 | `TomSubjectKeyStore` | Privacy |
 | `TomSubquery` | Object Persistence |
+| `TomSuppressedAddress` | Messaging |
+| `TomSuppressionList` | Messaging |
+| `TomSuppressionRow` | Messaging |
+| `TomSync` | Sync |
+| `TomSyncChangeIdRow` | Sync |
+| `TomSyncChangeRow` | Sync |
+| `TomSyncErrorHandler` | Sync |
+| `TomSyncException` | Sync |
+| `TomSyncRejection` | Sync |
+| `TomSyncSequenceRow` | Sync |
+| `TomSyncServer` | Sync |
 | `TomTabularChart` | Export |
 | `TomTabularColumn` | Export |
 | `TomTabularRenderer` | Export |
@@ -1974,6 +2076,7 @@ surface documented here.
 | `TomTransactionRecoveryException` | Transactions |
 | `TomTransactionResult` | Transactions |
 | `TomTransientDeliveryException` | Messaging |
+| `TomTwilioCallbackVerifier` | Messaging |
 | `TomTwoPhaseRecoverable` | Transactions |
 | `TomTypedPersistenceBase` | Datasources |
 | `TomTypePersistenceInfo` | Datasources |
@@ -1991,6 +2094,8 @@ surface documented here.
 | `TomUserTwoFactorEnrolmentRepository` | Authentication |
 | `tomVendorValueAt` | Messaging |
 | `TomVersion` | Object Persistence |
+| `TomVonageCallbackVerifier` | Messaging |
+| `TomVonageSignatureMethod` | Messaging |
 | `tomWantsProblemJson` | Little Things |
 | `TomWebAuthn2FAService` | Authentication |
 | `TomWebAuthnRegisteredCredential` | Authentication |

@@ -394,6 +394,37 @@ CREATE TABLE IF NOT EXISTS fixture_task (
     await execute(dsi.datasource, 'TRUNCATE TABLE fixture_task');
   }
 
+  /// The table of [FixtureSyncNote]: a client-chosen key, a version, an
+  /// owner and a text.
+  static const String _fixtureSyncNoteDdl = '''
+CREATE TABLE IF NOT EXISTS fixture_sync_note (
+  id       VARCHAR(64)  NOT NULL,
+  version  BIGINT       NOT NULL,
+  owner_id VARCHAR(191) NOT NULL,
+  text     VARCHAR(255) NULL,
+  PRIMARY KEY (id)
+)
+''';
+
+  /// Creates the `fixture_sync_note` table if it does not already exist.
+  static Future<void> ensureFixtureSyncNoteTable(TomDataSourceInfo dsi) =>
+      execute(dsi.datasource, _fixtureSyncNoteDdl);
+
+  /// Empties the `fixture_sync_note` table and the sync change log, and
+  /// starts every sequence again at 1.
+  ///
+  /// The counter rows stay: `TomSync` creates a collection's row once per
+  /// data source, outside any write, and a deleted row would be re-created
+  /// inside one.
+  static Future<void> truncateFixtureSyncNote(TomDataSourceInfo dsi) async {
+    await execute(dsi.datasource, 'DELETE FROM fixture_sync_note');
+    await execute(dsi.datasource, 'DELETE FROM tom_sync_change');
+    await execute(
+      dsi.datasource,
+      'UPDATE tom_sync_sequence SET last_sequence = 0',
+    );
+  }
+
   /// The three tables the `@TomReference` fixture needs: the owner, the target
   /// and the join between them.
   ///

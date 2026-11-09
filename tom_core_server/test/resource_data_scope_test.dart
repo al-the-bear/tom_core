@@ -448,28 +448,23 @@ void main() {
   });
 
   group('per-request caching', () {
-    test(
-      'runCached resolves the grants once for every query in the request',
-      () async {
-        final store = _CountingGrantStore([
-          _grant(1, 'project:alpha', 'owner'),
-        ]);
-        TomResourceDataScope.install(
-          TomDelegationResolver(
-            InMemoryPrincipalDelegationStore(const []),
-            TomPrincipalResourceRoleResolver(store),
-          ),
-        );
-        await TomResourceDataScope.runCached(() async {
-          await read(_principal(1));
-          await read(_principal(1));
-          await write(_principal(1));
-        });
-        expect(store.calls, 1);
-      },
-    );
+    test('within a request the grants are read once for every query', () async {
+      final store = _CountingGrantStore([_grant(1, 'project:alpha', 'owner')]);
+      TomResourceDataScope.install(
+        TomDelegationResolver(
+          InMemoryPrincipalDelegationStore(const []),
+          TomPrincipalResourceRoleResolver(store),
+        ),
+      );
+      await TomRequestCache.run(() async {
+        await read(_principal(1));
+        await read(_principal(1));
+        await write(_principal(1));
+      });
+      expect(store.calls, 1);
+    });
 
-    test('without runCached every resolution reads the grants', () async {
+    test('outside a request every resolution reads the grants', () async {
       final store = _CountingGrantStore([_grant(1, 'project:alpha', 'owner')]);
       TomResourceDataScope.install(
         TomDelegationResolver(
@@ -493,7 +488,7 @@ void main() {
           TomPrincipalResourceRoleResolver(store),
         ),
       );
-      await TomResourceDataScope.runCached(() async {
+      await TomRequestCache.run(() async {
         expect((await read(_principal(1))).parameters.values, [
           'project:alpha',
         ]);
@@ -502,7 +497,7 @@ void main() {
       expect(store.calls, 2);
     });
 
-    test('two concurrent runCached bodies never share a cache', () async {
+    test('two concurrent requests never share a cache', () async {
       // The security-relevant half of the guarantee, and the one that must
       // hold whatever else changes: each call installs a *fresh* map on a
       // child zone of its own, so two requests in flight together are siblings
@@ -517,13 +512,13 @@ void main() {
       );
       final started = Completer<void>();
       final release = Completer<void>();
-      final first = TomResourceDataScope.runCached(() async {
+      final first = TomRequestCache.run(() async {
         await read(_principal(1));
         started.complete();
         await release.future;
       });
       await started.future;
-      await TomResourceDataScope.runCached(() async {
+      await TomRequestCache.run(() async {
         await read(_principal(1));
       });
       release.complete();
@@ -536,7 +531,7 @@ void main() {
       () async {
         // The half that is *not* true: a zone bounds reachability, not lifetime.
         // An unawaited continuation started inside the body inherits the zone,
-        // so it still reads that request's cache long after runCached completed
+        // so it still reads that request's cache long after the request completed
         // — resolving against a snapshot rather than re-reading live. This test
         // exists so the dartdoc's warning is a checked statement rather than a
         // caution, and it is the reason background work belongs outside the body.
@@ -551,13 +546,13 @@ void main() {
         );
         late Future<void> escaped;
         final resume = Completer<void>();
-        await TomResourceDataScope.runCached(() async {
+        await TomRequestCache.run(() async {
           await read(_principal(1));
           escaped = resume.future.then((_) => read(_principal(1)));
         });
         expect(store.calls, 1, reason: 'the body itself read once');
 
-        // runCached has returned. A resolution outside any zone reads afresh.
+        // The request has returned. A resolution outside any zone reads afresh.
         await read(_principal(1));
         expect(store.calls, 2);
 

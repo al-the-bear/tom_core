@@ -1037,11 +1037,9 @@ void main() {
       config.retries | 9;
       await config.save();
 
-      expect(
-        await oldStore.read(),
-        {'client.legacy': 'FROM-OLD-STORE'},
-        reason: 'saving to the new store must not write to the old one',
-      );
+      expect(await oldStore.read(), {
+        'client.legacy': 'FROM-OLD-STORE',
+      }, reason: 'saving to the new store must not write to the old one');
     });
 
     test(

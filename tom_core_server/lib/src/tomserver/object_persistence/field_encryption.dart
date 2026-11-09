@@ -181,6 +181,15 @@ abstract class TomKeyEncryptionKey {
   Future<List<int>> unwrap(List<int> wrapped, {required String keyId});
 }
 
+/// Builds the key-encryption key [id] of a `fieldEncryption.keys` entry from
+/// the entry's [settings] — what a provider package registers for its `kind`
+/// with [TomFieldEncryption.registerKeyKind].
+typedef TomKeyEncryptionKeyFactory =
+    Future<TomKeyEncryptionKey> Function(
+      String id,
+      Map<String, Object?> settings,
+    );
+
 /// A key-encryption key held by the application: a 256-bit AES key, wrapping
 /// with AES-GCM.
 ///
@@ -774,6 +783,28 @@ abstract final class TomFieldEncryption {
 
   static TomFieldKeyring? _keyring;
 
+  /// The kind of a `keys` entry that names none: an application-held AES key.
+  static const String aesKeyKind = 'aes';
+
+  static final Map<String, TomKeyEncryptionKeyFactory> _keyKinds = {};
+
+  /// Lets a `fieldEncryption.keys` entry of [kind] build its key with
+  /// [factory] — how a provider package offers a key held by its
+  /// key-management service. Registering a kind again replaces its factory;
+  /// `aes` is built in and cannot be replaced.
+  static void registerKeyKind(String kind, TomKeyEncryptionKeyFactory factory) {
+    if (kind == aesKeyKind || kind.isEmpty) {
+      throw TomFieldEncryptionException(
+        'field_encryption.config.invalid',
+        "The key kind '$kind' cannot be registered: `$aesKeyKind` is built in.",
+      );
+    }
+    _keyKinds[kind] = factory;
+  }
+
+  /// The kinds registered with [registerKeyKind], besides `aes`.
+  static Iterable<String> get keyKinds => _keyKinds.keys;
+
   /// The installed keyring, or `null`.
   static TomFieldKeyring? get keyring => _keyring;
 
@@ -807,9 +838,16 @@ abstract final class TomFieldEncryption {
   /// | `datasource` | the data source of the data-key table (required) |
   /// | `table` | the table's name; default `tom_encryption_key` |
   /// | `createSchema` | create the table on first use; default `true` |
-  /// | `keys` | the key-encryption keys, primary first: a list of `{id, key}`, `key` the base64 of 32 bytes or a `secret:` reference to it, resolved here through `TomSecrets` (required) |
+  /// | `keys` | the key-encryption keys, primary first: a list of entries, each with an `id` and a `kind` (required) |
   /// | `refreshSeconds` | how often a node reads the keys again; default 300 |
   /// | `acceptPlaintext` | [acceptPlaintext]; default `true` |
+  ///
+  /// An entry of kind `aes` — the default — is an application-held key,
+  /// `{id, key}`: `key` the base64 of 32 bytes or a `secret:` reference to
+  /// it, resolved here through `TomSecrets`. Any other kind is a key held by a
+  /// key-management service, built from the rest of the entry by the factory a
+  /// provider package registered for it ([registerKeyKind]) — `tom_core_secrets`
+  /// registers `aws-kms`, `azure-keyvault` and `vault-transit`.
   ///
   /// Throws `field_encryption.config.invalid` for a value of the wrong shape.
   static Future<void> configure(Object? settings) async {
@@ -838,15 +876,32 @@ abstract final class TomFieldEncryption {
     }
     final keys = <TomKeyEncryptionKey>[];
     for (final entry in rawKeys) {
-      if (entry is! Map || entry['id'] is! String || entry['key'] is! String) {
-        invalid('every entry of `keys` needs an `id` and a `key`');
+      if (entry is! Map || entry['id'] is! String) {
+        invalid('every entry of `keys` needs an `id`');
+      }
+      final id = entry['id'] as String;
+      final kind = entry['kind'] ?? aesKeyKind;
+      if (kind is! String) invalid("the `kind` of key '$id' is not a string");
+      if (kind != aesKeyKind) {
+        final factory = _keyKinds[kind];
+        if (factory == null) {
+          invalid(
+            "the key '$id' is of kind '$kind', which no package registered; "
+            'known: ${[aesKeyKind, ..._keyKinds.keys].join(', ')}',
+          );
+        }
+        keys.add(await factory(id, entry.cast<String, Object?>()));
+        continue;
+      }
+      if (entry['key'] is! String) {
+        invalid("the key '$id' of kind `$aesKeyKind` needs a `key`");
       }
       // A `secret:` reference is resolved here, through the registered
       // providers, whether or not the configuration was substituted before.
       final key = entry['key'] as String;
       keys.add(
         TomAesKeyEncryptionKey.base64(
-          entry['id'] as String,
+          id,
           TomSecretReference.isReference(key)
               ? await TomSecrets.resolve(key)
               : key,

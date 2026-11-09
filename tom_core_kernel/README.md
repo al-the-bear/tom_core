@@ -47,7 +47,8 @@ serialized without hand-written boilerplate. Conceptually it provides five thing
   flags, timezone-aware timestamps, and ordered shutdown.
 - **Offline data** — server entities kept on the device, every change queued
   with the version it was based on, and a sync that pushes, settles conflicts
-  and pulls; the application supplies the device database.
+  and pulls over HTTP to a Tom server (`TomHttpSyncTransport`); the
+  application supplies the device database.
 
 ## Installation
 
@@ -136,7 +137,7 @@ handle declared so far so a missing binding fails at start-up.
 | `json` | map-merge, pretty-print helpers | JSON tree merge/serialization utilities |
 | `resources` | `TomTextResourceProvider`, `TomConfigResourceProvider` | Text and configuration resource resolution |
 | `settings` | `TomGetSettingsMessage`, `TomGetSettingsResult`, `TomFeatureFlags`, `TomRuleFlagProvider`, `TomFeatureFlagsClient` | The client-settings exchange, and feature flags: rules by tenant, role and stable percentage, read through an OpenFeature-shaped provider, and the `/feature-flags` API a client fetches its evaluated flags from |
-| `offline` | `TomLocalStoreEngine`, `TomLocalRepository`, `TomOfflineStore`, `TomSyncEngine`, `TomSyncTransport`, `TomMemorySyncServer` | Server entities cached on the device: a repository whose every write is queued with its base version, and a sync that pushes under optimistic locking, hands conflicts to the application's resolver and pulls by the server's change sequence. The device database is the application's, behind `TomLocalStoreEngine` |
+| `offline` | `TomLocalStoreEngine`, `TomLocalRepository`, `TomOfflineStore`, `TomSyncEngine`, `TomSyncTransport`, `TomMemorySyncServer`, `TomHttpSyncTransport`, `tomSyncApi` | Server entities cached on the device: a repository whose every write is queued with its base version, and a sync that pushes under optimistic locking, hands conflicts to the application's resolver and pulls by the server's change sequence. The device database is the application's, behind `TomLocalStoreEngine`. `tomSyncApi` declares the protocol as `POST /sync/push` and `POST /sync/pull`, which `tom_core_server`'s `sync` module serves and `TomHttpSyncTransport` calls |
 | `preferences` | `TomUserPreferenceKeys`, `TomUserPreferenceDto`, `TomUserPreferenceCodec`, `tomUserPreferencesApi` | The contract both preference stores bind to: well-known keys, wire DTOs, the value codec, and the `/preferences` API |
 | `shutdown_cleanup` | `TomShutdownCleanup`, `TomDisposable`, `TomClosable` | Ordered shutdown / cleanup hooks |
 | `timezoned` | `DateTimestamp`, timezone tables | Timezone-aware date/time |
@@ -397,7 +398,8 @@ the common dependency of the server and Flutter layers. See the
   series the framework records.
 - [`doc/offline/offline.md`](doc/offline/offline.md) — the device-side
   repository, the queue of pending changes, the sync flow and conflict
-  resolution, the protocol's server side, and writing an engine adapter.
+  resolution, the protocol's server side, the protocol over HTTP, and writing
+  an engine adapter.
 - Per-module API reference under [`doc/api/`](doc/api/) —
   one summary per barrel-exported module plus a cross-module type index; start at
   [`api_summary_index.md`](doc/api/api_summary_index.md).

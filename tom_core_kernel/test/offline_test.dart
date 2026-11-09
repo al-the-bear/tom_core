@@ -5,8 +5,14 @@
 /// overlapping sync leaves behind.
 library;
 
+import 'dart:convert';
+
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:test/test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
+
+import 'contracts/sync_protocol_contract.dart';
 
 class _Note {
   final String id;
@@ -20,28 +26,59 @@ final _codec = TomLocalEntityCodec<_Note>(
   idOf: (note) => note.id,
 );
 
-/// A transport around [server] that can run something in the middle of a
-/// push, and answer nothing for a push.
-class _Wire extends TomSyncTransport {
-  final TomMemorySyncServer server;
-  Future<void> Function()? duringPush;
-  bool silent = false;
+/// [TomMemorySyncServer] as the sync contract drives it: a `notes`
+/// collection that refuses an empty text.
+class _MemoryServer implements TomSyncContractServer {
+  final server = TomMemorySyncServer(
+    validate: (collection, data) =>
+        (data['text'] as String).isEmpty ? 'text.required' : null,
+  );
 
-  _Wire(this.server);
-
+  /// The transport: the server itself, or [TomHttpSyncTransport] over a
+  /// client that answers the sync API from it.
   @override
-  Future<List<TomPushResult>> push(List<TomPendingChange> changes) async {
-    if (silent) return const [];
-    final results = await server.push(changes);
-    final during = duringPush;
-    duringPush = null;
-    if (during != null) await during();
-    return results;
+  late TomSyncTransport transport = server;
+
+  _MemoryServer();
+
+  _MemoryServer.overHttp() {
+    transport = TomHttpSyncTransport(
+      baseUri: Uri.parse('http://sync.test'),
+      client: MockClient((request) async {
+        final body = (jsonDecode(request.body) as Map).cast<String, Object?>();
+        final Map<String, Object?> answer;
+        if (request.url.path == '/sync/push') {
+          final push = TomSyncPushRequest.fromJson(body);
+          answer = TomSyncPushResponse(
+            results: await server.push(push.changes),
+          ).toJson();
+        } else {
+          final pull = TomSyncPullRequest.fromJson(body);
+          answer = (await server.pull(
+            pull.collection,
+            pull.since,
+            limit: pull.limit,
+          )).toJson();
+        }
+        return http.Response(jsonEncode(answer), 200);
+      }),
+    );
   }
 
   @override
-  Future<TomPullBatch> pull(String collection, int since, {int limit = 500}) =>
-      server.pull(collection, since, limit: limit);
+  Future<int> put(String id, String text) async =>
+      server.put('notes', id, {'id': id, 'text': text});
+
+  @override
+  Future<void> remove(String id) async => server.remove('notes', id);
+
+  @override
+  Future<({String text, int version})?> note(String id) async {
+    final held = server.entity('notes', id);
+    return held == null
+        ? null
+        : (text: held.data['text']! as String, version: held.version);
+  }
 }
 
 void main() {
@@ -189,200 +226,100 @@ void main() {
     });
   });
 
-  group('syncing', () {
-    late TomMemorySyncServer server;
-    late _Wire wire;
-    late TomOfflineStore store;
-    late TomLocalRepository<_Note> notes;
-    TomConflictResolver? resolver;
+  runTomSyncContract('the in-memory server', () async => _MemoryServer());
 
-    TomSyncEngine engine({int pullLimit = 500}) => TomSyncEngine(
-      store: store,
-      transport: wire,
-      collections: ['notes'],
-      resolver: resolver,
-      pullLimit: pullLimit,
+  runTomSyncContract(
+    'the in-memory server over HTTP',
+    () async => _MemoryServer.overHttp(),
+  );
+
+  group('the HTTP transport', () {
+    test(
+      'posts to the routes of the sync API, with the bearer token',
+      () async {
+        final requests = <http.Request>[];
+        final transport = TomHttpSyncTransport(
+          baseUri: Uri.parse('https://api.example.com/base'),
+          client: MockClient((request) async {
+            requests.add(request);
+            return http.Response(
+              request.url.path.endsWith('/push')
+                  ? '{"results":[]}'
+                  : '{"changes":[],"cursor":7,"hasMore":false}',
+              200,
+            );
+          }),
+          headers: () => {'authorization': 'Bearer device-token'},
+        );
+        await transport.push(const []);
+        final batch = await transport.pull('notes', 7, limit: 3);
+        expect(batch.cursor, 7);
+        expect([for (final r in requests) r.method], ['POST', 'POST']);
+        expect(
+          [for (final r in requests) r.url.path],
+          ['/base/sync/push', '/base/sync/pull'],
+        );
+        expect(requests.last.headers['authorization'], 'Bearer device-token');
+        expect(jsonDecode(requests.last.body), {
+          'collection': 'notes',
+          'since': 7,
+          'limit': 3,
+        });
+      },
     );
 
-    setUp(() {
-      server = TomMemorySyncServer(
-        validate: (collection, data) =>
-            (data['text'] as String).isEmpty ? 'text.required' : null,
-      );
-      wire = _Wire(server);
-      store = TomOfflineStore(TomMemoryLocalStoreEngine());
-      notes = TomLocalRepository(
+    test('a sync whose server answers an error fails as a transport failure '
+        'and keeps the change', () async {
+      final store = TomOfflineStore(TomMemoryLocalStoreEngine());
+      final notes = TomLocalRepository(
         store: store,
         collection: 'notes',
         codec: _codec,
       );
-      resolver = null;
-    });
-
-    test('pushes new and changed entities, and takes the versions the '
-        'server answers', () async {
-      await notes.save(_Note('a', 'first'));
-      var report = await engine().sync();
-      expect(report.applied, hasLength(1));
-      expect(server.entity('notes', 'a')!.data['text'], 'first');
-      expect(await notes.versionOf('a'), 1);
-      expect(await store.pending(), isEmpty);
-
-      await notes.save(_Note('a', 'second'));
-      report = await engine().sync();
-      expect(server.entity('notes', 'a')!.version, 2);
-      expect(await notes.versionOf('a'), 2);
-
-      await notes.deleteById('a');
-      await engine().sync();
-      expect(server.entity('notes', 'a'), isNull);
-      expect(await notes.findById('a'), isNull);
-    });
-
-    test(
-      'pulls what changed on the server since the last sync, in pages',
-      () async {
-        for (var i = 1; i <= 5; i++) {
-          server.put('notes', 'n$i', {'id': 'n$i', 'text': 'server $i'});
-        }
-        var report = await engine(pullLimit: 2).sync();
-        expect(report.pulled['notes'], 5);
-        expect(await notes.count(), 5);
-        expect(await store.meta('cursor:notes'), 5);
-
-        server.remove('notes', 'n2');
-        server.put('notes', 'n3', {'id': 'n3', 'text': 'edited elsewhere'});
-        report = await engine().sync();
-        expect(report.pulled['notes'], 2, reason: 'only what changed since');
-        expect(await notes.findById('n2'), isNull);
-        expect((await notes.findById('n3'))!.text, 'edited elsewhere');
-        expect(await notes.versionOf('n3'), 2);
-      },
-    );
-
-    group('a conflict', () {
-      setUp(() async {
-        server.put('notes', 'a', {'id': 'a', 'text': 'original'});
-        await engine().sync();
-        // Both sides edit version 1.
-        await notes.save(_Note('a', 'device edit'));
-        server.put('notes', 'a', {'id': 'a', 'text': 'server edit'});
-      });
-
-      test('keeps the server\'s value by default, and reports the dropped '
-          'change', () async {
-        final report = await engine().sync();
-        expect(report.conflicts.single.serverVersion, 2);
-        expect(report.conflicts.single.serverData!['text'], 'server edit');
-        expect(report.discarded.single.data!['text'], 'device edit');
-        expect((await notes.findById('a'))!.text, 'server edit');
-        expect(await notes.versionOf('a'), 2);
-        expect(await store.pending(), isEmpty);
-      });
-
-      test('keeps the device\'s value when the application says so', () async {
-        resolver = (_) => TomConflictResolution.keepLocal;
-        final report = await engine().sync();
-        expect(report.conflicts, hasLength(1));
-        expect(report.applied, hasLength(1));
-        expect(server.entity('notes', 'a')!.data['text'], 'device edit');
-        expect(server.entity('notes', 'a')!.version, 3);
-        expect(await notes.versionOf('a'), 3);
-      });
-
-      test('pushes the application\'s merge', () async {
-        resolver = (conflict) => TomConflictResolution.merge({
-          'id': 'a',
-          'text':
-              '${conflict.serverData!['text']} + '
-              '${conflict.change.data!['text']}',
-        });
-        await engine().sync();
-        expect(
-          server.entity('notes', 'a')!.data['text'],
-          'server edit + device edit',
-        );
-        expect((await notes.findById('a'))!.text, 'server edit + device edit');
-        expect(await store.pending(), isEmpty);
-      });
-
-      test('with an entity the server deleted, keeping the server\'s state '
-          'removes it on the device', () async {
-        server.remove('notes', 'a');
-        final report = await engine().sync();
-        expect(report.conflicts.single.serverData, isNull);
-        expect(await notes.findById('a'), isNull);
-      });
-    });
-
-    test(
-      'a refused change gives the device the server\'s value back',
-      () async {
-        server.put('notes', 'a', {'id': 'a', 'text': 'valid'});
-        await engine().sync();
-        await notes.save(_Note('a', ''));
-        final report = await engine().sync();
-        expect(report.rejected.single.reason, 'text.required');
-        expect((await notes.findById('a'))!.text, 'valid');
-        expect(await store.pending(), isEmpty);
-      },
-    );
-
-    test(
-      'offline, a sync fails and keeps every change for the next one',
-      () async {
-        await notes.save(_Note('a', 'written offline'));
-        server.offline = StateError('no network');
-        await expectLater(
-          engine().sync(),
-          throwsA(
-            isA<TomOfflineException>().having(
-              (e) => e.key,
-              'key',
-              'offline.sync.transport_failed',
-            ),
+      await notes.save(_Note('a', 'kept'));
+      final engine = TomSyncEngine(
+        store: store,
+        transport: TomHttpSyncTransport(
+          baseUri: Uri.parse('https://api.example.com'),
+          client: MockClient((_) async => http.Response('', 503)),
+        ),
+        collections: ['notes'],
+      );
+      await expectLater(
+        engine.sync(),
+        throwsA(
+          isA<TomOfflineException>().having(
+            (e) => e.key,
+            'key',
+            'offline.sync.transport_failed',
           ),
-        );
-        expect(await store.pending(), hasLength(1));
-        server.offline = null;
-        await engine().sync();
-        expect(server.entity('notes', 'a')!.data['text'], 'written offline');
-      },
-    );
-
-    test(
-      'a pull does not overwrite a change still waiting to be pushed',
-      () async {
-        server.put('notes', 'a', {'id': 'a', 'text': 'v1'});
-        await engine().sync();
-        await notes.save(_Note('a', 'waiting'));
-        server.put('notes', 'a', {'id': 'a', 'text': 'v2 elsewhere'});
-        wire.silent = true; // the push goes unanswered
-        final report = await engine().sync();
-        expect(report.stillPending, 1);
-        expect((await notes.findById('a'))!.text, 'waiting');
-      },
-    );
-
-    test('a save made while a push is out stays queued, based on the new '
-        'version', () async {
-      await notes.save(_Note('a', 'pushed'));
-      wire.duringPush = () => notes.save(_Note('a', 'typed meanwhile'));
-      await engine().sync();
-      final queued = (await store.pending()).single.change;
-      expect(queued.data!['text'], 'typed meanwhile');
-      expect(queued.baseVersion, 1);
-      await engine().sync();
-      expect(server.entity('notes', 'a')!.data['text'], 'typed meanwhile');
-      expect(server.entity('notes', 'a')!.version, 2);
+        ),
+      );
+      expect(await store.pending(), hasLength(1));
     });
 
-    test('two syncs asked for at once run as one', () async {
-      await notes.save(_Note('a', 'once'));
-      final e = engine();
-      final reports = await Future.wait([e.sync(), e.sync()]);
-      expect(identical(reports.first, reports.last), isTrue);
-      expect(server.pushes, 1);
+    test('reads a refusal with its error key as a failed call', () async {
+      final transport = TomHttpSyncTransport(
+        baseUri: Uri.parse('https://api.example.com'),
+        client: MockClient(
+          (_) async => http.Response(
+            '{"errorKey":"$tomSyncUnknownCollectionErrorKey"}',
+            400,
+          ),
+        ),
+      );
+      await expectLater(
+        transport.pull('tasks', 0),
+        throwsA(
+          isA<TomOfflineException>()
+              .having((e) => e.key, 'key', 'offline.http.failed')
+              .having(
+                (e) => e.parameters!['errorKey'],
+                'errorKey',
+                tomSyncUnknownCollectionErrorKey,
+              ),
+        ),
+      );
     });
   });
 }

@@ -1,0 +1,36 @@
+-- Reference migration for the suppression list (`TomSqlSuppressionList`).
+--
+-- Creates `tom_message_suppression`: the addresses a carrier reported as
+-- permanently undeliverable, which no message is sent to until released. This
+-- file is the canonical DDL and is kept in sync with `suppressionTable()` in
+-- `lib/src/tomserver/messaging/suppression_sql.dart`;
+-- `test/framework_schema_test.dart` replays this chain and compares the schema
+-- it builds against the descriptor, so the two cannot drift apart.
+--
+-- Apply this file when the application's database user is not permitted to run
+-- DDL, and construct the list with `createSchema: false`. A list over a renamed
+-- table ships no migration of its own: call `suppressionTableDdl(name)` with
+-- the name you passed the constructor and apply what it returns.
+--
+-- Notes on the shape:
+--
+--  * `(channel, address)` is the primary key: one entry per normalised address
+--    on a channel — an email address lower-cased, a phone number reduced to its
+--    digits — so suppressing an address again replaces its entry.
+--  * the table is the deployment's, not a tenant's: an address a carrier
+--    refuses is refused for every tenant. `tenant` records whose message failed.
+--  * `suppressed_at` is indexed for listing the most recent first.
+--  * instants are DATETIME(6) and are always written in UTC.
+
+CREATE TABLE IF NOT EXISTS tom_message_suppression (
+  channel       VARCHAR(64)  NOT NULL,
+  address       VARCHAR(191) NOT NULL,
+  suppressed_at DATETIME(6)  NOT NULL,
+  message_id    VARCHAR(191) NULL,
+  remote_id     VARCHAR(191) NULL,
+  provider_code VARCHAR(64)  NULL,
+  detail        TEXT         NULL,
+  tenant        VARCHAR(32)  NULL,
+  PRIMARY KEY (channel, address),
+  KEY ix_tom_message_suppression_suppressed (suppressed_at)
+);

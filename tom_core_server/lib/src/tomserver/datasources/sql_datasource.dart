@@ -28,6 +28,7 @@ import 'dart:collection';
 import 'package:meta/meta.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../little_things/request_cache.dart';
 import '../little_things/server_exception.dart';
 import '../object_persistence/annotation_analyzer.dart';
 import '../object_persistence/field_encryption.dart';
@@ -1048,7 +1049,8 @@ abstract class TomSqlDatasource implements TomDataSource {
   ///
   /// With a tracer installed, a statement made in traced work — a request, a
   /// job run — is also a client span, following the OpenTelemetry database
-  /// conventions: named after the statement's first keyword (`SELECT`), with `db.system.name` ([dbSystemName]),
+  /// conventions: named after the statement's first keyword (`SELECT`) — or
+  /// `PREPARE` for preparing one — with `db.system.name` ([dbSystemName]),
   /// `db.operation.name`, `db.query.text` — the [statement] as written, with
   /// its placeholders and never a bound value — and `tom.datasource`, the
   /// registered name.
@@ -1059,7 +1061,13 @@ abstract class TomSqlDatasource implements TomDataSource {
   ]) async {
     final label = _operationLabels[operation] ?? operation;
     final labels = {'datasource': registeredName, 'operation': label};
-    final keyword = statement == null ? null : _firstKeyword(statement);
+    // Preparing a statement is named for what it is: each connection keeps
+    // what it prepared, so most prepares answer from that and run nothing.
+    final keyword = operation == 'prepareStatement'
+        ? 'PREPARE'
+        : statement == null
+        ? null
+        : _firstKeyword(statement);
     final span = TomTracing.start(
       keyword ?? label,
       kind: TomSpanKind.client,
@@ -1073,9 +1081,15 @@ abstract class TomSqlDatasource implements TomDataSource {
     );
     final watch = Stopwatch()..start();
     try {
-      return span == null
+      final result = span == null
           ? await body()
           : await TomTracing.within(span, () => TomTracing.ending(span, body));
+      // What the request has looked up may be stale after a write or a
+      // rollback: see TomRequestCache.
+      if (keyword != null && _changesData.contains(keyword)) {
+        TomRequestCache.invalidateAfter(statement!);
+      }
+      return result;
     } catch (_) {
       TomMetrics.registry
           .counter(
@@ -1131,6 +1145,24 @@ abstract class TomSqlDatasource implements TomDataSource {
 
   /// The statement's first word, upper-cased — `SELECT`, `INSERT`, `WITH` —
   /// or `null` for a statement that opens with none.
+  /// The first keywords of statements after which a request's cached
+  /// lookups ([TomRequestCache]) are dropped: writes, DDL, a rollback and
+  /// the two-phase verbs.
+  static const Set<String> _changesData = {
+    'INSERT',
+    'UPDATE',
+    'DELETE',
+    'REPLACE',
+    'MERGE',
+    'TRUNCATE',
+    'CREATE',
+    'ALTER',
+    'DROP',
+    'CALL',
+    'ROLLBACK',
+    'XA',
+  };
+
   static String? _firstKeyword(String statement) =>
       RegExp(r'^\s*([A-Za-z]+)').firstMatch(statement)?.group(1)?.toUpperCase();
 

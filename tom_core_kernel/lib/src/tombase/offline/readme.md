@@ -42,7 +42,11 @@ Hive, IndexedDB or a file; `TomMemoryLocalStoreEngine` is the in-memory one.
 | `TomConflictResolver` | The application's function from a `TomSyncConflict` to a `TomConflictResolution`. |
 | `TomSyncReport` | What a sync did: `applied`, `conflicts`, `discarded`, `rejected`, `pulled` per collection, `stillPending`. |
 | `TomMemorySyncServer` | The protocol's server side in memory: optimistic locking on the base version, a `validate` hook that rejects, `put` and `remove` as another client, a change sequence per collection, and an `offline` switch. The reference a server endpoint follows. |
-| `TomOfflineException` | The module's failures: `offline.store.closed`, `offline.document.not_json`, `offline.collection.reserved`, `offline.sync.transport_failed`. |
+| `TomHttpSyncTransport` | The transport to a Tom server: `push` and `pull` as `POST`s to `tomSyncApi` at a `baseUri`, with the bearer token or the headers a callback answers, through a `TomResilientClient`; a status other than `200` throws `offline.http.failed`. |
+| `tomSyncApi` / `registerTomSyncApi` | The protocol as a remote API: `POST /sync/push` and `POST /sync/pull` for an authenticated caller (`tomSyncApiId`, `tomSyncPushEndpointId`, `tomSyncPullEndpointId`; `tomSyncUnknownCollectionErrorKey` for a pull of an unknown collection). Both are `POST`s so a pull right after a push is answered by the primary, not a read replica. |
+| `TomSyncPushRequest` / `TomSyncPushResponse` / `TomSyncPullRequest` / `TomSyncPullResponse` | The API's bodies; `TomPendingChange`, `TomPushResult`, `TomPulledChange` and `TomPullBatch` carry their JSON forms. |
+| `TomSyncApiService` | The typed service interface behind `tomSyncApi`; `tom_core_server`'s `TomSyncServer` implements it. |
+| `TomOfflineException` | The module's failures: `offline.store.closed`, `offline.document.not_json`, `offline.collection.reserved`, `offline.sync.transport_failed`, `offline.http.failed`. |
 
 ## Quick start
 
@@ -87,9 +91,10 @@ server answers version 1, and the device's entity takes that version. A real
 application passes its own engine and a transport to its server in place of
 `TomMemoryLocalStoreEngine` and `TomMemorySyncServer`; nothing else changes.
 
-The server side of the protocol is not part of `tom_core_server`: a server
-answers `push` and `pull` as `TomMemorySyncServer` does — see
-[Not Yet Implemented](../../../../doc/offline/offline.md#not-yet-implemented).
+A Tom server serves the protocol through `tom_core_server`'s `sync` module,
+and a device reaches it with `TomHttpSyncTransport` in place of the in-memory
+server — see
+[The Protocol over HTTP](../../../../doc/offline/offline.md#the-protocol-over-http).
 
 ---
 

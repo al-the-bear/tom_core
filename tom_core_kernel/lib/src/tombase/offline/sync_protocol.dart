@@ -12,6 +12,9 @@ library;
 
 import 'dart:async';
 
+import 'http_sync_transport.dart';
+import 'memory_sync_server.dart';
+
 /// What a pending change does.
 enum TomChangeOperation {
   /// Create or replace the entity with the change's data.
@@ -139,6 +142,28 @@ class TomPushResult {
     this.serverData,
     this.reason,
   });
+
+  /// The result as JSON (how it travels).
+  Map<String, Object?> toJson() => {
+    'changeId': changeId,
+    'outcome': outcome.name,
+    'version': ?version,
+    'serverData': ?serverData,
+    'reason': ?reason,
+  };
+
+  /// Reads [toJson]'s form.
+  factory TomPushResult.fromJson(Map<String, Object?> json) => TomPushResult(
+    changeId: json['changeId']! as String,
+    outcome: TomPushOutcome.values.byName(json['outcome']! as String),
+    version: json['version'] as int?,
+    serverData: (json['serverData'] as Map?)?.cast<String, Object?>(),
+    reason: json['reason'] as String?,
+  );
+
+  @override
+  String toString() =>
+      'TomPushResult($changeId ${outcome.name} @${version ?? '-'})';
 }
 
 /// One change the server applied, as a device pulls it.
@@ -165,6 +190,23 @@ class TomPulledChange {
 
   /// Whether the change deleted the entity.
   bool get deleted => data == null;
+
+  /// The change as JSON (how it travels); `data` is `null` for a deletion.
+  Map<String, Object?> toJson() => {
+    'id': id,
+    'data': data,
+    'version': version,
+    'sequence': sequence,
+  };
+
+  /// Reads [toJson]'s form.
+  factory TomPulledChange.fromJson(Map<String, Object?> json) =>
+      TomPulledChange(
+        id: json['id']! as String,
+        data: (json['data'] as Map?)?.cast<String, Object?>(),
+        version: json['version']! as int,
+        sequence: json['sequence']! as int,
+      );
 }
 
 /// The answer to a pull: the changes after the cursor asked for, in sequence
@@ -185,12 +227,30 @@ class TomPullBatch {
     required this.cursor,
     this.hasMore = false,
   }) : changes = List.unmodifiable(changes);
+
+  /// The batch as JSON (how it travels).
+  Map<String, Object?> toJson() => {
+    'changes': [for (final change in changes) change.toJson()],
+    'cursor': cursor,
+    'hasMore': hasMore,
+  };
+
+  /// Reads [toJson]'s form.
+  factory TomPullBatch.fromJson(Map<String, Object?> json) => TomPullBatch(
+    changes: [
+      for (final change in json['changes']! as List)
+        TomPulledChange.fromJson((change as Map).cast<String, Object?>()),
+    ],
+    cursor: json['cursor']! as int,
+    hasMore: json['hasMore'] as bool? ?? false,
+  );
 }
 
 /// How a device reaches the server's sync endpoint.
 ///
-/// The framework defines the exchange; the transport is the wire (HTTP to the
-/// server, or [TomMemorySyncServer] in a test).
+/// The framework defines the exchange; the transport is the wire
+/// ([TomHttpSyncTransport] to a Tom server, or [TomMemorySyncServer] in a
+/// test).
 abstract class TomSyncTransport {
   /// Creates a transport.
   const TomSyncTransport();

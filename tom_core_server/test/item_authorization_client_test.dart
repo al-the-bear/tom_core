@@ -669,11 +669,10 @@ void main() {
         ),
       );
       expect(await source.writableResourceKeys(bob), ['document:b1']);
-      expect(
-        await source.writableResourceKeys(alice),
-        ['document:a1', 'document:a2'],
-        reason: 'report has no level that grants full',
-      );
+      expect(await source.writableResourceKeys(alice), [
+        'document:a1',
+        'document:a2',
+      ], reason: 'report has no level that grants full');
     });
 
     test('follows a revocation', () async {

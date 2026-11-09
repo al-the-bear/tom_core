@@ -36,6 +36,7 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import 'message.dart';
 import 'mime_encoder.dart';
+import 'suppression_list.dart';
 
 // =============================================================================
 // OUTCOME
@@ -56,6 +57,12 @@ enum TomDeliveryOutcome {
 
   /// Nothing was sent because the transport is a stand-in.
   discarded,
+
+  /// Nothing was sent because every recipient is on the suppression list
+  /// (`TomSuppressionList`): a carrier reported each address as undeliverable.
+  /// Final, like [rejected]: retrying cannot change it until an address is
+  /// released.
+  suppressed,
 }
 
 /// The result of one delivery attempt.
@@ -354,8 +361,18 @@ abstract class TomMessageTransport {
 class TomMessageRouter {
   final Map<String, TomMessageTransport> _transports = {};
 
-  /// Creates a router, optionally pre-registering [transports].
-  TomMessageRouter([Iterable<TomMessageTransport> transports = const []]) {
+  /// The addresses [send] leaves out, or `null` to send to every recipient.
+  ///
+  /// Consulted on every send rather than once, so an address a report
+  /// suppresses while messages are queued is left out of the next one.
+  TomSuppressionList? suppressions;
+
+  /// Creates a router, optionally pre-registering [transports] and consulting
+  /// [suppressions].
+  TomMessageRouter([
+    Iterable<TomMessageTransport> transports = const [],
+    this.suppressions,
+  ]) {
     transports.forEach(register);
   }
 
@@ -405,8 +422,50 @@ class TomMessageRouter {
   /// future-returning API invites — `.catchError`, or an `await` in a `try` —
   /// would otherwise never see the one failure it is most likely to hit in a
   /// half-configured deployment.
-  Future<TomDeliveryReceipt> send(TomMessage message) async =>
-      transportFor(message).send(message);
+  ///
+  /// With [suppressions], suppressed recipients are left out first. When every
+  /// recipient is suppressed, no transport is called and the receipt is
+  /// [TomDeliveryOutcome.suppressed]; when some are, the rest are sent to and
+  /// the suppressed ones are reported in
+  /// [TomDeliveryReceipt.rejectedRecipients].
+  Future<TomDeliveryReceipt> send(TomMessage message) async {
+    final transport = transportFor(message);
+    final list = suppressions;
+    if (list == null) return transport.send(message);
+    final suppressed = await list.suppressedAmong(
+      message.channel,
+      message.envelopeAddresses,
+    );
+    if (suppressed.isEmpty) return transport.send(message);
+    final remaining = [
+      for (final recipient in message.recipients)
+        if (!suppressed.contains(recipient.address)) recipient,
+    ];
+    final left = [
+      for (final recipient in message.recipients)
+        if (suppressed.contains(recipient.address)) recipient.address,
+    ];
+    if (remaining.isEmpty) {
+      return TomDeliveryReceipt(
+        messageId: message.id,
+        outcome: TomDeliveryOutcome.suppressed,
+        detail: tomSuppressedDetail(left.length),
+        rejectedRecipients: left,
+      );
+    }
+    final receipt = await transport.send(
+      message.copyWith(recipients: remaining),
+    );
+    return TomDeliveryReceipt(
+      messageId: receipt.messageId,
+      outcome: receipt.outcome,
+      remoteId: receipt.remoteId,
+      at: receipt.at,
+      detail: receipt.detail,
+      rejectedRecipients: [...receipt.rejectedRecipients, ...left],
+      tenant: receipt.tenant,
+    );
+  }
 
   /// Closes every registered transport.
   Future<void> close() async {

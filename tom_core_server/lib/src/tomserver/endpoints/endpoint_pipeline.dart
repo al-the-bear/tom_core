@@ -12,6 +12,7 @@ import '../audit/audit_record.dart';
 import '../datasources/read_replicas.dart';
 import '../audit/audit_trail.dart';
 import '../little_things/error_response.dart';
+import '../little_things/request_cache.dart';
 import '../little_things/server_exception.dart';
 import '../server/server.dart';
 import '../transactions/transaction_manager.dart';
@@ -1031,13 +1032,19 @@ class TomEndpointHandler {
     // guard rather than a second mechanism: a transactional endpoint makes sure
     // a scope exists instead of trusting the chain in front of it, because the
     // failure it prevents — one request committing another's work — is silent.
-    Future<Response> call(Request req) =>
-        metadata.transactionInfo == null ||
-            TomTransactionManager.hasTransactionScope
-        ? _handleMethodCallInScope(req)
-        : TomTransactionManager.runInTransactionScope(
-            () => _handleMethodCallInScope(req),
-          );
+    //
+    // The request's lookups — its row scopes, grants and delegations — are
+    // kept for the request (TomRequestCache): a handler asks them once per
+    // scoped statement, and the answer only changes when the request writes.
+    Future<Response> call(Request req) => TomRequestCache.run(
+      () =>
+          metadata.transactionInfo == null ||
+              TomTransactionManager.hasTransactionScope
+          ? _handleMethodCallInScope(req)
+          : TomTransactionManager.runInTransactionScope(
+              () => _handleMethodCallInScope(req),
+            ),
+    );
     // An idempotent endpoint answers a retried key from the stored response;
     // a preflight is the browser's question and carries no key worth keeping.
     final idempotent = metadata.idempotent;
@@ -1841,6 +1848,8 @@ class TomEndpointRouting {
     registerTomOAuthApi();
     registerTomFeatureFlagsApi();
     registerTomNotificationPreferencesApi();
+    registerTomSyncApi();
+    registerTomAuditReportsApi();
   }
 
   /// Scans the annotated classes and mounts every endpoint method onto a fresh

@@ -14,6 +14,7 @@ be expressed three ways — a parsed *query sentence*, a programmatically built
 - [The Repository Contract](#the-repository-contract)
   - [What a delete returns](#what-a-delete-returns)
   - [How a repository fails](#how-a-repository-fails)
+  - [Inserting under a key the caller chooses](#inserting-under-a-key-the-caller-chooses)
   - [Upserting by a unique key](#upserting-by-a-unique-key)
   - [Paging and Sorting](#paging-and-sorting)
   - [Lifecycle work](#lifecycle-work)
@@ -75,6 +76,7 @@ be expressed three ways — a parsed *query sentence*, a programmatically built
   - [What cannot be queried](#what-cannot-be-queried)
   - [Keys: envelope encryption](#keys-envelope-encryption)
   - [Installing a keyring](#installing-a-keyring)
+  - [Keys held by a key-management service](#keys-held-by-a-key-management-service)
   - [Rotating keys](#rotating-keys)
   - [The re-encryption pass](#the-re-encryption-pass)
   - [Encrypting a column that held plaintext](#encrypting-a-column-that-held-plaintext)
@@ -155,6 +157,7 @@ be expressed three ways — a parsed *query sentence*, a programmatically built
 | `TomFieldKeyring` | class | The data keys, unwrapped and cached; creates them, and rotates data keys, index keys and key-encryption keys |
 | `TomKeyEncryptionKey` | abstract class | What wraps the data keys; never touches the database |
 | `TomAesKeyEncryptionKey` | class | A key-encryption key held by the application: a 256-bit AES key, wrapping with AES-GCM |
+| `TomKeyEncryptionKeyFactory` | typedef | Builds the key-encryption key a `fieldEncryption.keys` entry of a registered kind describes |
 | `TomAesGcm` | abstract final class | AES-256-GCM with a random nonce: the one cipher of field encryption, data-key wrapping and the privacy module's sealing of audit values. Statics only |
 | `TomDataKeyStore` | abstract class | Where the wrapped data keys are kept |
 | `TomSqlDataKeyStore` / `TomMemoryDataKeyStore` | class | The data keys in `tom_encryption_key` of a data source resolved by name per call / in memory |
@@ -519,6 +522,33 @@ under `storage.migration.*` keys:
 | `storage.migration.no_file_columns` | The entity declares no `@TomFileReference` column. Named rather than swept, because a migration reporting "0 blobs" for an entity that stores none looks exactly like one that worked. |
 | `storage.migration.unknown_field` | `fields` names a column that is not a file column of the entity. |
 | `storage.migration.verification_failed` | A copy did not match what was read. The one failure a later pass cannot detect — the next run finds the key present and moves on — so it stops the migration rather than being reported. |
+
+### Inserting under a key the caller chooses
+
+`save` decides between `INSERT` and `UPDATE` by the key. A single key the
+database has not assigned yet inserts, and any other key updates. A key the
+caller chooses for a new row — a client-generated id, as an offline device
+creates entities with — is therefore never inserted by `save`: the update finds
+no row. `insert` writes such an entity as a new row:
+
+```dart
+final note = Note()
+  ..id = 'f3a1c2d4'
+  ..text = 'Written on the device';
+await notes.insert(note);
+```
+
+| Member | Returns | Description |
+| ------ | ------- | ----------- |
+| `insert(entity)` | `Future<T>` | Inserts `entity` as a new row, whatever its key holds, and returns the stored entity |
+
+`insert` runs the same write path as `save`: the lifecycle hooks with
+`insert: true`, the tenant and the
+[insert-side scope check](#reads-filter-writes-reject), the column grades, the
+version, encryption, audit, history and change listeners. The key is written
+as given. A row already holding it is refused by the table's primary key. A
+single key left unsaved is assigned by the database, as `save` would assign
+it.
 
 ### Upserting by a unique key
 
@@ -2418,6 +2448,9 @@ from wherever the deployment keeps secrets — typically a `secret:` reference
 resolved from Vault, AWS Secrets Manager or Azure Key Vault, which
 `TomFieldEncryption.configure` resolves through the registered providers (see
 [configuration.md](configuration.md#secret-references)).
+A key that never leaves a key-management service — AWS KMS, Vault Transit,
+Azure Key Vault — is another `TomKeyEncryptionKey`; see [Keys held by a
+key-management service](#keys-held-by-a-key-management-service).
 
 A `TomFieldKeyring` holds the key-encryption keys — the first is the
 **primary**, which wraps every data key it creates; the others only unwrap — and
@@ -2460,6 +2493,108 @@ defaults (for tests). `TomFieldEncryption.configure(settings)` builds and
 installs one from a `fieldEncryption` map. With no keyring installed, a write of
 an encrypted column — or a read of one holding ciphertext — fails with
 `field_encryption.not_configured` rather than storing plaintext.
+
+### Keys held by a key-management service
+
+Each entry of the configuration's `keys` list has an `id` and a `kind`. The kind
+`aes` (`TomFieldEncryption.aesKeyKind`) is the default and is built in: an
+application-held `TomAesKeyEncryptionKey`, whose entry carries `key` — the
+base64 of 32 bytes or a `secret:` reference to it. Any other kind is a key that
+never leaves a key-management service: `configure` hands the whole entry to the
+`TomKeyEncryptionKeyFactory` a package registered for that kind, and the factory
+builds the `TomKeyEncryptionKey`:
+
+```dart
+typedef TomKeyEncryptionKeyFactory =
+    Future<TomKeyEncryptionKey> Function(String id, Map<String, Object?> settings);
+
+TomFieldEncryption.registerKeyKind('my-hsm', (id, settings) async =>
+    MyHsmKeyEncryptionKey(id, slot: settings['slot']! as String));
+```
+
+`TomFieldEncryption.registerKeyKind(kind, factory)` registers a kind; a kind
+registered again has its factory replaced, and `aes` or an empty kind is
+refused with `field_encryption.config.invalid`. `TomFieldEncryption.keyKinds`
+lists the registered kinds besides `aes`. An entry whose kind nothing
+registered stops `configure` with `field_encryption.config.invalid`, naming the
+kinds that are known. A factory registers before `configure` runs — before
+`TomServer.start` applies `fieldEncryption`.
+
+[`tom_core_secrets`](../../../core_extension/tom_core_secrets/README.md)
+registers three kinds, each with one call from its library, and reaches the
+service with the credentials of the matching secrets provider:
+
+| Kind | Registered by | Wraps with |
+| ---- | ------------- | ---------- |
+| `aws-kms` | `TomAwsKmsKeyEncryptionKey.register()` (`aws.dart`) | AWS KMS `Encrypt` / `Decrypt`, the data key id bound as the encryption context |
+| `vault-transit` | `TomVaultTransitKeyEncryptionKey.register()` (`vault.dart`) | HashiCorp Vault Transit `encrypt` / `decrypt`, the data key id bound as associated data |
+| `azure-keyvault` | `TomAzureKeyVaultKeyEncryptionKey.register()` (`azure.dart`) | Azure Key Vault `wrapkey` / `unwrapkey`, the data key id bound into the wrapped bytes |
+
+```dart
+import 'dart:io';
+
+import 'package:tom_core_secrets/tom_core_secrets.dart';
+
+TomAwsKmsKeyEncryptionKey.register(environment: Platform.environment);
+TomVaultTransitKeyEncryptionKey.register(environment: Platform.environment);
+TomAzureKeyVaultKeyEncryptionKey.register(environment: Platform.environment);
+```
+
+One entry per kind:
+
+```yaml
+fieldEncryption:
+  datasource: main
+  keys:
+    - id: kms-2026
+      kind: aws-kms
+      kmsKeyId: alias/field-keys     # required: key id, ARN or alias
+      region: eu-central-1           # default: secrets.aws / AWS_REGION
+```
+
+```yaml
+fieldEncryption:
+  datasource: main
+  keys:
+    - id: transit-2026
+      kind: vault-transit
+      keyName: field-keys            # required: the Transit key
+      mount: transit                 # default
+```
+
+```yaml
+fieldEncryption:
+  datasource: main
+  keys:
+    - id: keyvault-2026
+      kind: azure-keyvault
+      keyName: field-keys            # required: the vault key
+      algorithm: RSA-OAEP-256        # default; RSA-OAEP; A256KW on a Managed HSM
+```
+
+The settings of each kind, the credentials and the failures
+(`secrets.kek.config.invalid`, `secrets.kek.failed`) are in the package's
+guides: [AWS KMS](../../../core_extension/tom_core_secrets/doc/aws_secrets.md#key-encryption-keys-for-field-encryption),
+[Vault Transit](../../../core_extension/tom_core_secrets/doc/vault_secrets.md#key-encryption-keys-for-field-encryption)
+and [Azure Key Vault](../../../core_extension/tom_core_secrets/doc/azure_secrets.md#key-encryption-keys-for-field-encryption).
+
+**Moving to a service key** is a key-encryption-key rotation: list the service
+key first and the application-held AES key after it, restart, and run
+`keyring.rewrap()` (in every tenant whose data keys are kept apart). The service
+key wraps every data key created from then on, and `rewrap` puts the existing
+ones under it; once it has run, the AES key can leave the list, and a node
+holding only the service key reads everything:
+
+```yaml
+fieldEncryption:
+  datasource: main
+  keys:
+    - id: kms-2026                   # primary: wraps every data key created
+      kind: aws-kms
+      kmsKeyId: alias/field-keys
+    - id: kek-2025                   # unwraps the data keys until rewrap has run
+      key: "secret:vault:secret/data/billing#fieldKek"
+```
 
 ### Rotating keys
 
@@ -2592,7 +2727,7 @@ deployment's keys rather than the caller's input.
 | `field_encryption.plaintext_refused` | An encrypted column held plaintext while `acceptPlaintext` is off. |
 | `field_encryption.unknown_kek` | A data key is wrapped under a key-encryption key the keyring was not given, or does not unwrap under it. |
 | `field_encryption.invalid_kek` | A key-encryption key has no id, too long an id, or not 32 bytes; or a keyring was given none. |
-| `field_encryption.config.invalid` | The `fieldEncryption` configuration has the wrong shape. |
+| `field_encryption.config.invalid` | The `fieldEncryption` configuration has the wrong shape, or a `keys` entry names a kind no package registered; or `registerKeyKind` was given `aes` or an empty kind. |
 | `field_encryption.no_datasource` | The data source a `TomSqlDataKeyStore`, or an entity the pass covers, names is not registered. |
 
 The four `annotation_analyzer.encryption.*` refusals are in

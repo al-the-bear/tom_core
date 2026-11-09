@@ -673,7 +673,6 @@ TomResourceDataScope(
 | ------ | --------- | ----------- |
 | `install` | `static TomResourceDataScope install(TomDelegationResolver delegationResolver, {DateTime Function()? now, String Function(TomPrincipal)? principalId})` | Builds the source and registers it as `TomDataScopeRegistry.resourceScopeSource`. Returns it, so a caller that also wants to hold or assert on it need not rebuild it. |
 | `uninstall` | `static void uninstall()` | Clears the registered source, returning the `resource` scope to deny-all. |
-| `runCached` | `static Future<T> runCached<T>(Future<T> Function() body)` | Runs `body` with the resolved roles cached per principal for its duration. A request typically resolves the scope once per repository call plus once for the write check; this collapses those into one read while keeping resolution live *between* requests — a revocation still takes effect on the next request, never mid-request. The cache lives in the zone, so it cannot outlive `body` or leak between concurrently-served requests. |
 
 #### Static Properties
 

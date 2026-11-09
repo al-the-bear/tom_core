@@ -1785,6 +1785,44 @@ class FixtureVersionedDoc {
 class FixtureVersionedDocRepository
     extends TomSqlDatasourceRepository<FixtureVersionedDoc, int> {}
 
+/// A note a device keeps a copy of: the entity the sync suite exposes as the
+/// `notes` collection.
+///
+/// A client-chosen `String` key, as a device creates entities offline, a
+/// `@TomVersion` column the push is checked against, and an `owner` scope, so
+/// a pull is seen to leave out another principal's notes. The owner is stamped
+/// by the suite's listener, never sent by a device.
+@tomReflector
+@TomDbTable(
+  datasource: 'tom_core_server_test',
+  table: 'fixture_sync_note',
+  primaryKeyFields: ['id'],
+)
+@TomDbScope(field: 'owner_id', scope: 'owner')
+class FixtureSyncNote {
+  /// The device-chosen key.
+  @TomEntityId()
+  @TomDbColumn(columnName: 'id')
+  String? id;
+
+  /// The row's version, maintained by the repository.
+  @TomVersion()
+  @TomDbColumn(columnName: 'version')
+  int? version;
+
+  /// The scope field: the qualified id of the principal that owns the note.
+  @TomDbColumn(columnName: 'owner_id')
+  String? ownerId;
+
+  /// The note's text.
+  @TomDbColumn(columnName: 'text')
+  String? text;
+}
+
+/// The repository for [FixtureSyncNote].
+class FixtureSyncNoteRepository
+    extends TomSqlDatasourceRepository<FixtureSyncNote, String> {}
+
 /// An entity with two `@TomVersion` fields — refused by the analyzer, because
 /// a row has one version.
 @tomReflector

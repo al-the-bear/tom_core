@@ -830,4 +830,3 @@ steps.
 | [messaging](messaging.md) | module | `notification.dart`, `notification_digests.dart`, `notification_dispatcher.dart`, `notification_preferences.dart`, `notification_renderer.dart` | `TomMessageChannel`, `TomRecipient`, `TomMessage`, `TomMessageBody`, and `TomMessageOutbox`, where every message goes |
 | [preferences](preferences.md) | module | `notification_preferences.dart` | `TomUserPreferences`, which stores the choices and answers role and deployment defaults beneath them |
 | [resources](resources.md) | module | `notification.dart`, `notification_digests.dart`, `notification_renderer.dart` | `TomLocalizedTextResources` and `TomTextLocale`, which every message is rendered through |
-| [scheduling](scheduling.md) | module | `notification_digests.dart` | `TomEventInstants`, the window instant of each digest's run |

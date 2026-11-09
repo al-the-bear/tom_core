@@ -920,8 +920,8 @@ The convergence check for the tables the **framework itself** owns
 (`frameworkOwnedTables`): scheduling, file storage, audit, OAuth state, SCIM
 resources, messaging delivery reports, the messaging inbox, the
 cache-invalidation log, the idempotency keys, the sagas, the field-encryption
-data keys, the privacy module's subject keys, the transaction decision log and
-the export register. A
+data keys, the privacy module's subject keys, the transaction decision log, the
+export register and the sync change log with its counters. A
 sibling of `TomSchemaConvergenceCheck` rather than the same class, because the
 application check can only run where an application's entities and migrations
 exist, while this one holds for the framework and is meaningful in an empty
@@ -1126,11 +1126,11 @@ here rather than on the dialect.
 
 | Name | Signature | Description |
 | ---- | --------- | ----------- |
-| `frameworkOwnedTables` | `List<TomFrameworkTable> frameworkOwnedTables({String jobRun = defaultJobRunTable, String lease = defaultLeaseTable, String schedulerNode = defaultSchedulerNodeTable, String jobPause = defaultJobPauseTable, String jobRunArchive = defaultJobRunArchiveTable, String blobManifest = defaultBlobManifestTable, String blobChunk = defaultBlobChunkTable, String blobLedger = defaultBlobLedgerTable, String blobContent = defaultBlobContentTable, String auditTrail = defaultAuditTrailTable, String oauthState = defaultOAuthStateTable, String deliveryReport = defaultDeliveryReportTable, String invalidation = defaultInvalidationTable, String scimResource = defaultScimResourceTable, String inbox = defaultInboxTable, String idempotency = defaultIdempotencyTable, String saga = defaultSagaTable, String encryptionKey = defaultEncryptionKeyTable, String subjectKey = defaultSubjectKeyTable, String decision = defaultDecisionTable, String exportRegister = defaultExportRegisterTable})` | Every table the framework owns, at the names it uses when nothing overrides them — so that "all of them" is a thing a caller can name rather than a list each caller assembles and each forgets to extend. A deployment that renames a table passes the corresponding argument. The dependency runs one way: this module reads the descriptors of `scheduling/`, `file_storage/`, `audit/`, `authentication/`, `messaging/`, `cache/`, `endpoints/`, `transactions/`, `object_persistence/`, `privacy/` and `export/`, and none of them reads back, so the scheduler runs without loading a migration. |
+| `frameworkOwnedTables` | `List<TomFrameworkTable> frameworkOwnedTables({String jobRun = defaultJobRunTable, String lease = defaultLeaseTable, String schedulerNode = defaultSchedulerNodeTable, String jobPause = defaultJobPauseTable, String jobRunArchive = defaultJobRunArchiveTable, String blobManifest = defaultBlobManifestTable, String blobChunk = defaultBlobChunkTable, String blobLedger = defaultBlobLedgerTable, String blobContent = defaultBlobContentTable, String auditTrail = defaultAuditTrailTable, String oauthState = defaultOAuthStateTable, String deliveryReport = defaultDeliveryReportTable, String invalidation = defaultInvalidationTable, String scimResource = defaultScimResourceTable, String inbox = defaultInboxTable, String idempotency = defaultIdempotencyTable, String saga = defaultSagaTable, String encryptionKey = defaultEncryptionKeyTable, String subjectKey = defaultSubjectKeyTable, String decision = defaultDecisionTable, String exportRegister = defaultExportRegisterTable, String syncChange = defaultSyncChangeTable, String syncSequence = defaultSyncSequenceTable})` | Every table the framework owns, at the names it uses when nothing overrides them — so that "all of them" is a thing a caller can name rather than a list each caller assembles and each forgets to extend. A deployment that renames a table passes the corresponding argument. The dependency runs one way: this module reads the descriptors of `scheduling/`, `file_storage/`, `audit/`, `authentication/`, `messaging/`, `cache/`, `endpoints/`, `transactions/`, `object_persistence/`, `privacy/`, `export/` and `sync/`, and none of them reads back, so the scheduler runs without loading a migration. |
 
 The signature names the defaulting constants rather than their values, and each
-is declared by the module that owns the table — so the twenty-one names the check
-actually covers in a deployment that renames nothing are spread across eleven other
+is declared by the module that owns the table — so the twenty-three names the check
+actually covers in a deployment that renames nothing are spread across twelve other
 modules. They are, parameter → constant → table name (owner):
 
 - `jobRun` → `defaultJobRunTable` → `tom_job_run` (Scheduling)
@@ -1154,3 +1154,5 @@ modules. They are, parameter → constant → table name (owner):
 - `subjectKey` → `defaultSubjectKeyTable` → `tom_subject_key` (Privacy)
 - `decision` → `defaultDecisionTable` → `tom_transaction_decision` (Transactions)
 - `exportRegister` → `defaultExportRegisterTable` → `tom_export` (Export)
+- `syncChange` → `defaultSyncChangeTable` → `tom_sync_change` (Sync)
+- `syncSequence` → `defaultSyncSequenceTable` → `tom_sync_sequence` (Sync)

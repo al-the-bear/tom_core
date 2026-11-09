@@ -30,8 +30,8 @@ dart run example/digest_composition_example.dart
 ```
 
 `test/examples_test.dart` runs it the same way and checks it.
-[The family's index](../README_advanced_sample.md#the-nine-packages) says which
-of the nine carry an `example/`, and why.
+[The family's index](../README_advanced_sample.md#the-ten-packages) says which
+of the ten carry an `example/`, and why.
 
 ## Why a third server
 
@@ -54,9 +54,9 @@ an abstraction: every job runs as a service account under a deliberately narrow
 server cap, and `test/ops_authorization_meet_test.dart` shows the *identical
 actor* refused work it could do uncapped.
 
-## The five pieces of recurring work
+## The six pieces of recurring work
 
-Four are scheduled jobs; the fifth is not, and that is the point.
+Five are scheduled jobs; the sixth is not, and that is the point.
 
 | Work | Schedule | Retry | Why that policy |
 | --- | --- | --- | --- |
@@ -64,6 +64,7 @@ Four are scheduled jobs; the fifth is not, and that is the point.
 | `ops.digest` | `0 6 * * *` | **none**, `missedWindow: skip` | the retry budget belongs to the outbox, per message; a digest delivered at noon is contradicted by the board the reader is looking at |
 | `ops.blobSweep` | `0 4 * * 0` | **none**, `missedWindow: skip` | the sweep is a predicate over the table, not a window — a missed run costs one week of orphaned chunks, which the next run takes |
 | `ops.report` | `0 5 * * 0` | 3 attempts | `allowOverlap: false` matters most here — two runs would render two windows under two date-partitioned keys |
+| `audit_reports.deliver` | every minute | none — a failed delivery is recorded in the trail and the question moves to its next time | the framework's audit-report delivery pass (`TomAuditReports.registerOn`): the saved questions the app server's `/audit-reports` API marks or schedules, rendered into the blob store under `audit-reports/` and mailed through the outbox, with the `audit_reports.delivery.*` texts of `assets/text_*.yaml` |
 | the anchor publisher | plain `Timer`, hourly | n/a | the trail is a hash chain **per writer**; a cluster-arbitrated anchor would leave every other node unanchored while the dashboard reported success |
 
 Job classes are four lines each. The scheduler instantiates a job per run with
@@ -287,8 +288,10 @@ undone. See
 
 `database_migrations/app_db/app_schema/[100]-ops_framework_tables.sql` creates
 `tom_job_run`, `tom_job_pause`, `tom_job_run_archive`, `tom_lease`,
-`tom_scheduler_node` and `tom_audit_trail`.
-`test/ops_framework_schema_test.dart` checks that file against the framework's
+`tom_scheduler_node` and `tom_audit_trail`; `[101]-ops_audit_reports.sql` creates
+`tom_audit_question`, the saved audit questions the app server's
+`/audit-reports` API keeps and this server delivers.
+`test/ops_framework_schema_test.dart` checks both files against the framework's
 own table descriptors, so a framework column added upstream fails here rather
 than at 03:00 in production.
 
@@ -308,10 +311,10 @@ Every public declaration the barrel (`lib/advanced_ops_server.dart`) exports,
 library by library, with its signature as the source declares it. The sections
 above are the narrative; this is the index. Annotations, initializer lists and
 bodies are left out — the schedule each job declares is in
-[The five pieces of recurring work](#the-five-pieces-of-recurring-work).
+[The six pieces of recurring work](#the-six-pieces-of-recurring-work).
 
 There is no `doc/` folder and no `doc/api/` summary: no sample carries one, a
-decision taken once for all seventeen in [the suite map](../README.md). This
+decision taken once for all eighteen in [the suite map](../README.md). This
 section is the reference instead, and `test/readme_api_reference_test.dart`
 holds it to the source in both directions — every line below must occur in its
 library, and every public declaration of an exported library must be listed.
@@ -395,6 +398,7 @@ The weekly export of completed items into the blob store.
 const Duration opsReportWindow
 const String opsReportFormat
 const String opsExportKeyPrefix
+const String opsAuditReportKeyPrefix
 class OpsReportOutcome
   const OpsReportOutcome({required this.from, required this.to, required this.rowCount, required this.stored})
   final DateTime from
@@ -518,13 +522,14 @@ Assembly: the scheduler, the outbox, the anchoring, and their start and close or
 const Duration opsTickInterval
 const Duration opsOutboxTickInterval
 class OpsRuntime
-  OpsRuntime({required this.scheduler, required this.outbox, required this.anchoring, required this.auditSink, this.nodes})
+  OpsRuntime({required this.scheduler, required this.outbox, required this.anchoring, required this.auditSink, this.nodes, this.auditReports})
   factory OpsRuntime.production({required TomDataSource datasource, required String nodeId, required TomMessageTransport transport, required Directory anchorDirectory, TomRecipient? digestSender, bool anchorStoreIsIndependent = false})
   final TomScheduler scheduler
   final TomMessageOutbox outbox
   final OpsAnchoring anchoring
   final TomAuditSink auditSink
   final TomSqlSchedulerNodes? nodes
+  final TomAuditReports? auditReports
   void registerServices({required OpsRetentionService retention, required OpsDigestService digest, required OpsReportService report, required OpsBlobSweepService blobSweep})
   Future<List<TomJobDefinition>> start()
   Future<void> close()
@@ -565,7 +570,7 @@ Fifteen suites; all but the two live ones, `ops_live_test.dart` and
 | `ops_anchor_test.dart` | the publisher's schedule — and that no `@TomScheduledJob` declares it |
 | `ops_jobs_test.dart` | every declared schedule, retry policy, timeout and overlap flag |
 | `ops_authorization_meet_test.dart` | `min(user, server)`: the same actor refused under the cap, the refusal recorded, and no retry requested |
-| `ops_framework_schema_test.dart` | `[100]` against the framework's table descriptors |
+| `ops_framework_schema_test.dart` | `[100]` and `[101]` against the framework's table descriptors |
 | `ops_migration_chain_test.dart` | that this package's file extends the app server's chain rather than forking it, and that neither side numbers outside its band |
 | `ops_blob_sweep_test.dart` | the orphan-chunk sweep's wiring: the service calls `purgeOrphanedChunks` and reports the count, and a store that cannot sweep is refused at wire-up rather than becoming a scheduled no-op |
 | `comments_read_as_is_test.dart` | that no comment under `lib/`, `bin/`, `test/`, `tool/` or `example/` cites a quest work item or narrates what the code used to do, and that every section number carries the document it belongs to |
@@ -573,11 +578,12 @@ Fifteen suites; all but the two live ones, `ops_live_test.dart` and
 | `examples_test.dart` | that `example/digest_composition_example.dart` runs under its documented command with no infrastructure: queued before delivered, `bob` in German and `carol` in English, the conditional lines only when true |
 | `readme_api_reference_test.dart` | that the README's `## API` section matches the source both ways: every listed signature occurs in its library, and every public declaration the barrel exports is listed |
 | `ops_live_test.dart` | **the consequences** — that the counted deletes produced audit rows, that the export bytes came back out of the database, that the scheduler's tables are the ones `[100]` built |
+| `ops_audit_reports_live_test.dart` | **an audit question delivered from the sample's trail** — records written to `app_db`'s `tom_audit_trail`, a question saved in `tom_audit_question` and marked for delivery, the pass delivering it as a CSV mail holding exactly the matching records, the question delivered once, and the delivery itself in the trail |
 | `ops_privacy_live_test.dart` | **a user exported and erased across both databases** — the subject-access export holds their account, role, workspace, both items and both comments; the erasure deletes what is theirs (their workspace's contents with it), unlinks them from the item they were assigned, keeps their comment in the other workspace's thread without their name or words, records the erasure, leaves their words `[erased]` in the audit trail while it still verifies, and finds nothing on a second run |
 
 ```sh
 dart test                                # every suite; the live ones skip
-./tool/run_ops_integration.sh            # boots both databases, applies [100], runs everything
+./tool/run_ops_integration.sh            # boots both databases, applies [100] and [101], runs everything
 ```
 
 The live suites *skip* when `app_db` is unreachable, so a laptop with no docker
@@ -587,5 +593,5 @@ loaders imported from the boot rather than copied — and skip per test through
 its `liveDatabaseUnavailable()`. A skip is only safe if something turns it back
 into a failure when the database was supposed to be there — that is the
 runner's job: it treats the string `All tests skipped` as a failure, boots both
-databases from fresh volumes, applies `[100]`, runs both live suites and then the
+databases from fresh volumes, applies `[100]` and `[101]`, runs the three live suites and then the
 connection-free ones, and tears everything down again.

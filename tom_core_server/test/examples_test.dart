@@ -134,6 +134,8 @@ const _stepCounts = <String, int>{
   'example/scheduling/scheduling_example.dart': 11,
   'example/server/graceful_shutdown_example.dart': 6,
   'example/server/server_example.dart': 6,
+  'example/sync/sync_example.dart': 4,
+  'example/audit_reports/audit_reports_example.dart': 5,
   'example/ratelimit/rate_limit_example.dart': 7,
   'example/tenancy/tenancy_example.dart': 8,
   'example/tracing/tracing_example.dart': 5,
@@ -551,24 +553,24 @@ void main() {
     });
   });
 
-  group('Every example transcript prints the steps it is recorded as having', () {
-    test('the manifest describes the directory, not a remembered version', () {
-      // Both directions, as everywhere else in this file: an example added
-      // later has no entry and fails here rather than running unmeasured, and
-      // an entry left behind after a deletion fails rather than describing a
-      // file that is gone.
-      expect(
-        _stepCounts.keys.toList()..sort(),
-        _examplePrograms()
-            .where((f) => !_notSpawnedHere.containsKey(f))
-            .toList(),
-      );
-    });
+  group(
+    'Every example transcript prints the steps it is recorded as having',
+    () {
+      test('the manifest describes the directory, not a remembered version', () {
+        // Both directions, as everywhere else in this file: an example added
+        // later has no entry and fails here rather than running unmeasured, and
+        // an entry left behind after a deletion fails rather than describing a
+        // file that is gone.
+        expect(
+          _stepCounts.keys.toList()..sort(),
+          _examplePrograms()
+              .where((f) => !_notSpawnedHere.containsKey(f))
+              .toList(),
+        );
+      });
 
-    for (final entry in _stepCounts.entries) {
-      test(
-        '${entry.key} prints ${entry.value} steps',
-        () async {
+      for (final entry in _stepCounts.entries) {
+        test('${entry.key} prints ${entry.value} steps', () async {
           final result = await Process.run(Platform.resolvedExecutable, [
             'run',
             entry.key,
@@ -588,11 +590,10 @@ void main() {
                 'belonged are both invisible to a `check` that throws: the run '
                 'stays green either way.',
           );
-        },
-        timeout: const Timeout(Duration(minutes: 2)),
-      );
-    }
-  });
+        }, timeout: const Timeout(Duration(minutes: 2)));
+      }
+    },
+  );
 
   group('Every remaining example runs green', () {
     // Under exactly the command its header documents — plain `dart run`, no

@@ -520,14 +520,10 @@ void main() {
         await tester.tap(find.text('sum-1:B'));
         await tester.pumpAndSettle();
 
-        expect(
-          calls,
-          [
-            [0, false],
-            [1, true],
-          ],
-          reason: 'the implicit collapse is offered before the explicit open',
-        );
+        expect(calls, [
+          [0, false],
+          [1, true],
+        ], reason: 'the implicit collapse is offered before the explicit open');
       },
     );
 

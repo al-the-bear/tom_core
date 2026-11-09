@@ -29,6 +29,9 @@ conflicts with the application's rules, and pulls what changed on the server.
   - [Refusals](#refusals)
 - [Pulls](#pulls)
 - [The Protocol's Server Side](#the-protocols-server-side)
+- [The Protocol over HTTP](#the-protocol-over-http)
+  - [The API contract](#the-api-contract)
+  - [The HTTP transport](#the-http-transport)
 - [Writing an Engine Adapter](#writing-an-engine-adapter)
 - [Error Keys](#error-keys)
 - [Not Yet Implemented](#not-yet-implemented)
@@ -58,12 +61,22 @@ conflicts with the application's rules, and pulls what changed on the server.
 | `TomSyncReport` | class | What one sync did. |
 | `TomSyncEngine` | class | Push, resolve, pull. |
 | `TomMemorySyncServer` | class | The protocol's server side in memory: the reference semantics, and a transport for tests. |
+| `TomHttpSyncTransport` | class | The transport to a Tom server: `push` and `pull` as `POST`s to the sync API. |
+| `tomSyncApi` | final TomApi | The sync API's declaration: `POST /sync/push` and `POST /sync/pull`, for an authenticated caller. |
+| `TomSyncApiService` | abstract class | The typed service interface behind `tomSyncApi`; a server implements it. |
+| `TomSyncPushRequest` / `TomSyncPushResponse` | class | A push's body and its answer: the changes, and one result per change. |
+| `TomSyncPullRequest` / `TomSyncPullResponse` | class | A pull's body (collection, cursor, limit) and its answer, a `TomPullBatch`. |
+| `registerTomSyncApi` | function | Registers `tomSyncApi` in the remote-API registry; idempotent. |
+| `tomSyncApiId` / `tomSyncPushEndpointId` / `tomSyncPullEndpointId` / `tomSyncUnknownCollectionErrorKey` | const String | The API's id, its endpoints' ids, and `sync.collection.unknown`. |
 | `TomOfflineException` | class | The module's failures, with `offline.*` keys. |
 
 Tom defines how cached entities are read and synced, and never picks the device
 database. An application implements `TomLocalStoreEngine` over SQLite, Isar,
 Hive, IndexedDB or a file; everything above the engine is the same whichever it
 chose. The module has no `dart:io` import and compiles for the web.
+
+`tom_core_server` serves the protocol through its `sync` module, and
+`TomHttpSyncTransport` is the device's way to it.
 
 ## Quick Start
 
@@ -114,7 +127,8 @@ Future<void> main() async {
 ```
 
 In an application the engine is the adapter over its database, and the
-transport is the client of its server's sync endpoint.
+transport is `TomHttpSyncTransport` to its server (see
+[The Protocol over HTTP](#the-protocol-over-http)).
 
 ### Runnable examples
 
@@ -409,6 +423,71 @@ reference a server endpoint follows, and the transport tests sync against:
 - **Testing aids.** `pushes` counts the pushes received; setting `offline` to
   an error makes every push and pull throw it.
 
+`tom_core_server`'s `sync` module serves the protocol with the same semantics
+over the entities' repositories (see its `doc/sync.md`). The sync contract,
+`test/contracts/sync_protocol_contract.dart` (`runTomSyncContract`), holds
+both to them: `test/offline_test.dart` runs it against `TomMemorySyncServer`
+directly and over HTTP, and `tom_core_server`'s `test/sync_db_test.dart`
+against a Tom server on MariaDB and PostgreSQL.
+
+## The Protocol over HTTP
+
+### The API contract
+
+`tomSyncApi` declares the protocol as a remote API, so the route a server
+serves and the URI a device calls are one declaration:
+
+```json
+POST /sync/push   {"changes": [<TomPendingChange.toJson>, ...]}
+  → {"results": [<TomPushResult.toJson>, ...]}
+POST /sync/pull   {"collection": "notes", "since": 12, "limit": 500}
+  → {"changes": [<TomPulledChange.toJson>, ...], "cursor": 14,
+     "hasMore": false}
+```
+
+Both endpoints are `TomAuthenticatedAccess`. `TomSyncPushRequest`,
+`TomSyncPushResponse`, `TomSyncPullRequest` and `TomSyncPullResponse` are the
+bodies; `TomPendingChange`, `TomPushResult`, `TomPulledChange` and
+`TomPullBatch` carry their own `toJson` and `fromJson`. A pulled deletion
+travels with `"data": null`. `TomSyncApiService` is the typed interface a server
+implements; `tom_core_server`'s `TomSyncServer` is that implementation.
+
+**Both endpoints are `POST`s, the pull included.** A pull is a read, but it is
+the read a device makes right after its own push and has to see that push. A
+`GET` is read-only work, which a server with read replicas answers from a
+replica that may not have the push yet.
+
+A pull of a collection the server does not sync is refused with `400` and the
+error key `sync.collection.unknown` (`tomSyncUnknownCollectionErrorKey`). A
+pushed change of such a collection is answered `rejected` with that reason.
+
+### The HTTP transport
+
+```dart
+final sync = TomSyncEngine(
+  store: store,
+  transport: TomHttpSyncTransport(baseUri: Uri.parse('https://api.example.com')),
+  collections: ['notes'],
+);
+```
+
+`TomHttpSyncTransport({baseUri, client, headers})` calls the API at `baseUri`,
+the server root; the API's own path is appended from the contract. Every
+request carries the headers the `headers` callback answers, computed per
+request so a rotating credential is current. Without an `Authorization` among
+them, the bearer token of `TomBearerAuthentication` is sent.
+
+Requests go through `client`, by default a `TomResilientClient`. A push is not
+idempotent at the HTTP level, so the client does not retry it. A failed push
+leaves the changes queued for the next sync, which the server answers by their
+base versions.
+
+A status other than `200` throws `TomOfflineException` with the key
+`offline.http.failed`, carrying the endpoint, the status and the error key of
+the server's error envelope when it has one. The sync engine reports a failed
+pull as `offline.sync.transport_failed` and a failed push unchanged, and keeps
+every change. `close()` closes the HTTP client.
+
 ## Writing an Engine Adapter
 
 An adapter keeps the [engine contract](#the-engine-contract): JSON documents in
@@ -503,20 +582,13 @@ Every failure is a `TomOfflineException` (extends `TomException`).
 | `offline.document.not_json` | A document holds a value JSON cannot encode. | `collection`, `id` |
 | `offline.collection.reserved` | A repository or sync engine was given an empty collection name or one starting with `_tom`. | `collection` |
 | `offline.sync.transport_failed` | The transport threw during a sync's push or pull. The queue is intact. | `changes` (push); `collection`, `since` (pull) |
+| `offline.http.failed` | `TomHttpSyncTransport`'s request was answered with a status other than `200`. | `endpoint`, `status`, `errorKey` (when the answer carried one) |
 
 ## Not Yet Implemented
 
-- **The server side of the protocol is not part of `tom_core_server`.** There
-  is no sync endpoint and no version or change-sequence support in the server's
-  persistence. A server that devices sync with implements `push` and `pull`
-  itself, with the semantics of `TomMemorySyncServer`: a version per entity,
-  optimistic locking on the base version, and a change sequence per collection
-  that records deletions.
-  <!-- unpinned: absence — tom_core_server has no sync endpoint -->
-- **No transport over HTTP.** `TomSyncTransport` has one implementation,
-  `TomMemorySyncServer`. An application writes the client of its server's sync
-  endpoint.
-  <!-- unpinned: absence — the only TomSyncTransport is TomMemorySyncServer -->
+- **No live updates.** A device learns of a server change when it pulls; the
+  protocol has no channel on which the server announces one.
+  <!-- unpinned: absence — the protocol has push and pull only -->
 - **No queries beyond ids.** `TomLocalRepository` reads by id and reads
   everything; it has no criteria, sorting or paging of the server
   `TomRepository`. An application filters `findAll()`, or queries its engine's
@@ -536,10 +608,14 @@ Every failure is a `TomOfflineException` (extends `TomException`).
 
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
-| `dart:async` | dart | every file | `Completer`, `Zone` and `runZoned` for the in-memory engine's serialised, joinable transactions; `FutureOr` in `TomConflictResolver` |
-| `dart:convert` | dart | `local_store.dart`, `sync_engine.dart` | `jsonEncode` / `jsonDecode`, how the in-memory engine stores documents and how the sync engine compares a queued change with the one it pushed |
+| `dart:async` | dart | `local_repository.dart`, `local_store.dart`, `memory_sync_server.dart`, `sync_engine.dart`, `sync_protocol.dart` | `Completer`, `Zone` and `runZoned` for the in-memory engine's serialised, joinable transactions; `FutureOr` in `TomConflictResolver` |
+| `dart:convert` | dart | `http_sync_transport.dart`, `local_store.dart`, `sync_engine.dart` | `jsonEncode` / `jsonDecode`, how the in-memory engine stores documents, how the sync engine compares a queued change with the one it pushed, and the HTTP transport's bodies; `utf8` to read an answer |
+| `http` | package | `http_sync_transport.dart` | `Client` and `Response`, the HTTP transport's requests |
+| [http_connection](../http_connection/http_connection.md) | module | `http_sync_transport.dart`, `sync_contract.dart` | `TomApi`, `TomApiEndpoint` and `tomRemoteApis`, the sync API's declaration and registration; `TomHttpMethod`; `TomResilientClient`, the transport's default client |
+| [json](../json/json.md) | module | `sync_contract.dart` | `TomJsonSerializable`, which the API's bodies implement |
 | [little_things](../little_things/little_things.md) | module | `local_store.dart` | `TomException`, the base of `TomOfflineException` |
+| [reflection](../reflection/reflection.md) | module | `sync_contract.dart` | `tomReflector` on the API's bodies, so the server's pipeline binds them |
+| [security](../security/security.md) | module | `http_sync_transport.dart`, `sync_contract.dart` | `TomAuthenticatedAccess` on both endpoints; `TomBearerAuthentication.token`, the transport's default credential |
 
-The module imports no other module and nothing from `dart:io`, so it compiles
-for the web. It does not import `tom_core_server`: `TomLocalRepository` mirrors
+The module imports nothing from `dart:io`, so it compiles for the web. It does not import `tom_core_server`: `TomLocalRepository` mirrors
 the server's `TomRepository` by its operations, not by a shared type.

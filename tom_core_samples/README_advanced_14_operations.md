@@ -34,9 +34,10 @@ demonstrated from inside either one:
 | the repository is the audit chokepoint | `audit.md` | a machine's 03:00 delete produces the same trail a human's would |
 | the blob store's orphan sweep needs a schedule | `file_storage.md` § *Sweeping the database backend's residue* | `ops.blobSweep` runs it weekly, after what creates the residue and before what adds rows that cannot be orphans |
 
-The server runs five pieces of recurring work. Four are `@TomScheduledJob`s;
-the fifth deliberately is not, and the difference is the most instructive thing
-in this part.
+The server runs six pieces of recurring work. Four are `@TomScheduledJob`s
+of the sample's own and one is a framework job the sample registers; the sixth
+deliberately is not a job, and the difference is the most instructive thing in
+this part.
 
 | Work | Schedule | Retry policy | The reasoning |
 | --- | --- | --- | --- |
@@ -44,6 +45,7 @@ in this part.
 | `ops.digest` | `0 6 * * *` | **`TomRetryPolicy.none`**, `missedWindow: skip` | the retry budget belongs to the outbox, per message. Skipping a missed window because a summary of yesterday's open work, delivered at noon after an outage, is a mail contradicted by the board its reader is already looking at. |
 | `ops.blobSweep` | `0 4 * * 0` | **`TomRetryPolicy.none`**, `missedWindow: skip` | the one maintenance operation `TomDatabaseBlobStore` admits it needs, and until this job it had no caller outside the framework's own tests. Weekly because the residue accumulates at the rate of a *failed* cleanup, not of the deletions; between the purge and the report because the purge is where the residue comes from and the report only adds rows that cannot be orphans yet. No retry and no recovery: the sweep is a predicate over the table rather than a window, so a missed run costs one week of rows and the next run takes them. |
 | `ops.report` | `0 5 * * 0` | 3 attempts | `allowOverlap: false` matters more here than anywhere: two concurrent runs compute two windows, render two reports, and store them under two date-partitioned keys — leaving a reader to guess which of two plausible files is the week's. |
+| `audit_reports.deliver` | every minute | none | the framework's audit-report delivery pass, registered with `TomAuditReports.registerOn`: the saved questions an auditor marks or schedules through the app server's `/audit-reports` API, delivered as exports by email. A failed delivery is recorded in the trail and the question waits for its next scheduled time rather than being retried every minute. See [`audit_reports.md`](../tom_core_server/doc/audit_reports.md). |
 | the anchor publisher | a plain `Timer`, hourly | — | see below. |
 
 ### Why the anchor publisher is not on the scheduler

@@ -381,11 +381,9 @@ void main() async {
           final late_ = at.add(const Duration(minutes: 5));
           await roll.checkIn(late_);
           final failed = await roll.failedNodes(late_);
-          expect(
-            failed.map((n) => n.nodeId),
-            ['node-b'],
-            reason: 'a node never reports itself failed',
-          );
+          expect(failed.map((n) => n.nodeId), [
+            'node-b',
+          ], reason: 'a node never reports itself failed');
         },
       );
 

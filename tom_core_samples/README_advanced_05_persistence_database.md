@@ -295,7 +295,7 @@ them outside `dev`/`test`:
 | Database | Schema (DDL, untagged) | Admin seed (untagged — all envs) | Demo seeds (`@dev,test` — dev/test only) |
 | --- | --- | --- | --- |
 | `app_db` | `[000]-app_core_schema.sql` (7 `CREATE TABLE`s) · `[002]-app_file_columns.sql` (the two `@TomFileReference` key columns) · `[003]-app_blob_tables.sql` (`tom_blob`, `tom_blob_chunk`) · `[004]-app_thread_ordering_indexes.sql` (the comment/checklist ordering indexes) · **`[100]-ops_framework_tables.sql`** (`tom_job_run`, `tom_job_pause`, `tom_job_run_archive`, `tom_lease`, `tom_scheduler_node`, `tom_audit_trail` — shipped by `advanced_ops_server`, not by the app server) | — (no admin rows in `app_db`) | `[001]-app_demo_seed@dev,test.sql` |
-| `auth_db` | `[000]-auth_core_schema.sql` (identity tables) · `[001]-auth_authz_grants.sql` (`tom_resource_grant`) · `[004]-auth_two_factor_columns.sql` (the two second-factor columns) · `[006]-auth_blob_tables.sql` (`tom_blob`, `tom_blob_chunk`) · `[007]-auth_two_factor_enrolments.sql` (`tom_user_two_factor_enrolment`) · `[008]-auth_user_language_columns.sql` (the stored language pair) | `[002]-auth_admin_seed.sql` (admin user + `admin` role + assignment) | `[003]-auth_demo_seed@dev,test.sql` · `[005]-auth_two_factor_seed@dev,test.sql` · `[009]-auth_user_language_seed@dev,test.sql` |
+| `auth_db` | `[000]-auth_core_schema.sql` (identity tables) · `[001]-auth_authz_grants.sql` (`tom_resource_grant`) · `[004]-auth_two_factor_columns.sql` (the two second-factor columns) · `[006]-auth_blob_tables.sql` (`tom_blob`, `tom_blob_chunk`) · `[007]-auth_two_factor_enrolments.sql` (`tom_user_two_factor_enrolment`) · `[008]-auth_user_language_columns.sql` (the stored language pair) | `[002]-auth_admin_seed.sql` (admin user + `admin` role + assignment) | `[003]-auth_demo_seed@dev,test.sql` · `[005]-auth_two_factor_seed@dev,test.sql` · `[009]-auth_user_language_seed@dev,test.sql` · `[010]-auth_auditor_seed@dev,test.sql` (the `auditor` role and `audrey`) |
 
 **`app_db` is the one chain with two contributing packages, and its numbering is
 banded rather than contiguous.** The engine matches a chain to a database by the
@@ -367,7 +367,7 @@ format (part [06](README_advanced_06_authentication.md)).
 > **Verified.** Booting both databases from a fresh volume under `dev`/`test`
 > applies every migration in order and lands every seed row (app: 1 workspace / 1
 > project / 2 lists / 3 items / 1 comment / 2 subtasks / 2 shares; auth: 6 users —
-> <!-- account-roster: auth-db -->`admin`, `alice`, `bob`, `carol`, TOTP-enrolled `dave` and enrollable `erin`<!-- /account-roster --> —
+> <!-- account-roster: auth-db -->`admin`, `alice`, `bob`, `carol`, TOTP-enrolled `dave`, enrollable `erin` and the auditor `audrey`<!-- /account-roster --> —
 > / 7 roles / 3 user-roles / 1 group / 2 members / 32 grants), and the
 > cross-tier scenario stays green. A **production** apply runs only the untagged
 > migrations — the schema (including `[004]`'s second-factor columns) plus

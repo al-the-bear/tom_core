@@ -22,8 +22,7 @@ both are verified against the kernel's own parameterised contract suite (see
 observes *nodes* rather than leases, and nodes exist only where there is a
 cluster.
 
-## Quick start
-
+x
 Two things have to be in place before the queue will answer, and the *third*
 thing you might expect is not one of them — the tables create themselves.
 
@@ -257,9 +256,12 @@ holds.
 
 Three constraints carry the design:
 
-- **`UNIQUE (job_name, tenant, scheduled_for)`** makes the scheduler's
+- **`UNIQUE (job_name, tenant, window_at)`** makes the scheduler's
   idempotence key — one run per job per window, per tenant — a database
   invariant rather than a convention. `tenant` is `''` for a run of no tenant.
+  `window_at` is `scheduled_for` for a windowed run and `NULL` for a run
+  enqueued under an id of its own; a unique key holds any number of `NULL`s, so
+  such runs never meet on it.
 - **`tom_lease.version`**, incremented on every write, exists because MariaDB
   reports *changed* rows, not matched rows (PostgreSQL reports matched ones). Without it a renewal landing in the
   same clock instant with the same TTL would report zero affected rows, look
@@ -281,13 +283,15 @@ still precedes any statement.
 
 ## Runs enqueued outside a schedule
 
-A store keeps one run per job, tenant and scheduled instant — `tom_job_run`'s
-unique key, and a run is written with a replacing write. A component that
-enqueues runs itself rather than through a schedule — the messaging outbox, the
-saga orchestrator — takes each run's instant from `TomEventInstants.next(now)`:
-the clock's reading, or one microsecond past the last instant it gave out, so
-two runs of one job queued in the same microsecond do not share a key and the
-second does not replace the first. It holds within one isolate.
+A windowed run (`TomJobRun.windowed`, the scheduler's planned runs) realises a
+window: one run per job, tenant and scheduled instant, `tom_job_run`'s unique
+key on `window_at`. A component that enqueues runs itself rather than through a
+schedule — the messaging outbox, the bus relay, the saga orchestrator, the
+notification digests — enqueues with `windowed: false` under an id of its own.
+The id is the run's idempotence key, found with `findRun`; the row's
+`window_at` is `NULL`, so two such runs of one job and tenant enqueued in the
+same instant, on two nodes, are two runs. `findWindow` and `lastWindow` read
+`window_at` and so see windowed runs only.
 
 ## Queueing in a transaction
 

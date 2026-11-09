@@ -365,11 +365,10 @@ void main() {
             ),
           )
           .toList();
-      expect(
-        boxes.map((b) => b.value),
-        [true, false],
-        reason: 'position order is preserved and s-1 is the done one',
-      );
+      expect(boxes.map((b) => b.value), [
+        true,
+        false,
+      ], reason: 'position order is preserved and s-1 is the done one');
     },
   );
 

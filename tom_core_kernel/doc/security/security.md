@@ -42,6 +42,7 @@ The security module provides a comprehensive authentication and authorization sy
   - [What lives here, and what does not](#what-lives-here-and-what-does-not)
   - [The endpoints](#the-endpoints)
   - [Driving it from a client](#driving-it-from-a-client)
+- [Audit Reports](#audit-reports)
 - [Usage Examples](#usage-examples)
   - [Role-Based Access Control](#role-based-access-control)
   - [Entitlement-Based Access Control](#entitlement-based-access-control)
@@ -119,6 +120,10 @@ The security module provides a comprehensive authentication and authorization sy
 | `TomOAuthAuthorizationRequest` | class | The request that starts an authorization-code flow. |
 | `TomOAuthCallbackRequest` | class | What the provider's redirect carried back, forwarded by the application. |
 | `TomOAuthProviderDto` | class | One configured external-identity provider, as a client sees it. |
+| `TomAuditReportsApiService` | abstract class | The typed service interface behind `tomAuditReportsApi`. |
+| `TomAuditReportQueryRequest` / `TomAuditReportResultDto` / `TomAuditReportEntryDto` | classes | A question asked once, and its answer across the writers of the audit trail. |
+| `TomAuditQuestionDto` / `TomAuditQuestionsDto` / `TomAuditQuestionIdRequest` | classes | A saved question, the caller's list of them, and the id one route names. |
+| `TomAuditReportWritersDto` | class | The writers (hash chains) the audit trail holds. |
 | `TomProtectedField` | class | Marks a reflected field as protected by `resourceKey`. |
 | `TomProtectionSettingException` | class | Raised when a protection setting cannot be applied: a name in the `tom.protection` namespace that is not a switch, or a value that is not `true` or `false`. |
 | `TomTokenLifetimeException` | class | A token refused because it is not live: expired, carrying no usable `exp`, or contradicting itself about when it expires. |
@@ -136,6 +141,7 @@ The security module consists of these main files:
 | `two_factor.dart` | The shared half of the two-pass login — the challenge and enrolment wire shapes, their claim names, the method descriptor, and the TOTP primitives |
 | `server_principal.dart` | The ambient server principal — the deployment's own identity, which caps every user's grants |
 | `oauth_contract.dart` | The wire contract for external-identity login — the provider/authorization/callback DTOs and the `/oauth` API declaration both tiers bind to |
+| `audit_reports_contract.dart` | The wire contract for audit reports — the `auditor` role, the question and answer DTOs and the `/audit-reports` API declaration both tiers bind to |
 
 This document explains the module by *concept* and shows the calls each concept
 is used through. It is not an exhaustive member list: for the full signature of
@@ -1407,6 +1413,43 @@ and it never sees an issuer, client id, secret or scope.
 
 ---
 
+## Audit Reports
+
+`audit_reports_contract.dart` is what an auditor's application and a Tom server
+share about the audit trail: `tomAuditReportsApi` under `/audit-reports`, every
+endpoint requiring `tomAuditorAccess` — the role `tomAuditorRole`, `auditor`.
+`tom_core_server`'s `audit_reports` module implements it; a client calls it at
+the addresses the declaration resolves.
+
+| Route | Body | Answer |
+| ----- | ---- | ------ |
+| `GET /audit-reports/writers` | — | `TomAuditReportWritersDto` |
+| `POST /audit-reports/query` | `TomAuditReportQueryRequest` | `TomAuditReportResultDto` |
+| `GET /audit-reports/questions` | — | `TomAuditQuestionsDto` |
+| `PUT /audit-reports/questions` | `TomAuditQuestionDto` | `TomAuditQuestionDto` |
+| `DELETE /audit-reports/questions/{id}` | `TomAuditQuestionIdRequest` | — |
+| `GET /audit-reports/questions/{id}/answer` | `TomAuditQuestionIdRequest` | `TomAuditReportResultDto` |
+| `POST /audit-reports/questions/{id}/deliver` | `TomAuditQuestionIdRequest` | `TomAuditQuestionDto` |
+
+A question's filter is a JSON map — `actor`, `action`, `target`, `targetKey`,
+`outcome`, `requestId`, an absolute window `from` / `to` or a relative
+`lastHours`, the `writers` to read and a `limit` — which the server stores as
+given. A saved question adds a name, a five-field cron `schedule` in UTC, the
+`recipients` and a `format` (`csv`, `xlsx` or `pdf`); the server sets its
+`owner` and its delivery times. Each body has its JSON form (`toJson`,
+`fromJson`). See `tom_core_server`'s
+[audit_reports guide](../../../tom_core_server/doc/audit_reports.md).
+
+```dart
+registerTomAuditReportsApi();
+final query = tomAuditReportsApi[tomAuditReportsQueryEndpointId];
+final uri = query.resolveUri(Uri.parse('https://api.example.com'));
+// POST https://api.example.com/audit-reports/query
+final body = TomAuditReportQueryRequest(
+  filter: {'outcome': 'denied', 'lastHours': 24},
+).toJson();
+```
+
 ## Usage Examples
 
 ### Role-Based Access Control
@@ -1818,9 +1861,10 @@ disappears a few seconds after login, with nothing in the logs.
 | `meta` | package | `access_controls.dart` | `@nonVirtual` only; no runtime behaviour |
 | `tom_crypto` | package | `bearer_authentication.dart` | `TomClientJwtToken`, the parsed form of both bearer tokens |
 | [context](../context/context.md) | module | `user_principal_aci.dart` | `TomTenantContext.qualify` — `TomPrincipal.qualifiedId`, the principal id qualified by its tenant |
-| [http_connection](../http_connection/http_connection.md) | module | `oauth_contract.dart` | `TomApi` / `TomApiEndpoint` and `TomHttpMethod`, for the external-identity contract |
+| [http_connection](../http_connection/http_connection.md) | module | `audit_reports_contract.dart`, `oauth_contract.dart` | `TomApi` / `TomApiEndpoint` and `TomHttpMethod`, for the external-identity and audit-report contracts |
+| [json](../json/json.md) | module | `audit_reports_contract.dart` | `TomJsonSerializable`, the JSON form each audit-report DTO carries itself |
 | [little_things](../little_things/little_things.md) | module | `access_controls.dart`, `bearer_authentication.dart`, `two_factor.dart` | `getFromCurrentZone<TomPrincipal>()` — how resource protection finds the ambient principal without being passed one; and `TomException`, which `TomTokenLifetimeException` and `TomProtectionSettingException` extend |
-| [reflection](../reflection/reflection.md) | module | `authentication_authorization.dart`, `oauth_contract.dart`, `two_factor.dart` | `@tomReflector` — the annotation on every DTO in this module, and hence the JSON round trip that carries them over the wire |
+| [reflection](../reflection/reflection.md) | module | `audit_reports_contract.dart`, `authentication_authorization.dart`, `oauth_contract.dart`, `two_factor.dart` | `@tomReflector` — the annotation on every DTO in this module, and hence the JSON round trip that carries them over the wire |
 | [scope_ids](../scope_ids/scope_ids.md) | module | `tom_authorization.dart` | `TomScope` path resolution for `TomAuthorizationGroup` |
 
 `TomClientJwtToken` is a dependency's type that this module puts in its **own

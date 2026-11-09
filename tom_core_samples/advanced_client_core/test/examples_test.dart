@@ -59,26 +59,22 @@ void main() {
       expect(transport.calls.last.headers['Authorization'], 'Bearer $jwt');
     });
 
-    test(
-      'runs under its documented command',
-      () async {
-        final result = await Process.run(Platform.resolvedExecutable, [
-          'run',
-          'example/authenticated_call_example.dart',
-        ]);
+    test('runs under its documented command', () async {
+      final result = await Process.run(Platform.resolvedExecutable, [
+        'run',
+        'example/authenticated_call_example.dart',
+      ]);
 
-        if (result.exitCode == 0) {
-          // A stack is up: the example reached it.
-          expect(result.stdout, contains('workspace(s):'));
-          return;
-        }
-        expect(result.exitCode, 2, reason: '${result.stderr}');
-        expect(result.stderr, contains('No server answered'));
-        expect(result.stderr, contains('tool/run_cross_tier_integration.sh'));
-        expect(result.stderr, isNot(contains('#0 ')), reason: 'no stack trace');
-      },
-      timeout: const Timeout(Duration(minutes: 2)),
-    );
+      if (result.exitCode == 0) {
+        // A stack is up: the example reached it.
+        expect(result.stdout, contains('workspace(s):'));
+        return;
+      }
+      expect(result.exitCode, 2, reason: '${result.stderr}');
+      expect(result.stderr, contains('No server answered'));
+      expect(result.stderr, contains('tool/run_cross_tier_integration.sh'));
+      expect(result.stderr, isNot(contains('#0 ')), reason: 'no stack trace');
+    }, timeout: const Timeout(Duration(minutes: 2)));
   });
 }
 

@@ -25,9 +25,6 @@ const String defaultSagaTable = 'tom_saga';
 ///    advancing one saga only one succeeds.
 ///  * `data` is the saga's JSON data, written with every transition; `error`
 ///    is why it compensates or failed.
-///  * `run_window` is the window instant of the job run that carries the
-///    current version — its key in the job store — which is how a resumption
-///    finds out whether that run still exists.
 ///  * `(status, updated_at)` is indexed: resumption and the purge read
 ///    unfinished and old finished sagas.
 TomFrameworkTable sagaTable(String table) => TomFrameworkTable(
@@ -42,7 +39,6 @@ TomFrameworkTable sagaTable(String table) => TomFrameworkTable(
     TomFrameworkColumn('version', 'INT'),
     TomFrameworkColumn('data', 'LONGTEXT'),
     TomFrameworkColumn('error', 'TEXT', nullable: true),
-    TomFrameworkColumn('run_window', 'DATETIME(6)'),
     TomFrameworkColumn('created_at', 'DATETIME(6)'),
     TomFrameworkColumn('updated_at', 'DATETIME(6)'),
   ],

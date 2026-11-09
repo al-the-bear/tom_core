@@ -8,12 +8,16 @@
 --
 -- Two things carry the design:
 --
---  * UNIQUE (job_name, tenant, scheduled_for) makes the scheduler's
---    idempotence key — one run per job per window, per tenant — a database
---    invariant rather than a convention, so a duplicate window cannot exist
---    even under a race. `tenant` is '' for a run of no tenant, not NULL: a
---    unique key never treats two NULLs as equal. `job_name` is VARCHAR(150) so
---    the key stays inside the 767-byte limit of older InnoDB row formats.
+--  * UNIQUE (job_name, tenant, window_at) makes the scheduler's idempotence
+--    key — one run per job per window, per tenant — a database invariant
+--    rather than a convention, so a duplicate window cannot exist even under a
+--    race. `tenant` is '' for a run of no tenant, not NULL: a unique key never
+--    treats two NULLs as equal. That is exactly why `window_at` IS nullable:
+--    it is `scheduled_for` for a run that realises a window and NULL for a run
+--    a component enqueued under an id of its own (the outbox, the saga
+--    orchestrator), whose id is its key — two such runs enqueued in one
+--    instant, on two nodes, stay two runs. `job_name` is VARCHAR(150) so the
+--    key stays inside the 767-byte limit of older InnoDB row formats.
 --  * `seq` is an AUTO_INCREMENT surrogate that exists only to give the queue a
 --    stable insertion order, so two nodes scanning it see the same order. The
 --    run's own id remains the primary key, because that is what every claim,
@@ -45,6 +49,7 @@ CREATE TABLE IF NOT EXISTS tom_job_run (
   job_name      VARCHAR(150) NOT NULL,
   tenant        VARCHAR(32)  NOT NULL DEFAULT '',
   scheduled_for DATETIME(6)  NOT NULL,
+  window_at     DATETIME(6)  NULL,
   run_at        DATETIME(6)  NOT NULL,
   state         VARCHAR(16)  NOT NULL,
   attempt       INT          NOT NULL DEFAULT 1,
@@ -59,7 +64,7 @@ CREATE TABLE IF NOT EXISTS tom_job_run (
   checkpoint    LONGTEXT     NULL,
   PRIMARY KEY (id),
   UNIQUE KEY uq_tom_job_run_seq (seq),
-  UNIQUE KEY uq_tom_job_run_window (job_name, tenant, scheduled_for),
+  UNIQUE KEY uq_tom_job_run_window (job_name, tenant, window_at),
   KEY ix_tom_job_run_due (state, run_at),
   KEY ix_tom_job_run_lease (state, claimed_at)
 );

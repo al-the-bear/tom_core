@@ -250,11 +250,9 @@ void main() async {
           origin: 'node-a',
         ),
       );
-      expect(
-        (await sqlLog.revocationsInForce()).map((i) => i.target),
-        ['alice'],
-        reason: 'principal revocations within the retention only',
-      );
+      expect((await sqlLog.revocationsInForce()).map((i) => i.target), [
+        'alice',
+      ], reason: 'principal revocations within the retention only');
 
       final received = <TomCacheInvalidation>[];
       final late = TomBusInvalidationChannel(

@@ -95,7 +95,7 @@ back:
 | `TomSagaWork` | typedef | The signature of an action or a compensation: `FutureOr<void> Function(TomSagaContext)` |
 | `TomSagaContext` | class | What an action or a compensation is given: the saga, the step, the attempt, why the saga compensates, and the saga's data |
 | `TomSagaStatus` | enum | `running`, `compensating`, `completed`, `compensated`, `failed` |
-| `TomSagaState` | class | The persisted progress of one saga: status, cursor, version, data, error, the window instant of its current run |
+| `TomSagaState` | class | The persisted progress of one saga: status, cursor, version, data, error |
 | `TomSagaStore` | abstract class | Where saga states are kept, in the tenant in context |
 | `TomMemorySagaStore` | class | Saga states in memory, for tests and for a process that may lose its sagas on restart |
 | `TomSqlSagaStore` | class | Saga states in the `tom_saga` table of a SQL data source, resolved by name on every call |
@@ -969,8 +969,13 @@ A saga's progress is in its store, so a restart loses nothing.
 `resume()` re-queues the run of every unfinished saga whose run is no longer in
 the job store — a run lost between a transition's commit and the queueing of
 the next one, or one whose attempts ran out — and answers how many it
-re-queued. A saga whose run is still queued is left alone, and a saga whose name
-is not registered on this node is passed over.
+re-queued. It finds a saga's current run by its id,
+`saga:<tenant>:<saga_id>:<version>`, with `TomJobStore.findRun`: the run of each
+transition is enqueued under that id with `windowed: false`, so it takes no
+window and two sagas moving on in one instant, on two nodes, are two runs (see
+[Runs Enqueued Outside a Schedule](scheduling.md#runs-enqueued-outside-a-schedule)).
+A saga whose run is still queued is left alone, and a saga whose name is not
+registered on this node is passed over.
 
 `start()` calls `resume()`, then lets the scheduler run transitions on its tick
 (`tickInterval`, fifteen seconds by default) and calls `resume()` again every
@@ -1029,7 +1034,6 @@ framework table is (see
 | `version` | `INT` | Grows by one with every transition; the optimistic lock |
 | `data` | `LONGTEXT` | The saga's data, as JSON |
 | `error` | `TEXT NULL` | Why it compensates or failed |
-| `run_window` | `DATETIME(6)` | The window instant of the job run carrying the current version — how a resumption tells whether that run still exists |
 | `created_at`, `updated_at` | `DATETIME(6)` | When the saga began, and last moved |
 
 `(status, updated_at)` is indexed for resumption and the purge. With
@@ -1250,7 +1254,6 @@ resumed by a second orchestrator, and an unknown saga refused.
 | [datasources](datasources.md) | module | `saga.dart`, `saga_sql.dart`, `transaction_recovery.dart` | `TomFrameworkTable` / `TomFrameworkColumn`, the saga and decision tables' single declarations; `TomDataSource`, `TomDataSourceInfo` and `TomSchemaProvisioning`, to resolve and provision the store's and the log's data source, and to find the registered two-phase data sources a recovery scans; `sqlInstant` / `parseSqlInstant` |
 | [little_things](little_things.md) | module | `saga.dart`, `transaction_manager.dart`, `transaction_recovery.dart` | `TomServerException` (base of `TomTransactionException`, `TomSagaException` and `TomTransactionRecoveryException`) |
 | [object_persistence](object_persistence.md) | module | `saga.dart`, `transaction_recovery.dart` | `TomDbTable` / `TomDbColumn` on `TomSagaRow` and `TomDecisionRow` |
-| [scheduling](scheduling.md) | module | `saga.dart` | `TomEventInstants`, the window instant of each saga run |
 | [tenancy](tenancy.md) | module | `saga.dart` | `TomTenancy.current`, whose tenants `resume` looks into |
 
 - The datasources module — `TomDataSource` is the concrete

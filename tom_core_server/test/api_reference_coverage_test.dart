@@ -5611,7 +5611,7 @@ final x = SampledType();
       // The enums filed beside the type that carries them are found all the
       // same, which is what keeps the forward check about documentation rather
       // than layout — and the accounting check satisfiable without moving them.
-      expect(_exportedEnums('messaging'), hasLength(8));
+      expect(_exportedEnums('messaging'), hasLength(9));
       expect(
         _headingNamesOf(_summary('messaging')),
         containsAll(_exportedEnums('messaging')),
@@ -7096,11 +7096,9 @@ class After {}
         _unresolvedNamesIn('- `TomFileSlabs` is a process-wide registry.'),
         ['`TomFileSlabs` — no TomFileSlabs in lib/'],
       );
-      expect(
-        _unresolvedNamesIn('- `TomFileSlots.resat()` is process-wide.'),
-        ['`TomFileSlots.resat()` — no resat in lib/'],
-        reason: 'the member half of a dotted name is checked too',
-      );
+      expect(_unresolvedNamesIn('- `TomFileSlots.resat()` is process-wide.'), [
+        '`TomFileSlots.resat()` — no resat in lib/',
+      ], reason: 'the member half of a dotted name is checked too');
     });
 
     test('a token that is not a Dart name is not read as one', () {
@@ -7505,11 +7503,9 @@ class After {}
         isTrue,
         reason: 'the weak rule is satisfied — a suite is named',
       );
-      expect(
-        _unnamedVerificationIn('transactions', citesAnother),
-        ['does not name transactions_test.dart'],
-        reason: 'the strengthened rule is not: its own suite is missing',
-      );
+      expect(_unnamedVerificationIn('transactions', citesAnother), [
+        'does not name transactions_test.dart',
+      ], reason: 'the strengthened rule is not: its own suite is missing');
     });
 
     test('a module with no name-matched suite still has to name one', () {

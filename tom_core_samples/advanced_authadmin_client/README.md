@@ -15,8 +15,8 @@ assignments, and the `projectRole` × field grant matrix via the auth server's
 **There is no `example/` directory and no `doc/` folder, and both absences are
 deliberate: this package is itself the runnable example, and a sample has no
 consumers who need its surface mirrored — see [the suite map](../README.md) for
-that decision, which is the same for all seventeen sample packages.** This README
-is the package's one description of its surface. It is one of the nine `advanced_*` packages that
+that decision, which is the same for all eighteen sample packages.** This README
+is the package's one description of its surface. It is one of the ten `advanced_*` packages that
 together form the full-stack sample, and an `example/` here would either
 duplicate `lib/main.dart` or isolate a fragment the console already shows in
 context. What to run instead:
@@ -33,7 +33,7 @@ context. What to run instead:
   every destination through that same offline backend, so they are the fastest
   way to watch a screen work.
 
-[The family's index](../README_advanced_sample.md#the-nine-packages) says which of the nine carry an `example/`, and why.
+[The family's index](../README_advanced_sample.md#the-ten-packages) says which of the ten carry an `example/`, and why.
 
 ## Before the first run
 

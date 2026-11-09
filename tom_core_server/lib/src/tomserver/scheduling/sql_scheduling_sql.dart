@@ -36,11 +36,16 @@ const String defaultJobRunArchiveTable = 'tom_job_run_archive';
 ///    a stable insertion order — `all()` and the candidate scan both use it, so
 ///    two nodes reading the same queue see the same order. It is not the key:
 ///    the run's own id is, because that is what every other statement addresses.
-///  * the **unique key on `(job_name, tenant, scheduled_for)`** is the point of
+///  * the **unique key on `(job_name, tenant, window_at)`** is the point of
 ///    the whole table. The scheduler's idempotence key is "one run per job per
 ///    window" — per tenant, since two tenants' events in one instant are two
 ///    runs; expressing it as a database constraint makes a duplicate window
-///    impossible rather than merely unlikely under a race.
+///    impossible rather than merely unlikely under a race. `window_at` is
+///    `scheduled_for` for a run that realises a window and `NULL` for a run a
+///    component enqueued under an id of its own (the outbox, the saga
+///    orchestrator): its id is its key, and since a unique key never treats two
+///    `NULL`s as equal, two such runs enqueued in one instant — on two nodes —
+///    stay two runs. `scheduled_for` itself keeps every run's instant.
 ///  * `tenant` is `''` for a run of no tenant rather than `NULL`, because a
 ///    unique key never treats two `NULL`s as equal — two tenant-less runs of
 ///    one window would both insert. It is at most 32 characters, the length a
@@ -76,7 +81,7 @@ TomFrameworkTable jobRunTable(String table) => TomFrameworkTable(
   primaryKey: const ['id'],
   keys: const [
     TomFrameworkKey.unique('seq', ['seq']),
-    TomFrameworkKey.unique('window', ['job_name', 'tenant', 'scheduled_for']),
+    TomFrameworkKey.unique('window', ['job_name', 'tenant', 'window_at']),
     TomFrameworkKey('due', ['state', 'run_at']),
     TomFrameworkKey('lease', ['state', 'claimed_at']),
   ],
@@ -89,6 +94,7 @@ const List<TomFrameworkColumn> _jobRunColumns = [
   TomFrameworkColumn('job_name', 'VARCHAR(150)'),
   TomFrameworkColumn('tenant', 'VARCHAR(32)', defaultValue: "''"),
   TomFrameworkColumn('scheduled_for', 'DATETIME(6)'),
+  TomFrameworkColumn('window_at', 'DATETIME(6)', nullable: true),
   TomFrameworkColumn('run_at', 'DATETIME(6)'),
   TomFrameworkColumn('state', 'VARCHAR(16)'),
   TomFrameworkColumn('attempt', 'INT', defaultValue: '1'),

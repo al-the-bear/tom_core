@@ -37,6 +37,7 @@ library;
 
 import 'message.dart';
 import 'message_transport.dart';
+import 'suppression_list.dart';
 import 'vendor_mapping.dart';
 
 // =============================================================================
@@ -97,6 +98,13 @@ class TomDeliveryReport {
   /// The carrier's status or error code, when it gave one.
   final String? providerCode;
 
+  /// The address the report concerns, when the carrier names it.
+  ///
+  /// What a [TomSuppressionList] suppresses on a failure: a message to several
+  /// addresses can fail for one of them, and only a report that names it says
+  /// which.
+  final String? recipient;
+
   /// Creates a report.
   TomDeliveryReport({
     required this.remoteId,
@@ -104,6 +112,7 @@ class TomDeliveryReport {
     DateTime? at,
     this.detail,
     this.providerCode,
+    this.recipient,
   }) : at = at ?? DateTime.now().toUtc();
 
   /// Encodes this report as JSON-native values.
@@ -113,6 +122,7 @@ class TomDeliveryReport {
     'at': at.toIso8601String(),
     if (detail != null) 'detail': detail,
     if (providerCode != null) 'providerCode': providerCode,
+    if (recipient != null) 'recipient': recipient,
   };
 
   /// Decodes a map produced by [toJson].
@@ -123,6 +133,7 @@ class TomDeliveryReport {
         at: DateTime.parse(map['at'] as String),
         detail: map['detail'] as String?,
         providerCode: map['providerCode'] as String?,
+        recipient: map['recipient'] as String?,
       );
 
   /// The state [name] denotes, or [TomDeliveryState.unknown].
@@ -180,6 +191,16 @@ class TomDeliveryCorrelation {
   /// tenant.
   final String? tenant;
 
+  /// The addresses the message was sent to under [remoteId] — its envelope,
+  /// less the recipients the far side refused at once.
+  ///
+  /// What a failure report is attributed to when the report does not name its
+  /// recipient: a message to one address can only have failed for that one.
+  final List<String> addresses;
+
+  /// The carrier's status or error code from the last report, or `null`.
+  final String? providerCode;
+
   /// Creates a correlation.
   TomDeliveryCorrelation({
     required this.remoteId,
@@ -190,7 +211,9 @@ class TomDeliveryCorrelation {
     this.reportedAt,
     this.detail,
     this.tenant,
-  });
+    List<String> addresses = const [],
+    this.providerCode,
+  }) : addresses = List.unmodifiable(addresses);
 
   /// Whether a report has been recorded against this message.
   bool get isReported => state != null;
@@ -206,6 +229,8 @@ class TomDeliveryCorrelation {
         reportedAt: report.at,
         detail: report.detail,
         tenant: tenant,
+        addresses: addresses,
+        providerCode: report.providerCode,
       );
 
   @override
@@ -350,8 +375,26 @@ class TomDeliveryCallback {
 /// A [TomDeliveryReportProtocol] described by field names and status codes.
 ///
 /// Expresses the common carriers without naming any of them, exactly as
-/// [TomFieldMappedSmsProtocol] does for the submission direction — and no
-/// vendor preset ships here either, for the reason stated there.
+/// [TomFieldMappedSmsProtocol] does for the submission direction.
+///
+/// ## Presets
+///
+/// [TomFieldMappedDeliveryReportProtocol.twilio] and
+/// [TomFieldMappedDeliveryReportProtocol.vonage] are this mapping filled in
+/// for the two carriers' documented delivery-report callbacks, and nothing
+/// more: each is checked against the sample callbacks those carriers document
+/// (`test/delivery_report_test.dart`). Another carrier is the same constructor
+/// with its own field names and codes.
+///
+/// ## Why an error code can override the status
+///
+/// A report's state decides whether its address is suppressed
+/// ([TomSuppressionList]), so [TomDeliveryState.failed] has to mean an address
+/// to stop using. Carriers report a full queue, a switched-off handset and a
+/// number that does not exist alike as `failed` or `undelivered`, and only the
+/// error code tells them apart: [codeStates] reads a listed code as the state
+/// it means, and [unlistedFailureState] says what an unlisted code on a failure
+/// means.
 class TomFieldMappedDeliveryReportProtocol extends TomDeliveryReportProtocol {
   /// Dotted path to the carrier's message id within one report.
   final String remoteIdPath;
@@ -365,11 +408,15 @@ class TomFieldMappedDeliveryReportProtocol extends TomDeliveryReportProtocol {
   /// Dotted path to the error or status code, when it sends one.
   final String? codePath;
 
+  /// Dotted path to the recipient's address, when the carrier names it.
+  final String? recipientPath;
+
   /// Dotted path to the instant the carrier says the event happened.
   ///
-  /// Parsed as ISO-8601; a value that does not parse leaves the report stamped
-  /// with arrival time rather than failing the callback, because a bad
-  /// timestamp is not a reason to refuse a status.
+  /// Parsed as ISO-8601; a value without a zone (`2026-11-07 10:15:00`) is read
+  /// as UTC, which is what carriers sending one mean. A value that does not
+  /// parse leaves the report stamped with arrival time rather than failing the
+  /// callback, because a bad timestamp is not a reason to refuse a status.
   final String? atPath;
 
   /// Dotted path to the array, when the carrier batches reports in one call.
@@ -386,18 +433,103 @@ class TomFieldMappedDeliveryReportProtocol extends TomDeliveryReportProtocol {
   /// Status tokens that mean [TomDeliveryState.expired], lowercased.
   final Set<String> expiredStatuses;
 
+  /// Error codes read as a state of their own, overriding the status: a
+  /// failure whose code says the handset was switched off is
+  /// [TomDeliveryState.expired], not [TomDeliveryState.failed].
+  final Map<String, TomDeliveryState> codeStates;
+
+  /// The state of a report whose status reads as a failure and whose code is
+  /// present but not in [codeStates].
+  ///
+  /// [TomDeliveryState.failed] by default: without a code table, the status
+  /// is all there is. A preset with a code table sets
+  /// [TomDeliveryState.unknown], so an unlisted code does not suppress an
+  /// address.
+  final TomDeliveryState unlistedFailureState;
+
   /// Creates a field-mapped protocol.
   const TomFieldMappedDeliveryReportProtocol({
     required this.remoteIdPath,
     required this.statusPath,
     this.detailPath,
     this.codePath,
+    this.recipientPath,
     this.atPath,
     this.batchPath,
     this.deliveredStatuses = const {'delivered'},
-    this.failedStatuses = const {'failed', 'undelivered', 'rejected'},
+    this.failedStatuses = const {
+      'failed',
+      'undelivered',
+      'rejected',
+      'bounce',
+      'bounced',
+    },
     this.expiredStatuses = const {'expired'},
+    this.codeStates = const {},
+    this.unlistedFailureState = TomDeliveryState.failed,
   });
+
+  /// Twilio's message status callback: a form post with `MessageSid`,
+  /// `MessageStatus`, `ErrorCode` and `To`.
+  ///
+  /// Twilio reports `delivered`, `undelivered` and `failed` as final states,
+  /// and names the cause of the last two in `ErrorCode`. Codes 30005 (unknown
+  /// destination handset) and 30006 (landline or unreachable carrier) are
+  /// [TomDeliveryState.failed]; 30001 (queue overflow), 30003 (unreachable
+  /// handset) and 30008 (unknown error) are [TomDeliveryState.expired], worth
+  /// another attempt later; any other code on a failure is
+  /// [TomDeliveryState.unknown], so it suppresses nothing. The callback
+  /// carries no event time, so a report is stamped when it arrives.
+  factory TomFieldMappedDeliveryReportProtocol.twilio() =>
+      const TomFieldMappedDeliveryReportProtocol(
+        remoteIdPath: 'MessageSid',
+        statusPath: 'MessageStatus',
+        codePath: 'ErrorCode',
+        recipientPath: 'To',
+        failedStatuses: {'failed', 'undelivered'},
+        codeStates: {
+          '30001': TomDeliveryState.expired,
+          '30002': TomDeliveryState.unknown,
+          '30003': TomDeliveryState.expired,
+          '30005': TomDeliveryState.failed,
+          '30006': TomDeliveryState.failed,
+          '30007': TomDeliveryState.unknown,
+          '30008': TomDeliveryState.expired,
+        },
+        unlistedFailureState: TomDeliveryState.unknown,
+      );
+
+  /// Vonage's SMS delivery receipt, as a `GET` query or a JSON post:
+  /// `messageId`, `status`, `err-code`, `msisdn` (the recipient) and
+  /// `message-timestamp` (UTC, without a zone).
+  ///
+  /// `err-code` 3 (absent subscriber, permanent), 4 (call barred by user),
+  /// 9 (illegal number), 11 (unroutable), 12 (destination unreachable) and 14
+  /// (number blocked by carrier) are [TomDeliveryState.failed]; 2 (absent
+  /// subscriber, temporary), 7 (handset busy) and 8 (network error) are
+  /// [TomDeliveryState.expired]; any other code on a failure is
+  /// [TomDeliveryState.unknown].
+  factory TomFieldMappedDeliveryReportProtocol.vonage() =>
+      const TomFieldMappedDeliveryReportProtocol(
+        remoteIdPath: 'messageId',
+        statusPath: 'status',
+        codePath: 'err-code',
+        recipientPath: 'msisdn',
+        atPath: 'message-timestamp',
+        failedStatuses: {'failed', 'rejected'},
+        codeStates: {
+          '2': TomDeliveryState.expired,
+          '3': TomDeliveryState.failed,
+          '4': TomDeliveryState.failed,
+          '7': TomDeliveryState.expired,
+          '8': TomDeliveryState.expired,
+          '9': TomDeliveryState.failed,
+          '11': TomDeliveryState.failed,
+          '12': TomDeliveryState.failed,
+          '14': TomDeliveryState.failed,
+        },
+        unlistedFailureState: TomDeliveryState.unknown,
+      );
 
   @override
   List<TomDeliveryReport> decode(TomDeliveryCallback callback) {
@@ -407,13 +539,18 @@ class TomFieldMappedDeliveryReportProtocol extends TomDeliveryReportProtocol {
     for (final entry in entries) {
       final remoteId = _at(entry, remoteIdPath);
       if (remoteId == null || remoteId.isEmpty) continue;
+      final code = codePath == null ? null : _at(entry, codePath!);
+      final recipient = recipientPath == null
+          ? null
+          : _at(entry, recipientPath!);
       reports.add(
         TomDeliveryReport(
           remoteId: remoteId,
-          state: _stateOf(_at(entry, statusPath)),
+          state: _stateOf(_at(entry, statusPath), code),
           at: _instantOf(atPath == null ? null : _at(entry, atPath!)),
           detail: detailPath == null ? null : _at(entry, detailPath!),
-          providerCode: codePath == null ? null : _at(entry, codePath!),
+          providerCode: code == null || code.isEmpty ? null : code,
+          recipient: recipient == null || recipient.isEmpty ? null : recipient,
         ),
       );
     }
@@ -446,19 +583,40 @@ class TomFieldMappedDeliveryReportProtocol extends TomDeliveryReportProtocol {
     return node is List ? node : null;
   }
 
-  TomDeliveryState _stateOf(String? status) {
+  TomDeliveryState _stateOf(String? status, String? code) {
     final token = status?.toLowerCase();
     if (token == null) return TomDeliveryState.unknown;
     if (deliveredStatuses.contains(token)) return TomDeliveryState.delivered;
-    if (failedStatuses.contains(token)) return TomDeliveryState.failed;
-    if (expiredStatuses.contains(token)) return TomDeliveryState.expired;
+    final failed = failedStatuses.contains(token);
+    final expired = expiredStatuses.contains(token);
+    if ((failed || expired) && code != null && code.isNotEmpty) {
+      final listed = codeStates[code];
+      if (listed != null) return listed;
+      if (failed) return unlistedFailureState;
+    }
+    if (failed) return TomDeliveryState.failed;
+    if (expired) return TomDeliveryState.expired;
     return TomDeliveryState.unknown;
   }
 
   /// [text] as an instant, or `null` — which leaves the report stamped with
-  /// arrival time.
-  static DateTime? _instantOf(String? text) =>
-      text == null ? null : DateTime.tryParse(text)?.toUtc();
+  /// arrival time. A value without a zone is read as UTC.
+  static DateTime? _instantOf(String? text) {
+    if (text == null) return null;
+    final parsed = DateTime.tryParse(text.trim());
+    if (parsed == null) return null;
+    if (parsed.isUtc) return parsed;
+    return DateTime.utc(
+      parsed.year,
+      parsed.month,
+      parsed.day,
+      parsed.hour,
+      parsed.minute,
+      parsed.second,
+      parsed.millisecond,
+      parsed.microsecond,
+    );
+  }
 
   /// The value at dotted [path], as text — see [tomVendorValueAt], which both
   /// vendor mappings read a path with.

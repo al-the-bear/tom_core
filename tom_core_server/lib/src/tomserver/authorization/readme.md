@@ -96,8 +96,8 @@ Future<void> main() async {
 > shown apart.
 
 See [`doc/authorization.md`](../../../../doc/authorization.md) for the grade
-thresholds, the delegation modes, revoking a principal and the request-scoped
-`runCached`, and
+thresholds, the delegation modes, revoking a principal and the grant reads kept
+for a request, and
 `example/authorization/authorization_example.dart` and
 `example/authorization/resource_data_scope_example.dart` for runnable,
 connection-free walkthroughs of the grant model and of the row scope the

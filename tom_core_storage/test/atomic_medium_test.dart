@@ -63,11 +63,9 @@ void main() {
           await medium.readString('.webwork/commit-journal.yaml'),
           'entries: [a]\n',
         );
-        expect(
-          onDisk(),
-          ['.webwork/commit-journal.yaml'],
-          reason: 'the temp is renamed over the target, not left beside it',
-        );
+        expect(onDisk(), [
+          '.webwork/commit-journal.yaml',
+        ], reason: 'the temp is renamed over the target, not left beside it');
       },
     );
 

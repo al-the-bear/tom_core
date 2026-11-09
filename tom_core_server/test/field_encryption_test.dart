@@ -545,6 +545,46 @@ void main() {
       expect(TomFieldEncryption.keyring, isNull);
     });
 
+    test('a key of a kind a package registered is built by its factory; an '
+        'unknown kind is refused', () async {
+      await expectLater(
+        TomFieldEncryption.configure({
+          'datasource': 'main',
+          'keys': [
+            {'id': 'k', 'kind': 'no-such-kms'},
+          ],
+        }),
+        _refused('field_encryption.config.invalid'),
+      );
+      expect(
+        () => TomFieldEncryption.registerKeyKind(
+          TomFieldEncryption.aesKeyKind,
+          (id, settings) async => throw UnimplementedError(),
+        ),
+        throwsA(isA<TomFieldEncryptionException>()),
+      );
+
+      final built = <(String, Map<String, Object?>)>[];
+      TomFieldEncryption.registerKeyKind('test-kms', (id, settings) async {
+        built.add((id, settings));
+        return TomAesKeyEncryptionKey(id, List.filled(32, 7));
+      });
+      expect(TomFieldEncryption.keyKinds, contains('test-kms'));
+      // The factory runs; the keyring then fails on the unregistered data
+      // source, which is how far a configuration without a database gets.
+      await expectLater(
+        TomFieldEncryption.configure({
+          'datasource': 'no_such_source',
+          'keys': [
+            {'id': 'kms-1', 'kind': 'test-kms', 'keyName': 'orders'},
+          ],
+        }),
+        _refused('field_encryption.no_datasource'),
+      );
+      expect(built.single.$1, 'kms-1');
+      expect(built.single.$2['keyName'], 'orders');
+    });
+
     test(
       'a SQL key store naming an unregistered data source says so',
       () async {

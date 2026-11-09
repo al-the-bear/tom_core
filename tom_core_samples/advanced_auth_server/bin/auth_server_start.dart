@@ -117,6 +117,10 @@ const Map<String, String> _demoPasswords = {
   // path, and the decline that must remain possible under an optional policy,
   // are exercised out of the box too.
   'erin': 'erin-pass',
+  // Audrey (from the `@dev,test` [010] seed) holds the `auditor` role, which
+  // every route of the framework's audit-report API requires; the
+  // advanced_audit_client application signs in as her.
+  'audrey': 'audrey-pass',
 };
 
 /// The auth-server configuration.

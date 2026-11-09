@@ -177,6 +177,11 @@ const List<TourStop> tour = [
         'server',
   ),
   TourStop(
+    'example/audit_reports/audit_reports_example.dart',
+    'An auditor\'s question asked across the writers of the trail, saved '
+        'with a weekly schedule and delivered as a CSV export by email',
+  ),
+  TourStop(
     'example/privacy/privacy_example.dart',
     'Personal data: the subjects the framework entities declare, a value '
         'sealed under a subject key, the trail sealing it, and the shred that '
@@ -206,6 +211,12 @@ const List<TourStop> tour = [
     'Notification types and per-user channel choices: one notification fanned '
         'out to the outbox, held through quiet hours, and sent once however '
         'often it is dispatched',
+  ),
+  TourStop(
+    'example/sync/sync_example.dart',
+    'The offline sync protocol\'s server side without a database: the routes '
+        'from the contract, the change log\'s tables, and the refusals before '
+        'an entity is reached',
   ),
   TourStop(
     'example/export/export_example.dart',

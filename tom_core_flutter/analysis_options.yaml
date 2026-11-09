@@ -9,3 +9,5 @@ analyzer:
     # a publishable package has no path dependency is answered there: the
     # staged copy's `dart pub publish --dry-run` refuses one that remains.
     invalid_dependency: ignore
+  exclude:
+    - build/**

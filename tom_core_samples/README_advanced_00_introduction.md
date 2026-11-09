@@ -65,7 +65,7 @@ collects the vocabulary in the [glossary](README_advanced_A5_glossary_crossref.m
 but if you have read the basic `core_*_sample` pair, this is the natural next
 step.
 
-## The nine packages at a glance
+## The ten packages at a glance
 
 | # | Package | What it is | Runtime |
 | --- | --- | --- | --- |
@@ -78,6 +78,7 @@ step.
 | 7 | [`advanced_authadmin_client`](advanced_authadmin_client/README.md) | The administrator Flutter console: manages users, roles, groups, assignments, and the `projectRole` × field grant matrix. | Flutter |
 | 8 | [`advanced_ops_server`](advanced_ops_server/README.md) | Back-office scheduled work over `app_db` — retention purge, digest into the messaging outbox, weekly export, audit anchors. No HTTP surface, no database of its own. | timers, `app_db` `:3308` |
 | 9 | [`advanced_openapi_client`](advanced_openapi_client/README.md) | Typed clients for both servers, generated from their OpenAPI documents by `tom_core_openapi` — `package:http` only, no Tom package. | library |
+| 10 | [`advanced_audit_client`](advanced_audit_client/README.md) | The auditor's Flutter app over the framework's `/audit-reports` API: questions asked of the audit trail across its writers, saved, and delivered by email as exports. | Flutter |
 
 Part [02](README_advanced_02_project_layout_build.md) shows how they depend on
 one another and how to build and run them; part

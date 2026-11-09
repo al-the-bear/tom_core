@@ -39,6 +39,7 @@ library;
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../audit/sql_audit_sql.dart';
+import '../audit_reports/audit_question_sql.dart';
 import '../authentication/oauth_state_sql.dart';
 import '../authentication/scim_sql.dart';
 import '../cache/invalidation_sql.dart';
@@ -52,10 +53,12 @@ import '../file_storage/database_blob_sql.dart';
 import '../messaging/delivery_report_sql.dart';
 import '../endpoints/idempotency_sql.dart';
 import '../messaging/inbox_sql.dart';
+import '../messaging/suppression_sql.dart';
 import '../object_persistence/annotation_analyzer.dart';
 import '../object_persistence/field_encryption_sql.dart';
 import '../object_persistence/persistence_annotations.dart';
 import '../privacy/subject_keys_sql.dart';
+import '../sync/sync_sql.dart';
 import '../scheduling/sql_scheduling_sql.dart';
 import '../transactions/saga_sql.dart';
 import '../transactions/transaction_recovery.dart';
@@ -74,9 +77,9 @@ import 'schema_model.dart';
 ///
 /// The direction of the dependency is deliberate: this module reaches into
 /// `scheduling/`, `file_storage/`, `audit/`, `authentication/`, `messaging/`,
-/// `cache/`, `endpoints/`, `transactions/`, `object_persistence/`, `privacy/`
-/// and `export/` for their descriptors, and none of them reaches back. A deployment can run the
-/// scheduler without ever loading a migration.
+/// `cache/`, `endpoints/`, `transactions/`, `object_persistence/`, `privacy/`,
+/// `export/` and `sync/` for their descriptors, and none of them reaches back.
+/// A deployment can run the scheduler without ever loading a migration.
 List<TomFrameworkTable> frameworkOwnedTables({
   String jobRun = defaultJobRunTable,
   String lease = defaultLeaseTable,
@@ -88,8 +91,10 @@ List<TomFrameworkTable> frameworkOwnedTables({
   String blobLedger = defaultBlobLedgerTable,
   String blobContent = defaultBlobContentTable,
   String auditTrail = defaultAuditTrailTable,
+  String auditQuestion = defaultAuditQuestionTable,
   String oauthState = defaultOAuthStateTable,
   String deliveryReport = defaultDeliveryReportTable,
+  String suppression = defaultSuppressionTable,
   String invalidation = defaultInvalidationTable,
   String scimResource = defaultScimResourceTable,
   String inbox = defaultInboxTable,
@@ -99,6 +104,8 @@ List<TomFrameworkTable> frameworkOwnedTables({
   String subjectKey = defaultSubjectKeyTable,
   String decision = defaultDecisionTable,
   String exportRegister = defaultExportRegisterTable,
+  String syncChange = defaultSyncChangeTable,
+  String syncSequence = defaultSyncSequenceTable,
 }) => [
   jobRunTable(jobRun),
   leaseTable(lease),
@@ -110,8 +117,10 @@ List<TomFrameworkTable> frameworkOwnedTables({
   blobLedgerTable(blobLedger),
   blobContentTable(blobContent),
   auditTrailTable(auditTrail),
+  auditQuestionTable(auditQuestion),
   oauthStateTable(oauthState),
   deliveryReportTable(deliveryReport),
+  suppressionTable(suppression),
   invalidationTable(invalidation),
   scimResourceTable(scimResource),
   inboxTable(inbox),
@@ -121,6 +130,8 @@ List<TomFrameworkTable> frameworkOwnedTables({
   subjectKeyTable(subjectKey),
   decisionTable(decision),
   exportRegisterTable(exportRegister),
+  syncChangeTable(syncChange),
+  syncSequenceTable(syncSequence),
 ];
 
 /// Compares framework-owned table descriptors against everything else that

@@ -117,11 +117,11 @@ Source: `message_transport.dart`
 | ---- | ---------- |
 | `TomMessageTransport` | The contract every transport implements: send one message, return a receipt. |
 | `TomDeliveryReceipt` | The result of one attempt: the outcome, the far side's id for the message, and the recipients it refused while accepting the others — a partial delivery is a real outcome, and reporting it as either success or failure loses what an operator needs. |
-| `TomDeliveryOutcome` | `delivered`, `rejected`, `deferred` or `discarded`. |
+| `TomDeliveryOutcome` | `delivered`, `rejected`, `deferred`, `discarded` or `suppressed` (every recipient on the suppression list, nothing sent). |
 | `TomDeliveryException` | The base of the one distinction a transport must get right. |
 | `TomPermanentDeliveryException` | Do not retry: retrying cannot change the answer. |
 | `TomTransientDeliveryException` | Retry: the same send may succeed later. |
-| `TomMessageRouter` | Channel → transport. The only thing that has to know which transport serves `email`. |
+| `TomMessageRouter` | Channel → transport. The only thing that has to know which transport serves `email`. Given a `TomSuppressionList`, it leaves suppressed recipients out of every send. |
 | `TomMemoryMessageTransport` | Records what it was asked to send. What a test asserts against. |
 | `TomNoOpMessageTransport` | Accepts and discards — how a deployment says "this channel is not configured" without failing to start. |
 | `TomFileMessageTransport` | Writes each message to a file, for a developer who wants to *read* what would have been sent. |
@@ -205,7 +205,9 @@ receiver continues the delivery rather than the request that queued it.
 ### Delivery reports
 
 Source: `delivery_report.dart`, `delivery_report_sql.dart`,
-`sql_delivery_report_store.dart`, `delivery_report_endpoint.dart`
+`sql_delivery_report_store.dart`, `delivery_callback_verifier.dart`,
+`delivery_report_endpoint.dart`, `suppression_list.dart`, `suppression_sql.dart`,
+`sql_suppression_list.dart`
 
 A transport's receipt records that the far side *accepted* the message. What the
 carrier did with it afterwards arrives minutes or hours later, on a callback, and
@@ -214,11 +216,17 @@ carrier did with it afterwards arrives minutes or hours later, on a callback, an
 | Type | What it is |
 | ---- | ---------- |
 | `TomDeliveryReport` · `TomDeliveryState` | What a carrier says became of a message. A state is not an outcome: a message can be `TomDeliveryOutcome.delivered` and `TomDeliveryState.failed`. |
-| `TomDeliveryCorrelation` | The `remoteId` → message row: which message an id stands for, and the last state reported. |
+| `TomDeliveryCorrelation` | The `remoteId` → message row: which message an id stands for, the addresses it was sent to, and the last state and code reported. |
 | `TomDeliveryReportStore` · `TomMemoryDeliveryReportStore` · `TomSqlDeliveryReportStore` · `TomDeliveryReportRow` | The index. Memory is right for a test; the SQL store is what a deployment needs, because a callback that arrives after a restart must still match. |
 | `deliveryReportTable` · `deliveryReportTableDdl` · `defaultDeliveryReportTable` | The table, declared once — the DDL, the statements and the convergence guard all derive from it. |
-| `TomDeliveryReportProtocol` · `TomFieldMappedDeliveryReportProtocol` · `TomDeliveryCallback` | The carrier's callback shape, described in configuration rather than coded — the same seam `TomSmsGatewayProtocol` is, and with no vendor presets for the same reason. |
-| `TomDeliveryReportService` · `TomDeliveryReportServer` · `TomDeliveryReportEndpoint` | The inbound `POST /messaging/delivery-report` route. Public, because a carrier has no account here, and gated by a shared secret compared in constant time. Nothing is installed by default, and an uninstalled endpoint refuses everything. |
+| `TomDeliveryReportProtocol` · `TomFieldMappedDeliveryReportProtocol` · `TomDeliveryCallback` | The carrier's callback shape, described in configuration rather than coded — the same seam `TomSmsGatewayProtocol` is. `twilio()` and `vonage()` are the mapping filled in for those carriers' documented callbacks; `codeStates` reads an error code as the state it means, so a full queue is not mistaken for a dead number. |
+| `TomDeliveryReportService` · `TomDeliveryReportServer` · `TomDeliveryReportEndpoint` | The inbound `POST`/`GET /messaging/delivery-report` route. Public, because a carrier has no account here, and gated by the verifier `TomDeliveryReportEndpoint.install(store:, protocol:, verifier:)` is given. Nothing is installed by default, and an uninstalled endpoint refuses everything. The body is read once; a form body's fields join the query parameters, and the request is verified before anything is decoded. |
+| `TomDeliveryCallbackVerifier` · `TomDeliveryCallbackRequest` · `tomConstantTimeEquals` | What gates the route: a verifier judges the callback as received (method, URL, headers, body, parameters), every comparison in constant time. |
+| `TomSharedSecretCallbackVerifier` | A shared secret in a header (`x-tom-delivery-secret` by default), for a carrier or gateway that can add one. Only as safe as the TLS under it. |
+| `TomTwilioCallbackVerifier` | Twilio's `X-Twilio-Signature`: HMAC-SHA1 under the auth token over the URL and the sorted POST parameters (a JSON callback: the URL and its `bodySHA256`). `publicUrl` names the URL Twilio called when a proxy stands in front. Twilio signs no timestamp, so there is no replay window. |
+| `TomVonageCallbackVerifier` · `TomVonageSignatureMethod` | Vonage's `sig` over every other parameter, by the method the account is set to (`md5hash`, or HMAC `md5` / `sha1` / `sha256` / `sha512`); a receipt whose `timestamp` is further than `maxAge` (five minutes) from now is refused. |
+| `TomSuppressionList` · `TomSuppressedAddress` · `tomSuppressedDetail` | What a report changes: a `failed` report suppresses the address it names, or its message's single address, and the router sends nothing to it until released. Keyed by channel and normalised address (email without case, a phone number by its digits); the deployment's, not a tenant's. |
+| `TomMemorySuppressionList` · `TomSqlSuppressionList` · `TomSuppressionRow` · `suppressionTable` · `suppressionTableDdl` · `defaultSuppressionTable` | The list in memory and in `tom_message_suppression`, declared once. |
 
 ### The idempotent receiver
 
@@ -270,7 +278,7 @@ Source: `outbox.dart`
 
 | Type | What it is |
 | ---- | ---------- |
-| `TomMessageOutbox` | The send queue, on the kernel's job scheduler. A send that outlives the process that asked for it, with retry driven by the permanent/transient distinction above. Each message's run gets a window instant of its own (`TomEventInstants`, in `scheduling`), so two messages queued in the same microsecond stay two runs. The message id is the idempotence key: `send` answers `false` and queues nothing for an id the store still holds — queued, delivered or failed for good — until `purgeFinished` removes its run. `send(message, notBefore: instant)` holds a message until that instant. Inside a transaction, on a `TomSqlJobStore`, `send` and `sendNow` queue the message in it: it commits or rolls back with the business write that caused it (see `doc/messaging.md`, Queueing Inside a Transaction); a `TomMemoryJobStore`, the default, queues at once. `start()` registers it in `TomMessageOutbox.started`, which the framework readiness check on `GET /ready` asks whether it is delivering. With a tracer installed, `send` is a producer span, `outbox send`, written into the message's headers as `traceparent` / `tracestate`, and the delivery a consumer span, `outbox deliver`, continuing it. |
+| `TomMessageOutbox` | The send queue, on the kernel's job scheduler. A send that outlives the process that asked for it, with retry driven by the permanent/transient distinction above. Each message's run is enqueued with `windowed: false` under its own id and takes no window, so two messages queued in the same microsecond, on two nodes, stay two runs. The message id is the idempotence key: `send` answers `false` and queues nothing for an id the store still holds — queued, delivered or failed for good — until `purgeFinished` removes its run. `send(message, notBefore: instant)` holds a message until that instant. Inside a transaction, on a `TomSqlJobStore`, `send` and `sendNow` queue the message in it: it commits or rolls back with the business write that caused it (see `doc/messaging.md`, Queueing Inside a Transaction); a `TomMemoryJobStore`, the default, queues at once. `start()` registers it in `TomMessageOutbox.started`, which the framework readiness check on `GET /ready` asks whether it is delivering. With a tracer installed, `send` is a producer span, `outbox send`, written into the message's headers as `traceparent` / `tracestate`, and the delivery a consumer span, `outbox deliver`, continuing it. |
 | `tomOutboxJobName` | The scheduler job name the outbox registers under (`messaging.outbox`). |
 
 ### Application messaging

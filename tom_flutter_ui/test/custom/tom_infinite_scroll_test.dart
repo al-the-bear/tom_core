@@ -627,11 +627,9 @@ void main() {
       await _scrollToTrailingTile(tester);
 
       expect(seen, isNotEmpty);
-      expect(
-        seen.toSet(),
-        {TomInfiniteScrollErrorPlacement.tile},
-        reason: 'items are loaded, so the report belongs in the list',
-      );
+      expect(seen.toSet(), {
+        TomInfiniteScrollErrorPlacement.tile,
+      }, reason: 'items are loaded, so the report belongs in the list');
     });
 
     testWidgets('the builder is told when it owns the surface', (tester) async {
@@ -714,11 +712,11 @@ void main() {
       // duplicate is the point: page 0 is fetched, then fetched again. The
       // `last` form is true of a fetcher called once per page too, so it
       // could not have caught the dartdoc that claimed exactly that.
-      expect(
-        source.calls,
-        [(0, 10), (1, 10), (0, 10)],
-        reason: 'refresh re-requests a page that was already fetched',
-      );
+      expect(source.calls, [
+        (0, 10),
+        (1, 10),
+        (0, 10),
+      ], reason: 'refresh re-requests a page that was already fetched');
     });
 
     testWidgets('refresh clears a latched error', (tester) async {
@@ -990,11 +988,9 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(
-        source.calls,
-        [(0, 10)],
-        reason: 'nothing scrolled, and the list did not need to fill itself',
-      );
+      expect(source.calls, [
+        (0, 10),
+      ], reason: 'nothing scrolled, and the list did not need to fill itself');
     });
 
     testWidgets('a refresh fills a short viewport again', (tester) async {

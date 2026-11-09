@@ -36,7 +36,7 @@ every principal's own values.
 | Type | Kind | Purpose |
 | ---- | ---- | ------- |
 | `TomUserPreference` | class | The `tom_user_preference` row; carries the row scope, and declares its principal the data subject and its value personal for the privacy module |
-| `TomUserPreferenceRepository` | class | Persists that entity |
+| x | Persists that entity |
 | `TomUserPreferences` | class | Typed reads and writes of the caller's preferences |
 | `TomUserPreferenceException` | class | Raised when an operation cannot identify the caller, or when a write would pass the principal's ceiling |
 | `TomPreferenceDefault` | class | The `tom_preference_default` row: one default for the deployment or for one role |

@@ -154,11 +154,9 @@ void main() {
     final updated =
         (find.byType(SegmentedButton<int>).evaluate().first.widget
             as SegmentedButton<int>);
-    expect(
-      updated.selected,
-      {1},
-      reason: 'tapping the Teal segment must shift selection to index 1',
-    );
+    expect(updated.selected, {
+      1,
+    }, reason: 'tapping the Teal segment must shift selection to index 1');
   });
 
   testWidgets('editing the name in one cell shows up in the others', (

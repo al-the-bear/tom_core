@@ -2,6 +2,112 @@
 
 ### Added
 
+- **The `audit_reports` module** (`lib/src/tomserver/audit_reports/`): the
+  reporting surface above the audit trail. `TomAuditView` answers a
+  `TomAuditQuery` across every writer of a trail (`TomSqlAuditTrailSource` over
+  the relational trail, `TomMemoryAuditTrailSource`), merged by record time.
+  `TomAuditQuestionFilter` is a question's filter with its JSON form, and
+  `TomAuditQuestion` a saved question with a cron schedule, recipients and a
+  format, kept by `TomMemoryAuditQuestionStore` or `TomSqlAuditQuestionStore`
+  in `tom_audit_question` (`auditQuestionTable`, reference migration in both
+  dialects). `TomAuditReports` asks, saves (owner-scoped), marks for delivery
+  and delivers due questions as exports through `TomExportService` and
+  `TomExportEmailDelivery`, recording each delivery in the trail; `registerOn`
+  puts the pass on a scheduler. `TomAuditReportsServer` serves the kernel's
+  `tomAuditReportsApi` to the `auditor` role, registered with the framework's
+  APIs (`registerFrameworkApis`). Failures are `TomAuditReportException`,
+  keyed `audit_reports.*`.
+
+- **Acting on delivery reports: the suppression list** (`messaging`). A
+  `failed` delivery report suppresses its address in a `TomSuppressionList`
+  (`TomMemorySuppressionList`, `TomSqlSuppressionList` over
+  `tom_message_suppression`, declared as `suppressionTable` with a reference
+  migration in both dialects), installed with
+  `TomDeliveryReportEndpoint.install(suppressions:)`. A `TomMessageRouter` given
+  the list leaves suppressed recipients out of every send: when every recipient
+  is suppressed it calls no transport and answers the new
+  `TomDeliveryOutcome.suppressed`; when some are, it sends to the rest and
+  reports the suppressed in `rejectedRecipients`. A failure suppresses the
+  address the report names (`TomDeliveryReport.recipient`) or the message's
+  single address; an expiry, an unknown state or a multi-recipient failure that
+  names no address suppresses nothing. Addresses are compared normalised: an
+  email address without case, a phone number by its digits.
+  `TomDeliveryCorrelation` records `addresses` and `providerCode`
+  (`tom_delivery_report` gains `addresses` and `provider_code`; its reference
+  migration is edited in place).
+- **Twilio and Vonage delivery-report presets.**
+  `TomFieldMappedDeliveryReportProtocol.twilio()` and `.vonage()`, checked
+  against the carriers' documented sample callbacks.
+  `TomFieldMappedDeliveryReportProtocol` gains `recipientPath`, `codeStates`
+  (an error code read as the state it means, so a full queue or a switched-off
+  handset is an expiry, not a dead address) and `unlistedFailureState`; reads a
+  timestamp without a zone as UTC; and reads `bounce` and `bounced` as failures
+  by default.
+
+- **`TomRequestCache`** (`little_things`): values a request computes once. The
+  endpoint pipeline runs every handler in `TomRequestCache.run`;
+  `TomPrincipalResourceRoleResolver.resolveResourceRoles`,
+  `TomDelegationResolver.resolveDelegatedRoles` and the async row scopes
+  (`TomDataScope.buildAsync`) keep their answers there, so one request reads
+  the caller's grants, delegations and each async scope once instead of once
+  per scoped statement. Every statement that changes data and every rollback
+  empties the cache, so a request sees what it wrote.
+  `test/request_statements_db_test.dart` pins three scoped reads at five
+  statements in a request (nine outside one).
+  `TomResourceDataScope.runCached`, which an application had to install
+  itself and none did, is removed. A write to one of the framework's own
+  bookkeeping tables (`TomRequestCache.bookkeepingTables`, the tables
+  `frameworkOwnedTables` lists) keeps the cache: an upload's blob rows no
+  longer empty it.
+- **A `PREPARE` span for preparing a statement.** `TomSqlDatasource` names the
+  span of a prepare `PREPARE` (`db.operation.name`) instead of the statement's
+  first keyword: each connection keeps what it prepared, so most prepares run
+  nothing, and a trace counted them as statements.
+
+- **The `sync` module** (`lib/src/tomserver/sync/`): the server side of the
+  kernel's offline sync protocol. `TomSync.expose(collection, repository,
+  validate:)` registers an entity with a `@TomVersion` field and a single
+  `String` or `int` key (`sync.expose.unversioned`, `sync.expose.key`,
+  `sync.expose.duplicate`). A `TomEntityLifecycle` change listener records
+  every write of the entity in `TomSqlSyncLog`, unnumbered, inside the write's
+  transaction; every pull first numbers the committed changes in the order they
+  were recorded, under the lock of a counter row per tenant and collection, so a
+  number a cursor has passed is never given to a change that commits later. The
+  log holds ids and versions, never values.
+  `TomSync.push` applies each change in a transaction of its own through the
+  repository — a save or deletion only at the change's base version, a creation
+  only where no entity holds the id — and answers `applied`, `conflict` or
+  `rejected` with a reason: the `validate` refusal, `TomSyncRejection`, a
+  `data_scope.write.*` or `column_authorization.write.field_forbidden` key,
+  `sync.data.unreadable`, `sync.id.taken` or `sync.collection.unknown`.
+  `TomSync.pull` reads each changed entity through the repository as the
+  caller, leaves out what the row scope hides, carries a deletion as the id
+  alone and moves the cursor past every change read (`sync.collection.unknown`,
+  `sync.pull.invalid`); `maxPullLimit` caps a page. `TomSyncServer` serves the
+  kernel's `tomSyncApi` as `POST /sync/push` and `POST /sync/pull`, registered by
+  `TomEndpointRouting.registerFrameworkApis`; `TomSyncErrorHandler` answers a
+  pull's refusals with `400`. The tables `tom_sync_change` and
+  `tom_sync_sequence` (`syncChangeTable`, `syncSequenceTable`) are in
+  `frameworkOwnedTables()`, with the reference migration
+  `example/sync/migrations{,_postgresql}/main/tomcore/[1]-create_tom_sync_change.sql`;
+  `TomSqlSyncLog(createSchema: false)` leaves them to it. `doc/sync.md`,
+  `doc/api/api_summary_sync.md`, `example/sync/sync_example.dart`; tests in
+  `test/sync_db_test.dart` (the kernel's sync contract over HTTP on MariaDB and
+  PostgreSQL, plus the row scope, ids another principal holds, the endpoints'
+  refusals and the numbering of concurrent writes) and
+  `test/framework_schema_test.dart`.
+- **`TomSqlDatasourceRepository.insert(entity)`** (`object_persistence`
+  module). Inserts the entity under the key it holds — a caller-chosen key,
+  which `save` would update — through the same write path as `save`; a single
+  key left unsaved is assigned by the database, as with `save`.
+  `doc/object_persistence.md` § Inserting under a key the caller chooses.
+- **`TomAwsCredentialsSource`** (`file_storage` module,
+  `file_storage/aws_v4_signer.dart`), beside `TomAwsV4Signer` and
+  `TomAwsCredentials`: `Future<TomAwsCredentials> Function()`, the credentials
+  of each signed AWS request, called for every request so a source can hand out
+  a role's refreshed temporary credentials. `tom_core_secrets`' AWS provider
+  takes it from here, and `tom_core_message_bus_aws` signs its SNS and SQS
+  requests with it. `doc/api/api_summary_file_storage.md` § TomAwsCredentialsSource.
 - **The bus invalidation channel** (`cache` module,
   `cache/bus_invalidation_channel.dart`). `TomBusInvalidationChannel({bus, log,
   topic, stalenessBound, nodeId})`, a `TomInvalidationChannel` over a
@@ -1255,9 +1361,68 @@
   `TomFrameworkReadinessAnalyzer.checks([check])` stops between its stages
   once the check is cancelled. `doc/healthcheck.md` § Cancelling a Timed-Out
   Analysis; `example/healthcheck/healthcheck_example.dart` steps 7 and 8.
+- **Key-encryption keys of a registered kind** (`object_persistence` module,
+  `field_encryption.dart`). Each `fieldEncryption.keys` entry has a `kind`,
+  default `aes` (`TomFieldEncryption.aesKeyKind`), the application-held key
+  with its `key`. `TomFieldEncryption.registerKeyKind(kind, factory)` lets a
+  package build the key of another kind from the entry with a
+  `TomKeyEncryptionKeyFactory`
+  (`Future<TomKeyEncryptionKey> Function(String id, Map<String, Object?> settings)`);
+  registering a kind again replaces its factory, and `aes` or an empty kind is
+  refused with `field_encryption.config.invalid`. `TomFieldEncryption.keyKinds`
+  lists the registered kinds. `configure` refuses an entry of an unregistered
+  kind with `field_encryption.config.invalid`, naming the known kinds.
+  `tom_core_secrets` registers `aws-kms`, `vault-transit` and
+  `azure-keyvault`. `doc/object_persistence.md` § Keys held by a
+  key-management service, `doc/configuration.md` § Field-Level Encryption;
+  test in `test/field_encryption_test.dart` ("a key of a kind a package
+  registered is built by its factory; an unknown kind is refused").
+- **Delivery-callback verifiers** (`messaging` module,
+  `messaging/delivery_callback_verifier.dart`): what gates
+  `POST /messaging/delivery-report`. `TomDeliveryCallbackVerifier.verify`
+  judges a `TomDeliveryCallbackRequest` (method, URL, lowercased headers, the
+  body read once, query and form parameters; `header`, `isForm`, `isJson`);
+  `tomConstantTimeEquals` is the comparison every verifier makes.
+  `TomSharedSecretCallbackVerifier(secret, {header})` checks a secret in a
+  header (`defaultHeader`, `x-tom-delivery-secret`).
+  `TomTwilioCallbackVerifier(authToken, {publicUrl})` checks
+  `X-Twilio-Signature` — HMAC-SHA1, base64, over the called URL and the sorted
+  POST parameters, or over the URL and its `bodySHA256` for a JSON callback;
+  `publicUrl` names the URL Twilio called behind a proxy, and a URL is accepted
+  signed with or without its port; Twilio signs no timestamp, so there is no
+  replay window. `TomVonageCallbackVerifier(signatureSecret, {method, maxAge,
+  clock})` checks Vonage's `sig` by `TomVonageSignatureMethod` (`md5hash`, HMAC
+  `md5` / `sha1` / `sha256` / `sha512`) over the query, form or flat JSON
+  parameters, and refuses a receipt whose `timestamp` is further than `maxAge`
+  (five minutes) from now. Both vendor classes expose a static `signature`. An
+  empty secret is refused at construction
+  (`messaging.delivery_report.empty_secret`). Documented in `doc/messaging.md`
+  § The endpoint is public, and gated by a verifier; tests in
+  `test/delivery_callback_verifier_test.dart` (DV-1 to DV-11: Twilio's
+  documented worked example, the vectors of Vonage's Ruby SDK for all five
+  methods, and the endpoint end to end with a signed Twilio form callback and a
+  signed Vonage receipt).
 
 ### Changed
 
+- **Breaking (schema): runs enqueued under an id of their own take no window.**
+  `tom_job_run` and `tom_job_run_archive` gain `window_at DATETIME(6) NULL`:
+  `scheduled_for` for a windowed run (the kernel's `TomJobRun.windowed`), `NULL`
+  for a run enqueued with `windowed: false`. The unique key
+  `uq_tom_job_run_window` moves from `(job_name, tenant, scheduled_for)` to
+  `(job_name, tenant, window_at)`; a unique key holds any number of `NULL`s on
+  MariaDB and PostgreSQL, so two such runs of one job and tenant enqueued in
+  the same instant — on two nodes — are two runs. `TomSqlJobStore.findWindow`
+  and `lastWindow` read `window_at`. The messaging outbox, the bus relay, the
+  notification digests and the saga orchestrator enqueue with
+  `scheduledFor: now` and `windowed: false`; their run ids are the idempotence
+  keys. The reference migrations
+  `example/scheduling/migrations{,_postgresql}/main/tomcore/[1]-create_tom_job_run.sql`
+  and `[5]-create_tom_job_run_archive.sql` declare the column, the first also
+  the key; a deployment that applied them adds the column and rebuilds the key.
+- **A saga's current run is found by its id.** `TomSagaOrchestrator.resume`
+  looks up `saga:<tenant>:<saga_id>:<version>` with `TomJobStore.findRun`
+  instead of a window instant.
 - **Breaking: `TomHealthAnalyzer.analyzeHealth` takes the check.** The
   contract is `Future<TomHealthStatus> analyzeHealth(TomHealthCheck check)`;
   an analyzer overriding `analyzeHealth()` adds the parameter, and one
@@ -1376,13 +1541,33 @@
   overlapping saves could read each other's. The repository's insert key,
   `deleteById` count, query-delete counts and versioned writes read the
   `TomStatementOutcome` of their own `run`. A driver implements `run`.
+- **Breaking: `TomDeliveryReportEndpoint.install` takes a verifier.**
+  `install({store, protocol, required TomDeliveryCallbackVerifier verifier})`
+  replaces `install({store, protocol, secret})`; the shared secret is
+  `verifier: TomSharedSecretCallbackVerifier(secret)`. `isGated` answers whether
+  a verifier is installed. `handle` reads the body once, takes a form body's
+  fields (`application/x-www-form-urlencoded`) as parameters together with the
+  query, verifies the request before decoding anything (`401`
+  `messaging.delivery_report.unauthorized`), and decodes JSON only for a body
+  that is not a form; the protocol receives the query and form fields as
+  `TomDeliveryCallback.parameters`.
 
 ### Removed
 
+- **Breaking: `TomEventInstants`** (`scheduling` module) and its export. A run
+  enqueued under an id of its own is kept apart by `windowed: false`, on every
+  node, where the instants were kept apart within one isolate only.
+- **Breaking: `TomSagaState.runWindow`**, the `TomSagaRow.runWindow` field and
+  the `tom_saga.run_window` column. The reference migrations
+  `example/transactions/migrations{,_postgresql}/main/tomcore/[1]-create_tom_saga.sql`
+  no longer declare it; a deployment that applied them may drop it.
 - **Breaking: `TomPreparedStatement.lastGeneratedId` and
   `TomPreparedStatement.lastAffectedRows`** (and their `MariadbPreparedStatement`
   overrides). Read `TomStatementOutcome.generatedId` and
   `TomStatementOutcome.affectedRows` from `run` instead.
+- **Breaking: `TomDeliveryReportEndpoint.secretHeader`** and the `secret:`
+  parameter of `TomDeliveryReportEndpoint.install`. The header is
+  `TomSharedSecretCallbackVerifier.defaultHeader`.
 
 ### Tests
 

@@ -33,7 +33,10 @@
 # both servers with tracing on, exporting to it (TRACING=true, OTLP_ENDPOINT).
 # After the suites it reads what the collector received and fails unless each
 # server exported request spans named after their routes, and the app server
-# the SQL statements under them. Host port 4318 (OTEL_COLLECTOR_PORT) must be
+# the SQL statements under them, and prints the SQL statements per route and
+# the statements one request repeats (statements executed; preparing one is a
+# PREPARE span of its own and is counted apart); with OTEL_TRACES_OUT set it keeps the
+# collector's traces.json there. Host port 4318 (OTEL_COLLECTOR_PORT) must be
 # free. Not combinable with --external-stack, whose servers this run does not
 # configure.
 set -euo pipefail
@@ -57,6 +60,7 @@ CLIENT_CORE="$(cd "$SCRIPT_DIR/.." && pwd)"
 SAMPLES="$(cd "$CLIENT_CORE/.." && pwd)"
 AUTH_DIR="$SAMPLES/advanced_auth_server"
 APP_DIR="$SAMPLES/advanced_app_server"
+OPS_DIR="$SAMPLES/advanced_ops_server"
 OPENAPI_CLIENT="$SAMPLES/advanced_openapi_client"
 OTEL_DIR="$SAMPLES/advanced_deploy/otel"
 OTEL_PORT="${OTEL_COLLECTOR_PORT:-4318}"
@@ -256,6 +260,15 @@ log "Starting app server"
 (cd "$APP_DIR" && exec env ${SERVER_ENV[@]+"${SERVER_ENV[@]}"} dart run bin/app_server_start.dart env=dev >"$LOG_DIR/app.log" 2>&1) &
 SERVER_PIDS+=($!)
 wait_app_health
+
+# 3b. The ops server's migrations ([100], [101]) in app_db: the audit trail and
+#     the saved audit questions the app server's `/audit-reports` API reads and
+#     keeps. After the app server's boot, which applied app_db's [000]–[099]:
+#     the engine records each applied version per (datasource, schema), and the
+#     ops band numbers above the app band so neither waits on the other.
+log "Applying the ops server's app_db migrations"
+(cd "$OPS_DIR" && dart pub get >/dev/null && dart run bin/ops_server_start.dart --migrate-only env=dev) \
+  >"$LOG_DIR/ops_migrate.log" 2>&1
 fi
 
 # 4. Run the scripted live scenarios against the stack. Each *skips* (rather
@@ -264,7 +277,7 @@ fi
 #    means something died after the health checks — treat it as a failure and
 #    surface the server logs.
 #
-#    Every `*_integration_test.dart` in the package runs here — five suites,
+#    Every `*_integration_test.dart` in the package runs here — six suites,
 #    because they prove different things and any can break alone:
 #      - cross_tier_integration_test  — the admin→end-user authorization loop:
 #        a grant edit reaching the field matrix, a share revealing a project to
@@ -302,6 +315,10 @@ fi
 #      - admin_api_client_integration_test — the same shape one tier down:
 #        admin signing in and listing users through the typed admin client,
 #        against the auth server alone.
+#      - audit_reports_client_integration_test — the framework's
+#        `/audit-reports` API as the auditor audrey: the trail's writers, a
+#        question asked, saved, answered, marked for delivery and removed, a
+#        filter refused, and alice, without the role, answered 404.
 #
 #    One more suite runs from the `advanced_openapi_client` package:
 #      - generated_client_integration_test — the clients *generated* from the
@@ -346,6 +363,8 @@ run_live_suite "the live app API client smoke suite" \
   test/app_api_client_integration_test.dart || result=1
 run_live_suite "the live admin API client smoke suite" \
   test/admin_api_client_integration_test.dart || result=1
+run_live_suite "the live audit-report suite (audrey's questions over app_db's trail)" \
+  test/audit_reports_client_integration_test.dart || result=1
 run_live_suite "the generated OpenAPI clients against both servers" \
   test/generated_client_integration_test.dart "$OPENAPI_CLIENT" || result=1
 
@@ -374,15 +393,56 @@ ok = True
 for service in ('auth', 'app'):
     found = spans.get(service, [])
     routed = [s for s in found if s.get('kind') == 2 and 'http.route' in attrs(s)]
-    sql = [s for s in found if 'db.system.name' in attrs(s)]
+    def operation(span):
+        return next((a['value'].get('stringValue') for a in span.get('attributes', [])
+                     if a['key'] == 'db.operation.name'), None)
+    database = [s for s in found if 'db.system.name' in attrs(s)]
+    sql = [s for s in database if operation(s) != 'PREPARE']
+    prepares = len(database) - len(sql)
     traced_sql = {s['traceId'] for s in sql} & {s['traceId'] for s in routed}
     print(f"{service}: {len(found)} spans, {len(routed)} routed requests, "
-          f"{len(sql)} SQL statements, {len(traced_sql)} requests with SQL")
+          f"{len(sql)} SQL statements (and {prepares} prepares), "
+          f"{len(traced_sql)} requests with SQL")
     if not routed or (service == 'app' and not traced_sql):
         print(f"{service}: the expected spans did not arrive", file=sys.stderr)
         ok = False
+    # SQL statements per route, and the statements a single request repeats.
+    def value(span, key):
+        for a in span.get('attributes', []):
+            if a['key'] == key:
+                return next(iter(a['value'].values()))
+        return None
+    route_of = {s['traceId']: f"{value(s, 'http.request.method')} {value(s, 'http.route')}"
+                for s in routed}
+    per_trace = {}
+    for s in sql:
+        if s['traceId'] in route_of:
+            per_trace.setdefault(s['traceId'], []).append(
+                value(s, 'db.query.text') or s.get('name'))
+    per_route = {}
+    for trace, route in route_of.items():
+        per_route.setdefault(route, []).append(per_trace.get(trace, []))
+    print(f"{service}: SQL statements per route (requests, mean, max)")
+    for route, traces in sorted(per_route.items()):
+        counts = [len(t) for t in traces]
+        print(f"  {route}: {len(traces)}, {sum(counts) / len(counts):.1f}, {max(counts)}")
+    repeated = {}
+    for statements in per_trace.values():
+        seen = {}
+        for text in statements:
+            seen[text] = seen.get(text, 0) + 1
+        for text, n in seen.items():
+            if n > 1:
+                repeated[text] = repeated.get(text, 0) + n - 1
+    if repeated:
+        print(f"{service}: statements repeated within one request (extra executions)")
+        for text, n in sorted(repeated.items(), key=lambda e: -e[1])[:15]:
+            print(f"  {n}: {' '.join(str(text).split())[:160]}")
 sys.exit(0 if ok else 1)
 PY
+  if [ -n "${OTEL_TRACES_OUT:-}" ]; then
+    cp "$LOG_DIR/otel/traces.json" "$OTEL_TRACES_OUT"
+  fi
 fi
 
 # Server logs are dumped by the EXIT trap (cleanup) whenever the run exits

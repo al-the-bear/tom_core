@@ -660,7 +660,6 @@ const TomSagaState({
   required int step,
   required int version,
   required Map<String, Object?> data,
-  required DateTime runWindow,
   required DateTime createdAt,
   required DateTime updatedAt,
   String? error,
@@ -679,7 +678,6 @@ const TomSagaState({
 | `version` | `int` | Grows by one with every transition; a transition is written only over the version it was made from (final). |
 | `data` | `Map<String, Object?>` | The saga's data (final). |
 | `error` | `String?` | Why the saga compensates, or failed (final). |
-| `runWindow` | `DateTime` | The window instant of the job run that carries this version — its identity in the job store, not when it is due (final). |
 | `createdAt` | `DateTime` | When the saga began (final). |
 | `updatedAt` | `DateTime` | When the saga last moved (final). |
 
@@ -812,7 +810,6 @@ TomSagaRow()
 | `version` | `int` | `version` — the version. |
 | `data` | `String` | `data` — the data, as JSON. |
 | `error` | `String?` | `error` — why the saga compensates or failed. |
-| `runWindow` | `String` | `run_window` — the current run's window instant, as stored UTC text. |
 | `createdAt` | `String` | `created_at` — when the saga began, as stored UTC text. |
 | `updatedAt` | `String` | `updated_at` — when the saga last moved, as stored UTC text. |
 
@@ -887,7 +884,7 @@ and `lock` configure the scheduler.
 | `register` | `void register(TomSaga saga)` | Registers `saga` and its two jobs, so it can be begun and its runs executed. Every node that may run a saga registers it under the same name — the scheduler takes no run of a job it has not registered. Throws `transactions.saga.already_registered` for a name registered already, `transactions.saga.closed` after `close`. |
 | `begin` | `Future<String> begin(String sagaName, {Map<String, Object?> data = const {}, String? id})` | Begins the saga `sagaName` with a copy of `data`, for the tenant in context, and answers its id: `id`, or a new UUID. Returns once the saga is stored and its first step queued. Called inside a transaction on the saga store's data source, the saga begins only if that transaction commits. Throws `transactions.saga.unknown`, `…invalid_id`, `…data_not_json`, `…id_taken` and `…closed`. |
 | `find` | `Future<TomSagaState?> find(String id)` | The saga `id` of the tenant in context, or `null`. |
-| `resume` | `Future<int> resume()` | Re-queues the run of every unfinished saga whose run is no longer in the job store, or has finished, and answers how many it re-queued. Looks in the context's tenant and, when a `TomTenancy` is installed, in every tenant's; passes over sagas not registered here. Called by `start` and every `sweepInterval` after it. |
+| `resume` | `Future<int> resume()` | Re-queues the run of every unfinished saga whose run is no longer in the job store, or has finished, and answers how many it re-queued. A saga's current run is found by its id, `saga:<tenant>:<saga_id>:<version>`, with `TomJobStore.findRun`; every transition's run is enqueued under that id with `windowed: false`. Looks in the context's tenant and, when a `TomTenancy` is installed, in every tenant's; passes over sagas not registered here. Called by `start` and every `sweepInterval` after it. |
 | `start` | `Future<void> start()` | Resumes the unfinished sagas, then runs transitions on the scheduler's tick and calls `resume` every `sweepInterval`; a sweep that fails is logged as a warning. |
 | `tick` | `Future<void> tick()` | Runs one pass of due transitions and waits for them to finish — for tests, and for a caller that wants a saga moved on now. While the orchestrator is started, a pass of its own may be under way; this one then returns at once, and the transitions are that pass's. |
 | `close` | `Future<void> close()` | *(override)* Stops running sagas and closes the scheduler, releasing its leases. The sagas stay where they are, and the next `start` resumes them. Idempotent. |
@@ -945,7 +942,7 @@ Where a saga is in its life.
 
 | Function | Signature | Description |
 | -------- | --------- | ----------- |
-| `sagaTable` | `TomFrameworkTable sagaTable(String table)` | The one declaration of the saga table: primary key `(tenant, saga_id)`, `status` and the `step` cursor, the `version` optimistic lock, the JSON `data` and the `error`, the `run_window` instant a resumption looks its run up by, `created_at` and `updated_at`, and the `(status, updated_at)` index resumption and the purge read. Listed by `frameworkOwnedTables`. |
+| `sagaTable` | `TomFrameworkTable sagaTable(String table)` | The one declaration of the saga table: primary key `(tenant, saga_id)`, `status` and the `step` cursor, the `version` optimistic lock, the JSON `data` and the `error`, `created_at` and `updated_at`, and the `(status, updated_at)` index resumption and the purge read. Listed by `frameworkOwnedTables`. |
 | `sagaTableDdl` | `String sagaTableDdl(String table)` | The `CREATE TABLE` statement for the saga table, derived from `sagaTable`. |
 | `decisionTable` | `TomFrameworkTable decisionTable(String table)` | The one declaration of the decision table: `transaction_id`, `branch_id` and `decided_at`, primary key `(transaction_id, branch_id)` — one row per decided branch. Listed by `frameworkOwnedTables`. |
 | `decisionTableDdl` | `String decisionTableDdl(String table)` | The `CREATE TABLE` statement for the decision table, derived from `decisionTable`. |

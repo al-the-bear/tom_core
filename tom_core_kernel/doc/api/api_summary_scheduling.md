@@ -70,8 +70,10 @@ The module separates four concerns that are usually tangled together:
   `TomCommand` factory, plus the retry, timeout, overlap and catch-up policy.
   Jobs can be written by hand or declared with the `@TomScheduledJob`
   annotation and discovered through reflection.
-- **State** — a `TomJobStore` holds `TomJobRun` rows: one row per *window*, which
-  is what makes planning idempotent across restarts and across a cluster.
+- **State** — a `TomJobStore` holds `TomJobRun` rows: one row per *window* for a
+  windowed run, which is what makes planning idempotent across restarts and
+  across a cluster, and one row per id for a run a component enqueues under an
+  id of its own.
 - **Exclusion** — a `TomLeaseLock` grants a time-limited, fenced (`token`-carrying)
   lease so exactly one node executes a given run.
 
@@ -673,8 +675,10 @@ TomJobRunCommand({
 
 ### TomJobRun
 
-One row per *window* — which is what makes planning idempotent across restarts
-and across a cluster.
+One row per *window* for a windowed run — which is what makes planning
+idempotent across restarts and across a cluster. A run a component enqueues
+under an id of its own (`windowed: false`) is keyed by its id and takes no
+window.
 
 - **Serialization:** JSON round-trip via `toJson` / `TomJobRun.fromJson`.
 
@@ -698,6 +702,7 @@ TomJobRun({
   String? tenant,
   int priority = 0,
   Map<String, Object?>? checkpoint,
+  bool windowed = true,
 })
 
 factory TomJobRun.fromJson(Map<String, Object?> map)
@@ -709,7 +714,7 @@ factory TomJobRun.fromJson(Map<String, Object?> map)
 | -------- | ---- | ----------- |
 | `id` | `String` | Unique run id. |
 | `jobName` | `String` | The job this run belongs to. |
-| `scheduledFor` | `DateTime` | The window this run *is* — the idempotence key together with `jobName`. |
+| `scheduledFor` | `DateTime` | The window this run *is* — the idempotence key together with `jobName` and `tenant` for a windowed run. For a run enqueued under an id of its own, the instant it was enqueued for, which identifies nothing. |
 | `runAt` | `DateTime` | When the run becomes due (moves out on a retry backoff). |
 | `state` | `TomJobRunState` | `pending` / `running` / `succeeded` / `failed`. |
 | `attempt` | `int` | 1-based attempt counter. |
@@ -723,6 +728,7 @@ factory TomJobRun.fromJson(Map<String, Object?> map)
 | `tenant` | `String?` | The tenant the run belongs to, or `null` for a run of no tenant. The scheduler runs the body inside it (`TomTenantContext`) and keeps each tenant's windows apart. Round-trips through `toJson` / `fromJson`. |
 | `priority` | `int` | Copied from `TomJobDefinition.priority` when planned; `claimDue` takes higher priorities first. |
 | `checkpoint` | `Map<String, Object?>?` | The progress the run last saved through `TomJobRunContext.saveCheckpoint`, kept across retries and recovery and handed to the next attempt. JSON-native values only. |
+| `windowed` | `bool` | Whether the run realises a window: one run per job, tenant and `scheduledFor`, found with `TomJobStore.findWindow`. `true` (the default) for the runs the scheduler plans — a schedule's windows, an event's instant of arrival. `false` for a run a component enqueues under an id of its own (the messaging outbox, the bus relay, the saga orchestrator, the notification digests): its id is its idempotence key, found with `findRun`, and two such runs of one job and tenant enqueued in the same instant are two runs. JSON key `windowed`; absent reads as `true`. |
 | `isFinished` | `bool` | Whether `state` is terminal (getter). |
 
 #### Methods
@@ -805,10 +811,10 @@ re-reading the store.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `enqueue` | `Future<void> enqueue(TomJobRun run)` | Adds a run. Idempotence is the caller's job, via `findWindow`. Throws `schedule.job.payload` — **before** changing the queue — when `payload` is not JSON-encodable. |
+| `enqueue` | `Future<void> enqueue(TomJobRun run)` | Adds a run, or replaces the run recorded under its id. Idempotence is the caller's job — via `findWindow` for a windowed run, via `findRun` for one enqueued under an id of its own. Throws `schedule.job.payload` — **before** changing the queue — when `payload` is not JSON-encodable. |
 | `findRun` | `Future<TomJobRun?> findRun(String id)` | The run recorded under `id`, in any state, or `null`. A component that enqueues runs under ids of its own — the messaging outbox keys a run by its message — asks this before enqueueing, so the same id submitted again after its run finished does not run twice. A run removed by `purgeFinished` is not found. |
-| `findWindow` | `Future<TomJobRun?> findWindow(String jobName, DateTime scheduledFor, {String? tenant})` | The existing run for a window of `tenant` (`null` for runs of no tenant), if it was already planned. A window belongs to one tenant: the same instant for two tenants is two windows. |
-| `lastWindow` | `Future<DateTime?> lastWindow(String jobName)` | The most recent window planned for a job — where catch-up resumes from. |
+| `findWindow` | `Future<TomJobRun?> findWindow(String jobName, DateTime scheduledFor, {String? tenant})` | The existing windowed run for a window of `tenant` (`null` for runs of no tenant), if it was already planned. A window belongs to one tenant: the same instant for two tenants is two windows. A run with `windowed: false` takes no window and is never answered. |
+| `lastWindow` | `Future<DateTime?> lastWindow(String jobName)` | The most recent window planned for a job, among its windowed runs — where catch-up resumes from. |
 | `claimDue` | `Future<List<TomJobClaim>> claimDue(DateTime now, String owner, {int limit = 16, bool Function(TomJobRun run)? accept})` | Atomically claims up to `limit` due runs for `owner`, returning one ticket per run won. Takes runs by descending `priority`, insertion order among equals, and skips the runs of paused jobs. |
 | `release` | `Future<void> release(TomJobClaim claim)` | Hands a claimed run back to `pending` **without** charging an attempt — the voluntary counterpart of `recoverAbandoned`, so lease contention cannot drain a retry budget. |
 | `markStarted` | `Future<void> markStarted(TomJobClaim claim, DateTime now)` | Records that execution began. |

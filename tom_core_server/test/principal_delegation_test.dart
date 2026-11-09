@@ -733,11 +733,8 @@ void main() {
       expect(grants.reads, ['alice']);
     });
 
-    test('the reuse is scoped to one resolution, not remembered across '
-        'calls', () async {
-      // Request-scoped caching is TomResourceDataScope.runCached's job; the
-      // resolver holding grants beyond a single resolution would serve a
-      // revoked grant to the next request.
+    test('outside a request the reads are not remembered across calls: a '
+        'revoked grant must not reach the next request', () async {
       final grants = countingStore();
       final resolver = TomDelegationResolver(
         InMemoryPrincipalDelegationStore(threeDelegationsTwoDelegators()),
@@ -748,6 +745,22 @@ void main() {
       await resolver.resolveDelegatedRoles('bob', now);
 
       expect(grants.reads.length, 4);
+    });
+
+    test('within a request each delegate and delegator is read once', () async {
+      final grants = countingStore();
+      final resolver = TomDelegationResolver(
+        InMemoryPrincipalDelegationStore(threeDelegationsTwoDelegators()),
+        TomPrincipalResourceRoleResolver(grants),
+      );
+
+      await TomRequestCache.run(() async {
+        await resolver.resolveDelegatedRoles('bob', now);
+        await resolver.resolveDelegatedRoles('bob', now);
+        await resolver.resolveEffectiveRoles('bob', now);
+      });
+
+      expect(grants.reads..sort(), ['alice', 'bob', 'carol']);
     });
 
     test('effective roles read the delegate once alongside the '

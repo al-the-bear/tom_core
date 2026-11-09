@@ -30,6 +30,8 @@ library;
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../little_things/request_cache.dart';
+
 import '../object_persistence/persistence_annotations.dart';
 import '../object_persistence/crud_repository.dart';
 import '../privacy/personal_data.dart';
@@ -153,12 +155,24 @@ class TomPrincipalResourceRoleResolver {
 
   /// Loads [principalId]'s grants and folds them into a `resourceKey → roleName`
   /// map. Duplicate resources collapse to the [strongerRole].
-  Future<Map<String, String>> resolveResourceRoles(String principalId) async {
-    final grants = await store.grantsForPrincipal(principalId);
-    return foldRoles([
-      for (final grant in grants) MapEntry(grant.resourceKey, grant.role),
-    ], strongerRole);
-  }
+  ///
+  /// Read once per request ([TomRequestCache]): the row scope, a containment
+  /// check and a delegation's lent roles ask for the same grants many times in
+  /// one request. The map answered is unmodifiable, since every one of them
+  /// shares it.
+  Future<Map<String, String>> resolveResourceRoles(String principalId) =>
+      TomRequestCache.memo(
+        (this, #resolveResourceRoles, principalId),
+        () async {
+          final grants = await store.grantsForPrincipal(principalId);
+          return Map<String, String>.unmodifiable(
+            foldRoles([
+              for (final grant in grants)
+                MapEntry(grant.resourceKey, grant.role),
+            ], strongerRole),
+          );
+        },
+      );
 
   /// Folds `resourceKey → roleName` [entries] into a map, collapsing duplicate
   /// resources to the [stronger] of the competing roles — or, on the key of a

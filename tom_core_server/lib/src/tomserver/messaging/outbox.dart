@@ -55,7 +55,6 @@ import 'dart:async';
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
-import '../scheduling/event_instants.dart';
 import 'delivery_report.dart';
 import 'message.dart';
 import 'message_transport.dart';
@@ -284,13 +283,13 @@ class TomMessageOutbox implements TomClosable {
       TomJobRun(
         id: runId,
         jobName: jobName,
-        // A window of the run's own: two messages queued in the same
-        // microsecond would otherwise share the store's window key, and the
-        // second would replace the first.
-        scheduledFor: TomEventInstants.next(now),
+        scheduledFor: now,
         runAt: runAt,
         payload: message.toJson(),
         tenant: TomTenantContext.currentId,
+        // The message's run is keyed by its id, not a window: two messages
+        // queued in the same microsecond — on two nodes — are two runs.
+        windowed: false,
       ),
     );
     return true;
@@ -387,6 +386,10 @@ class TomMessageOutbox implements TomClosable {
           channel: message.channel,
           sentAt: receipt.at,
           tenant: tenant,
+          addresses: [
+            for (final address in message.envelopeAddresses)
+              if (!receipt.rejectedRecipients.contains(address)) address,
+          ],
         ),
       );
     }

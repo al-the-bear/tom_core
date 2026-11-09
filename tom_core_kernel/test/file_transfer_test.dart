@@ -830,11 +830,9 @@ void main() {
           ),
         ),
       );
-      expect(
-        delivered,
-        [4],
-        reason: 'the chunk in flight is delivered; the next one is refused',
-      );
+      expect(delivered, [
+        4,
+      ], reason: 'the chunk in flight is delivered; the next one is refused');
     });
 
     test('slots names every stored slot', () async {

@@ -201,6 +201,47 @@ void runTomJobStoreContract(String variant, TomJobStoreFactory create) {
       });
     });
 
+    TomJobRun eventRun(String id, {String? tenant}) => TomJobRun(
+      id: id,
+      jobName: 'job',
+      scheduledFor: at,
+      runAt: at,
+      tenant: tenant,
+      windowed: false,
+    );
+
+    test('runs enqueued under ids of their own keep apart at one instant, '
+        'for one job and tenant', () async {
+      // Two nodes enqueueing a message each in the same microsecond: the runs
+      // share job, tenant and instant, and neither may replace the other.
+      await store.enqueue(eventRun('message-1', tenant: 'acme'));
+      await store.enqueue(eventRun('message-2', tenant: 'acme'));
+      await store.enqueue(eventRun('message-3'));
+      await store.enqueue(eventRun('message-4'));
+      for (final id in ['message-1', 'message-2', 'message-3', 'message-4']) {
+        final run = await store.findRun(id);
+        expect(run, isNotNull, reason: id);
+        expect(run!.windowed, isFalse, reason: id);
+      }
+      expect((await store.all()).map((r) => r.id).toSet(), {
+        'message-1',
+        'message-2',
+        'message-3',
+        'message-4',
+      });
+    });
+
+    test('a run under an id of its own takes no window', () async {
+      await store.enqueue(eventRun('message-1'));
+      expect(await store.findWindow('job', at), isNull);
+      expect(await store.lastWindow('job'), isNull);
+      // The clock-driven run of that instant is planned beside it.
+      await store.enqueue(makeRun('window'));
+      expect((await store.findWindow('job', at))!.id, 'window');
+      expect((await store.findRun('message-1'))!.windowed, isFalse);
+      expect((await store.findRun('window'))!.windowed, isTrue);
+    });
+
     test('findWindow does not match a different job', () async {
       await store.enqueue(makeRun('a'));
       expect(await store.findWindow('other', at), isNull);

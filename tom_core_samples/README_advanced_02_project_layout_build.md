@@ -3,14 +3,14 @@
 *Part 02 of the Tom Core advanced-sample user guide — see the [guide index](README_advanced_sample.md#user-guide).*
 
 This part is the practical companion to the [architecture](README_advanced_01_architecture.md):
-how the nine packages are laid out on disk, how their pubspecs wire together,
+how the ten packages are laid out on disk, how their pubspecs wire together,
 why they are all `publish_to: none`, how reflection code is generated (and when a
 regen is actually required), and the exact steps to build and run the whole
 system locally.
 
-## The nine packages on disk
+## The ten packages on disk
 
-All nine packages live side by side under `tom_core_samples/`:
+All ten packages live side by side under `tom_core_samples/`:
 
 ```text
 tom_core_samples/
@@ -95,7 +95,7 @@ prevents an accidental `dart pub publish`.
 
 ## Reflection generation
 
-Six of the nine packages reflect types; each has **exactly one reflection entry
+Seven of the ten packages reflect types; each has **exactly one reflection entry
 point** and a `build.yaml` that emits a sibling `<entry>.reflection.dart`. Only
 real entry-points (the servers' `bin/` and the clients' `lib/`) ship a **runtime**
 seed; the two **libraries** carry a seed only for their own tests, rooted under

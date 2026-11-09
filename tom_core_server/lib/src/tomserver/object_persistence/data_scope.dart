@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../datasources/types_operator.dart';
+import '../little_things/request_cache.dart';
 import '../little_things/server_exception.dart';
 import 'persistence_annotations.dart';
 import 'query_builder.dart';
@@ -373,7 +374,15 @@ class TomDataScope {
             'TomDataScopeRegistry.registerAsync.',
       );
     }
-    return resolver(principal);
+    // Once per request: every scoped statement of a request asks again, and an
+    // async scope is typically a query of its own (TomRequestCache). Keyed by
+    // the resolver, so a kind that writes what it reads resolves once for
+    // both.
+    return TomRequestCache.memo((
+      #tomAsyncDataScope,
+      resolver,
+      principal?.qualifiedId,
+    ), () => resolver(principal));
   }
 
   /// Builds the **union** predicate over the id-set [groups] for column [col]:

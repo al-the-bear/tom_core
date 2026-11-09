@@ -83,6 +83,7 @@ without the second; the second is built entirely on the first.
 | `TomBlobManifestRow` / `TomBlobChunkRow` | class | The reflected row types the database backend's result mapper materialises |
 | `TomS3BlobStore` | class | Any S3-compatible object store, single-PUT or multipart |
 | `TomAwsV4Signer` / `TomAwsCredentials` | class | AWS SigV4 request signing |
+| `TomAwsCredentialsSource` | typedef | The credentials of each request, from a function — static keys or a role's temporary credentials; taken by the AWS secrets provider and the AWS message bus |
 | `TomBlobStoreInfo` | class | The configured stores, by name, with a default |
 | `TomBlobStoreBackend` | abstract class | A backend: its settings as fields, and the store they build |
 | `TomMemoryBlobStoreBackend` / `TomDirectoryBlobStoreBackend` / `TomDatabaseBlobStoreBackend` / `TomS3BlobStoreBackend` | class | The four built-in backends — `memory`, `directory`, `database`, `s3` |
@@ -1374,7 +1375,7 @@ without a bean registration.
 
 A slot is `<table>/<id>/<column>`, under the endpoint's `/files` base:
 
-```
+```text
 POST /files/document/4711/attachment
 ```
 
@@ -1644,6 +1645,9 @@ results the same way.
 - **`TomMemoryBlobStore` / `TomDirectoryBlobStore` / `TomDatabaseBlobStore` /
   `TomS3BlobStore`** — the four shipped backends.
 - **`TomAwsV4Signer` / `TomAwsCredentials`** — SigV4 signing for the S3 backend.
+- **`TomAwsCredentialsSource`** — the credentials of each signed request, from a
+  function; the shape `tom_core_secrets`' AWS provider and
+  `tom_core_message_bus_aws` take.
 - **`TomBlobStoreInfo` / `TomBlobStoreBackend`** — the configured registry, and
   the backend classes whose fields are a store's settings; the four built-ins
   and an application's own, registered through a `TomBlobStoreBackendFactory`.

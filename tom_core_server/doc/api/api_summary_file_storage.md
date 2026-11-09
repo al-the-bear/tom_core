@@ -19,6 +19,7 @@ named registry that selects one from configuration.
   - [TomBlobManifestRow](#tomblobmanifestrow)
   - [TomBlobChunkRow](#tomblobchunkrow)
   - [TomAwsCredentials](#tomawscredentials)
+  - [TomAwsCredentialsSource](#tomawscredentialssource)
   - [TomAwsV4Signer](#tomawsv4signer)
   - [TomS3BlobStore](#toms3blobstore)
   - [TomBlobStoreBackend](#tomblobstorebackend)
@@ -100,7 +101,9 @@ reflected row types the data source's mapper materialises results into.
 Requests to an object store are signed by `TomAwsV4Signer` using a
 `TomAwsCredentials` pair; signing is a pure function of a request and a key, so
 it lives apart from the store and is verified against AWS's published test
-vectors. Finally, `TomBlobStoreInfo` is the process-wide registry of named,
+vectors. `TomAwsCredentialsSource`, declared beside them, is the function a
+signing client calls for each request's credentials — the shape
+`tom_core_secrets`' AWS provider and `tom_core_message_bus_aws` take. Finally, `TomBlobStoreInfo` is the process-wide registry of named,
 configured stores — the same shape as `TomDataSourceInfo` — and a
 `TomBlobStoreBackend` is what a configured store's `type` names: a class whose
 fields are that backend's settings, so a key in a store's block that names no
@@ -139,7 +142,7 @@ look; each summary names the other two.
 
 ## Class Hierarchy
 
-```
+```text
 TomServerException  (little_things)
     └── TomStorageException
 
@@ -172,6 +175,7 @@ TomBlobManifestRow
 TomBlobChunkRow
 
 TomAwsCredentials
+TomAwsCredentialsSource  (typedef)
 TomAwsV4Signer
 
 TomBlobStoreBackend  (abstract)
@@ -671,6 +675,18 @@ const TomAwsCredentials({
 | `accessKeyId` | `String` | The public key id (final). |
 | `secretAccessKey` | `String` | The secret used to derive the signing key; never transmitted (final). |
 | `sessionToken` | `String?` | The session token accompanying temporary credentials, or `null` (final). |
+
+### TomAwsCredentialsSource
+
+Supplies the credentials an AWS request is signed with. Called for every
+request, so a source can hand out refreshed temporary credentials — an instance
+or task role's, cached by the source until shortly before they expire. Used by
+`tom_core_secrets`' `TomAwsSecretsProvider` and `tom_core_message_bus_aws`'
+`TomAwsMessageBus`; `TomS3BlobStore` takes a fixed `TomAwsCredentials` instead.
+
+```dart
+typedef TomAwsCredentialsSource = Future<TomAwsCredentials> Function();
+```
 
 ### TomAwsV4Signer
 

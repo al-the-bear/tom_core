@@ -137,7 +137,7 @@ log "Resolving Dart dependencies"
 #    timers would put a second scheduler node on the same `tom_lease` rows the
 #    live suites claim, and a purge firing beside the tests would delete the rows
 #    they seeded.
-log "Applying this package's [100] migration"
+log "Applying this package's [100] and [101] migrations"
 (cd "$OPS_DIR" && dart run bin/ops_server_start.dart --migrate-only) \
   >"$LOG_DIR/migrate.log" 2>&1
 tail -n 5 "$LOG_DIR/migrate.log"
@@ -168,6 +168,8 @@ run_live_suite "the ops live suite (audited deletes, blob export, framework tabl
   test/ops_live_test.dart || result=1
 run_live_suite "the privacy live suite (a user exported and erased across both databases)" \
   test/ops_privacy_live_test.dart || result=1
+run_live_suite "the audit-report live suite (a saved question delivered from the trail)" \
+  test/ops_audit_reports_live_test.dart || result=1
 
 # 5. The connection-free suites too, in the same run — deliberately after the
 #    live ones and regardless of their outcome. They need no infrastructure, but a
@@ -178,12 +180,12 @@ run_live_suite "the privacy live suite (a user exported and erased across both d
 #
 #    Enumerated rather than excluded by a tag: `dart test` can only exclude by
 #    tag, and tagging the live suites would need a `dart_test.yaml` declaring the
-#    tag in a sample suite that has none. A glob minus two names needs no new
+#    tag in a sample suite that has none. A glob minus three names needs no new
 #    configuration file to explain.
 log "Running the connection-free suites"
 unit_suites=()
 for suite in "$OPS_DIR"/test/*_test.dart; do
-  case "$suite" in */ops_live_test.dart | */ops_privacy_live_test.dart) continue ;; esac
+  case "$suite" in */ops_live_test.dart | */ops_privacy_live_test.dart | */ops_audit_reports_live_test.dart) continue ;; esac
   unit_suites+=("$suite")
 done
 if ! (cd "$OPS_DIR" && dart test "${unit_suites[@]}"); then

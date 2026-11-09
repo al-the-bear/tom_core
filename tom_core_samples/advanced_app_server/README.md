@@ -16,11 +16,11 @@ another user so the grant takes effect on the grantee's next request.
 > [10 · Servers & the secured endpoint pipeline](../README_advanced_10_servers_endpoints.md).
 
 **There is no `example/` directory, and that is deliberate: this package is
-itself the runnable example.** It is one of the nine `advanced_*` packages that
+itself the runnable example.** It is one of the ten `advanced_*` packages that
 together form the full-stack sample, so `dart run bin/app_server_start.dart` —
 the secured board API — is the demonstration, and an `example/` beside it would
 duplicate the entry point.
-[The family's index](../README_advanced_sample.md#the-nine-packages) says which of the nine carry an `example/`, and why.
+[The family's index](../README_advanced_sample.md#the-ten-packages) says which of the ten carry an `example/`, and why.
 
 Read instead, in the order a newcomer wants them: [Running it](#running-it)
 for the boot and its two databases, the [`curl` tour](#curl-tour) for the
@@ -144,6 +144,7 @@ The seeded users come from the auth server (sample only — never ship them):
 | `carol` | `carol-pass` | shared `viewer` on project 1 |
 | `dave` | `dave-pass` | no project access; enrolled in TOTP, so his login is challenged for a second factor |
 | `erin` | `erin-pass` | no project access; holds no factor, so her login is offered enrolment |
+| `audrey` | `audrey-pass` | no project access; the `auditor` role, which the `/audit-reports` routes require |
 
 <!-- /account-roster -->
 
@@ -174,6 +175,16 @@ ownership/share and per-field grade are enforced inside the handlers.
 | `GET /resources` | authenticated | The app client's text resource bundle |
 | `POST /share` | authenticated | **Owner-only** — grant a user a role on a resource |
 | `DELETE /share/{id}` | authenticated | **Owner-only** — revoke a share |
+
+The framework's audit-report API is mounted too, for the `auditor` role
+(`audrey` in the dev seed): `GET /audit-reports/writers`,
+`POST /audit-reports/query`, `GET`/`PUT /audit-reports/questions`,
+`DELETE /audit-reports/questions/{id}`, `GET …/{id}/answer` and
+`POST …/{id}/deliver`. The boot installs `TomAuditReports` over `app_db`'s
+audit trail and the saved questions beside it — both tables are the ops
+server's migrations (`[100]`, `[101]`) — and answers and marks only: the ops
+server's pass delivers. See
+[`tom_core_server/doc/audit_reports.md`](../../tom_core_server/doc/audit_reports.md).
 
 The framework file endpoint additionally publishes
 `POST|GET|HEAD|DELETE /files/app_items/{id}/attachment`, mounted by the boot's

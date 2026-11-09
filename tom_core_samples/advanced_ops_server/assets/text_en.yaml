@@ -31,3 +31,11 @@ email:
         {overdueCount} of them are past their due date.
     next_due_line: |
       The next one falls due on {nextDue}.
+
+# The audit report a saved question delivers (the framework's audit_reports
+# module): the export is attached or linked, this is the mail around it.
+audit_reports:
+  delivery:
+    subject: "Audit report: {name}"
+    text: |
+      The audit report "{name}" is attached: {count} record(s).

@@ -35,6 +35,9 @@ const String defaultDeliveryReportTable = 'tom_delivery_report';
 ///  * `sent_at` carries the sweep, so it is indexed: pruning is otherwise a full
 ///    scan of a table that grows with every message ever sent.
 ///  * `tenant` is nullable: a message of no tenant has none.
+///  * `addresses` is the JSON array of the addresses the message was sent to,
+///    which a failure report suppresses when it names no recipient itself;
+///    `provider_code` is the carrier's code from the last report.
 ///  * instants are `DATETIME(6)` and always written in UTC — see `sqlInstant` in
 ///    `datasources/sql_instant.dart`.
 TomFrameworkTable deliveryReportTable(String table) => TomFrameworkTable(
@@ -49,6 +52,8 @@ TomFrameworkTable deliveryReportTable(String table) => TomFrameworkTable(
     TomFrameworkColumn('reported_at', 'DATETIME(6)', nullable: true),
     TomFrameworkColumn('detail', 'TEXT', nullable: true),
     TomFrameworkColumn('tenant', 'VARCHAR(32)', nullable: true),
+    TomFrameworkColumn('addresses', 'TEXT', nullable: true),
+    TomFrameworkColumn('provider_code', 'VARCHAR(64)', nullable: true),
   ],
   primaryKey: const ['remote_id'],
   keys: const [

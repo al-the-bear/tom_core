@@ -138,12 +138,18 @@ final Map<String, String> _guardedElsewhere = {
   _migration('audit', '[3]-guard_tom_audit_trail_no_delete@immutable.sql'):
       'trigger, not a table — audit_sql_test.dart compares the file to '
       'auditTrailNoDeleteTriggerDdl',
+  _migration('audit_reports', '[1]-create_tom_audit_question.sql'):
+      'descriptor table — framework_schema_test.dart converges the chain '
+      'against auditQuestionTable',
   _migration('messaging', '[1]-create_tom_delivery_report.sql'):
       'descriptor table — framework_schema_test.dart converges the chain '
       'against deliveryReportTable',
   _migration('messaging', '[2]-create_tom_message_inbox.sql'):
       'descriptor table — framework_schema_test.dart converges the chain '
       'against inboxTable',
+  _migration('messaging', '[3]-create_tom_message_suppression.sql'):
+      'descriptor table — framework_schema_test.dart converges the chain '
+      'against suppressionTable',
   _migration('endpoints', '[1]-create_tom_idempotency_key.sql'):
       'descriptor table — framework_schema_test.dart converges the chain '
       'against idempotencyTable',
@@ -159,6 +165,9 @@ final Map<String, String> _guardedElsewhere = {
   _migration('privacy', '[1]-create_tom_subject_key.sql'):
       'descriptor table — framework_schema_test.dart converges the chain '
       'against subjectKeyTable',
+  _migration('sync', '[1]-create_tom_sync_change.sql'):
+      'descriptor tables — framework_schema_test.dart converges the chain '
+      'against syncChangeTable and syncSequenceTable',
   _migration('cache', '[1]-create_tom_cache_invalidation.sql'):
       'descriptor table — framework_schema_test.dart converges the chain '
       'against invalidationTable',

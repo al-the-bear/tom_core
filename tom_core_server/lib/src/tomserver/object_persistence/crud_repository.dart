@@ -2106,12 +2106,30 @@ SELECT * FROM ${dbTable.table}
       _prepared['saveInsertQuery'] as TomPreparedStatement<T>?;
   set _saveInsertQuery(TomPreparedStatement<T>? statement) =>
       _keep('saveInsertQuery', statement);
+  TomPreparedStatement<T>? get _saveInsertSuppliedKeyQuery =>
+      _prepared['saveInsertSuppliedKeyQuery'] as TomPreparedStatement<T>?;
+  set _saveInsertSuppliedKeyQuery(TomPreparedStatement<T>? statement) =>
+      _keep('saveInsertSuppliedKeyQuery', statement);
   TomPreparedStatement<T>? get _saveUpdateQuery =>
       _prepared['saveUpdateQuery'] as TomPreparedStatement<T>?;
   set _saveUpdateQuery(TomPreparedStatement<T>? statement) =>
       _keep('saveUpdateQuery', statement);
   @override
   Future<T> save(T toSave) => _observed(() => _save(toSave));
+
+  /// Inserts [entity] as a new row, whatever its key holds, and returns the
+  /// stored entity.
+  ///
+  /// [save] decides between insert and update by the key: a single key the
+  /// database has not assigned yet inserts, any other updates. A key the
+  /// caller chooses — a client-generated id, as an offline device creates
+  /// entities with — is therefore never inserted by [save]. This writes it
+  /// as given, through the same write path (hooks, scope checks, audit,
+  /// change listeners); a row already holding the key is refused by the
+  /// table's primary key. A key left unsaved is assigned by the database, as
+  /// with [save].
+  Future<T> insert(T entity) =>
+      _observed(() => _save(entity, forceInsert: true));
 
   /// Why [upsert] cannot write this entity type, or `null` when it can.
   ///
@@ -2275,7 +2293,7 @@ SELECT * FROM ${dbTable.table}
   Future<T> _unmasked(K key, T row) async =>
       _authColumns.isEmpty ? row : (await _selectById(key) ?? row);
 
-  Future<T> _save(T toSave) async {
+  Future<T> _save(T toSave, {bool forceInsert = false}) async {
     // The repository resolved this in its constructor, where a type that is
     // not a mapped entity is reported as one. Asking the analyzer again would
     // hit the same memo, so the only thing a second lookup could add is the
@@ -2293,7 +2311,7 @@ SELECT * FROM ${dbTable.table}
       return convert != null ? convert(raw) : raw;
     }
 
-    final insert = await _isInsert(primaryKey);
+    final insert = forceInsert || await _isInsert(primaryKey);
 
     // First, so everything below — the scope checks, the values written, the
     // audit — sees the entity as the hooks left it.
@@ -2399,28 +2417,39 @@ SELECT * FROM ${dbTable.table}
       // A single surrogate key is assigned by the database, and asked back
       // from it in the same statement where the database needs asking —
       // `RETURNING` on PostgreSQL, nothing on MariaDB, whose last-insert id
-      // answers on its own (`TomStandardSqlDialect.returningKey`).
+      // answers on its own (`TomStandardSqlDialect.returningKey`). A key the
+      // caller supplied — a composite one, or one [insert] writes as given —
+      // is the row's key as written.
+      final suppliedKey = hasCompositeKey || !isUnsavedKey(primaryKey);
       final datasource = datasourceInfo.datasource;
-      final sql = hasCompositeKey
-          ? insertSql
-          : datasource.sqlDialect.returningKey(
+      if (suppliedKey) {
+        _saveInsertSuppliedKeyQuery ??= await datasource.prepareStatement<T>(
+          TomLiteralSelect([T], query: insertSql, parameters: paramNames),
+        );
+      } else {
+        _saveInsertQuery ??= await datasource.prepareStatement<T>(
+          TomLiteralSelect(
+            [T],
+            query: datasource.sqlDialect.returningKey(
               insertSql,
               primaryKeyColumns.single.getQueryFieldName(),
-            );
-      _saveInsertQuery ??= await datasource.prepareStatement<T>(
-        TomLiteralSelect([T], query: sql, parameters: paramNames),
-      );
+            ),
+            parameters: paramNames,
+          ),
+        );
+      }
       final params = <String, Object?>{
         for (final col in writable) col.declaredName: dbValue(col),
         // A row starts at version 1, whatever the caller's object held.
         if (_versionColumn case final version?) version.declaredName: 1,
       };
-      final inserted = await _saveInsertQuery!.run(params);
-      // Resolve the row's key. A composite key was supplied whole and is the
-      // row's key as written. A single key reaches this branch exactly when it
-      // was left unsaved, so the database assigned an auto-increment surrogate
-      // and the insert statement's own result is the only place it can be read
-      // from:
+      final inserted =
+          await (suppliedKey ? _saveInsertSuppliedKeyQuery! : _saveInsertQuery!)
+              .run(params);
+      // Resolve the row's key. A supplied key is the row's key as written. A
+      // single key left unsaved was assigned by the database as an
+      // auto-increment surrogate, and the insert statement's own result is the
+      // only place it can be read from:
       // `generatedId` is connection-correct by construction, where a
       // follow-up query for "the last key" is session-scoped and answers about
       // whichever connection it happens to run on.
@@ -2430,7 +2459,7 @@ SELECT * FROM ${dbTable.table}
       // is not a state to carry forward: every later step — the read-back, the
       // audit record, the key returned to the caller — would name a row that is
       // not the one just written. So it is refused by name.
-      final K rowKey = hasCompositeKey
+      final K rowKey = suppliedKey
           ? primaryKey as K
           : (inserted.generatedId ?? _noGeneratedKey(dbTable.table)) as K;
       final newRow = await findById(rowKey);

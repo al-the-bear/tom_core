@@ -1289,7 +1289,7 @@ The framework's tables — `tom_job_run`, `tom_lease`, `tom_scheduler_node`,
 `tom_scim_resource`, `tom_delivery_report`, `tom_message_inbox`,
 `tom_cache_invalidation`, `tom_idempotency_key`, `tom_saga`,
 `tom_encryption_key`, `tom_subject_key`, `tom_transaction_decision`,
-`tom_export` — are not
+`tom_export`, `tom_sync_change`, `tom_sync_sequence` — are not
 application entities
 and deliberately stay that way: making them entities would pull them into the
 application's reflection build and have `discoverEntityTypes()` report them
@@ -1321,20 +1321,22 @@ so two queues in one schema cannot collide.
 The set is the same in a multi-tenant deployment: these tables serve the whole
 deployment and are not created per tenant. Two of them carry the tenant as a
 column — `tom_job_run.tenant` (`VARCHAR(32) NOT NULL DEFAULT ''`, part of the
-unique window key `(job_name, tenant, scheduled_for)`) and
+unique window key `(job_name, tenant, window_at)`) and
 `tom_delivery_report.tenant` (`VARCHAR(32) NULL`) — and their reference
 migrations, `example/scheduling/migrations/main/tomcore/[1]-create_tom_job_run.sql`
 and `example/messaging/migrations/main/tomcore/[1]-create_tom_delivery_report.sql`,
 declare them.
 
-Five of them can live where a tenant's data lives instead. `tom_message_inbox`
+Seven of them can live where a tenant's data lives instead. `tom_message_inbox`
 belongs in the data source the consumer's work writes to,
 `tom_idempotency_key` in the data source the idempotency store names,
 `tom_saga` in the data source the saga store names, beside the data the saga's
 steps change, `tom_encryption_key` in the data source the field-encryption
 configuration names, beside the data its keys encrypt, and `tom_subject_key` in
-the data source the privacy configuration names — which, when tenancy routes
-that data source, is the tenant's own schema or database.
+the data source the privacy configuration names, and `tom_sync_change` and
+`tom_sync_sequence` in the data source of each entity exposed for sync, beside
+the entity's rows — which, when tenancy routes that data source, is the
+tenant's own schema or database.
 Their migrations then belong in the per-tenant tree; see
 [tenancy.md](tenancy.md#what-stays-deployment-wide).
 
@@ -1732,6 +1734,7 @@ here it cannot drift silently.
 | `path` | package | `db_migration.dart`, `schema_convergence.dart` | migration-file name parsing |
 | `tom_core_kernel` | package | `db_migration.dart`, `framework_convergence.dart`, `mariadb_migration_adapter.dart`, `postgres_migration_adapter.dart`, `sql_migration_adaptor.dart`, `schema_convergence.dart` | `tomReflector` (adaptor discovery, row mapping), `tomLog` |
 | [audit](audit.md) | module | `framework_convergence.dart` | `auditTrailTable`, `defaultAuditTrailTable` |
+| [audit_reports](audit_reports.md) | module | `framework_convergence.dart` | `auditQuestionTable`, `defaultAuditQuestionTable` |
 | [authentication](authentication.md) | module | `framework_convergence.dart` | `defaultOAuthStateTable`, `defaultScimResourceTable`, `oauthStateTable`, `scimResourceTable` |
 | [cache](cache.md) | module | `framework_convergence.dart` | `defaultInvalidationTable`, `invalidationTable` |
 | [cmdline](cmdline.md) | module | `db_migration.dart` | `TomArgs.parseArgsToMap`, reading `--repair-migration`, `--repair-action` and `--rollback-migrations` |
@@ -1744,4 +1747,5 @@ here it cannot drift silently.
 | [object_persistence](object_persistence.md) | module | `framework_convergence.dart`, `sql_migration_adaptor.dart`, `schema_convergence.dart` | `TomDbTable` / `TomDbColumn` on `TomDbVersion`; `defaultEncryptionKeyTable` and `encryptionKeyTable`, the data-key table of field-level encryption |
 | [privacy](privacy.md) | module | `framework_convergence.dart` | `defaultSubjectKeyTable`, `subjectKeyTable` |
 | [scheduling](scheduling.md) | module | `framework_convergence.dart` | `defaultJobRunTable`, `defaultLeaseTable`, `defaultSchedulerNodeTable`, `defaultJobPauseTable`, `defaultJobRunArchiveTable`, `jobRunTable`, `leaseTable`, `schedulerNodeTable`, `jobPauseTable`, `jobRunArchiveTable` |
+| [sync](sync.md) | module | `framework_convergence.dart` | `defaultSyncChangeTable`, `defaultSyncSequenceTable`, `syncChangeTable`, `syncSequenceTable` |
 | [transactions](transactions.md) | module | `framework_convergence.dart`, `postgres_migration_adapter.dart` | `defaultSagaTable` and `sagaTable`, `defaultDecisionTable` and `decisionTable`; `TomTransactionManager.runInTransaction`, which runs a PostgreSQL script and its version row — or a down script and the deletion of its record — as one transaction |

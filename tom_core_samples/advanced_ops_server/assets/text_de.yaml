@@ -30,3 +30,12 @@ email:
         {overdueCount} davon sind überfällig.
     next_due_line: |
       Der nächste ist am {nextDue} fällig.
+
+# Der Auditbericht, den eine gespeicherte Frage zustellt (das Modul
+# audit_reports des Frameworks): der Export hängt an oder ist verlinkt, dies ist
+# die Mail darum.
+audit_reports:
+  delivery:
+    subject: "Auditbericht: {name}"
+    text: |
+      Der Auditbericht „{name}“ liegt bei: {count} Einträge.

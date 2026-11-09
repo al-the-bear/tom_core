@@ -9,7 +9,9 @@ any error into the body a client receives, and `tomErrorResponse`, which answers
 that body as the response — or, when the caller asks for one, the same fields as
 an RFC 9457 problem document. The
 request id the exception constructor recovers from the zone is the kernel's
-`TomRequestId` (see [Request Correlation](#request-correlation)).
+`TomRequestId` (see [Request Correlation](#request-correlation)). The module
+also holds `TomRequestCache`, the per-request memo the framework's authorization
+lookups share (see [The Request Cache](#the-request-cache)).
 
 ## Table of Contents
 
@@ -27,6 +29,7 @@ request id the exception constructor recovers from the zone is the kernel's
 - [The Error Envelope](#the-error-envelope)
 - [The Problem Document](#the-problem-document)
   - [Which format a response takes](#which-format-a-response-takes)
+- [The Request Cache](#the-request-cache)
 - [Not Yet Implemented](#not-yet-implemented)
 - [Verification](#verification)
 - [Core Components](#core-components)
@@ -47,6 +50,7 @@ request id the exception constructor recovers from the zone is the kernel's
 | `tomReasonPhrase` | function | The reason phrase of an HTTP status — a problem document's `title` |
 | `tomProblemJsonMediaType` | const String | `application/problem+json` |
 | `tomProblemJsonContextKey` | const String | `tom.problemJson` — the request context key that answers an endpoint's errors as problem+json |
+| `TomRequestCache` | abstract final class | Values a request computes once — its row scopes, grants and delegations — emptied by any write; statics only |
 
 The kernel already provides `TomException` (UUID tracking, parameters,
 auto-logging, request UUID). `TomServerException` layers two server-specific
@@ -81,12 +85,12 @@ both are checked.
 and a caller that wants to handle a declined payment differently from a failed
 query needs the type to say which it has. Throwing `TomServerException` itself
 leaves it with the key string and nothing else. The package raises the base
-class directly at exactly seven sites, all `.named(...)` constructors refusing an
+class directly at exactly eight sites, all `.named(...)` constructors refusing an
 unregistered data source, and the exemption is narrow on purpose: they fail at
 construction, before any request is served, so no `catch` clause is running to
 discriminate and a subtype would add nothing but a declaration.
-`test/server_exception_family_test.dart` pins those seven by file and key, so an
-eighth has to make the same argument rather than inherit it.
+`test/server_exception_family_test.dart` pins those eight by file and key, so a
+ninth has to make the same argument rather than inherit it.
 
 **The key reads `<area>.<operation>.<condition>`**, dotted-lowercase — the shape
 `TomException`'s own dartdoc fixes. The first segment names the module, so keys
@@ -505,6 +509,47 @@ receives, so a deployment's own handler that calls `tomErrorResponse` follows
 the service's choice too — see
 [endpoints.md](endpoints.md#error-formats-and-problemjson).
 
+## The Request Cache
+
+A request asks the same authorization questions many times: every scoped
+statement resolves the caller's row scope, and a grant-driven scope reads the
+caller's grants and delegations to do so. `TomRequestCache` keeps the answers
+for the request. The endpoint pipeline runs every handler inside
+`TomRequestCache.run`, which installs a fresh cache on a zone of its own, so two
+requests never share one; `memo(key, compute)` computes a key once while the
+cache lasts, a concurrent lookup of the same key sharing the pending result, and
+a lookup that fails is not kept. Outside `run` nothing is cached and `memo`
+computes every time.
+
+Three lookups use it: `TomPrincipalResourceRoleResolver.resolveResourceRoles`
+and `TomDelegationResolver.resolveDelegatedRoles` (authorization), each keyed
+by the resolver and the principal, and the async row scopes
+(`TomDataScope.buildAsync`, object_persistence), keyed by the resolver — so a
+kind that writes what it reads resolves once for both — and the principal.
+
+**A write empties it.** What a request writes may change what it may see — a
+project created with its owner grant, a share revoked — so the SQL data source
+calls `invalidateAfter` after every statement that changes data (`INSERT`,
+`UPDATE`, `DELETE`, `REPLACE`, `MERGE`, `TRUNCATE`, DDL, `CALL`, the two-phase
+verbs, a rollback), and the transaction manager calls `invalidate` on every
+rollback. A lookup after a write reads the database again. A write to one of
+the framework's own bookkeeping tables (`bookkeepingTables`: the job queue and
+its locks, the blob store, the audit trail, the inbox and delivery reports,
+idempotency keys, sagas, keys, the export register, the sync change log — the
+tables `frameworkOwnedTables` lists, at their default names) leaves the cache
+as it is: no cached lookup reads them, and an upload's blob rows would
+otherwise empty it in the middle of the request. Across requests nothing is kept, so a
+revocation takes effect on the caller's next request.
+
+The zone bounds reachability, not lifetime: work the handler starts without
+awaiting it inherits the zone and reads this cache when it runs. Work meant to
+outlive the request starts outside it.
+
+`test/request_statements_db_test.dart` pins the effect on a grant-scoped
+entity: three scoped reads in one request execute five statements (the grants,
+the delegations and the three reads), nine outside a request; and a grant the
+request writes is seen by its next read.
+
 ## Not Yet Implemented
 
 - **The error envelope carries no message.** `tomErrorEnvelope` reports
@@ -536,7 +581,10 @@ rule for `requestUuid`, the request correlation it picks up from the kernel's
 one subclass declared beside it (`TomLoginException`) with its `TomLoginFailure`
 reason and the values that set deliberately omits, and `tomErrorEnvelope` — the
 wire shape every error response uses, including the `loginFailure` field a login
-failure adds and everything else omits.
+failure adds and everything else omits. `test/request_cache_test.dart` covers
+`TomRequestCache` (RQC-1 to RQC-6) and `test/request_statements_db_test.dart`
+(RS-1 to RS-3) its effect on a request's statements, on MariaDB and
+PostgreSQL.
 
 `test/api_versioning_test.dart` covers `error_response.dart` through a served
 endpoint: the envelope for a request that does not ask (no `Accept`,
@@ -568,6 +616,8 @@ transcript; `test/examples_test.dart` runs it, which is what keeps that true.
 
 ## Core Components
 
+- **`TomRequestCache`** — the per-request memo: `run`, `memo`, `invalidate`,
+  `invalidateAfter`, `bookkeepingTables`, `isActive`. See [The Request Cache](#the-request-cache).
 - **`TomServerException`** — the base server exception. Adds `isolateName`
   (originating worker), `clientThrow` (client-safe flag) with the
   `clientMessage` read that honours it, and zone-based `requestUuid` population
@@ -607,6 +657,7 @@ one.
 
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
+| `dart:async` | dart | `request_cache.dart` | `Zone`, `runZoned`, `unawaited` — the cache is a zone value |
 | `dart:convert` | dart | `error_response.dart` | `jsonEncode`, the response body |
 | `dart:isolate` | dart | `server_exception.dart` | `Isolate.current` for the worker's debug name |
 | `shelf` | package | `error_response.dart` | `Request` and `Response` |

@@ -35,7 +35,6 @@ import 'dart:math';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:tom_core_message_bus/tom_core_message_bus.dart';
 
-import '../scheduling/event_instants.dart';
 import 'message.dart';
 
 /// The default job name the relay registers under. Stable across restarts:
@@ -167,8 +166,10 @@ class TomBusRelay implements TomClosable {
       TomJobRun(
         id: runId,
         jobName: jobName,
-        scheduledFor: TomEventInstants.next(now),
+        scheduledFor: now,
         runAt: now,
+        // Keyed by the message id, not a window.
+        windowed: false,
         payload: {
           'id': messageId,
           'topic': topic,

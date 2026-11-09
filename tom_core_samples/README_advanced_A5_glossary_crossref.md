@@ -46,7 +46,7 @@ survives the edit that moves a line.
 
 ## Cross-reference: package README → guide section
 
-Each of the nine `advanced_*` packages has its own `README.md` describing that
+Each of the ten `advanced_*` packages has its own `README.md` describing that
 package in isolation. The guide section in the right column is where the package
 is explained *in the context of the whole system*.
 

@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS tom_job_run_archive (
   job_name VARCHAR(150) NOT NULL,
   tenant VARCHAR(32) NOT NULL DEFAULT '',
   scheduled_for TIMESTAMP(6) NOT NULL,
+  window_at TIMESTAMP(6) NULL,
   run_at TIMESTAMP(6) NOT NULL,
   state VARCHAR(16) NOT NULL,
   attempt INTEGER NOT NULL DEFAULT 1,

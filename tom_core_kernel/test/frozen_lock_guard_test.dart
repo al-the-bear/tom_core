@@ -25,15 +25,14 @@
 // sibling work.
 //
 // THE CACHE PROVES A VERSION WAS ON HAND, NOT THAT IT WAS ADMISSIBLE. A newer
-// release can require something a package here cannot take: the Flutter
-// packages resolve analyzer 10, because the Flutter SDK pins meta 1.18.0, so
-// they cannot take tom_analyzer_shared 0.8 or tom_reflection_generator 1.9,
-// which need analyzer 14. Such a range is HELD BACK for the packages it binds,
-// with its owner (the d4rt model's `tom_d4rt_ast/tool/stale_locks.dart`
+// release can require something a package here cannot take: a Flutter
+// package resolves the analyzer the Flutter SDK's meta pin allows, and a
+// tom_reflection_generator needing a newer analyzer is out of its reach until
+// the SDK moves. Such a range is HELD BACK for the packages it binds, with its
+// owner (the d4rt model's `tom_d4rt_ast/tool/stale_locks.dart`
 // `heldBackVersions`, as in the tom_ai/devops copy, here scoped to packages);
 // FL-4 fails once a hold no longer holds any lock back. A hold is scoped so
-// that it hides nothing in the packages it does not bind: the Dart packages
-// here resolve analyzer 14 and must take the newest tom_analyzer_shared.
+// that it hides nothing in the packages it does not bind.
 //
 // WHY IT LIVES HERE. `tom_core_kernel` is the foundation every other package
 // in the repo depends on, and its suite is the first `tool/run_suites.py`
@@ -112,40 +111,7 @@ class _HeldBack {
 
 /// Cached versions FL-2 ignores, by package name. FL-4 fails once one no
 /// longer holds any lock back.
-const Map<String, _HeldBack> _heldBackVersions = <String, _HeldBack>{
-  'tom_analyzer_shared': _HeldBack(
-    from: '0.8.0',
-    packages: _flutterPackages,
-    owner: 'tom_core frzhold2_akgk-flutter-packages-onto-analyzer-14',
-    reason: 'tom_analyzer_shared 0.8.0 needs analyzer ^14.1. $_flutterMetaPin',
-  ),
-  'tom_reflection_generator': _HeldBack(
-    from: '1.9.0',
-    packages: _flutterPackages,
-    owner: 'tom_core frzhold2_akgk-flutter-packages-onto-analyzer-14',
-    reason:
-        'tom_reflection_generator 1.9.0 needs analyzer ^14.5. '
-        '$_flutterMetaPin',
-  ),
-};
-
-/// The Flutter packages of the repo: the ones the Flutter SDK's meta pin
-/// keeps on analyzer 10.
-const List<String> _flutterPackages = [
-  'tom_flutter_ui',
-  'tom_core_flutter',
-  'tom_core_samples/advanced_app_client',
-  'tom_core_samples/advanced_authadmin_client',
-  'tom_core_samples/core_client_sample',
-  'tom_core_samples/core_flutter_acl_responsive',
-  'tom_core_samples/core_flutter_form_showcase',
-  'tom_core_samples/tom_flutter_form_test',
-];
-
-/// Why the Flutter packages resolve analyzer 10.
-const String _flutterMetaPin =
-    'The Flutter packages resolve analyzer 10: analyzer 14.5 needs meta '
-    '^1.18.3, and the Flutter SDK pins meta 1.18.0.';
+const Map<String, _HeldBack> _heldBackVersions = <String, _HeldBack>{};
 
 /// Below this many distinct cached `tom_*` packages, a pass means nothing: the
 /// discriminator can only see a freeze whose newer version is cached here.

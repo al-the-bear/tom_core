@@ -57,14 +57,16 @@ void main() {
         datasource: 'app_db',
         schema: 'app_schema',
         tables: [
-          // Exactly the six `[100]` creates, and no more: the blob tables of
-          // the same chain are the app server's, checked by its own suite.
+          // Exactly the six `[100]` creates and the one `[101]` creates, and no
+          // more: the blob tables of the same chain are the app server's,
+          // checked by its own suite.
           jobRunTable(defaultJobRunTable),
           leaseTable(defaultLeaseTable),
           schedulerNodeTable(defaultSchedulerNodeTable),
           jobPauseTable(defaultJobPauseTable),
           jobRunArchiveTable(defaultJobRunArchiveTable),
           auditTrailTable(defaultAuditTrailTable),
+          auditQuestionTable(defaultAuditQuestionTable),
         ],
         chain: _wholeChain(),
       );
@@ -84,6 +86,10 @@ void main() {
       expect(
         chain.map((artifact) => artifact.basename),
         contains('[100]-ops_framework_tables.sql'),
+      );
+      expect(
+        chain.map((artifact) => artifact.basename),
+        contains('[101]-ops_audit_reports.sql'),
       );
     });
   });
@@ -121,8 +127,10 @@ void main() {
       expect(code, isNot(contains('createSchema: true')));
       expect(
         'createSchema: false'.allMatches(code).length,
-        4,
-        reason: 'the three scheduling components and the audit sink',
+        5,
+        reason:
+            'the three scheduling components, the audit sink and the '
+            'saved audit questions',
       );
     });
 

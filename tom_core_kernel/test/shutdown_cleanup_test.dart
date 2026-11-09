@@ -2029,22 +2029,18 @@ void main() {
       expect(() => outer.addDisposable(inner), returnsNormally);
     });
 
-    test(
-      'the outer shutdown cancels the inner watchers',
-      () async {
-        final inner = _sendableCleanup();
-        var innerReacted = false;
-        inner.addSignalHandler((signal) => innerReacted = true);
-        inner.addSignal(ProcessSignal.sigusr1);
-        final outer = _newCleanup()..addDisposable(inner);
+    test('the outer shutdown cancels the inner watchers', () async {
+      final inner = _sendableCleanup();
+      var innerReacted = false;
+      inner.addSignalHandler((signal) => innerReacted = true);
+      inner.addSignal(ProcessSignal.sigusr1);
+      final outer = _newCleanup()..addDisposable(inner);
 
-        await outer.performShutdown();
-        await _sendAndSettle(ProcessSignal.sigusr1);
+      await outer.performShutdown();
+      await _sendAndSettle(ProcessSignal.sigusr1);
 
-        expect(innerReacted, isFalse);
-      },
-      skip: _signalSendingSkipReason,
-    );
+      expect(innerReacted, isFalse);
+    }, skip: _signalSendingSkipReason);
 
     test('disposing the inner coordinator does not run it', () async {
       // The trap this pins: registering a coordinator as a disposable
@@ -2083,24 +2079,20 @@ void main() {
   });
 
   group('dispose / cancelAll', () {
-    test(
-      'dispose stops the instance reacting to its signals',
-      () async {
-        // The subscription list is private, so "cancelled" is only observable
-        // the same way "registered" is: by sending the signal and seeing what
-        // does not happen.
-        final cleanup = _sendableCleanup();
-        var ran = false;
-        cleanup.addSignalHandler((signal) => ran = true);
-        cleanup.addSignal(ProcessSignal.sigusr1);
+    test('dispose stops the instance reacting to its signals', () async {
+      // The subscription list is private, so "cancelled" is only observable
+      // the same way "registered" is: by sending the signal and seeing what
+      // does not happen.
+      final cleanup = _sendableCleanup();
+      var ran = false;
+      cleanup.addSignalHandler((signal) => ran = true);
+      cleanup.addSignal(ProcessSignal.sigusr1);
 
-        await cleanup.dispose();
-        await _sendAndSettle(ProcessSignal.sigusr1);
+      await cleanup.dispose();
+      await _sendAndSettle(ProcessSignal.sigusr1);
 
-        expect(ran, isFalse);
-      },
-      skip: _signalSendingSkipReason,
-    );
+      expect(ran, isFalse);
+    }, skip: _signalSendingSkipReason);
 
     test('dispose releases the registrations, so nothing is run', () async {
       // Teardown releases everything the instance holds — the watchers and

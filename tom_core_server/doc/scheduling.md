@@ -4,9 +4,9 @@ The relational half of the framework's job scheduler: a shared queue and a
 shared lock, in the database a server already has, for a cluster whose nodes do
 not share a filesystem.
 
-This module implements two contracts and defines no scheduling of its own —
-its one addition, `TomEventInstants`, keeps apart the runs a component enqueues
-itself (see [Runs Enqueued Outside a Schedule](#runs-enqueued-outside-a-schedule)).
+This module implements two contracts and defines no scheduling of its own; how
+it keeps apart the runs a component enqueues itself is in
+[Runs Enqueued Outside a Schedule](#runs-enqueued-outside-a-schedule).
 The scheduling *model*
 — schedules, windows, retries, missed-window policy, lease semantics, the
 execution guarantee — lives in `tom_core_kernel` and is documented in
@@ -62,7 +62,6 @@ covers only what changes when the substrate is a database.
 | `TomJobRunRow` / `TomJobRunArchiveRow` / `TomJobPauseRow` / `TomLeaseRow` / `TomSchedulerNodeRow` | class | The reflected row types the stores' result mappers materialise, one per table |
 | `TomJobRunWindowRow` | class | The single aggregate column `TomSqlJobStore.lastWindow` projects — its own row type because the mapper binds by column name and that select has no other columns |
 | `TomJobBacklogRow` | class | One job's aggregate row of `TomSqlJobStore.backlog`: its due, unclaimed runs and the earliest `run_at` among them |
-| `TomEventInstants` | abstract final class | Strictly increasing window instants for the runs a component enqueues itself — the outbox, the saga orchestrator — so two of them never share a window key. Statics only |
 
 Two things the stores lean on hardest belong to `datasources`, because nothing
 about them is specific to scheduling:
@@ -475,7 +474,8 @@ One row per scheduled run of a job, shared by every node.
 | ------ | ---- | ---- |
 | `seq` | `BIGINT AUTO_INCREMENT` | Insertion order, so every node scans the queue in the same order |
 | `id` | `VARCHAR(191)` | Primary key; what every claim, completion and failure addresses |
-| `job_name`, `tenant`, `scheduled_for` | `VARCHAR(150)`, `VARCHAR(32)`, `DATETIME(6)` | The window, per tenant; `tenant` is `''` for a run of no tenant |
+| `job_name`, `tenant`, `scheduled_for` | `VARCHAR(150)`, `VARCHAR(32)`, `DATETIME(6)` | The job, the tenant (`''` for a run of no tenant) and the run's scheduled instant |
+| `window_at` | `DATETIME(6) NULL` | The window the run realises: `scheduled_for` for a windowed run (`TomJobRun.windowed`), `NULL` for a run enqueued under an id of its own |
 | `run_at` | `DATETIME(6)` | When this run should next be attempted |
 | `state`, `attempt` | `VARCHAR(16)`, `INT` | `pending` / `running` / `succeeded` / `failed`, and which attempt |
 | `claimed_by`, `claimed_at` | `VARCHAR(191)`, `DATETIME(6)` | The store's own lease on the run; `claimed_at` is the heartbeat and moves during an attempt |
@@ -501,13 +501,17 @@ conjunct on a row already located by its primary key.
 Two indexes exist because two scans do: `ix_…_due (state, run_at)` for the claim
 and `ix_…_lease (state, claimed_at)` for recovery.
 
-**`UNIQUE (job_name, tenant, scheduled_for)`** is the load-bearing constraint.
+**`UNIQUE (job_name, tenant, window_at)`** is the load-bearing constraint.
 It turns the scheduler's idempotence key — one run per job per window, per
 tenant — from a convention into a database invariant, so a duplicate window
 cannot exist even when two nodes plan the same window in the same instant, while
 two tenants' events in one instant stay two runs. `tenant` is
 `NOT NULL DEFAULT ''` rather than nullable, because a unique key never treats two `NULL`s as equal:
-two tenant-less runs of one window would both insert. `job_name` is
+two tenant-less runs of one window would both insert. `window_at` is nullable for
+the same reason, turned the other way: a run enqueued under an id of its own
+leaves it `NULL`, and a unique key holds any number of `NULL`s on MariaDB and
+PostgreSQL, so such runs never meet on the key (see
+[Runs Enqueued Outside a Schedule](#runs-enqueued-outside-a-schedule)). `job_name` is
 `VARCHAR(150)` and `tenant` `VARCHAR(32)` — the length a tenant id is limited to:
 600 + 128 bytes in utf8mb4 plus an 8-byte `DATETIME(6)` is 736, under the
 767-byte index limit of the older InnoDB row formats, so the table can be created
@@ -671,8 +675,8 @@ This module stores it:
 
 - `TomSqlJobStore` writes the run's tenant to `tom_job_run.tenant` — `''` for a
   run of no tenant — and reads `''` back as `null`.
-- `findWindow(jobName, scheduledFor, tenant: …)` matches `tenant = :tenant`,
-  so the window lookup that makes enqueueing idempotent is per tenant, and the
+- `findWindow(jobName, scheduledFor, tenant: …)` matches `tenant = :tenant`
+  and `window_at = :scheduledFor`, so the window lookup that makes enqueueing idempotent is per tenant, and the
   unique key enforces the same thing in the database.
 - The queue itself is **deployment-wide**: one `tom_job_run` holds every
   tenant's runs, and the store is not routed per tenant. Only the connection
@@ -688,32 +692,32 @@ See [tenancy.md](tenancy.md) for where tenants come from.
 
 ## Runs Enqueued Outside a Schedule
 
-A job store keeps one run per `(job, tenant, scheduled instant)`. That is what
-makes a clock-driven window idempotent — re-planning a window overwrites its
-run — and `TomSqlJobStore` enforces it with the unique key on
-`(job_name, tenant, scheduled_for)` and writes a run with a replacing write.
+A job store keeps one windowed run per `(job, tenant, scheduled instant)`. That
+is what makes a clock-driven window idempotent — re-planning a window overwrites
+its run — and `TomSqlJobStore` enforces it with the unique key on
+`(job_name, tenant, window_at)` and writes a run with a replacing write. The
+scheduler's planned runs are windowed (`TomJobRun.windowed`, `true` by default):
+a schedule's windows, and an event's instant of arrival, which deliberately
+collapses the events of one instant into one run.
 
-Two components enqueue runs of their own instead of letting a schedule plan
+Four components enqueue runs of their own instead of letting a schedule plan
 them: the messaging outbox (one run per message, see
-[messaging.md](messaging.md#delivery-semantics-one-retry-mechanism)) and the saga
-orchestrator (one run per transition, see
-[transactions.md](transactions.md#sagas)). Each run has an id of its own, but
-two runs of one job enqueued in the same microsecond would still share a
-scheduled instant, and in `tom_job_run` the second would replace the first — a
-message lost without a trace.
+[messaging.md](messaging.md#delivery-semantics-one-retry-mechanism)), the bus
+relay, the notification digests and the saga orchestrator (one run per
+transition, see [transactions.md](transactions.md#sagas)). Each enqueues with
+`windowed: false` under an id of its own, and `scheduledFor` is the instant it
+enqueues for. The id is the run's idempotence key; the row's `window_at` is
+`NULL`, so two such runs of one job and tenant enqueued in the same instant — on
+one node or on two — are two runs, and neither replaces the other.
+`findWindow` and `lastWindow` read `window_at` and answer windowed runs only, so
+an outbox message never stands in for a window, nor moves the catch-up anchor.
 
-Neither replaces a run by its id either. `TomJobStore.findRun(id)` answers the
-run under an id in any state, and the outbox asks it before enqueueing, so a
-message whose run is still in the store — queued, delivered or failed for good
-— is not queued again. `TomSqlJobStore` answers it from `tom_job_run`; a run
-`purgeFinished` moved to the archive is not found.
-
-`TomEventInstants.next(now)` is the window instant those components give their
-runs: the clock's reading in UTC, or one microsecond past the last instant it
-answered when the clock has not moved on. The instant is the run's identity in
-the store, not when it is due — `runAt` says that. It holds within one isolate;
-two nodes, or two isolates, enqueueing runs of one job for one tenant in the same
-microsecond can still meet.
+`TomJobStore.findRun(id)` answers the run under an id in any state, and the
+outbox asks it before enqueueing, so a message whose run is still in the store —
+queued, delivered or failed for good — is not queued again; the saga
+orchestrator asks it on resumption, to tell whether a saga's current run still
+exists. `TomSqlJobStore` answers it from `tom_job_run`; a run `purgeFinished`
+moved to the archive is not found.
 
 ## Queueing in a Transaction
 
@@ -797,11 +801,6 @@ transaction at all: its `enqueue` takes effect at once.
   has to make itself so — which is the same requirement the retry path already
   imposes.
   <!-- pinned: test/scheduling_db_test.dart › an interrupted run whose job opts in is re-queued -->
-- **`TomEventInstants` keeps instants apart within one isolate only.** Two
-  nodes, or two isolates, enqueueing runs of one job for one tenant in the same
-  microsecond can still give them one window instant, and the second run then
-  replaces the first. Nothing coordinates the instants across processes.
-  <!-- unpinned: untestable — two processes enqueueing in one microsecond cannot be staged -->
 
 ## Verification
 
@@ -831,11 +830,13 @@ commits with the transaction; under `schema` tenancy with the store on the
 unrouted base data source the enqueue rides the tenant's branch, rolls back
 with it, and commits into the base schema, where the outbox's tick delivers it.
 
-`TomEventInstants` is covered where its callers are: the group
-`TomEventInstants` in `test/saga_test.dart` holds that one clock reading gives
-two instants and that two outbox messages queued in one instant get runs of
-their own, and `test/saga_db_test.dart`'s `two outbox messages queued in one
-instant are both kept` holds the same against `tom_job_run`'s unique key.
+The kernel's contract suite holds that runs enqueued under ids of their own keep
+apart at one instant for one job and tenant, and that such a run takes no
+window — against the memory, file and SQL stores alike. The group `runs enqueued
+under ids of their own` in `test/saga_test.dart` holds that two outbox messages
+queued in one instant get runs of their own, and `test/saga_db_test.dart`'s
+`two outbox messages queued in one instant are both kept` holds the same against
+`tom_job_run`'s unique key.
 
 Three suites always run. `test/scheduling_schema_test.dart` covers DDL drift,
 schema invariants and instant encoding.
@@ -900,7 +901,6 @@ of wall clock, so it is run deliberately, not by `testkit :test`.
 | `lib/src/tomserver/scheduling/sql_lease_lock.dart` | `TomSqlLeaseLock` and its row type |
 | `lib/src/tomserver/scheduling/sql_scheduler_nodes.dart` | `TomSqlSchedulerNodes`, `TomSchedulerNode` and the failure formula |
 | `lib/src/tomserver/scheduling/sql_scheduling_sql.dart` | The five table descriptors, their derived DDL, table-name defaults |
-| `lib/src/tomserver/scheduling/event_instants.dart` | `TomEventInstants` — unique window instants for runs enqueued outside a schedule |
 | `lib/src/tomserver/datasources/sql_failure_mode.dart` | `classifySqlFailure` — definite or ambiguous |
 | `example/scheduling/scheduling_example.dart` | The connection-free surface, runnable |
 | `example/scheduling/migrations/main/tomcore/` | The shipped reference migrations |

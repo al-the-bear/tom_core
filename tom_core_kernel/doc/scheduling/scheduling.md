@@ -23,6 +23,7 @@ fails*, and *which node in a cluster actually runs a given occurrence*.
   - [What the Scan Checks](#what-the-scan-checks)
 - [Job Definitions](#job-definitions)
 - [The Job Store](#the-job-store)
+  - [Runs under an id of their own](#runs-under-an-id-of-their-own)
   - [The on-disk format](#the-on-disk-format)
   - [Shared by several processes](#shared-by-several-processes)
   - [When the file is damaged](#when-the-file-is-damaged)
@@ -526,7 +527,7 @@ the command is the unit that crosses the isolate boundary.
 
 | Field | Meaning |
 | ----- | ------- |
-| `scheduledFor` | The **window** — the instant the job was supposed to fire. Stable across attempts and nodes, so it doubles as the idempotence key |
+| `scheduledFor` | The **window** — the instant the job was supposed to fire. Stable across attempts and nodes, so it doubles as the idempotence key of a windowed run |
 | `runAt` | When this run should next be *attempted*. Equal to `scheduledFor` for a first attempt, later for a backed-off retry |
 | `attempt` | Which attempt is next or in flight, 1-based |
 | `state` | `pending`, `running`, `succeeded`, `failed` |
@@ -535,6 +536,7 @@ the command is the unit that crosses the isolate boundary.
 | `startedAt` | When execution actually began, or `null` if it never did |
 | `priority` | The job's priority when the run was planned; the claim takes higher first — see [Priority](#priority) |
 | `checkpoint` | The progress the body last saved, an opaque JSON map, or `null` — see [Checkpoints](#checkpoints) |
+| `windowed` | Whether the run realises a window — one run per job, tenant and `scheduledFor`, found with `findWindow`. `true` (the default) for the runs the scheduler plans; `false` for a run a component enqueues under an id of its own — see [Runs under an id of their own](#runs-under-an-id-of-their-own) |
 
 `startedAt` is not a duplicate of `claimedAt`. A run can be claimed and never
 start — the node dies in the gap — and the two cases must be recovered
@@ -548,11 +550,12 @@ The store also answers `backlog(now)`: the runs that are due — `pending`, with
 `TomJobBacklog` (`due`, `oldestDueAt`). It changes nothing; the scheduler reads
 it for its [backlog gauges](#metrics). A paused job's runs are not in it.
 
-`findRun(id)` answers the run recorded under an id, in any state, or `null`.
-A component that enqueues runs under ids of its own asks it before enqueueing:
-the messaging outbox keys each run by its message, and a message whose run is
-already there — queued, delivered or failed for good — is not queued again. A
-run `purgeFinished` removed is not found.
+`enqueue` adds a run, or replaces the run recorded under its id; the caller is
+responsible for idempotence. `findWindow(jobName, scheduledFor, tenant:)`
+answers the windowed run of that job, window and tenant, and `lastWindow`
+the latest window of a job's windowed runs. `findRun(id)` answers the run
+recorded under an id, in any state, or `null`. A run `purgeFinished` removed is
+not found.
 
 The contract also holds the paused jobs (`pauseJob`, `resumeJob`, `pausedJobs` —
 see [Pausing a Job](#pausing-a-job)) and the checkpoint a running body saves
@@ -579,6 +582,22 @@ persistence layer, so the relational implementation belongs one layer up. It is
 the production choice for a cluster; see
 [Choosing a substrate](#choosing-a-substrate).
 
+### Runs under an id of their own
+
+The scheduler's planned runs are windowed: a schedule's windows, and an event's
+instant of arrival — which deliberately collapses the events of one instant
+into one run. `findWindow` is what makes planning them idempotent.
+
+A component that enqueues runs itself rather than through a schedule — in
+`tom_core_server`, the messaging outbox, the bus relay, the saga orchestrator
+and the notification digests — enqueues them with `windowed: false` under an id
+of its own. Its id is its idempotence key, found with `findRun`: the outbox keys
+each run by its message, and a message whose run is already there — queued,
+delivered or failed for good — is not queued again. Such a run takes no window:
+`findWindow` never answers it and `lastWindow` does not count it, so two such
+runs of one job and tenant enqueued in the same instant — on two nodes, say —
+are two runs, and neither stands in for the window of that instant.
+
 ### The on-disk format
 
 One JSON object with two members: `runs`, an array of run objects, and `paused`,
@@ -603,8 +622,10 @@ is written unindented):
       "lastError": null,
       "completedAt": null,
       "payload": null,
+      "tenant": null,
       "priority": 0,
-      "checkpoint": null
+      "checkpoint": null,
+      "windowed": true
     }
   ],
   "paused": {}
@@ -615,13 +636,14 @@ Every field is written, `null` included, rather than omitted when empty — so t
 shape on disk is the same for every run and a file can be eyeballed without
 cross-referencing which fields a given build chose to skip. Decoding tolerates
 more than that: a missing `attempt` reads as `1`, a missing `claimToken` and a
-missing `priority` as `0`, a missing `checkpoint` as none, a missing `paused` as
+missing `priority` as `0`, a missing `checkpoint` as none, a missing `windowed`
+as `true`, a missing `paused` as
 no paused jobs, and an unrecognised `state` reads as `pending`, so a queue written by a newer
 build cannot stop an older one from starting.
 
 The `id` is `<jobName>:<microsecondsSinceEpoch>:<counter>`, assigned by the
 scheduler as it enqueues the window. Treat it as opaque — it is the store's own
-handle for the record. The idempotence key is `scheduledFor`.
+handle for the record. The idempotence key of a windowed run is `scheduledFor`.
 
 **The single document is the whole point of the format, and it is worth being
 precise about it**, because the obvious alternative fails differently and a reader who
@@ -1202,7 +1224,7 @@ records it, and the scheduler keeps every tenant's work apart:
   `TomTenantContext.currentId` — the zone does not cross the isolate boundary,
   the command does.
 - **A window is per tenant.** `TomJobStore.findWindow` takes a `tenant:` and
-  looks a window up for that tenant only, so two tenants' events in the
+  looks a windowed run up for that tenant only, so two tenants' events in the
   same instant are two runs, not one collapsed into the other.
 - **`allowOverlap: false` serialises per job and tenant.** The rule exists for a
   body that reads and rewrites the same rows, and two tenants' runs never touch

@@ -1116,11 +1116,14 @@ the connection. The span follows the OpenTelemetry database conventions:
 | Attribute | Value |
 | --------- | ----- |
 | `db.system.name` | `dbSystemName`, which each driver declares: `mariadb` for `MariaDbDatasource`, `postgresql` for `PostgresDatasource` |
-| `db.operation.name` | The statement's first keyword, upper-cased — `SELECT`, `INSERT`, `WITH` |
+| `db.operation.name` | The statement's first keyword, upper-cased — `SELECT`, `INSERT`, `WITH` — or `PREPARE` for preparing a statement |
 | `db.query.text` | The statement as written, with its placeholders |
 | `tom.datasource` | `registeredName` — `<base>@<tenant>` for a tenant's own pool |
 
-The span is named after the first keyword. A query and a prepared statement's
+The span is named after the first keyword, and preparing a statement is a
+`PREPARE` span: each connection keeps the statements it prepared, so most
+prepares answer from that and run nothing, and naming them for the statement
+would count them as statements run. A query and a prepared statement's
 execution pass their SQL to `withLink` as `statement`, which read-replica
 routing also reads; a command and a statement being prepared pass it as
 `sqlText`, which only names the span. Without either — `withDriverConnection` —

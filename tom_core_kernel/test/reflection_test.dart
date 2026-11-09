@@ -193,6 +193,23 @@ class Team {
   Team();
 }
 
+/// An extension type over [TeamMember]. At run time it *is* `TeamMember`, so
+/// it has no mirror of its own: when the generator gave it one, that mirror
+/// replaced `TeamMember`'s under the same `Type`, and a `List<TeamMember>`
+/// field read its element class as `TeamLead`.
+extension type TeamLead(TeamMember member) implements TeamMember {}
+
+/// Reaches [TeamLead] through a type annotation, as `TomReflector`'s
+/// type-annotation quantification does for the framework's own extension
+/// types.
+@tomReflector
+class Squad {
+  TeamLead? lead;
+  List<TeamMember> members = [];
+
+  Squad();
+}
+
 @tomReflector
 class PersonWithFromJson {
   String name = '';
@@ -1737,6 +1754,47 @@ void main() {
       expect(team.members[0].role, 'Developer');
       expect(team.members[1].name, 'Bob');
       expect(team.members[2].role, 'Manager');
+    });
+  });
+
+  group('type arguments beside an extension type over the element class', () {
+    test('RF-E1: a type reflects as itself, not as an extension type over '
+        'it', () {
+      expect(tomReflector.reflectType(TeamMember).simpleName, 'TeamMember');
+      expect(tomReflector.reflectType(String).simpleName, 'String');
+    });
+
+    test("RF-E2: a List<TeamMember> field's type argument is TeamMember, "
+        "a List<String> field's String", () {
+      String argumentOf(Type owner, String field) =>
+          ((tomReflector.reflectType(owner) as ClassMirror).declarations[field]!
+                  as VariableMirror)
+              .type
+              .typeArguments
+              .single
+              .simpleName;
+      expect(argumentOf(Squad, 'members'), 'TeamMember');
+      expect(argumentOf(ListHolder, 'stringList'), 'String');
+    });
+
+    test('RF-E3: a List<TeamMember> field round-trips into TeamMember '
+        'instances', () {
+      final squad = Squad();
+      tomReflectionInfo.setValues(squad, {
+        'members': [
+          {'name': 'Alice', 'role': 'Developer'},
+          {'name': 'Bob', 'role': 'Designer'},
+        ],
+      });
+      expect(squad.members.map((m) => m.runtimeType), [TeamMember, TeamMember]);
+      expect(squad.members.map((m) => m.name), ['Alice', 'Bob']);
+
+      final copy = Squad();
+      tomReflectionInfo.setValues(copy, tomReflectionInfo.getValues(squad));
+      expect(copy.members.map((m) => (m.name, m.role)), [
+        ('Alice', 'Developer'),
+        ('Bob', 'Designer'),
+      ]);
     });
   });
 
@@ -3877,11 +3935,9 @@ void main() {
       final holder = ObservableWithJsonHooks();
       holder.label | 'origin';
 
-      expect(
-        tomReflectionInfo.getValues(holder),
-        {'label': 'origin'},
-        reason: 'the `o is TomClass` test is ahead of the hook lookup',
-      );
+      expect(tomReflectionInfo.getValues(holder), {
+        'label': 'origin',
+      }, reason: 'the `o is TomClass` test is ahead of the hook lookup');
     });
 
     test('inbound: TomClass beats the jsonDecode method', () {
@@ -4017,11 +4073,9 @@ void main() {
     test('a TomJsonSerializable is asked, not walked', () {
       final dto = SelfSerializingDto()..status = 'up';
 
-      expect(
-        tomReflectionInfo.getValues(dto),
-        {'ok': 'up'},
-        reason: 'the interface renames the field, so a walk cannot match',
-      );
+      expect(tomReflectionInfo.getValues(dto), {
+        'ok': 'up',
+      }, reason: 'the interface renames the field, so a walk cannot match');
       expect(tomReflectionInfo.getValues(dto), dto.toJson());
     });
 

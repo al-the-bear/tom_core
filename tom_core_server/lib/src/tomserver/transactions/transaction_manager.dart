@@ -3,6 +3,7 @@ import 'dart:math';
 
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
+import '../little_things/request_cache.dart';
 import '../little_things/server_exception.dart';
 
 /// Raised when a transaction operation is attempted in an invalid state — for
@@ -492,14 +493,14 @@ class TomTransaction {
             "transaction back: $error",
           );
           tomLog.debug('$stack');
-          return rollbackTransaction();
+          return await rollbackTransaction();
         }
         if (!prepared) {
           tomLog.info(
             "Participant '${entry.key}' vetoed the transaction during prepare; "
             "rolling back.",
           );
-          return rollbackTransaction();
+          return await rollbackTransaction();
         }
       }
 
@@ -509,7 +510,7 @@ class TomTransaction {
       // scope, so the write cannot ride on a participant's connection and
       // commit only with it. A decision that cannot be recorded is not taken.
       final decided = await _recordDecision();
-      if (decided == false) return rollbackTransaction();
+      if (decided == false) return await rollbackTransaction();
 
       // Past this point the transaction is committing. Every participant has
       // promised it can, and a broken promise is reported rather than acted on.
@@ -650,6 +651,9 @@ class TomTransaction {
 
   Future<TomTransactionResult> _rollback() async {
     _isRunning = false;
+    // What the request looked up inside the transaction may have seen writes
+    // that are now undone.
+    TomRequestCache.invalidate();
     // Cleared in a `finally` for the reason [commitTransaction] gives: the
     // scope must never hold a transaction that is no longer running, and that
     // has to hold however this method leaves.

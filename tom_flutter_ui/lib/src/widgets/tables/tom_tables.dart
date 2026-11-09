@@ -660,13 +660,13 @@ class TomDataCell extends DataCell {
     this.authorizer,
     this.uiStateController,
     Widget? child,
-    bool placeholder = false,
-    bool showEditIcon = false,
-    GestureTapCallback? onTap,
-    GestureLongPressCallback? onLongPress,
-    GestureTapCallback? onDoubleTap,
-    GestureTapCancelCallback? onTapCancel,
-    GestureTapDownCallback? onTapDown,
+    super.placeholder,
+    super.showEditIcon,
+    super.onTap,
+    super.onLongPress,
+    super.onDoubleTap,
+    super.onTapCancel,
+    super.onTapDown,
   }) : basePath = TomCtr.resolvePath(tomId, scope),
        super(
          TomAuthGate(
@@ -683,13 +683,6 @@ class TomDataCell extends DataCell {
                  tomGroup,
                ),
          ),
-         placeholder: placeholder,
-         showEditIcon: showEditIcon,
-         onTap: onTap,
-         onLongPress: onLongPress,
-         onDoubleTap: onDoubleTap,
-         onTapCancel: onTapCancel,
-         onTapDown: onTapDown,
        );
 
   /// Creates an empty/placeholder cell.

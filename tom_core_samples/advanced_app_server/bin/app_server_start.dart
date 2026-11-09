@@ -395,6 +395,18 @@ Future<void> main(List<String> args) async {
   // when it mounts the reflected endpoint pipeline.
   TomFileSlots.register(itemRepository);
 
+  // The framework's `/audit-reports` API, for the `auditor` role (`audrey` in
+  // the dev seed): questions asked of the audit trail in `app_db` across every
+  // writer, and saved questions kept beside it. Both tables are the ops
+  // server's migrations ([100], [101]) — this server reads and keeps, and
+  // never creates them. A question marked for delivery is delivered by the ops
+  // server's pass, which has the outbox and the export store; this process has
+  // neither, so it answers and marks only.
+  TomAuditReports(
+    view: TomAuditView(TomSqlAuditTrailSource.named('app_db')),
+    questions: TomSqlAuditQuestionStore.named('app_db', createSchema: false),
+  ).install();
+
   await startServer(configuration);
 
   tomLog.info('Advanced app server started on port ${configuration.port}.');

@@ -7,13 +7,14 @@ This is the **secured, full-stack successor** to the basic
 [`core_server_sample`](core_server_sample/README.md) /
 [`core_client_sample`](core_client_sample/README.md) pair. Where those teach one
 server and one client in isolation, this suite is **three servers, two databases,
-and two Flutter clients** wired together end-to-end: a JWT auth/admin server, a
-secured task-manager app server, an end-user app, an administrator console, and a
-back-office operations server running scheduled work over the app database — all
+and three Flutter clients** wired together end-to-end: a JWT auth/admin server, a
+secured task-manager app server, an end-user app, an administrator console, an
+auditor's app over the framework's audit-report API, and a back-office
+operations server running scheduled work over the app database — all
 sharing one reflected domain and one wire contract, with live four-state field
 authorization and cross-user sharing.
 
-> **Reading this map.** This document links the nine packages, draws the
+> **Reading this map.** This document links the ten packages, draws the
 > architecture, and gives the one quickstart that stands the whole system up.
 > Every package ships its own article-grade `README.md` with the depth — nothing
 > about a package's internals is re-documented here.
@@ -33,7 +34,7 @@ bottom; each links to the next.
 
 | Part | Document | Covers |
 | --- | --- | --- |
-| 00 | [Introduction & how to read this guide](README_advanced_00_introduction.md) | What the sample is and is *not*; who it is for; the nine packages at a glance; reading order; conventions. |
+| 00 | [Introduction & how to read this guide](README_advanced_00_introduction.md) | What the sample is and is *not*; who it is for; the ten packages at a glance; reading order; conventions. |
 | 01 | [Full-stack architecture](README_advanced_01_architecture.md) | Two HTTP servers / two databases / two clients; layering; dependency arrows; the shared JWT key; the request + grant-propagation loop. |
 | 02 | [Project layout, packages & build](README_advanced_02_project_layout_build.md) | The nine pubspecs and their wiring; `publish_to: none`; build order; reflection generation; running build_runner; local run. |
 | 03 | [Domain model & reflection](README_advanced_03_domain_reflection.md) | The reflected `TomClass` entities; `@tomReflector`; the single reflection seed; enums; scope + `tomId`/`formId` addressing resolved by convention (no key catalogue). |
@@ -61,7 +62,7 @@ bottom; each links to the next.
 
 ---
 
-## The nine packages
+## The ten packages
 
 | # | Package | What it is | Runtime |
 | --- | --- | --- | --- |
@@ -74,9 +75,10 @@ bottom; each links to the next.
 | 7 | [`advanced_authadmin_client`](advanced_authadmin_client/README.md) | The administrator Flutter console: manages users, roles, groups, role assignments, and the `projectRole` × field grant matrix via the auth server's `/admin/*` API. | Flutter |
 | 8 | [`advanced_ops_server`](advanced_ops_server/README.md) | Back-office scheduled work over the app database — a nightly retention purge, a morning digest rendered from a localised text bundle into the messaging outbox, a weekly export into the blob store, and an audit-anchor publisher on its own timer; also where the sample's personal data is registered for erasure and subject access across both databases. No HTTP surface and no database of its own. | timers, `app_db` `:3308`, `auth_db` `:3307` |
 | 9 | [`advanced_openapi_client`](advanced_openapi_client/README.md) | Typed Dart clients for the two HTTP servers, **generated** by `tom_core_openapi` from the OpenAPI documents the servers publish at `GET /openapi.json`. They depend on `package:http` alone — no Tom package, no reflection — and show the system called from code that shares nothing with it. | library (generated) |
+| 10 | [`advanced_audit_client`](advanced_audit_client/README.md) | The auditor's Flutter app: signs in as `audrey` (the `auditor` role), asks the audit trail questions across its writers through the framework's `/audit-reports` API on the app server, saves questions with a schedule, recipients and a format, and has them delivered — by the ops server's delivery pass — as CSV, XLSX or PDF exports by email. | Flutter |
 
-**Four of the five runtime packages carry no `example/` directory, and that
-is deliberate.** Each is run directly — `flutter run` for the two clients,
+**Five of the six runtime packages carry no `example/` directory, and that
+is deliberate.** Each is run directly — `flutter run` for the three clients,
 `dart run bin/…` for the app and auth servers — so an `example/` beside them
 would duplicate the entry point. The ops server is the exception because its
 entry point needs both databases while its most adaptable seam needs none:
@@ -112,7 +114,7 @@ two libraries are generated, and the runnable demonstration of them is
 `test/generated_client_integration_test.dart`, which the cross-tier runner
 below executes against both live servers.
 
-**Nor does any of the nine carry a `doc/` folder or a `doc/api/` summary**, and
+**Nor does any of the ten carry a `doc/` folder or a `doc/api/` summary**, and
 that is deliberate and decided once for the whole sample
 suite — see [the suite map](README.md). A sample has no consumers who need its
 surface indexed: these nine are `publish_to: none`, and the three hand-written
@@ -247,6 +249,7 @@ reading their URLs from the `AdvancedClientConfig` config bean. Launch with
 | `carol` | `carol-pass` | — | viewer on alice's project (seeded share) |
 | `dave` | `dave-pass` | `two_factor_required` | none — exists for the TOTP challenge (part [06](README_advanced_06_authentication.md)) |
 | `erin` | `erin-pass` | `two_factor_optional` | none — exists for the enrolment offer (part [06](README_advanced_06_authentication.md)) |
+| `audrey` | `audrey-pass` | `auditor` | none — reads the audit trail through the audit-report API (`advanced_audit_client`) |
 
 <!-- /account-roster -->
 

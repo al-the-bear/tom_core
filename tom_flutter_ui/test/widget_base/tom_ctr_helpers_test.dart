@@ -186,20 +186,16 @@ void main() {
       // would take its precedence from wherever it happened to be declared,
       // with nothing to say so.
       expect(precedence, hasLength(8));
-      expect(
-        precedence.keys.toSet(),
-        {
-          'hovered',
-          'focused',
-          'pressed',
-          'selected',
-          'disabled',
-          'error',
-          'dragged',
-          'scrolledUnder',
-        },
-        reason: 'the dartdoc of widgetStateColor lists exactly these names',
-      );
+      expect(precedence.keys.toSet(), {
+        'hovered',
+        'focused',
+        'pressed',
+        'selected',
+        'disabled',
+        'error',
+        'dragged',
+        'scrolledUnder',
+      }, reason: 'the dartdoc of widgetStateColor lists exactly these names');
     });
 
     test('each rank beats the one below it', () {

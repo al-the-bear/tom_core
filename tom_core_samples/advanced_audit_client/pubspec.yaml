@@ -1,0 +1,47 @@
+name: advanced_audit_client
+description: >-
+  Auditor's Flutter application for the advanced Tom Core full-stack sample —
+  signs in with the auditor role, asks the audit trail questions across its
+  writers through the framework's audit-report API, saves questions and has
+  them delivered by email as CSV, XLSX or PDF exports.
+publish_to: none
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.10.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Client runtime-platform detection used at bootstrap.
+  tom_core_flutter:
+    path: ../../tom_core_flutter
+
+  # The kernel: reflection and the audit-report contract's wire DTOs.
+  tom_core_kernel:
+    path: ../../tom_core_kernel
+
+  # Sign-in, bearer injection and the typed audit-report client.
+  advanced_client_core:
+    path: ../advanced_client_core
+
+  # The login wire DTOs.
+  advanced_todo_contracts:
+    path: ../advanced_todo_contracts
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+  # Reflection codegen for lib/reflection_seed.dart; regenerate with
+  # ./reflection_generation.sh when a reflected shape changes.
+  build: ^4.0.3
+  build_runner: ^2.10.4
+  # Hosted, lower bound only: pub takes the analyzer-10 line (1.8.x) while
+  # the Flutter SDK holds analyzer below 14, and 1.9+ once it moves.
+  tom_reflection_generator: ">=1.8.2"
+
+flutter:
+  uses-material-design: true

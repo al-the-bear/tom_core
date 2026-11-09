@@ -67,6 +67,14 @@ per-principal-per-resource role resolution.
   - [TomOAuthAuthorizationDto](#tomoauthauthorizationdto)
   - [TomOAuthCallbackRequest](#tomoauthcallbackrequest)
   - [TomOAuthApiService](#tomoauthapiservice)
+  - [TomAuditReportWritersDto](#tomauditreportwritersdto)
+  - [TomAuditReportQueryRequest](#tomauditreportqueryrequest)
+  - [TomAuditReportEntryDto](#tomauditreportentrydto)
+  - [TomAuditReportResultDto](#tomauditreportresultdto)
+  - [TomAuditQuestionDto](#tomauditquestiondto)
+  - [TomAuditQuestionsDto](#tomauditquestionsdto)
+  - [TomAuditQuestionIdRequest](#tomauditquestionidrequest)
+  - [TomAuditReportsApiService](#tomauditreportsapiservice)
 - [Enums](#enums)
   - [TomLoginFailure](#tomloginfailure)
   - [TomWebAuthnUserVerification](#tomwebauthnuserverification)
@@ -80,11 +88,7 @@ per-principal-per-resource role resolution.
 
 ## Overview
 
-Sources: `lib/src/tombase/security/user_principal_aci.dart`,
-`lib/src/tombase/security/tom_authorization.dart`, `lib/src/tombase/security/access_controls.dart`,
-`lib/src/tombase/security/resource_role_authorization.dart`, `lib/src/tombase/security/item_permissions.dart`, `lib/src/tombase/security/authentication_authorization.dart`,
-`lib/src/tombase/security/bearer_authentication.dart`, `lib/src/tombase/security/two_factor.dart`, `lib/src/tombase/security/server_principal.dart`,
-`lib/src/tombase/security/oauth_contract.dart`, `lib/src/tombase/security/webauthn.dart`.
+Sources: `lib/src/tombase/security/access_controls.dart`, `lib/src/tombase/security/audit_reports_contract.dart`, `lib/src/tombase/security/authentication_authorization.dart`, `lib/src/tombase/security/bearer_authentication.dart`, `lib/src/tombase/security/item_permissions.dart`, `lib/src/tombase/security/oauth_contract.dart`, `lib/src/tombase/security/resource_role_authorization.dart`, `lib/src/tombase/security/server_principal.dart`, `lib/src/tombase/security/tom_authorization.dart`, `lib/src/tombase/security/two_factor.dart`, `lib/src/tombase/security/user_principal_aci.dart`, `lib/src/tombase/security/webauthn.dart`.
 
 `user_principal_aci.dart` holds the identity/authorization data model:
 `TomUser` (identity), `TomPrincipal` (authenticated session + context),
@@ -1974,6 +1978,148 @@ here — the same split the rest of the framework's contracts follow.
 | `beginOAuthAuthorization(TomOAuthAuthorizationRequest request)` | `Future<TomOAuthAuthorizationDto>` | `tomOAuthBeginEndpointId` — starts a flow and answers where to send the user. |
 | `completeOAuthAuthorization(TomOAuthCallbackRequest request)` | `Future<TomAuthenticationResult>` | `tomOAuthCompleteEndpointId` — exchanges the code and completes the login, answering exactly what a password login answers. |
 
+### TomAuditReportWritersDto
+
+The writers (hash chains) the audit trail holds records of, as
+`GET /audit-reports/writers` answers them. Implements `TomJsonSerializable`.
+
+```dart
+TomAuditReportWritersDto({List<String>? writers})
+factory TomAuditReportWritersDto.fromJson(Map<String, Object?> json)
+```
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `writers` | `List<String>` | The writers, by name. |
+
+### TomAuditReportQueryRequest
+
+A question asked of the audit trail once, without saving it. Implements
+`TomJsonSerializable`.
+
+```dart
+TomAuditReportQueryRequest({Map<String, Object?>? filter})
+factory TomAuditReportQueryRequest.fromJson(Map<String, Object?> json)
+```
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `filter` | `Map<String, Object?>` | The filter: `actor`, `action`, `target`, `targetKey`, `outcome`, `requestId`, `from` / `to` or `lastHours`, `writers`, `limit`. |
+
+### TomAuditReportEntryDto
+
+One record of an answer. Implements `TomJsonSerializable`.
+
+```dart
+TomAuditReportEntryDto({
+  String writer = '',
+  int index = 0,
+  String hash = '',
+  Map<String, Object?>? record,
+})
+factory TomAuditReportEntryDto.fromJson(Map<String, Object?> json)
+```
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `writer` | `String` | The writer (chain) the record belongs to. |
+| `index` | `int` | Its position within the writer's chain, counted from genesis. |
+| `hash` | `String` | Its hash in the chain. |
+| `record` | `Map<String, Object?>` | The record, in the server's `TomAuditRecord.toJson` form. |
+
+### TomAuditReportResultDto
+
+The answer to a question: the matching records across the writers asked,
+newest first. Implements `TomJsonSerializable`.
+
+```dart
+TomAuditReportResultDto({
+  List<TomAuditReportEntryDto>? entries,
+  bool hasMore = false,
+  List<String>? writers,
+})
+factory TomAuditReportResultDto.fromJson(Map<String, Object?> json)
+```
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `entries` | `List<TomAuditReportEntryDto>` | The records. |
+| `hasMore` | `bool` | Whether more records matched than the answer carries. |
+| `writers` | `List<String>` | The writers that were asked. |
+
+### TomAuditQuestionDto
+
+A saved question. Implements `TomJsonSerializable`.
+
+```dart
+TomAuditQuestionDto({
+  String id = '',
+  String name = '',
+  String owner = '',
+  Map<String, Object?>? filter,
+  String schedule = '',
+  List<String>? recipients,
+  String format = 'csv',
+  String lastDeliveredAt = '',
+  String nextDeliveryAt = '',
+})
+factory TomAuditQuestionDto.fromJson(Map<String, Object?> json)
+```
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `id` | `String` | Its id; empty when saving a new question. |
+| `name` | `String` | What the auditor calls it. |
+| `owner` | `String` | The principal that saved it; set by the server. |
+| `filter` | `Map<String, Object?>` | The filter, keyed as `TomAuditReportQueryRequest.filter`. |
+| `schedule` | `String` | A five-field cron expression in UTC (`0 6 * * 1`), or empty for never. |
+| `recipients` | `List<String>` | The email addresses a delivery goes to. |
+| `format` | `String` | `csv`, `xlsx` or `pdf`. |
+| `lastDeliveredAt` | `String` | When it was last delivered (ISO-8601), or empty. |
+| `nextDeliveryAt` | `String` | When it is next delivered (ISO-8601), or empty for never. |
+
+### TomAuditQuestionsDto
+
+The caller's saved questions, by name. Implements `TomJsonSerializable`.
+
+```dart
+TomAuditQuestionsDto({List<TomAuditQuestionDto>? questions})
+factory TomAuditQuestionsDto.fromJson(Map<String, Object?> json)
+```
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `questions` | `List<TomAuditQuestionDto>` | The questions. |
+
+### TomAuditQuestionIdRequest
+
+Names one saved question; the routes with `{id}` bind it from the path.
+Implements `TomJsonSerializable`.
+
+```dart
+TomAuditQuestionIdRequest({String id = ''})
+factory TomAuditQuestionIdRequest.fromJson(Map<String, Object?> json)
+```
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `id` | `String` | The question's id. |
+
+### TomAuditReportsApiService
+
+The typed service interface behind `tomAuditReportsApi`; `tom_core_server`'s
+`TomAuditReportsServer` implements it.
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `auditReportWriters` | `Future<TomAuditReportWritersDto> auditReportWriters()` | The writers of the trail. |
+| `auditReportQuery` | `Future<TomAuditReportResultDto> auditReportQuery(TomAuditReportQueryRequest request)` | A filter answered once. |
+| `auditReportQuestions` | `Future<TomAuditQuestionsDto> auditReportQuestions()` | The caller's questions. |
+| `auditReportSaveQuestion` | `Future<TomAuditQuestionDto> auditReportSaveQuestion(TomAuditQuestionDto request)` | Saves a question as the caller's. |
+| `auditReportDeleteQuestion` | `Future<void> auditReportDeleteQuestion(TomAuditQuestionIdRequest request)` | Removes the caller's question. |
+| `auditReportAnswer` | `Future<TomAuditReportResultDto> auditReportAnswer(TomAuditQuestionIdRequest request)` | The caller's question answered now. |
+| `auditReportDeliver` | `Future<TomAuditQuestionDto> auditReportDeliver(TomAuditQuestionIdRequest request)` | The caller's question marked for the next delivery pass. |
+
 ## Enums
 
 ### TomLoginFailure
@@ -2060,6 +2206,7 @@ Strategy for how a [TomAuthorizer] interacts with resource authorization.
 | `tomResourceState` | `TomAuthState tomResourceState(String resourceKey)` | Convenience shorthand for [TomResourceKeyProtection.resourceState]: the four-state answer for the ambient principal, for a field that renders editable, read-only, greyed out or not at all. |
 | `tomProtected` | `bool tomProtected(String resourceKey)` | Convenience shorthand for [TomResourceKeyProtection.isProtected], inheriting its precondition: while [TomResourceKeyProtection.globalSettingProtectionDefault] is `false` — its default — this always answers `false`, so a `if (!tomProtected(...))` guard always passes. |
 | `registerTomOAuthApi` | `void registerTomOAuthApi()` | Registers `tomOAuthApi` with the global `tomRemoteApis` registry. Idempotent, and called by both halves — a server before mounting the endpoints, a client before building a caller. Registration is explicit rather than implicit in a top-level initializer because a deployment that configures no providers should not carry the API in its registry. |
+| `registerTomAuditReportsApi` | `void registerTomAuditReportsApi()` | Registers `tomAuditReportsApi` with the global `tomRemoteApis` registry. Idempotent; the server's endpoint pipeline calls it for every server (`registerFrameworkApis`), and a client calls it before building a caller. |
 
 ### Constants
 
@@ -2070,9 +2217,21 @@ Strategy for how a [TomAuthorizer] interacts with resource authorization.
 | `tomOAuthBeginEndpointId` | `String` | `'beginOAuthAuthorization'` — start an authorization-code flow for one provider. |
 | `tomOAuthCompleteEndpointId` | `String` | `'completeOAuthAuthorization'` — the provider's redirect target; completes the login. |
 | `tomOAuthApi` | `TomApi` | External-identity login, mounted at `/oauth`. Three endpoints: `GET /providers` → `List<TomOAuthProviderDto>`; `POST /authorize` (`TomOAuthAuthorizationRequest` → `TomOAuthAuthorizationDto`); `GET /callback` (`TomOAuthCallbackRequest` → `TomAuthenticationResult`, with `urlParameterMapping` binding `code`, `state`, `error` and `error_description` out of the query string). Every endpoint is `TomPublicAccess`, necessarily so: this is how a caller who is *not yet* authenticated becomes authenticated, exactly like `/login`. Public does not mean unguarded — the flow is protected by the single-use, server-issued, TTL-bounded `state` handle and the PKCE verifier, neither of which a caller supplies. Declared `final`, not `const` unlike the four endpoint ids above — `TomApi`'s constructor links each endpoint back to the api it belongs to, which is a run-time assignment. |
+| `tomAuditorRole` | `String` | `'auditor'` — the role every audit-report route requires. |
+| `tomAuditorAccess` | `TomRoleAccess` | `TomRoleAccess([tomAuditorRole])`, the access each endpoint of `tomAuditReportsApi` declares. |
+| `tomAuditReportsApiId` | `String` | `'tomAuditReports'` — the id `tomAuditReportsApi` is registered and bound under. |
+| `tomAuditReportsWritersEndpointId` | `String` | `'auditReportWriters'` — `GET /writers`. |
+| `tomAuditReportsQueryEndpointId` | `String` | `'auditReportQuery'` — `POST /query`. |
+| `tomAuditReportsListQuestionsEndpointId` | `String` | `'auditReportQuestions'` — `GET /questions`. |
+| `tomAuditReportsSaveQuestionEndpointId` | `String` | `'auditReportSaveQuestion'` — `PUT /questions`. |
+| `tomAuditReportsDeleteQuestionEndpointId` | `String` | `'auditReportDeleteQuestion'` — `DELETE /questions/{id}`. |
+| `tomAuditReportsAnswerEndpointId` | `String` | `'auditReportAnswer'` — `GET /questions/{id}/answer`. |
+| `tomAuditReportsDeliverEndpointId` | `String` | `'auditReportDeliver'` — `POST /questions/{id}/deliver`. |
+| `tomAuditReportsApi` | `TomApi` | The audit-report API, mounted at `/audit-reports`: `GET /writers` → `TomAuditReportWritersDto`; `POST /query` (`TomAuditReportQueryRequest` → `TomAuditReportResultDto`); `GET /questions` → `TomAuditQuestionsDto`; `PUT /questions` (`TomAuditQuestionDto` → `TomAuditQuestionDto`); `DELETE /questions/{id}`, `GET /questions/{id}/answer` → `TomAuditReportResultDto` and `POST /questions/{id}/deliver` → `TomAuditQuestionDto`, each taking `TomAuditQuestionIdRequest` with `id` bound from the path. Every endpoint is `tomAuditorAccess`. `final`, as `TomApi` links each endpoint back to it at run time. |
 
 ### Typedefs
 
 | Typedef | Signature | Description |
 | ------- | --------- | ----------- |
 | `TomAccessControlHandler` | `bool Function(TomPrincipal? principal, String id)` | Function signature for custom access control handlers used by [TomCustomAccess]. |
+

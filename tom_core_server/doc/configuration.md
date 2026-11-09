@@ -1091,7 +1091,7 @@ than storing plaintext.
 | `datasource` | `String` | required | The registered data source the data-key table is in: a `TomSqlDataKeyStore` over it. Resolved by name on every call, so under tenancy a routed data source keeps each tenant's data keys in the tenant's schema or database. |
 | `table` | `String` | `tom_encryption_key` | The table's name. |
 | `createSchema` | `bool` | `true` | Whether the store creates the table on first use in each data source. `false` for a database user that may not run DDL; the deployment then applies the reference migration `example/object_persistence/migrations/main/tomcore/[1]-create_tom_encryption_key.sql` (or its `migrations_postgresql` form). |
-| `keys` | list of maps | required | The key-encryption keys, **primary first**: each `{id, key}`, `id` its name (1 to 128 characters, recorded with every data key it wraps) and `key` the base64 of its 32 bytes, or a `secret:` reference to it. The primary wraps every data key created; the others only unwrap, so a rotated-out key stays listed until the data keys are re-wrapped. |
+| `keys` | list of maps | required | The key-encryption keys, **primary first**: each with an `id`, its name (1 to 128 characters, recorded with every data key it wraps), and a `kind`, default `aes`. An `aes` entry carries `key`, the base64 of its 32 bytes or a `secret:` reference to it; an entry of another kind carries the settings of a key held by a key-management service, built by the factory a package registered for the kind (`aws-kms`, `vault-transit` and `azure-keyvault` from `tom_core_secrets`; see [object_persistence.md](object_persistence.md#keys-held-by-a-key-management-service)). The primary wraps every data key created; the others only unwrap, so a rotated-out key stays listed until the data keys are re-wrapped. |
 | `refreshSeconds` | `int` | `300` | How often a node reads the data keys again, which is how it learns of a rotation another node made. |
 | `acceptPlaintext` | `bool` | `true` | Whether a stored value of an encrypted column that is not ciphertext reads as it is (`TomFieldEncryption.acceptPlaintext`). On while a column that held plaintext is being encrypted; off once every column is, and a plaintext value then fails its read with `field_encryption.plaintext_refused`. |
 
@@ -1119,17 +1119,22 @@ is. A reference that cannot be resolved stops the start with the
 **Rotating a key-encryption key** is a configuration change: list the new key
 first and the old one second, restart, re-wrap the data keys
 (`TomFieldEncryption.keyring!.rewrap()`, in every tenant whose data keys are
-kept apart), then drop the old key from the list.
+kept apart), then drop the old key from the list. Moving from an
+application-held key to one held by a key-management service is the same
+change: the service key first, the AES key after it, then `rewrap()`.
 
 **A value of the wrong shape stops the start.** `fieldEncryption` that is not a
 map, a missing `datasource` or `keys`, a `table` that is not a string, a
 `createSchema` or `acceptPlaintext` that is not a boolean, a `refreshSeconds`
-that is not a positive whole number, or a `keys` entry without an `id` and a
-`key` throws a `TomFieldEncryptionException` keyed
-`field_encryption.config.invalid` before anything is installed; a key that is
-not the base64 of 32 bytes throws `field_encryption.invalid_kek`. A data source
-the name does not resolve to throws `field_encryption.no_datasource` when the
-keyring first loads, which `start()` awaits.
+that is not a positive whole number, a `keys` entry without an `id`, an `aes`
+entry without a `key`, or an entry whose `kind` no package registered throws a
+`TomFieldEncryptionException` keyed `field_encryption.config.invalid` before
+anything is installed; a key that is not the base64 of 32 bytes throws
+`field_encryption.invalid_kek`, and the factory of another kind refuses its own
+settings with its own key (`secrets.kek.config.invalid` from
+`tom_core_secrets`). A data source the name does not resolve to throws
+`field_encryption.no_datasource` when the keyring first loads, which `start()`
+awaits.
 
 **When it applies.** `start()` applies the key right after `idempotency`, before
 the deployment's own login and before anything reads an entity; the data source

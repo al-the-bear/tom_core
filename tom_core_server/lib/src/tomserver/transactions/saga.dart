@@ -95,7 +95,6 @@ import '../datasources/framework_table.dart';
 import '../datasources/sql_instant.dart';
 import '../little_things/server_exception.dart';
 import '../object_persistence/persistence_annotations.dart';
-import '../scheduling/event_instants.dart';
 import '../tenancy/tenancy.dart';
 import 'saga_sql.dart';
 import 'transaction_manager.dart';
@@ -266,7 +265,6 @@ class TomSagaState {
     required this.step,
     required this.version,
     required this.data,
-    required this.runWindow,
     required this.createdAt,
     required this.updatedAt,
     this.error,
@@ -298,10 +296,6 @@ class TomSagaState {
   /// Why the saga compensates, or failed.
   final String? error;
 
-  /// The window instant of the job run that carries this version — its
-  /// identity in the job store, not when it is due.
-  final DateTime runWindow;
-
   /// When the saga began.
   final DateTime createdAt;
 
@@ -323,7 +317,6 @@ class TomSagaState {
     version: version + 1,
     data: data,
     error: error,
-    runWindow: TomEventInstants.next(now),
     createdAt: createdAt,
     updatedAt: now.toUtc(),
   );
@@ -480,7 +473,7 @@ class TomSqlSagaStore implements TomSagaStore {
 
   static const String _columns =
       'tenant, saga_id, saga_name, status, step, version, data, error, '
-      'run_window, created_at, updated_at';
+      'created_at, updated_at';
 
   static Map<String, Object?> _bind(TomSagaState s) => {
     'tenant': s.tenant,
@@ -491,7 +484,6 @@ class TomSqlSagaStore implements TomSagaStore {
     'version': s.version,
     'data': jsonEncode(s.data),
     'error': s.error,
-    'runWindow': sqlInstant(s.runWindow),
     'createdAt': sqlInstant(s.createdAt),
     'updatedAt': sqlInstant(s.updatedAt),
   };
@@ -509,7 +501,6 @@ class TomSqlSagaStore implements TomSagaStore {
         'version': ':version',
         'data': ':data',
         'error': ':error',
-        'run_window': ':runWindow',
         'created_at': ':createdAt',
         'updated_at': ':updatedAt',
       }, ignoreConflict: true),
@@ -534,7 +525,7 @@ class TomSqlSagaStore implements TomSagaStore {
   }) async {
     final updated = await _resolve().executeCommand(
       'UPDATE $table SET status = :status, step = :step, version = :version, '
-      'data = :data, error = :error, run_window = :runWindow, updated_at = :updatedAt '
+      'data = :data, error = :error, updated_at = :updatedAt '
       'WHERE tenant = :tenant AND saga_id = :id AND version = :expected',
       {..._bind(state), 'expected': expectedVersion},
     );
@@ -608,10 +599,6 @@ class TomSagaRow {
   @TomDbColumn(columnName: "error")
   String? error;
 
-  /// The current run's window instant, as stored UTC text.
-  @TomDbColumn(columnName: "run_window")
-  String runWindow = "";
-
   /// When the saga began, as stored UTC text.
   @TomDbColumn(columnName: "created_at")
   String createdAt = "";
@@ -630,7 +617,6 @@ class TomSagaRow {
     version: version,
     data: (jsonDecode(data) as Map).cast<String, Object?>(),
     error: error,
-    runWindow: parseSqlInstant(runWindow),
     createdAt: parseSqlInstant(createdAt),
     updatedAt: parseSqlInstant(updatedAt),
   );
@@ -809,7 +795,6 @@ class TomSagaOrchestrator implements TomClosable {
       step: 0,
       version: 0,
       data: copy,
-      runWindow: TomEventInstants.next(now),
       createdAt: now,
       updatedAt: now,
     );
@@ -853,11 +838,7 @@ class TomSagaOrchestrator implements TomClosable {
     var count = 0;
     for (final state in await store.unfinished()) {
       if (!_sagas.containsKey(state.name)) continue;
-      final run = await jobStore.findWindow(
-        _jobOf(state),
-        state.runWindow,
-        tenant: state.tenant.isEmpty ? null : state.tenant,
-      );
+      final run = await jobStore.findRun(_runIdOf(state));
       if (run != null && !run.isFinished) continue;
       await _enqueue(state);
       count++;
@@ -916,17 +897,28 @@ class TomSagaOrchestrator implements TomClosable {
       ? compensationJobName(state.name)
       : stepJobName(state.name);
 
-  Future<void> _enqueue(TomSagaState state) => jobStore.enqueue(
-    TomJobRun(
-      id: 'saga:${state.tenant}:${state.id}:${state.version}',
-      jobName: _jobOf(state),
-      scheduledFor: state.runWindow,
-      // Due now: the window instant only keeps the run apart from others.
-      runAt: _clock(),
-      payload: {'saga': state.id, 'version': state.version},
-      tenant: state.tenant.isEmpty ? null : state.tenant,
-    ),
-  );
+  /// The id of the job run that carries [state]'s version: its identity in
+  /// the job store, which is how a resumption finds out whether that run
+  /// still exists.
+  static String _runIdOf(TomSagaState state) =>
+      'saga:${state.tenant}:${state.id}:${state.version}';
+
+  Future<void> _enqueue(TomSagaState state) {
+    final now = _clock();
+    return jobStore.enqueue(
+      TomJobRun(
+        id: _runIdOf(state),
+        jobName: _jobOf(state),
+        scheduledFor: now,
+        runAt: now,
+        payload: {'saga': state.id, 'version': state.version},
+        tenant: state.tenant.isEmpty ? null : state.tenant,
+        // Keyed by its id, not a window: two sagas moving on in one instant —
+        // on two nodes — are two runs.
+        windowed: false,
+      ),
+    );
+  }
 
   /// The highest step at or before [from] that has a compensation, or -1.
   static int _lastCompensable(TomSaga saga, int from) {

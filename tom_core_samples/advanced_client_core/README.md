@@ -30,8 +30,8 @@ dart run example/authenticated_call_example.dart
 Its work is in `listWorkspacesAs`, which takes the transport as a parameter, so
 `test/examples_test.dart` runs the same sequence over a fake transport, and also
 runs the file under the command above.
-[The family's index](../README_advanced_sample.md#the-nine-packages) says which
-of the nine carry an `example/`, and why.
+[The family's index](../README_advanced_sample.md#the-ten-packages) says which
+of the ten carry an `example/`, and why.
 
 ## The HTTP seam
 
@@ -236,6 +236,21 @@ final admin = AdminApiClient(authBase, AuthorizedHttp(transport, auth));
 await auth.login(const LoginRequest(username: 'admin', password: 'admin-pass'));
 final users = await admin.listUsers(); // bearer attached, parsed to UserDtos
 ```
+
+## `AuditReportsClient`
+
+`AuditReportsClient` (`lib/src/api/audit_reports_client.dart`) is the typed
+client over the framework's audit-report API (`tomAuditReportsApi`), which
+`advanced_app_server` serves under `/audit-reports` to callers holding the
+`auditor` role: `writers`, `query`, `questions`, `save`, `delete`, `answer` and
+`deliver`. The routes come from the kernel's declaration through
+`registryRoute`, and each answer is read by its DTO's `fromJson` — the
+contract's DTOs carry their own JSON forms, so no reflection seed is needed for
+them. A failed call throws `AuditReportsException` with the server's error key
+(the framework error envelope's `errorKey`) and the status; a caller without
+the role is answered `404`, like a route that does not exist.
+`advanced_audit_client` is its application, and
+`test/audit_reports_client_integration_test.dart` runs it live as `audrey`.
 
 ## Files
 
@@ -455,6 +470,26 @@ class AdminApiClient implements AdminApiService
   Future<void> putGrants(GrantMatrixDto matrix)
   Future<void> assign(AssignmentRequest request)
   Future<ResourceBundleDto> resources()
+```
+
+### `lib/src/api/audit_reports_client.dart`
+
+The framework's audit-report API, for the `auditor` role.
+
+```dart
+class AuditReportsException extends TomException
+  final int statusCode
+  AuditReportsException(super.key, super.defaultUserMessage, {required this.statusCode})
+class AuditReportsClient
+  final Uri baseUri
+  AuditReportsClient(this.baseUri, AuthorizedHttp http)
+  Future<List<String>> writers()
+  Future<TomAuditReportResultDto> query(Map<String, Object?> filter)
+  Future<List<TomAuditQuestionDto>> questions()
+  Future<TomAuditQuestionDto> save(TomAuditQuestionDto question)
+  Future<void> delete(String id)
+  Future<TomAuditReportResultDto> answer(String id)
+  Future<TomAuditQuestionDto> deliver(String id)
 ```
 
 ### `lib/src/config/client_config.dart`

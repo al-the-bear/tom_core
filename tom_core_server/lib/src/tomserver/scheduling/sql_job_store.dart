@@ -228,6 +228,7 @@ class TomSqlJobStore implements TomJobStore {
     'job_name': ':jobName',
     'tenant': ':tenant',
     'scheduled_for': ':scheduledFor',
+    'window_at': ':windowAt',
     'run_at': ':runAt',
     'state': ':state',
     'attempt': ':attempt',
@@ -301,9 +302,11 @@ class TomSqlJobStore implements TomJobStore {
     final target = _queueTarget();
     // REPLACE rather than INSERT because enqueue is the store's only writer of
     // new rows and the scheduler may re-enqueue a window it is re-planning. The
-    // unique key on (job_name, scheduled_for) is what keeps the idempotence key
-    // a database invariant rather than a convention, so a second row for the
-    // same window cannot exist even if a peer races this one.
+    // unique key on (job_name, tenant, window_at) is what keeps the idempotence
+    // key a database invariant rather than a convention, so a second row for
+    // the same window cannot exist even if a peer races this one. A run
+    // enqueued under an id of its own writes no window_at, and the key holds
+    // any number of NULLs, so two such runs of one instant never meet.
     await _queue.replaceRow(
       target.datasource,
       _writeColumns,
@@ -332,7 +335,7 @@ class TomSqlJobStore implements TomJobStore {
     await ensureSchema();
     final rows = await _select(
       'WHERE job_name = :jobName AND tenant = :tenant '
-      'AND scheduled_for = :scheduledFor LIMIT 1',
+      'AND window_at = :scheduledFor LIMIT 1',
       {
         'jobName': jobName,
         'tenant': tenant ?? '',
@@ -346,7 +349,7 @@ class TomSqlJobStore implements TomJobStore {
   Future<DateTime?> lastWindow(String jobName) async {
     await ensureSchema();
     final rows = await datasource.executeQuery<TomJobRunWindowRow>(
-      'SELECT MAX(scheduled_for) AS scheduled_for FROM $table '
+      'SELECT MAX(window_at) AS scheduled_for FROM $table '
       'WHERE job_name = :jobName',
       {'jobName': jobName},
     );
@@ -1005,6 +1008,7 @@ class TomSqlJobStore implements TomJobStore {
     tenant: row.tenant.isEmpty ? null : row.tenant,
     priority: row.priority,
     checkpoint: _decodeCheckpoint(row.checkpoint),
+    windowed: row.windowAt != null,
   );
 
   /// Binds [run] to the queue table's columns.
@@ -1019,6 +1023,7 @@ class TomSqlJobStore implements TomJobStore {
     'jobName': run.jobName,
     'tenant': run.tenant ?? '',
     'scheduledFor': sqlInstant(run.scheduledFor),
+    'windowAt': run.windowed ? sqlInstant(run.scheduledFor) : null,
     'runAt': sqlInstant(run.runAt),
     'state': run.state.name,
     'attempt': run.attempt,
@@ -1110,6 +1115,11 @@ class TomJobRunRow {
   @TomDbColumn(columnName: "scheduled_for")
   String scheduledFor = "";
 
+  /// [scheduledFor] for a windowed run, `null` for one enqueued under an id
+  /// of its own.
+  @TomDbColumn(columnName: "window_at")
+  String? windowAt;
+
   /// When the run may next be attempted, as stored UTC text.
   @TomDbColumn(columnName: "run_at")
   String runAt = "";
@@ -1196,6 +1206,11 @@ class TomJobRunArchiveRow {
   @TomDbColumn(columnName: "scheduled_for")
   String scheduledFor = "";
 
+  /// [scheduledFor] for a windowed run, `null` for one enqueued under an id
+  /// of its own.
+  @TomDbColumn(columnName: "window_at")
+  String? windowAt;
+
   /// When the run was last due, as stored UTC text.
   @TomDbColumn(columnName: "run_at")
   String runAt = "";
@@ -1259,6 +1274,7 @@ class TomJobRunArchiveRow {
     ..jobName = jobName
     ..tenant = tenant
     ..scheduledFor = scheduledFor
+    ..windowAt = windowAt
     ..runAt = runAt
     ..state = state
     ..attempt = attempt

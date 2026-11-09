@@ -383,9 +383,9 @@ Resolving a delegate costs one grant read per **distinct delegator**, not one pe
 delegation row. The distinction is worth stating because lending several
 resources means one row each: a colleague who shares four projects with you is
 four rows naming one delegator, and their grants are read once. The reuse is
-scoped to the single `resolveDelegatedRoles` call — it declines to ask the same
-question twice within one resolution, and holds nothing afterwards, so liveness
-is untouched. Amortising across a whole request is `runCached`'s job, below.
+kept for the request: `resolveResourceRoles` and `resolveDelegatedRoles`
+answer each principal once per request (`TomRequestCache`, below), and outside
+a request they read every time.
 
 `TomResourceGrant` is the orthogonal axis: it grades a `(role, resourceKey)`
 pair with a `TomAuthState` (`none` / `disabled` / `read` / `full`), stored by
@@ -450,20 +450,26 @@ deliberately: a revoked share must stop granting access at revocation, not at
 token expiry. Nothing is trusted from the token.
 
 The cost of that choice is a read per resolution, and a single request resolves
-the scope several times (one per repository call, plus the write check).
-`TomResourceDataScope.runCached` amortises them:
+the scope several times (one per repository call, plus the write check). The
+endpoint pipeline runs every request's handler in a `TomRequestCache`
+(`little_things`), and the grant and delegation reads are kept there:
+`TomPrincipalResourceRoleResolver.resolveResourceRoles` and
+`TomDelegationResolver.resolveDelegatedRoles` answer each principal once per
+request, and every async row scope (`TomDataScope.buildAsync`) is resolved once
+per request, principal and read or write. Work outside an endpoint gets the
+same by running in `TomRequestCache.run`:
 
 ```dart
-await TomResourceDataScope.runCached(() async {
+await TomRequestCache.run(() async {
   // every scope resolution in here shares one grant read per principal
 });
 ```
 
-Two requests never share a cache. Each call builds a fresh map and installs it
-on a child zone of its own, so concurrently-served requests hold sibling zones
-with nothing in common — the isolation is by construction, not by discipline.
-Resolution stays live *across* requests, which is where liveness actually
-matters.
+A write empties the cache: every statement that changes data, and every
+rollback, drops what the request looked up, so a grant the request wrote is
+seen by its next read. Two requests never share a cache — each installs a fresh
+one on a zone of its own. Resolution stays live *across* requests, which is
+where liveness actually matters.
 
 The zone bounds *reachability*, not lifetime, and that is the part the caller
 has to hold. Anything the body schedules without awaiting — a `Future`, a
@@ -603,8 +609,7 @@ whole of what the scope contributes.
   record, its stored representation, and the resolved graded view.
 - **`TomResourceDataScope`** — the `TomResourceScopeSource` behind the built-in
   `resource` row scope: `install` / `uninstall` / `isInstalled`, the
-  `readableResourceKeys` / `writableResourceKeys` thresholds, and the
-  request-scoped `runCached`.
+  `readableResourceKeys` / `writableResourceKeys` thresholds.
 
 ## Dependencies
 
@@ -613,6 +618,6 @@ whole of what the scope contributes.
 | `dart:async` | dart | `authorization_cache.dart`, `resource_data_scope.dart` | `Future`, `Timer`, `Zone` |
 | `tom_core_kernel` | package | every file | `TomPrincipal`, `TomClientJwtToken`, `TomWorker`, `TomExecutor`, `TomException`, `TomAuthState`, `TomResourceRoleRegistry`, `TomAccessControlInformation`, `tomReflector`, and the logging helpers |
 | [datasources](datasources.md) | module | `graded_authorization.dart`, `principal_delegation.dart`, `principal_resource_grant.dart` | `TomDbType` and `TomDbString`, which the access-level codec converts between and its column declares as `columnType:`; `TomPrimaryReads`, which keeps the reads of grants and delegations on the primary |
-| [little_things](little_things.md) | module | `authorization_cache.dart` | `TomServerException` |
+| [little_things](little_things.md) | module | `authorization_cache.dart`, `principal_delegation.dart`, `principal_resource_grant.dart` | `TomServerException`; `TomRequestCache`, which keeps the grant and delegation reads for a request |
 | [object_persistence](object_persistence.md) | module | `graded_authorization.dart`, `principal_delegation.dart`, `principal_resource_grant.dart`, `resource_data_scope.dart` | the mapping annotations (including `@TomDbScope`), `TomSqlDatasourceRepository` for the record stores, and the `TomResourceScopeSource` hook / `TomDataScope.runUnscoped` bypass the row scope plugs into |
 | [privacy](privacy.md) | module | `principal_delegation.dart`, `principal_resource_grant.dart` | `TomDataSubject`, which declares the principal columns of `TomPrincipalResourceGrant` and `TomPrincipalDelegation` to erasure and export |

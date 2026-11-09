@@ -12,12 +12,16 @@
 --
 -- Two things carry the design:
 --
---  * UNIQUE (job_name, tenant, scheduled_for) makes the scheduler's
---    idempotence key — one run per job per window, per tenant — a database
---    invariant rather than a convention, so a duplicate window cannot exist
---    even under a race. `tenant` is '' for a run of no tenant, not NULL: a
---    unique key never treats two NULLs as equal. `job_name` is VARCHAR(150) so
---    the key stays inside the 767-byte limit of older InnoDB row formats.
+--  * UNIQUE (job_name, tenant, window_at) makes the scheduler's idempotence
+--    key — one run per job per window, per tenant — a database invariant
+--    rather than a convention, so a duplicate window cannot exist even under a
+--    race. `tenant` is '' for a run of no tenant, not NULL: a unique key never
+--    treats two NULLs as equal. That is exactly why `window_at` IS nullable:
+--    it is `scheduled_for` for a run that realises a window and NULL for a run
+--    a component enqueued under an id of its own (the outbox, the saga
+--    orchestrator), whose id is its key — two such runs enqueued in one
+--    instant, on two nodes, stay two runs. `job_name` is VARCHAR(150) so the
+--    key stays inside the 767-byte limit of older InnoDB row formats.
 --  * `seq` is an AUTO_INCREMENT surrogate that exists only to give the queue a
 --    stable insertion order, so two nodes scanning it see the same order. The
 --    run's own id remains the primary key, because that is what every claim,
@@ -49,6 +53,7 @@ CREATE TABLE IF NOT EXISTS tom_job_run (
   job_name VARCHAR(150) NOT NULL,
   tenant VARCHAR(32) NOT NULL DEFAULT '',
   scheduled_for TIMESTAMP(6) NOT NULL,
+  window_at TIMESTAMP(6) NULL,
   run_at TIMESTAMP(6) NOT NULL,
   state VARCHAR(16) NOT NULL,
   attempt INTEGER NOT NULL DEFAULT 1,
@@ -63,7 +68,7 @@ CREATE TABLE IF NOT EXISTS tom_job_run (
   checkpoint TEXT NULL,
   PRIMARY KEY (id),
   CONSTRAINT uq_tom_job_run_seq UNIQUE (seq),
-  CONSTRAINT uq_tom_job_run_window UNIQUE (job_name, tenant, scheduled_for)
+  CONSTRAINT uq_tom_job_run_window UNIQUE (job_name, tenant, window_at)
 );
 
 CREATE INDEX IF NOT EXISTS ix_tom_job_run_due ON tom_job_run (state, run_at);

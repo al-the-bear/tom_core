@@ -231,13 +231,14 @@ Future<void> run() async {
   );
 
   // 10. A request typically resolves the scope several times (one read per
-  //     repository call, plus the write check). Wrapping the request body in
-  //     runCached collapses them into one grant read per principal, while
-  //     keeping resolution live *across* requests.
-  await TomResourceDataScope.runCached(() async {
+  //     repository call, plus the write check). The endpoint pipeline runs
+  //     every request in a TomRequestCache, which collapses them into one
+  //     grant read per principal, while keeping resolution live *across*
+  //     requests.
+  await TomRequestCache.run(() async {
     await TomDataScope.buildAsync(builder, scope, column, alice);
     await TomDataScope.buildAsync(builder, scope, column, alice);
-    print('10. two resolutions inside runCached shared one grant read');
+    print('10. two resolutions within one request shared one grant read');
   });
 
   TomResourceDataScope.uninstall();

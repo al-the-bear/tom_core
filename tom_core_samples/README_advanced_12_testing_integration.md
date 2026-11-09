@@ -14,7 +14,7 @@ matrix proves the same widget renders differently per principal.
 [Part 13](README_advanced_13_file_transfer.md) then follows a single feature —
 file transfer — through every layer this part tests.
 
-## Test strategy across the nine packages
+## Test strategy across the ten packages
 
 Each package carries its own suite, written against the layer it owns and
 against the seam directly below it — never against a live socket:

@@ -231,6 +231,7 @@ TomSubquery  (plain value holder — rendered by TomExists / TomInSubquery)
 
 TomKeyEncryptionKey  (contract — wraps the data keys)
     └── TomAesKeyEncryptionKey
+        (and every key kind a package registers with registerKeyKind)
 
 TomAesGcm  (abstract final, static-only — the cipher)
 
@@ -752,6 +753,7 @@ scoping and C-4 column masking/enforcement on the SQL data source.
 | `restoreById` | `Future<int> restoreById(K id)` | Clears the deletion time of the soft-deleted row `id`; answers `1`, or `0` when the row is not deleted or not there. Writes a `restore` history row and a `restored` change event. Refused (`crud_repository.soft_delete.not_soft_delete`) for an entity whose deletes are hard. |
 | `purgeById` | `Future<int> purgeById(K id)` | Deletes the row `id` for good, soft-deleted or not — a hard `DELETE` with the file cascade, the delete hooks, history and change event. Refused (`crud_repository.soft_delete.not_soft_delete`) for an entity whose deletes are hard. |
 | `historyOf` | `Future<List<TomHistoryEntry<T>>> historyOf(K id)` | The past versions of the row `id`, oldest first: the row as it was before each update, delete and restore. Refused (`crud_repository.history.not_declared`) for an entity without `@TomHistory`. |
+| `insert` | `Future<T> insert(T entity)` | Inserts `entity` as a new row, whatever its key holds, and returns the stored entity. `save` inserts only a single key the database has not assigned yet, so a key the caller chooses — a client-generated id — is never inserted by `save`; `insert` writes it as given, through the same write path (hooks with `insert: true`, the tenant and insert-side scope checks, column grades, version, encryption, audit, history, change listeners). A row already holding the key is refused by the table's primary key. A single key left unsaved is assigned by the database, as with `save`. |
 | `upsert` | `Future<T> upsert(T entity, {required List<String> conflictFields})` | Writes `entity` in one statement (`TomStandardSqlDialect.upsert`): inserted, or — when a row holds the same values in `conflictFields`, which must be a unique key of the table — written over that row, every writable column outside the key overwritten. Returns `entity` carrying the key of the row written. Two writers racing for one key cannot both insert. Refused with `crud_repository.upsert.unsupported` when `upsertBlocker` is not `null`, and with `crud_repository.upsert.unscoped_conflict_key` when `conflictFields` leave out the entity's `@TomDbScope` or tenant field; the tenant and insert-side scope checks run first, as for `save`. |
 | `saveByKey` | `Future<T> saveByKey(T entity, {required List<String> conflictFields})` | Writes `entity` as the row identified by `conflictFields` and returns the stored entity: `upsert` when `upsertBlocker` is `null`; otherwise the row is looked up by `conflictFields` and `save`d with its key, so every write feature sees the stored row — two writers racing for a new key can then both reach the insert, and the table's unique key refuses the second. |
 
@@ -2128,7 +2130,11 @@ const TomDataKeyRecord({required String id, required TomDataKeyPurpose purpose, 
 
 A key-encryption key: what wraps the data keys, and never touches the database.
 `wrap` and `unwrap` are asynchronous, so an implementation may call out to a
-key-management service.
+key-management service. `tom_core_secrets` implements it for AWS KMS
+(`TomAwsKmsKeyEncryptionKey`), Vault Transit
+(`TomVaultTransitKeyEncryptionKey`) and Azure Key Vault
+(`TomAzureKeyVaultKeyEncryptionKey`), each registered as a `fieldEncryption`
+key kind.
 
 ##### Properties
 
@@ -2369,6 +2375,7 @@ and the data source call. All members are static.
 | `prefix` | `String` | `'tomenc:v1:'` | What every stored ciphertext starts with. |
 | `redacted` | `String` | `'[encrypted]'` | What an audit record holds for an encrypted field or a blind index, in place of its value. |
 | `configurationKey` | `String` | `'fieldEncryption'` | The configuration key `configure`'s settings are read from. |
+| `aesKeyKind` | `String` | `'aes'` | The kind of a `keys` entry that names none: an application-held AES key, built in. |
 
 ##### Static Methods
 
@@ -2376,7 +2383,8 @@ and the data source call. All members are static.
 | ------ | --------- | ----------- |
 | `install` | `static Future<void> install(TomFieldKeyring keyring)` | Installs `keyring` and loads its keys for the current context. |
 | `reset` | `static void reset()` | Removes the keyring and restores the defaults (`acceptPlaintext` on). For tests. |
-| `configure` | `static Future<void> configure(Object? settings)` | Installs a keyring from `settings`, the `fieldEncryption` configuration map: `datasource` (required), `table` (default `tom_encryption_key`), `createSchema` (default `true`), `keys` (required: `{id, key}` maps, primary first, `key` the base64 of 32 bytes or a `secret:` reference to it, resolved here through `TomSecrets.resolve`), `refreshSeconds` (default 300) and `acceptPlaintext` (default `true`). Throws `field_encryption.config.invalid` for a value of the wrong shape and `field_encryption.invalid_kek` for a bad key, before anything is installed. |
+| `registerKeyKind` | `static void registerKeyKind(String kind, TomKeyEncryptionKeyFactory factory)` | Lets a `keys` entry of `kind` build its key with `factory` — how a provider package offers a key held by its key-management service. Registering a kind again replaces its factory. Throws `field_encryption.config.invalid` for `aes` or an empty kind. |
+| `configure` | `static Future<void> configure(Object? settings)` | Installs a keyring from `settings`, the `fieldEncryption` configuration map: `datasource` (required), `table` (default `tom_encryption_key`), `createSchema` (default `true`), `keys` (required, primary first: each with an `id` and a `kind`, default `aes`; an `aes` entry carries `key`, the base64 of 32 bytes or a `secret:` reference to it, resolved here through `TomSecrets.resolve`; any other kind is built from the entry by the factory registered for it), `refreshSeconds` (default 300) and `acceptPlaintext` (default `true`). Throws `field_encryption.config.invalid` for a value of the wrong shape or a kind nothing registered (naming the known kinds) and `field_encryption.invalid_kek` for a bad key, before anything is installed. |
 | `raw` | `static R raw<R>(R Function() body)` | Runs `body` with decryption off: the data source maps an encrypted column's stored value as it is, and loads no references. What a `TomFieldReencryption` pass reads through. |
 | `isCiphertext` | `static bool isCiphertext(String? stored)` | Whether `stored` is ciphertext of this format. |
 | `keyIdOf` | `static String? keyIdOf(String? stored)` | The data key id `stored` was encrypted under, or `null` for plaintext. |
@@ -2395,6 +2403,7 @@ and the data source call. All members are static.
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `keyring` | `TomFieldKeyring?` | *(static, getter)* The installed keyring, or `null`. |
+| `keyKinds` | `Iterable<String>` | *(static, getter)* The kinds registered with `registerKeyKind`, besides `aes`. |
 | `acceptPlaintext` | `bool` | *(static)* Whether a value of an encrypted column that is not ciphertext reads as it is. On by default, so a column marked `@TomEncrypted` after it held data keeps reading until a pass has encrypted it; off once every column is. |
 | `isRaw` | `bool` | *(static, getter)* Whether the current zone reads raw. |
 
@@ -2765,8 +2774,8 @@ from them are the documentation.
 
 ### Typedefs
 
-Five top-level typedefs: four used by the scoping/authorization APIs, one by the
-entity lifecycle:
+Six top-level typedefs: four used by the scoping/authorization APIs, one by the
+entity lifecycle, one by field encryption:
 
 | Typedef | Definition | Source |
 | ------- | ---------- | ------ |
@@ -2775,3 +2784,4 @@ entity lifecycle:
 | `TomDataScopeResolver` | `List<Object?>? Function(TomPrincipal? principal)` | `data_scope.dart` |
 | `TomAsyncDataScopeResolver` | `Future<List<List<Object?>>?> Function(TomPrincipal? principal)` | `data_scope.dart` |
 | `TomEntityChangeListener` | `FutureOr<void> Function(TomEntityChange)` | `entity_lifecycle.dart` |
+| `TomKeyEncryptionKeyFactory` | `Future<TomKeyEncryptionKey> Function(String id, Map<String, Object?> settings)` — builds the key-encryption key `id` of a `fieldEncryption.keys` entry from the entry, for a kind registered with `TomFieldEncryption.registerKeyKind` | `field_encryption.dart` |

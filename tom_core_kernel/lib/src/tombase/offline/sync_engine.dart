@@ -278,8 +278,6 @@ class TomSyncEngine {
     final List<TomPushResult> results;
     try {
       results = await transport.push(changes);
-    } on TomOfflineException {
-      rethrow;
     } on Object catch (error, stack) {
       throw TomOfflineException(
         'offline.sync.transport_failed',

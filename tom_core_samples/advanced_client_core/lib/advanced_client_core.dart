@@ -29,6 +29,7 @@ library;
 
 export 'src/api/admin_api_client.dart';
 export 'src/api/app_api_client.dart';
+export 'src/api/audit_reports_client.dart';
 export 'src/auth/auth_client.dart';
 export 'src/config/client_config.dart';
 export 'src/http/authorized_http.dart';

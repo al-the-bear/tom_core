@@ -1100,11 +1100,10 @@ void main() {
       // `audit-2026-08-11-000001.jsonl` would spend a rotation sequence number
       // on a file nothing overflowed, and leave a day with rotated parts and
       // no live file — a shape that only ever means "this day filled up".
-      expect(
-        sink.files.map((f) => f.readAsLinesSync().length),
-        [1, 1],
-        reason: 'one entry landed in each day',
-      );
+      expect(sink.files.map((f) => f.readAsLinesSync().length), [
+        1,
+        1,
+      ], reason: 'one entry landed in each day');
       // The chain is what makes the split safe to do at all.
       expect(sink.readAll().map((e) => e.record.id), ['r1', 'r2']);
       expect(sink.verify().isValid, isTrue);

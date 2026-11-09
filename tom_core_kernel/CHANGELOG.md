@@ -2,6 +2,52 @@
 
 ### Added
 
+- **The audit-report contract** (`security` module).
+  `audit_reports_contract.dart` declares `tomAuditReportsApi` under
+  `/audit-reports` — `GET writers`, `POST query`, `GET` and `PUT questions`,
+  `DELETE questions/{id}`, `GET questions/{id}/answer`,
+  `POST questions/{id}/deliver` — every route requiring `tomAuditorAccess`
+  (`tomAuditorRole`, `auditor`); its bodies `TomAuditReportQueryRequest`,
+  `TomAuditReportResultDto`, `TomAuditReportEntryDto`,
+  `TomAuditReportWritersDto`, `TomAuditQuestionDto`, `TomAuditQuestionsDto` and
+  `TomAuditQuestionIdRequest` with their JSON forms; the service interface
+  `TomAuditReportsApiService`; and `registerTomAuditReportsApi()`.
+  `tom_core_server`'s `audit_reports` module implements it.
+
+- **The sync protocol over HTTP** (`offline` module). `sync_contract.dart`
+  declares `tomSyncApi` — `POST /sync/push` and `POST /sync/pull`,
+  `TomAuthenticatedAccess` (`tomSyncApiId`, `tomSyncPushEndpointId`,
+  `tomSyncPullEndpointId`) — with its bodies `TomSyncPushRequest`,
+  `TomSyncPushResponse`, `TomSyncPullRequest` and `TomSyncPullResponse`, the
+  service interface `TomSyncApiService`, `registerTomSyncApi()` and
+  `tomSyncUnknownCollectionErrorKey` (`sync.collection.unknown`). The pull is a
+  `POST` so that a server with read replicas answers it from the primary.
+  `TomHttpSyncTransport({baseUri, client, headers})` is a `TomSyncTransport`
+  calling that API, with the bearer token of `TomBearerAuthentication` unless
+  `headers` names an `Authorization`, through a `TomResilientClient` by
+  default; a status other than `200` throws `TomOfflineException`
+  `offline.http.failed` carrying the status and the server's error key.
+  `TomPushResult`, `TomPulledChange` and `TomPullBatch` gain `toJson` and
+  `fromJson`. `tom_core_server`'s `sync` module implements the API.
+  `doc/offline/offline.md` § The Protocol over HTTP; tests in
+  `test/offline_test.dart`, which runs the sync contract
+  (`test/contracts/sync_protocol_contract.dart`, `runTomSyncContract`) against
+  `TomMemorySyncServer` directly and over HTTP, and the transport's routes,
+  headers and refusals.
+- **`TomJobRun.windowed`** (default `true`; JSON key `windowed`, absent reads as
+  `true`). A windowed run realises a window — one run per job, tenant and
+  `scheduledFor`, found with `TomJobStore.findWindow`: the scheduler's planned
+  runs, a schedule's windows and an event's instant of arrival. A run enqueued
+  with `windowed: false` under an id of its own (the messaging outbox, the bus
+  relay, the saga orchestrator, the notification digests) is keyed by that id,
+  found with `findRun`, and takes no window, so two such runs of one job and
+  tenant enqueued in the same instant — on two nodes — are two runs.
+  `findWindow` answers windowed runs only, `lastWindow` considers windowed runs
+  only, and `enqueue` adds a run or replaces the one recorded under its id. The
+  contract suite (`test/contracts/scheduling_contract.dart`, run against the
+  memory, file and SQL stores) holds that runs enqueued under ids of their own
+  keep apart at one instant for one job and tenant, and that such a run takes no
+  window.
 - **Preference defaults and the bulk write** (`preferences/`).
   `TomUserPreferenceDto.origin` (`tomUserPreferenceOriginUser` `'user'`,
   `tomUserPreferenceOriginRole` `'role'`, `tomUserPreferenceOriginDeployment`
