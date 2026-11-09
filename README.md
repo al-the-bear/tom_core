@@ -2364,5 +2364,15 @@ cleaner repository.
 
 ## License
 
-BSD 3-Clause licensed. Each package carries the same
-[`LICENSE`](tom_core_kernel/LICENSE); see any package folder for the full text.
+BSD 3-Clause licensed. See [LICENSE](LICENSE); each package carries the same
+text in its own `LICENSE` file.
+
+## Disclaimer
+
+This software is provided "as is", without warranty of any kind, express or
+implied, including but not limited to the warranties of merchantability and
+fitness for a particular purpose. In no event shall the authors, copyright
+holders or contributors be liable for any claim, damages or other liability
+arising from, out of or in connection with the software or its use. This
+section summarises the warranty and liability disclaimer of the licence;
+the licence text in [LICENSE](LICENSE) governs.
