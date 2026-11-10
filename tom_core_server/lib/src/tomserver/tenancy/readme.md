@@ -27,6 +27,7 @@ header.
 | `TomTenantResolver` · `TomTenantHostResolver` · `TomTenantPathResolver` · `TomTenantHeaderResolver` | How a request without a token claim names its tenant: by subdomain or own host, by the path segment after a prefix (`/t/<segment>`, mapped to a tenant id when a lookup is given), or by the `X-Tenant-Id` header. |
 | `TomTenantResolution` | A tenant, none, or a rejection with its HTTP status and key. |
 | `TomTenantData` | A store of a system table that records tenants — the job queue, the blob manifest, delivery reports, the suppression list, OAuth state, service accounts — and deletes a purged tenant's records. |
+| `TomTenancyStartup` · `TomTenancyMode` · `TomTenancyStartupReport` | What the server's start makes of tenancy (`TomServer.configureTenancy`): no tenant table and no `tenancy` key — a plain application; tenant tables without the key — the implicit tenant `default`; the key — the configured tenancy installed. The contradictions between types, trees and tenant tables refuse the start (`tenancy.start.*`). |
 | `TomTenancyException` | Every refusal the module raises — `tenancy.config.*`, `tenancy.tenant.*`, `tenancy.type.*`, `tenancy.registry.*`, `tenancy.purge.*` and `tenancy.pool.*`. |
 
 ## Quick start

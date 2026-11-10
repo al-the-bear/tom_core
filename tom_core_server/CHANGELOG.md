@@ -2,6 +2,21 @@
 
 ### Added
 
+- **Tenancy decided at start** (`tenancy`, `server`). `TomServer.start` calls
+  `configureTenancy` (`TomTenancyStartup.configure`) before it migrates: with no
+  application tenant table and no `tenancy` key a plain application, nothing
+  installed; with tenant tables and no key the implicit tenant `default`,
+  nothing installed; with the key the configured tenancy installed
+  (`TomTenancy.fromConfiguration`) unless the application installed one —
+  answered as a `TomTenancyStartupReport` (`TomTenancyMode`). The framework's
+  own tenant tables (`TomTenancyStartup.frameworkTenantEntities`) do not count.
+  Refused at start: a tree for an undeclared type
+  (`tenancy.start.undeclared_type_tree`) and a tenant table a type's tree never
+  creates (`tenancy.start.table_missing_from_type`), beside the install's
+  `tenancy.type.missing_migrations` and `tenancy.type.unknown`; a tenancy with
+  no tenant table and no tenant tree is warned about
+  (`tenancy.start.no_tenant_tables`).
+
 - **Queued work keeps its tenant** (`messaging`, `notifications`, `cache`,
   `audit_reports`, `privacy`, `object_persistence`, `tenancy`). The outbox and
   the bus relay file a message under its id qualified by the tenant it was

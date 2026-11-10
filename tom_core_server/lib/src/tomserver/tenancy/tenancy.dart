@@ -84,6 +84,8 @@ import 'tenant_type.dart';
 /// | `tenancy.purge.retention` | `purgeTenant` before the tenant's retention period passed. |
 /// | `tenancy.pool.cap_exceeded` | A tenant pool that would pass `tenancy.pool.maxTotal`. |
 /// | `tenancy.config.invalid_number` | `purgeAfterDays` or a `pool` setting that is not a whole number in range. |
+/// | `tenancy.start.undeclared_type_tree` | At start: a tree under `<root>/tenant/` for a type the deployment does not declare (`TomTenancyStartup`). |
+/// | `tenancy.start.table_missing_from_type` | At start: a tenant table on a data source a type routes that the type's tree never creates. |
 /// | `tenancy.tenant.schema_behind` | A request for a tenant whose schema is behind this server's code (503). |
 /// | `tenancy.tenant.schema_ahead` | A request for a tenant whose schema is ahead of this server's code by a migration not marked expand (503). |
 /// | `tenancy.config.schema_collision` | A schema-isolated tenant whose schema is a tenant type's shared schema. |

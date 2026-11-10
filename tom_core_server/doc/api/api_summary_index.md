@@ -1066,6 +1066,9 @@ Summary: [api_summary_audit_reports.md](api_summary_audit_reports.md)
 | `TomTenantPoolSettings` | class | How the pools opened for tenants are sized: per tenant, idle timeout, a deployment-wide cap. |
 | `TomTenantPurgeReport` | class | What purging a tenant dropped, kept and deleted. |
 | `TomTenantData` | abstract interface class | A system-table store that deletes a purged tenant's records. |
+| `TomTenancyStartup` | abstract final class | What a server's start makes of tenancy, and the contradictions it refuses. |
+| `TomTenancyStartupReport` | class | The start's decision: mode, the application's tenant tables, warnings. |
+| `TomTenancyMode` | enum | `plain`, `implicit` or `configured`. |
 | `tenantTable` / `tenantTableDdl` | function | The registry table, declared once, and its `CREATE TABLE`. |
 | `defaultTenantTable` | constant | `tom_tenant`. |
 
@@ -2087,6 +2090,9 @@ Summary: [api_summary_audit_reports.md](api_summary_audit_reports.md)
 | `TomTemplatedNotificationRenderer` | Notifications |
 | `TomTenancy` | Tenancy |
 | `TomTenancyException` | Tenancy |
+| `TomTenancyMode` | Tenancy |
+| `TomTenancyStartup` | Tenancy |
+| `TomTenancyStartupReport` | Tenancy |
 | `TomTenant` | Tenancy |
 | `TomTenantData` | Tenancy |
 | `TomTenantHeaderResolver` | Tenancy |

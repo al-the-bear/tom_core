@@ -16,6 +16,8 @@ This guide is the server half.
 ## Table of Contents
 
 - [Overview](#overview)
+- [Do I Need Tenancy?](#do-i-need-tenancy)
+  - [What the start refuses](#what-the-start-refuses)
 - [Tenant and Organization](#tenant-and-organization)
 - [Three Isolation Models](#three-isolation-models)
   - [The model is chosen per tenant](#the-model-is-chosen-per-tenant)
@@ -80,12 +82,63 @@ This guide is the server half.
 | `TomTenantPoolSettings` | class | How the pools opened for tenants are sized: connections per tenant, the idle timeout, a deployment-wide cap |
 | `TomTenantPurgeReport` | class | What `purgeTenant` dropped, kept and deleted for one tenant |
 | `TomTenantData` | abstract interface class | A store of a system table that deletes a purged tenant's records |
+| `TomTenancyStartup` | abstract final class | What the server's start makes of tenancy: plain, implicit or configured, and the contradictions it refuses |
+| `TomTenancyMode` | enum | `plain`, `implicit` or `configured` |
+| `TomTenancyStartupReport` | class | What the start decided: the mode, the application's tenant tables, the warnings |
 
-The module is six files: `tenancy.dart` holds the configuration, the
-provisioning, the routing and the lifecycle; `tenant_data.dart` the stores'
+The module is seven files: `tenancy.dart` holds the configuration, the
+provisioning, the routing and the lifecycle; `tenancy_startup.dart` what the
+server's start makes of it; `tenant_data.dart` the stores'
 purge contract; `tenant_type.dart` the tenant types;
 `tenant_registry.dart` and `tenant_registry_sql.dart` the registry and its
 table; `tenant_resolution.dart` the request-side resolvers.
+
+## Do I Need Tenancy?
+
+Usually there is nothing to decide: `TomServer.start` decides from the
+application's tenant tables — its entities marked `@TomTenantTable` — and the
+`tenancy` key of the configuration (`TomServer.configureTenancy`, through
+`TomTenancyStartup.configure`), before it migrates:
+
+| Tenant tables | `tenancy` configured | At start |
+| --- | --- | --- |
+| none | no | **plain** — nothing installed, nothing to configure |
+| some | no | **implicit** — one tenant, `default`, of the type `default`, shared, its tenant tables in the system schema; work with no tenant in context runs as `default` (`TomTenancy.implicitTenant`). Nothing is installed: this is what a deployment without a `TomTenancy` already is |
+| some | yes | **configured** — the configured tenancy installed and validated |
+| none | yes | configured, with a warning: no entity is a tenant table and no tenant tree exists |
+
+The answer is `TomTenancyStartupReport.mode` (`TomTenancyMode.plain`,
+`implicit` or `configured`). A tenancy the application installed itself before
+the start (`TomTenancy.install`) is kept and validated; only without one is the
+`tenancy` key installed (`TomTenancy.fromConfiguration`).
+
+Only the application's tenant tables count. The framework's own —
+`TomUserPreference`, `TomPreferenceDefault`, the resource grants and
+delegations, the external identities and their tokens, the 2FA enrolments
+(`TomTenancyStartup.frameworkTenantEntities`) — are reflected into every server
+that imports the package, used or not, so they make no deployment a tenant
+deployment; their migrations are the framework's reference migrations.
+
+A single-tenant deployment of a multi-tenant application therefore configures
+nothing: its tenant tables carry the tenant `default` and live in the system
+schema, migrated by `<root>/tenant/default/<datasource>/` when that tree exists
+and by the system tree otherwise. Its system tables — every entity without
+`@TomTenantTable` — are migrated by the system tree in every mode and need no
+configuration.
+
+### What the start refuses
+
+| Contradiction | Key |
+| --- | --- |
+| A declared type without a migration tree | `tenancy.type.missing_migrations` |
+| A configured or registered tenant of an unknown type | `tenancy.type.unknown` |
+| A tree under `<root>/tenant/` for a type nobody declares — in the implicit case, any type but `default` | `tenancy.start.undeclared_type_tree` |
+| A tenant table on a data source a type routes that the type's tree never creates (`CREATE TABLE` in `<tree>/<datasource>/`) | `tenancy.start.table_missing_from_type` |
+
+The migration root is the `migrations` key's `root`, else
+`databaseMigrationsDirectory`; a type with a tree of its own
+(`TomTenantType.migrations`) is checked against that one. A type's tree that
+does not exist is not asked for tables — only a declared type must have one.
 
 ## Tenant and Organization
 
@@ -428,7 +481,9 @@ default) refreshes by itself; `reset` stops it.
 ## Starting a Multi-Tenant Server
 
 Tenancy is installed after the data sources are registered and before the
-server serves its first request:
+server serves its first request. `TomServer.start` installs the `tenancy` key
+itself ([Do I Need Tenancy?](#do-i-need-tenancy)); a process that does not
+start a `TomServer` — a worker, a migration job — installs it in code:
 
 ```dart
 await TomDataSourceInfo.initializeDatasourceInfo(datasourceConfiguration);
@@ -1083,6 +1138,8 @@ why, and the rows `deleted` per table and store.
 
 | Key | Raised by | Meaning |
 | --- | --------- | ------- |
+| `tenancy.start.undeclared_type_tree` | `TomTenancyStartup.configure` | A tree under `<root>/tenant/` for a type the deployment does not declare. |
+| `tenancy.start.table_missing_from_type` | `TomTenancyStartup.configure` | A tenant table on a data source a type routes that the type's tree never creates. |
 | `tenancy.config.not_a_map` | `TomTenancy.fromConfiguration` | `tenancy` or one of its tenants is not a map. |
 | `tenancy.config.unknown_isolation` | `TomTenantIsolation.parse` | An isolation model other than `shared`, `schema` or `database`. |
 | `tenancy.config.unknown_resolver` | `TomTenancy.fromConfiguration` | A tenant resolution other than `host`, `path` or `header`. |
@@ -1132,6 +1189,17 @@ raised as the kernel's `TomTenantException`.
   <!-- unpinned: decision — account placement belongs to the authentication service -->
 
 ## Verification
+
+`test/tenancy_startup_test.dart` covers what the start makes of tenancy without a
+database: a plain application and the implicit tenant installing nothing, a
+configured tenancy installed from the `tenancy` key and one the application
+installed kept, the warning for a tenancy with no tenant table and no tree, and
+each refused contradiction with its key; it also holds
+`TomTenancyStartup.frameworkTenantEntities` to every `@TomTenantTable` class the
+package declares. `test/tenant_lifecycle_test.dart` and
+`test/tenant_lifecycle_db_test.dart` (tagged `db`) cover onboarding,
+suspension, removal, restoring and purging, the latter on MariaDB and
+PostgreSQL.
 
 `test/schema_version_guard_test.dart` covers the per-tenant [version
 guard](db_migration.md#a-tenant-behind-or-ahead): a tenant never migrated is
@@ -1268,12 +1336,16 @@ result, and `test/examples_test.dart` runs it.
 | ---------- | ---- | ----------- | --- |
 | `dart:async` | dart | `tenancy.dart`, `tenant_registry.dart` | `FutureOr`, the body type of `runFor` and `forEachTenant`; `Timer`, the registry refresh; `Completer` and `unawaited`, the registry's migration lock within the process |
 | `dart:convert` | dart | `tenant_registry.dart` | `jsonEncode` / `jsonDecode`, the registry's `datasources` and `migrated` columns |
-| `dart:io` | dart | `tenancy.dart`, `tenant_type.dart` | `Directory`, whether a type's migration tree exists and the tree `codeVersionsOf` reads |
+| `dart:io` | dart | `tenancy.dart`, `tenancy_startup.dart`, `tenant_type.dart` | `Directory`, whether a type's migration tree exists and the tree `codeVersionsOf` reads |
 | `crypto` | package | `tenant_registry.dart` | `sha256`, a migration lock name too long for MariaDB hashed to fit |
+| `path` | package | `tenancy_startup.dart` | `join` and `basename`, the trees under `<root>/tenant/` the start checks |
 | `shelf` | package | `tenancy.dart`, `tenant_resolution.dart` | `Request`, which a resolver reads and `resolveRequest` resolves |
-| `tom_core_kernel` | package | `tenancy.dart`, `tenant_registry.dart` | `TomTenantContext` — the zone-carried tenant, the id rule and `qualify`; `TomDataSource`, `tomLog` and `tomReflector` |
-| [configuration](configuration.md) | module | `tenancy.dart` | `TomServerConfigResourceProvider`, which `fromConfiguration` reads the `tenancy` key from |
+| `tom_core_kernel` | package | `tenancy.dart`, `tenancy_startup.dart`, `tenant_registry.dart` | `TomTenantContext` — the zone-carried tenant, the id rule and `qualify`; `TomDataSource`, `tomLog` and `tomReflector` |
+| [authentication](authentication.md) | module | `tenancy_startup.dart` | `TomExternalIdentityLink`, `TomExternalIdentityToken` and `TomUserTwoFactorEnrolment` — framework tenant tables the start does not count |
+| [authorization](authorization.md) | module | `tenancy_startup.dart` | `TomResourceGrant`, `TomPrincipalResourceGrant` and `TomPrincipalDelegation` — framework tenant tables the start does not count |
+| [configuration](configuration.md) | module | `tenancy.dart`, `tenancy_startup.dart` | `TomServerConfigResourceProvider`, which `fromConfiguration` reads the `tenancy` key from |
 | [datasources](datasources.md) | module | `tenancy.dart`, `tenant_registry.dart`, `tenant_registry_sql.dart` | `TomDataSourceInfo` — the registry routed per tenant, the data sources opened over a tenant's schema or database — and the base data source's dialect, whose `createSchema` and `schemaSetting` say how a schema is made and pointed at; and `TomFrameworkTable`, `TomSchemaProvisioning` and `sqlInstant` / `parseSqlInstant`, the registry's table and its instants |
-| [db_migration](db_migration.md) | module | `tenancy.dart` | `TomDbMigrations.treeVersions`, `requiresKey` and `resolveActiveEnvironment`, what a type's tree carries; `TomSchemaVersionCheck`, `TomSchemaSkew` and `TomMigrationRun.tenantTarget`, a tenant's schema check |
+| [db_migration](db_migration.md) | module | `tenancy.dart`, `tenancy_startup.dart` | `TomDbMigrations.treeVersions`, `requiresKey` and `resolveActiveEnvironment`, what a type's tree carries; `TomSchemaVersionCheck`, `TomSchemaSkew` and `TomMigrationRun.tenantTarget`, a tenant's schema check |
 | [little_things](little_things.md) | module | `tenancy.dart` | `TomServerException`, the base of `TomTenancyException` |
-| [object_persistence](object_persistence.md) | module | `tenancy.dart`, `tenant_registry.dart` | `TomAnnotationAnalyzer.tenantTables` and `TomDbTable`, the tenant tables `tenantTables` reports; `@TomDbTable` / `@TomDbColumn`, the mapping of `TomTenantRow` |
+| [object_persistence](object_persistence.md) | module | `tenancy.dart`, `tenancy_startup.dart`, `tenant_registry.dart` | `TomAnnotationAnalyzer.tenantTables` and `TomDbTable`, the tenant tables `tenantTables` reports; `@TomDbTable` / `@TomDbColumn`, the mapping of `TomTenantRow` |
+| [preferences](preferences.md) | module | `tenancy_startup.dart` | `TomUserPreference` and `TomPreferenceDefault` — framework tenant tables the start does not count |

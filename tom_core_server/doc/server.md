@@ -142,7 +142,15 @@ keyring's key-encryption keys — which is why it comes after them. A value of t
 wrong shape stops the start with `privacy.config.invalid`; without the key no
 subject keys are installed, and personal values are recorded in the trail as
 they are (see [configuration.md](configuration.md#privacy) and
-[privacy.md](privacy.md#crypto-shredding-in-the-audit-trail)). Then it awaits
+[privacy.md](privacy.md#crypto-shredding-in-the-audit-trail)). Next it decides what
+the deployment makes of tenancy (`TomServer.configureTenancy`): with no tenant
+table and no `tenancy` key nothing is installed; with tenant tables and no key
+the deployment runs as the implicit tenant `default`; with the key — unless the
+application installed a tenancy already — it installs the configured tenancy,
+and in every case refuses a contradiction between the tenant types, their
+migration trees and the tenant tables (`tenancy.start.*`, `tenancy.type.*`; see
+[tenancy.md](tenancy.md#do-i-need-tenancy)). That comes before the migrations,
+which migrate every tenant of the tenancy it installed. Then it awaits
 the `transactions` key (`TomServer.recoverTransactions`): the one-phase data
 source two-phase commit decisions are recorded in, and whether to recover. With
 `recoverOnStart` it resolves the two-phase branches a dead process left
@@ -1210,6 +1218,6 @@ and an application that needs one builds it today rather than waiting:
 | [object_persistence](object_persistence.md) | module | `server.dart` | `TomFieldEncryption` (`configureFieldEncryption` applies the `fieldEncryption` key) |
 | [privacy](privacy.md) | module | `server.dart` | `TomPrivacy` (`configurePrivacy` applies the `privacy` key) |
 | [ratelimit](ratelimit.md) | module | `mutual_tls.dart`, `request_ids.dart`, `server.dart` | `TomRateLimits` (installed from configuration at start) and `tomRateLimitMiddleware`; `TomClientAddress.connectionInfoKey`, where the socket peer a request-id header came from is read, and where the client certificate rides |
-| [tenancy](tenancy.md) | module | `server.dart` | `TomTenancy` and `TomTenantResolution` — the request's tenant, or the refusal to answer it with |
+| [tenancy](tenancy.md) | module | `server.dart` | `TomTenancy` and `TomTenantResolution` — the request's tenant, or the refusal to answer it with; `TomTenancyStartup` — `configureTenancy` decides and installs the deployment's tenancy |
 | [tracing](tracing.md) | module | `server.dart` | `TomOtelTracer` (`configureTracing` installs it from the `tracing` keys) |
 | [transactions](transactions.md) | module | `server.dart` | `TomTransactionManager`, and `TomTransactionRecovery` / `TomRecoveryReport` (`recoverTransactions` applies the `transactions` key and recovers at start) |

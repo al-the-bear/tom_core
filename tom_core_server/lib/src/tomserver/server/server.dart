@@ -36,6 +36,7 @@ import '../db_migration/db_migration.dart';
 import '../db_migration/migration_run.dart';
 import '../db_migration/schema_versions.dart';
 import '../tenancy/tenancy.dart';
+import '../tenancy/tenancy_startup.dart';
 import '../tenancy/tenant_resolution.dart';
 import '../transactions/transaction_manager.dart';
 import '../transactions/transaction_recovery.dart';
@@ -793,6 +794,7 @@ class TomServer {
     configureIdempotency();
     await configureFieldEncryption();
     configurePrivacy();
+    await configureTenancy();
     await migrateOnStart();
     await guardSchemaOnStart();
     await recoverTransactions();
@@ -1160,6 +1162,32 @@ class TomServer {
         config ?? TomServerConfigResourceProvider.getServerConfig();
     if (!provider.exists(TomPrivacy.configurationKey)) return;
     TomPrivacy.configure(provider.get(TomPrivacy.configurationKey));
+  }
+
+  /// Decides what the deployment makes of tenancy — [TomTenancyStartup.configure]
+  /// with the server configuration (or [config]) and the migration root
+  /// (`migrations.root`, else
+  /// [TomBaseServerConfiguration.databaseMigrationsDirectory]): installs the
+  /// tenancy the `tenancy` key describes unless the application installed one,
+  /// runs a deployment with tenant tables and no tenancy as the implicit
+  /// tenant `default`, and refuses the contradictions (`tenancy.start.*`,
+  /// `tenancy.type.*`). Called by [start] before [migrateOnStart], which
+  /// migrates every tenant of the tenancy it installed.
+  Future<TomTenancyStartupReport> configureTenancy([
+    TomServerConfigResourceProvider? config,
+  ]) {
+    final provider =
+        config ?? TomServerConfigResourceProvider.getServerConfig();
+    final migrations = provider.exists(TomDbMigrations.configurationKey)
+        ? provider.get(TomDbMigrations.configurationKey)
+        : null;
+    final root = migrations is Map && migrations['root'] != null
+        ? '${migrations['root']}'
+        : configuration.databaseMigrationsDirectory;
+    return TomTenancyStartup.configure(
+      config: provider,
+      migrationsRoot: root.isEmpty ? null : root,
+    );
   }
 
   /// Runs [TomDbMigrations.migrateAll] when the server configuration's

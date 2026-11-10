@@ -28,7 +28,10 @@ tenant — and how a request names the tenant it is for.
   - [TomTenantPoolSettings](#tomtenantpoolsettings)
   - [TomTenantPurgeReport](#tomtenantpurgereport)
   - [TomTenantData](#tomtenantdata)
+  - [TomTenancyStartup](#tomtenancystartup)
+  - [TomTenancyStartupReport](#tomtenancystartupreport)
 - [Enums](#enums)
+  - [TomTenancyMode](#tomtenancymode)
   - [TomTenantIsolation](#tomtenantisolation)
   - [TomTenantStatus](#tomtenantstatus)
 - [Global Functions and Constants](#global-functions-and-constants)
@@ -36,6 +39,7 @@ tenant — and how a request names the tenant it is for.
 ## Overview
 
 Source: `lib/src/tomserver/tenancy/tenancy.dart`,
+`lib/src/tomserver/tenancy/tenancy_startup.dart`,
 `lib/src/tomserver/tenancy/tenant_data.dart`,
 `lib/src/tomserver/tenancy/tenant_registry.dart`,
 `lib/src/tomserver/tenancy/tenant_registry_sql.dart`,
@@ -83,6 +87,9 @@ TomTenantRow
 TomTenantPoolSettings
 TomTenantPurgeReport
 TomTenantData  (abstract interface)
+TomTenancyStartup  (abstract final — the start's decision)
+TomTenancyStartupReport
+TomTenancyMode  (enum)
 
 TomTenantResolver  (abstract interface)
     ├── TomTenantHostResolver    (implements)
@@ -743,7 +750,63 @@ a purged tenant's records. `TomTenancy.purgeTenant` calls it on every store it i
 | ------ | --------- | ----------- |
 | `purgeTenant` | `Future<int> purgeTenant(String tenant)` | Deletes every record the store keeps for `tenant`; answers how many. |
 
+### TomTenancyStartup
+
+What a server's start makes of tenancy, decided from the application's tenant
+tables and the configuration — `TomServer.configureTenancy` calls `configure`
+before it migrates.
+
+- **Kind:** abstract final class (static members only).
+
+#### Static Members
+
+| Member | Signature | Description |
+| ------ | --------- | ----------- |
+| `frameworkTenantEntities` | `static const Set<Type>` | The tenant tables the framework itself declares — `TomUserPreference`, `TomPreferenceDefault`, `TomResourceGrant`, `TomPrincipalResourceGrant`, `TomPrincipalDelegation`, `TomExternalIdentityLink`, `TomExternalIdentityToken`, `TomUserTwoFactorEnrolment`. Reflected into every server, used or not; they make no deployment a tenant deployment, and a type's tree is not asked to create them. |
+| `applicationTenantTables` | `static Map<Type, TomDbTable> get` | `TomTenancy.tenantTables` less the `frameworkTenantEntities`. |
+| `configure` | `static Future<TomTenancyStartupReport> configure({TomServerConfigResourceProvider? config, String? migrationsRoot, Map<Type, TomDbTable>? tenantTables})` | Installs the tenancy the `tenancy` key of `config` (the server configuration unless given) describes, unless one is installed; decides the mode from `tenantTables` (`applicationTenantTables` unless given); refuses a tree under `<migrationsRoot>/tenant/` for an undeclared type (`tenancy.start.undeclared_type_tree`) and a tenant table on a data source a type routes that the type's existing tree never creates (`tenancy.start.table_missing_from_type`); `TomTenancy.install` refuses a declared type without a tree and a tenant of an unknown type. A configured tenancy with no tenant table and no tenant tree is warned about (`tenancy.start.no_tenant_tables`). |
+
+### TomTenancyStartupReport
+
+What `TomTenancyStartup.configure` decided and found.
+
+- **Extends:** none
+
+#### Constructors
+
+```dart
+const TomTenancyStartupReport(
+  TomTenancyMode mode, {
+  Map<Type, TomDbTable> tenantTables = const {},
+  List<String> warnings = const [],
+})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `mode` | `TomTenancyMode` | How the deployment runs (final). |
+| `tenantTables` | `Map<Type, TomDbTable>` | The application's tenant tables, by entity (final). |
+| `warnings` | `List<String>` | What the start warned about, one line each (final). |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `toString` | `String toString()` | *(override)* The mode, the table count and the warnings. |
+
 ## Enums
+
+### TomTenancyMode
+
+How a deployment runs, as its start decided it.
+
+| Value | Meaning |
+| ----- | ------- |
+| `plain` | No tenant table and no tenancy: nothing installed, nothing configured. |
+| `implicit` | Tenant tables and no tenancy configured: the one tenant `default`, of the type `default`, shared, in the system schema; nothing installed. |
+| `configured` | A `TomTenancy` installed — by the application or from the `tenancy` key — and validated. |
 
 ### TomTenantIsolation
 
