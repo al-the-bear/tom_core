@@ -2,6 +2,37 @@
 
 ### Added
 
+- **Tenant tables and system tables** (`object_persistence`, `tenancy`):
+  `@TomTenantTable` classifies an entity as a tenant table; every other entity
+  is a system table. `@TomTenantOwned` is gone — `@TomTenantTable` replaces it.
+  A repository picks its data source by the classification: a system table
+  always the registered data source, unrouted, also inside a tenant; a tenant
+  table the current tenant's route — its own schema or database, or its type's
+  shared schema. A tenant table with no tenant in context is refused
+  (`tenancy.context.missing`) under an installed tenancy and runs as the
+  implicit tenant `default` without one (`TomTenancy.tenantForWork`,
+  `TomTenancy.implicitTenant`); `data_scope.write.no_tenant` is gone. The tenant
+  predicate applies in every isolation model, also to `historyOf` and to a
+  subquery over tenant tables. A `@TomReference`, a `TomSubquery` or a
+  repository mixing the two kinds is refused when analysed
+  (`annotation_analyzer.tenant_table.mixed`), and one transaction over both on
+  two data sources is refused unless both are two-phase
+  (`crud_repository.transaction.tenant_and_system_one_phase`).
+  `TomAnnotationAnalyzer` gains `findTenantTable`, `isTenantTable`,
+  `tenantTables` and `verifySameClassification`; `TomTenancy.tenantTables`
+  reports the tenant tables; `TomSubquery.within` lists a predicate's
+  subqueries. The framework's per-tenant entities — `TomUserPreference`,
+  `TomPreferenceDefault`, `TomResourceGrant`, `TomPrincipalResourceGrant`,
+  `TomPrincipalDelegation`, `TomUserTwoFactorEnrolment`,
+  `TomExternalIdentityLink` and `TomExternalIdentityToken` — are tenant tables
+  with a `tenantId` field and a `tenant_id` column (`DEFAULT 'default'`) leading
+  their unique keys, so one provider account can be linked in two tenants
+  sharing a table. `TomSync.expose` keeps a tenant table's change log beside the
+  tenant's rows; `TomPrivacy.applyRetention` with no tenant applies a tenant
+  table's policy in every tenant. A PostgreSQL data source's participant id
+  names its schema, so a schema tenant and the system schema enlist as two
+  participants.
+
 - **Tenant types** (`tenancy`): `TomTenantType` — a kind of tenant with a
   default model, the models it allows, the data sources it routes and its
   migration tree — declared under `tenancy.types`, its tree at

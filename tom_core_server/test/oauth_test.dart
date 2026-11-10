@@ -1893,12 +1893,13 @@ void main() {
       expect(second.linkedAt, first.linkedAt);
     });
 
-    test('the entity DDL keys the pair uniquely and indexes the account', () {
+    test('the entity DDL keys the pair uniquely within a tenant and indexes '
+        'the account', () {
       final sql = TomExternalIdentityLink.createTableSql;
       expect(
         sql,
         contains(
-          'UNIQUE KEY uq_tom_external_identity (issuer, '
+          'UNIQUE KEY uq_tom_external_identity (tenant_id, issuer, '
           'subject)',
         ),
       );
@@ -2079,11 +2080,11 @@ void main() {
     // A second grant for the same identity would make which credential an
     // application presents depend on row order — and the older row is by
     // definition the one whose refresh token may already have been rotated away.
-    test('the entity DDL keys the pair uniquely', () {
+    test('the entity DDL keys the pair uniquely within a tenant', () {
       expect(
         TomExternalIdentityToken.createTableSql,
         contains(
-          'UNIQUE KEY uq_tom_external_identity_token (issuer, '
+          'UNIQUE KEY uq_tom_external_identity_token (tenant_id, issuer, '
           'subject)',
         ),
       );

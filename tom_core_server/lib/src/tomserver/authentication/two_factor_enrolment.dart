@@ -699,6 +699,7 @@ class TomMemory2FAEnrolmentStore implements Tom2FAEnrolmentStore {
 // Read from the primary: a change here — a revocation above all — must
 // take effect at once, not after a replica's lag.
 @TomPrimaryReads()
+@TomTenantTable()
 @TomDbTable(
   datasource: 'main',
   table: 'tom_user_two_factor_enrolment',
@@ -709,6 +710,11 @@ class TomUserTwoFactorEnrolment {
   @TomEntityId()
   @TomDbColumn(columnName: 'id', isReadOnly: true)
   int id;
+
+  /// The tenant the row belongs to (`@TomTenantTable`): filled by the
+  /// repository from the tenant in context and bound into every statement.
+  @TomDbColumn(columnName: 'tenant_id')
+  String tenantId;
 
   /// The principal the factor belongs to (`TomPrincipal.id`, stringified —
   /// matching [TomPrincipalResourceGrant.principalId]).
@@ -747,6 +753,7 @@ class TomUserTwoFactorEnrolment {
   /// blank entity and fills it column by column when mapping a result.
   TomUserTwoFactorEnrolment({
     this.id = -1,
+    this.tenantId = '',
     this.principalId = '',
     this.enrolmentId = '',
     this.mechanism = '',
@@ -760,7 +767,7 @@ class TomUserTwoFactorEnrolment {
   /// migration so the two cannot drift — `test/reference_migrations_test.dart`
   /// fails if they do.
   ///
-  /// `(principal_id, enrolment_id)` is unique because that pair *is* the
+  /// `(tenant_id, principal_id, enrolment_id)` is unique because the pair *is* the
   /// enrolment's identity — the upsert in
   /// [TomPersistent2FAEnrolmentStore.store] relies on there being at most one
   /// row to find, and a duplicate would make which secret answers a login
@@ -777,6 +784,7 @@ class TomUserTwoFactorEnrolment {
   static const String createTableSql = '''
 CREATE TABLE IF NOT EXISTS tom_user_two_factor_enrolment (
   id BIGINT NOT NULL AUTO_INCREMENT,
+  tenant_id VARCHAR(32) NOT NULL DEFAULT 'default',
   principal_id VARCHAR(255) NOT NULL,
   enrolment_id VARCHAR(255) NOT NULL,
   mechanism VARCHAR(64) NOT NULL,
@@ -785,7 +793,7 @@ CREATE TABLE IF NOT EXISTS tom_user_two_factor_enrolment (
   is_primary TINYINT(1) NOT NULL DEFAULT 0,
   secret_data TEXT NULL,
   PRIMARY KEY (id),
-  UNIQUE KEY uq_tom_user_two_factor_enrolment (principal_id, enrolment_id),
+  UNIQUE KEY uq_tom_user_two_factor_enrolment (tenant_id, principal_id, enrolment_id),
   KEY idx_tom_user_two_factor_enrolment_principal (principal_id)
 );''';
 }

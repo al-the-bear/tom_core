@@ -370,8 +370,8 @@ is refused:
 | `login.error.tenant-mismatch` | `TomLoginFailure.accountProblem` | The account belongs to another tenant than the one signed in to — an account of one tenant signing in through another tenant's host would otherwise receive a token for the tenant it reached. |
 
 A service that places no tenant on its principals leaves the choice to the
-request; a service whose accounts are tenant-owned rows reads them through a
-`@TomTenantOwned` entity and finds only the current tenant's. With no tenant in
+request; a service whose accounts are a tenant's rows reads them through a
+`@TomTenantTable` entity and finds only the current tenant's. With no tenant in
 context — a deployment without tenancy, or a login naming none — the token
 carries no `tenant` claim.
 
@@ -1113,9 +1113,9 @@ sets of factors; under `schema` and `database` isolation the table is the
 tenant's own and the key is the same, so a tenant's rows move between models
 unchanged. The organization is left out, so a user's second factors are theirs in
 every organization they sign in for: enrolling an authenticator once is enough.
-The table has no tenant column and a unique key of
-`(principal_id, enrolment_id)`. Every framework table that files rows per
-principal keys them the same way — see
+The table is a tenant table (`@TomTenantTable`): a `tenant_id` column leads its
+unique key `(tenant_id, principal_id, enrolment_id)`. Every framework table that
+files rows per principal keys them the same way — see
 [tenancy.md](tenancy.md#principals-per-tenant). The methods take the whole
 `Tom2FAContext`, so a deployment can supply a store that keys rows its own
 way.
@@ -2503,7 +2503,7 @@ What the store guarantees:
 | --------- | --- |
 | Neither token is readable in the row | The whole grant is JSON, encrypted through `TomJwtConfiguration.encrypt` into `token_data` |
 | An operator can still triage | `token_scope`, `obtained_at`, `expires_at` sit beside it in the clear; none of them is authoritative |
-| One grant per identity | `UNIQUE KEY (issuer, subject)` — a second row would make which credential is presented depend on row order |
+| One grant per identity in a tenant | `UNIQUE KEY (tenant_id, issuer, subject)` — a second row would make which credential is presented depend on row order |
 | A credential never outlives its link | `TomExternalIdentityStore.unlink` revokes at the provider, then deletes the grant *before* the link |
 | A credential never outlives its usefulness | `accessTokenFor` deletes a grant it finds expired with nothing to refresh it |
 

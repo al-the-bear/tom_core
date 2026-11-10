@@ -34,7 +34,7 @@ import 'scim_sql.dart';
 ///
 /// Every row also names its tenant (`''` for none), and every statement reads
 /// and writes only the rows of the tenant in context — the row predicate
-/// `@TomTenantOwned` gives a repository. Under `schema` and `database`
+/// `@TomTenantTable` gives a repository. Under `schema` and `database`
 /// isolation it is a second wall; under `shared`, where routing leaves every
 /// tenant in the one table, it is the wall, so the same `userName` in two
 /// tenants is two users and neither tenant's client sees the other's.

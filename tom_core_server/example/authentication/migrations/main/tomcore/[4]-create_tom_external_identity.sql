@@ -48,8 +48,14 @@
 -- This file is the canonical DDL and reproduces
 -- `TomExternalIdentityLink.createTableSql` verbatim;
 -- `test/reference_migrations_test.dart` fails if the two drift apart.
+-- `tenant_id` is the row's tenant: the entity is a tenant table
+-- (`@TomTenantTable`), and the repository binds `tenant_id = <tenant>` into
+-- every statement, in every isolation model. It defaults to `default`, the
+-- implicit tenant of a deployment without tenancy, and leads the unique key,
+-- so tenants sharing the table may each hold the same key.
 CREATE TABLE IF NOT EXISTS tom_external_identity (
   id BIGINT NOT NULL AUTO_INCREMENT,
+  tenant_id VARCHAR(32) NOT NULL DEFAULT 'default',
   issuer VARCHAR(255) NOT NULL,
   subject VARCHAR(255) NOT NULL,
   local_username VARCHAR(255) NOT NULL,
@@ -57,6 +63,6 @@ CREATE TABLE IF NOT EXISTS tom_external_identity (
   linked_at DATETIME(6) NULL,
   last_login_at DATETIME(6) NULL,
   PRIMARY KEY (id),
-  UNIQUE KEY uq_tom_external_identity (issuer, subject),
+  UNIQUE KEY uq_tom_external_identity (tenant_id, issuer, subject),
   KEY idx_tom_external_identity_local (local_username)
 );

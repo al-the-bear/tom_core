@@ -29,6 +29,7 @@ enum TomPreferenceDefaultScope {
 
 /// One default preference.
 @tomReflector
+@TomTenantTable()
 @TomDbTable(
   datasource: 'main',
   table: 'tom_preference_default',
@@ -39,6 +40,11 @@ class TomPreferenceDefault {
   @TomEntityId()
   @TomDbColumn(columnName: 'id', isReadOnly: true)
   int id;
+
+  /// The tenant the row belongs to (`@TomTenantTable`): filled by the
+  /// repository from the tenant in context and bound into every statement.
+  @TomDbColumn(columnName: 'tenant_id')
+  String tenantId;
 
   /// The [TomPreferenceDefaultScope] name: `deployment` or `role`.
   @TomDbColumn(columnName: 'scope_kind')
@@ -74,6 +80,7 @@ class TomPreferenceDefault {
   /// blank entity and fills it column by column when mapping a result.
   TomPreferenceDefault({
     this.id = -1,
+    this.tenantId = '',
     this.scopeKind = '',
     this.scopeName = '',
     this.preferenceKey = '',
@@ -102,14 +109,16 @@ class TomPreferenceDefault {
   /// The DDL this entity expects, reproduced verbatim by the framework
   /// migration — `test/reference_migrations_test.dart` fails if they drift.
   ///
-  /// `(scope_kind, scope_name, preference_key)` is unique because that triple
-  /// is the default's identity, and it is the conflict key the single-statement
+  /// `(tenant_id, scope_kind, scope_name, preference_key)` is unique because
+  /// the triple is the default's identity within its tenant, and it is the
+  /// conflict key the single-statement
   /// write ([TomSqlDatasourceRepository.upsert]) replaces a default on. The
   /// key and name columns are `COLLATE utf8mb4_bin` for the reason
   /// `tom_user_preference`'s are: identity and order stay case-sensitive.
   static const String createTableSql = '''
 CREATE TABLE IF NOT EXISTS tom_preference_default (
   id BIGINT NOT NULL AUTO_INCREMENT,
+  tenant_id VARCHAR(32) NOT NULL DEFAULT 'default',
   scope_kind VARCHAR(16) NOT NULL,
   scope_name VARCHAR(191) COLLATE utf8mb4_bin NOT NULL,
   preference_key VARCHAR(191) COLLATE utf8mb4_bin NOT NULL,
@@ -118,7 +127,7 @@ CREATE TABLE IF NOT EXISTS tom_preference_default (
   precedence INT NOT NULL DEFAULT 0,
   updated_at DATETIME(6) NULL,
   PRIMARY KEY (id),
-  UNIQUE KEY uq_tom_preference_default (scope_kind, scope_name, preference_key)
+  UNIQUE KEY uq_tom_preference_default (tenant_id, scope_kind, scope_name, preference_key)
 );''';
 }
 

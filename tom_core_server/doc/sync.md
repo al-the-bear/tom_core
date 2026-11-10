@@ -117,6 +117,12 @@ accept it or a reason to refuse it.
 `expose` prepares the change log in the repository's data source (see
 [Tables and the Reference Migration](#tables-and-the-reference-migration)) and
 registers a change listener for the entity with `TomEntityLifecycle.onChange`.
+The log lives beside the entity's rows: for a system table in the system
+schema, for a tenant table (`@TomTenantTable`) where the tenant's data lives —
+its own schema or database, or its type's shared schema. Exposed with no tenant
+in context under an installed tenancy, a tenant table's log is prepared in every
+tenant served then; a tenant added later is prepared by its first push or pull,
+or has the tables from its migrations.
 `TomSync.collections` lists the exposed collections. `TomSync.reset` forgets
 them and their listeners and restores the defaults; it is for tests.
 
@@ -489,6 +495,7 @@ pull of one refused; and a push request read back as the endpoint reads it.
 | [endpoints](endpoints.md) | module | `sync_endpoint.dart` | `@TomApiEndpointImplementation` and `TomStatusMappingErrorHandler`, by which the pipeline binds the handlers and maps the pull's refusals |
 | [little_things](little_things.md) | module | `sync.dart` | `TomServerException`, the base of `TomSyncException` |
 | [object_persistence](object_persistence.md) | module | `sync.dart` | `TomSqlDatasourceRepository`, through which every push and pull runs; `TomAnnotationAnalyzer` and `TomColumnInformation` for the version and key; `TomEntityLifecycle`, whose change listener feeds the log; `TomDataScope.runUnscoped` and the refusals the push turns into reasons (`TomDataScopeException`, `TomColumnAuthorizationException`, `TomOptimisticLockException`); `TomDbTable` / `TomDbColumn` on the row classes |
+| [tenancy](tenancy.md) | module | `sync.dart` | `TomTenancy.current` and `forEachTenant`, where `expose` prepares a tenant table's change log in every tenant |
 | [transactions](transactions.md) | module | `sync.dart` | `TomTransactionManager.runInTransaction`, one transaction per pushed change |
 
 - The endpoints module — `TomEndpointRouting.registerFrameworkApis` registers

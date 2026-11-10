@@ -825,7 +825,7 @@ Summary: [api_summary_audit_reports.md](api_summary_audit_reports.md)
 | ---- | ---- | ----------- |
 | `TomDbTable` / `TomDbColumn` / `TomEntityId` / `TomDbScope` / `TomReference` | class | Persistence annotations. |
 | `TomVersion` | class | Marks the `int` field holding a row's version, turning on optimistic locking for the entity. |
-| `TomTenantOwned` | class | Marks an entity whose every row belongs to a tenant; the repository reads and writes only the current tenant's rows. |
+| `TomTenantTable` | class | Classifies an entity as a tenant table: routed to the current tenant, behind the tenant predicate; every other entity is a system table. |
 | `TomDartType` | class | Dart-type descriptor for persistence. |
 | `TomColumnInformation` | class | Column metadata. |
 | `TomRepository<T, K>` | abstract class | Repository contract. |
@@ -2071,7 +2071,6 @@ Summary: [api_summary_audit_reports.md](api_summary_audit_reports.md)
 | `TomTenantHeaderResolver` | Tenancy |
 | `TomTenantHostResolver` | Tenancy |
 | `TomTenantIsolation` | Tenancy |
-| `TomTenantOwned` | Object Persistence |
 | `TomTenantPathResolver` | Tenancy |
 | `TomTenantProviderSets` | Authentication |
 | `TomTenantRecord` | Tenancy |
@@ -2082,6 +2081,7 @@ Summary: [api_summary_audit_reports.md](api_summary_audit_reports.md)
 | `TomTenantResolver` | Tenancy |
 | `TomTenantRow` | Tenancy |
 | `TomTenantStatus` | Tenancy |
+| `TomTenantTable` | Object Persistence |
 | `TomTenantType` | Tenancy |
 | `TomTextLocale` | Resources |
 | `TomTlsConnectionInfo` | Server |

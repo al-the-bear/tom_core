@@ -22,8 +22,14 @@
 -- `test/reference_migrations_test.dart` fails if the two drift apart. It is
 -- version [2] of the `tomcore` schema on the `main` datasource and carries no
 -- `@environment` suffix: a schema migration is never environment-tagged.
+-- `tenant_id` is the row's tenant: the entity is a tenant table
+-- (`@TomTenantTable`), and the repository binds `tenant_id = <tenant>` into
+-- every statement, in every isolation model. It defaults to `default`, the
+-- implicit tenant of a deployment without tenancy, and leads the unique key,
+-- so tenants sharing the table may each hold the same key.
 CREATE TABLE IF NOT EXISTS tom_preference_default (
   id BIGINT NOT NULL AUTO_INCREMENT,
+  tenant_id VARCHAR(32) NOT NULL DEFAULT 'default',
   scope_kind VARCHAR(16) NOT NULL,
   scope_name VARCHAR(191) COLLATE utf8mb4_bin NOT NULL,
   preference_key VARCHAR(191) COLLATE utf8mb4_bin NOT NULL,
@@ -32,5 +38,5 @@ CREATE TABLE IF NOT EXISTS tom_preference_default (
   precedence INT NOT NULL DEFAULT 0,
   updated_at DATETIME(6) NULL,
   PRIMARY KEY (id),
-  UNIQUE KEY uq_tom_preference_default (scope_kind, scope_name, preference_key)
+  UNIQUE KEY uq_tom_preference_default (tenant_id, scope_kind, scope_name, preference_key)
 );

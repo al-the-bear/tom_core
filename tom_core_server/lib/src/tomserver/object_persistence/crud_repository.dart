@@ -18,6 +18,7 @@ import 'paging.dart';
 import 'persistence_annotations.dart';
 import 'query_sentence_compiler.dart';
 import 'query_builder.dart';
+import 'subquery.dart';
 import 'annotation_analyzer.dart';
 import 'column_authorization.dart';
 import 'composite_key.dart';
@@ -25,6 +26,8 @@ import 'data_scope.dart';
 import 'entity_lifecycle.dart';
 import 'field_encryption.dart';
 import '../privacy/personal_data.dart';
+import '../datasources/sql_datasource.dart';
+import '../tenancy/tenancy.dart';
 import '../transactions/transaction_manager.dart';
 
 /// Raised when a repository operation cannot complete: the entity's data source
@@ -303,12 +306,86 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
 
   late TomDataSourceInfo _baseDatasourceInfo;
 
-  /// The data source this repository runs against: the registered one, or —
-  /// in a multi-tenant deployment — the current tenant's schema or database
-  /// ([TomDataSourceInfo.route]). Resolved on every access, so one repository
-  /// serves every tenant.
-  TomDataSourceInfo get datasourceInfo =>
-      TomDataSourceInfo.route(_baseDatasourceInfo);
+  /// Whether the entity is a tenant table (`@TomTenantTable`) rather than a
+  /// system table.
+  late final bool isTenantTable = TomAnnotationAnalyzer.isTenantTable(
+    queryTypes[0],
+  );
+
+  /// The data source this repository runs against, by the entity's
+  /// classification:
+  ///
+  /// - a **system table** — the registered data source, unrouted, also inside
+  ///   a tenant;
+  /// - a **tenant table** — the current tenant's route of it
+  ///   ([TomDataSourceInfo.route]): the tenant's own schema or database, or its
+  ///   type's shared schema. With no tenant in context it is refused
+  ///   (`tenancy.context.missing`) under an installed tenancy, and is the
+  ///   registered data source as the implicit tenant `default` without one.
+  ///
+  /// Resolved on every access, so one repository serves every tenant. Inside a
+  /// running transaction it also refuses a statement that would put a tenant
+  /// table and a system table of different data sources into one transaction
+  /// unless both data sources commit in two phases (see
+  /// [tenantSystemTransactionKey]).
+  TomDataSourceInfo get datasourceInfo {
+    final info = isTenantTable ? _tenantRoute() : _baseDatasourceInfo;
+    final transaction = TomTransactionManager.getCurrentTransaction();
+    if (transaction != null && transaction.isRunning) {
+      _guardTransaction(transaction, info.datasource);
+    }
+    return info;
+  }
+
+  /// The tenant route of a tenant table: requires the tenant first, so a
+  /// missing one is refused before any routing is looked at.
+  TomDataSourceInfo _tenantRoute() {
+    _tenantInContext();
+    return TomDataSourceInfo.route(_baseDatasourceInfo);
+  }
+
+  /// The tenant tenant-table work in the current zone runs as
+  /// ([TomTenancy.tenantForWork]).
+  String _tenantInContext() => TomTenancy.tenantForWork('${queryTypes[0]}');
+
+  /// The key of the refusal raised when one transaction would hold a tenant
+  /// table and a system table on two data sources of which one commits in a
+  /// single phase.
+  ///
+  /// The two data sources are two branches, and only a two-phase commit
+  /// (`*_xa` data sources) makes them one unit; with a one-phase data source a
+  /// failure between the two commits would leave the tenant's change without
+  /// the system's or the other way round. On one data source — a shared tenant
+  /// of the type `default`, or no tenancy — they are one branch and are not
+  /// refused.
+  static const String tenantSystemTransactionKey =
+      'crud_repository.transaction.tenant_and_system_one_phase';
+
+  /// The data sources entity repositories ran statements on in a transaction,
+  /// each with the classifications (tenant table `true`, system table
+  /// `false`) that used it.
+  static final Expando<Map<TomDataSource, Set<bool>>> _transactionKinds =
+      Expando('tenantSystemKinds');
+
+  void _guardTransaction(TomTransaction transaction, TomDataSource here) {
+    final kinds = _transactionKinds[transaction] ??= {};
+    for (final MapEntry(key: other, value: used) in kinds.entries) {
+      if (identical(other, here) || !used.contains(!isTenantTable)) continue;
+      if (other is TomSqlTwoPhaseRecovery && here is TomSqlTwoPhaseRecovery) {
+        continue;
+      }
+      throw TomRepositoryException(
+        tenantSystemTransactionKey,
+        'One transaction would hold a ${isTenantTable ? 'tenant' : 'system'} '
+        'table of ${queryTypes[0]} and a '
+        '${isTenantTable ? 'system' : 'tenant'} table on another data '
+        'source, and one of the two commits in a single phase; use '
+        'two-phase (xa) data sources, or two transactions.',
+        parameters: {'entity': '${queryTypes[0]}'},
+      );
+    }
+    (kinds[here] ??= {}).add(isTenantTable);
+  }
 
   /// Prepared statements, per data source.
   ///
@@ -361,6 +438,10 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
     // time a scoped read runs (LateInitializationError).
     persistenceInfo = TomAnnotationAnalyzer.analysePersistentType(
       this.queryTypes[0],
+    );
+    TomAnnotationAnalyzer.verifySameClassification(
+      this.queryTypes,
+      'The repository of ${this.queryTypes[0]}',
     );
     dbTable = persistenceInfo.table;
     if (dbTable.primaryKeyFields.isEmpty) {
@@ -717,10 +798,20 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
               'keeps no history.',
           parameters: {'entity': '${queryTypes[0]}'},
         ));
+    final tenantTable = TomAnnotationAnalyzer.findTenantTable(queryTypes[0]);
+    final tenantColumn = tenantTable == null
+        ? null
+        : TomAnnotationAnalyzer.determineColumn(tenantTable.field, [
+            persistenceInfo,
+          ]).getQueryFieldName();
     final sql =
         'SELECT * FROM ${history.table} WHERE ${_keyWhereClause()} '
+        '${tenantColumn == null ? '' : 'AND $tenantColumn = :__tomhistory_tenant '}'
         'ORDER BY history_id';
-    final params = _keyParameters(id);
+    final params = {
+      ..._keyParameters(id),
+      if (tenantColumn != null) '__tomhistory_tenant': _tenantInContext(),
+    };
     final datasource = datasourceInfo.datasource;
     final rows = await datasource.executeQuery<T>(sql, params, T);
     final meta = await datasource.executeQuery<TomHistoryMeta>(
@@ -743,45 +834,35 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
   /// so the two can be bound in one statement.
   static const String tenantParameterPrefix = '__tomtenant_';
 
-  /// `<tenant field> = <current tenant>` for a `@TomTenantOwned` entity — a
-  /// `FALSE` predicate when no tenant is in context — or `null` for an entity
-  /// that is not tenant-owned.
+  /// `<tenant field> = <current tenant>` for a tenant table, bound as
+  /// [tenantParameterPrefix]`0`, or `null` for a system table. With no tenant
+  /// in context it throws `tenancy.context.missing` under an installed
+  /// tenancy and binds the implicit tenant `default` without one.
   ///
-  /// Not suppressed inside an async resolver's enumeration, unlike the data
-  /// scope: a resolver computing one tenant's visible ids must not read
-  /// another tenant's rows to do it.
+  /// Applied in every isolation model. Not suppressed inside an async
+  /// resolver's enumeration, unlike the data scope: a resolver computing one
+  /// tenant's visible ids must not read another tenant's rows to do it.
   TomDataScopePredicate? _tenantPredicate() {
-    final owned = TomAnnotationAnalyzer.findTenantOwnership(queryTypes[0]);
-    if (owned == null) return null;
-    final col = TomAnnotationAnalyzer.determineColumn(owned.field, [
+    final table = TomAnnotationAnalyzer.findTenantTable(queryTypes[0]);
+    if (table == null) return null;
+    final col = TomAnnotationAnalyzer.determineColumn(table.field, [
       persistenceInfo,
     ]);
-    final tenant = TomTenantContext.currentId;
-    return TomDataScope.inList(
-      this,
-      col,
-      tenant == null ? const [] : [tenant],
-      prefix: tenantParameterPrefix,
-    );
+    return TomDataScope.inList(this, col, [
+      _tenantInContext(),
+    ], prefix: tenantParameterPrefix);
   }
 
-  /// Fills the tenant of a `@TomTenantOwned` [entity] about to be written, or
-  /// refuses the write: with no tenant in context
-  /// (`data_scope.write.no_tenant`), or when the entity names another tenant
+  /// Fills the tenant of a tenant-table [entity] about to be written, or
+  /// refuses the write: with no tenant in context under an installed tenancy
+  /// (`tenancy.context.missing`), or when the entity names another tenant
   /// than the one in context (`data_scope.write.foreign_tenant`) — which is
   /// also what stops an update from moving a row to another tenant.
   void _assertEntityTenant(T entity) {
-    final owned = TomAnnotationAnalyzer.findTenantOwnership(queryTypes[0]);
-    if (owned == null) return;
-    final tenant = TomTenantContext.currentId;
-    if (tenant == null) {
-      throw TomDataScopeAuthorizationException(
-        'data_scope.write.no_tenant',
-        'A tenant-owned row cannot be written with no tenant in context.',
-        parameters: {'entity': '${queryTypes[0]}'},
-      );
-    }
-    final col = TomAnnotationAnalyzer.determineColumn(owned.field, [
+    final table = TomAnnotationAnalyzer.findTenantTable(queryTypes[0]);
+    if (table == null) return;
+    final tenant = _tenantInContext();
+    final col = TomAnnotationAnalyzer.determineColumn(table.field, [
       persistenceInfo,
     ]);
     final value = col.getVariableValue(entity);
@@ -868,11 +949,11 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
     }
   }
 
-  /// Whether the entity has neither a `@TomDbScope` nor a `@TomTenantOwned`,
-  /// so no write needs a scope check.
+  /// Whether the entity has no `@TomDbScope` and is a system table, so no
+  /// write needs a scope check.
   bool get _unscopedForWrites =>
       TomAnnotationAnalyzer.findDataScope(queryTypes[0]) == null &&
-      TomAnnotationAnalyzer.findTenantOwnership(queryTypes[0]) == null;
+      !isTenantTable;
 
   /// Asserts the current principal may create [entity] under the entity's
   /// `@TomDbScope`: its scope-field value must be one the principal is allowed
@@ -926,9 +1007,23 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
     }
   }
 
+  /// Refuses a subquery in [predicate] over tables of another classification
+  /// than this entity's (`annotation_analyzer.tenant_table.mixed`): a
+  /// subquery runs in the same statement, and a tenant's rows may live in
+  /// another database than the system's.
+  void _verifySubqueries(TomOperator<TomDbBool>? predicate) {
+    for (final subquery in TomSubquery.within(predicate)) {
+      TomAnnotationAnalyzer.verifySameClassification([
+        queryTypes[0],
+        ...subquery.types,
+      ], 'A subquery of ${queryTypes[0]}\'s query');
+    }
+  }
+
   /// Returns [base] with [scope]'s predicate ANDed into its `WHERE` (preserving
   /// every shaping option), or [base] unchanged when [scope] is `null`.
   TomDelete _scopedDelete(TomDelete base, TomDataScopePredicate? scope) {
+    _verifySubqueries(base.query);
     if (scope == null) return base;
     return TomDelete(
       base.types,
@@ -943,6 +1038,7 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
   /// Returns [base] with [scope]'s predicate ANDed into its `WHERE` (preserving
   /// every shaping option), or [base] unchanged when [scope] is `null`.
   TomSelect _scopedSelect(TomSelect base, TomDataScopePredicate? scope) {
+    _verifySubqueries(base.query);
     if (scope == null) return base;
     return TomSelect(
       base.types,
@@ -966,6 +1062,7 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
     TomGroupedSelect base,
     TomDataScopePredicate? scope,
   ) {
+    _verifySubqueries(base.query);
     if (scope == null) return base;
     return TomGroupedSelect(
       base.types,
@@ -985,6 +1082,7 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
   /// A count's shaping options are the projection ones only — it has no window
   /// and no ordering to carry over (see [TomCount]).
   TomCount _scopedCount(TomCount base, TomDataScopePredicate? scope) {
+    _verifySubqueries(base.query);
     if (scope == null) return base;
     return TomCount(
       base.types,
@@ -2193,7 +2291,7 @@ SELECT * FROM ${dbTable.table}
     final type = queryTypes[0];
     final guarded = [
       ?TomAnnotationAnalyzer.findDataScope(type)?.field,
-      ?TomAnnotationAnalyzer.findTenantOwnership(type)?.field,
+      ?TomAnnotationAnalyzer.findTenantTable(type)?.field,
     ];
     for (final field in guarded) {
       if (!conflictColumns.contains(columnOf(field))) {
@@ -2268,6 +2366,9 @@ SELECT * FROM ${dbTable.table}
     if (upsertBlocker == null) {
       return upsert(entity, conflictFields: conflictFields);
     }
+    // A tenant table's tenant field is filled first, so the lookup below finds
+    // the row by the tenant it will be written in.
+    _assertEntityTenant(entity);
     final columns = {
       for (final field in conflictFields)
         field: TomAnnotationAnalyzer.determineColumn(field, [persistenceInfo]),

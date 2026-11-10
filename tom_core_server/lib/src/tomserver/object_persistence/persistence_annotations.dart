@@ -264,28 +264,41 @@ class TomBlindIndex {
   final TomBlindIndexNormalization normalization;
 }
 
-/// Marks an entity as owned by a tenant: every row carries its tenant in
-/// [field], and a repository reads and writes only the rows of the tenant in
-/// context (`TomTenantContext`).
+/// Classifies an entity as a **tenant table**: its rows are one tenant's data.
+/// An entity without it is a **system table** — its rows belong to the
+/// deployment.
+///
+/// The classification decides where a repository reads and writes:
+///
+/// | Table | Tenant in context | Data source |
+/// | ----- | ----------------- | ----------- |
+/// | system | any, or none | the registered data source, unrouted — also inside a tenant |
+/// | tenant | a tenant with `schema` or `database` isolation | the tenant's own schema or database |
+/// | tenant | a tenant with `shared` isolation | the shared schema of the tenant's type: the system schema for the type `default` |
+/// | tenant | none, under an installed tenancy | refused: `tenancy.context.missing` |
+/// | tenant | none, with no tenancy installed | the registered data source, as the implicit tenant `default` |
+///
+/// Every tenant table carries its tenant in [field] — the `tenant_id` column
+/// by convention — in every isolation model, because any tenant may be moved
+/// to another model. The repository binds it in every read, update and delete
+/// (`<field> = <tenant>`), fills it on an insert that leaves it unset, and
+/// refuses an insert naming another tenant. Under `schema` and `database`
+/// isolation the predicate is a second wall rather than the only one, and it
+/// is what makes moving a tenant between models a copy of its rows rather than
+/// a schema change.
 ///
 /// It is independent of [TomDbScope] and is ANDed with it: an entity can be a
-/// tenant's *and* scoped to its owner or to a resource grant. Concretely:
+/// tenant's *and* scoped to its owner or to a resource grant.
 ///
-/// - every read — `findAll`, `findById`, `count`, `findWhere`, the existence
-///   checks — carries `<field> = <tenant>` as a bound predicate;
-/// - every update and delete may touch only rows that predicate admits;
-/// - an insert whose [field] is unset is filled with the current tenant, and
-///   one naming another tenant is refused;
-/// - with no tenant in context, the entity is unreadable and unwritable.
-///
-/// The predicate applies in every isolation model. Where the tenant's rows live
-/// in a schema or a database of their own, it is a second wall rather than the
-/// only one — which is also what makes moving a tenant between models a data
-/// copy rather than a schema change.
+/// A tenant table and a system table never meet in one statement: an
+/// association ([TomReference]), a subquery (`TomSubquery`) or a repository
+/// over several entity types mixing the two is refused when it is analysed —
+/// a tenant's rows may live in another database than the system's at any
+/// time. Rows of the two refer to each other by id, read by a second query.
 ///
 /// ```dart
 /// @tomReflector
-/// @TomTenantOwned()
+/// @TomTenantTable()
 /// @TomDbTable(datasource: 'main', table: 'invoice', primaryKeyFields: ['id'])
 /// class Invoice {
 ///   @TomDbColumn(columnName: 'tenant_id')
@@ -293,9 +306,9 @@ class TomBlindIndex {
 ///   // …
 /// }
 /// ```
-class TomTenantOwned {
-  /// Marks the entity tenant-owned, with its tenant in [field].
-  const TomTenantOwned({this.field = 'tenantId'});
+class TomTenantTable {
+  /// Classifies the entity as a tenant table, with its tenant in [field].
+  const TomTenantTable({this.field = 'tenantId'});
 
   /// The entity field holding the row's tenant id.
   final String field;

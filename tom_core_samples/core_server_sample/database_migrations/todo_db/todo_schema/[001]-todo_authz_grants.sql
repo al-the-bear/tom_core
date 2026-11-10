@@ -7,11 +7,12 @@
 
 CREATE TABLE IF NOT EXISTS tom_resource_grant (
   id BIGINT NOT NULL AUTO_INCREMENT,
+  tenant_id VARCHAR(32) NOT NULL DEFAULT 'default',
   role_name VARCHAR(255) NOT NULL,
   resource_key VARCHAR(255) NOT NULL,
   access_level ENUM('none', 'disabled', 'read', 'full') NOT NULL DEFAULT 'none',
   PRIMARY KEY (id),
-  UNIQUE KEY uq_tom_resource_grant_role_key (role_name, resource_key)
+  UNIQUE KEY uq_tom_resource_grant_role_key (tenant_id, role_name, resource_key)
 );
 
 -- Seed grants demonstrating all four states on the todo-item fields:

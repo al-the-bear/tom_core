@@ -12,24 +12,64 @@
 /// A [TomSoftDelete] entity a subquery reads contributes `<deleted> IS NULL`,
 /// as it does to a repository read, unless [TomSoftDelete.includingDeleted]
 /// is on.
+///
+/// A subquery reads tables of one classification — all tenant tables or all
+/// system tables ([TomTenantTable]) — and the same as the query it is part of;
+/// a repository refuses one that does not
+/// (`annotation_analyzer.tenant_table.mixed`). A tenant table it reads
+/// contributes `<tenant column> IN (:__tomtenant_0)`, bound to the enclosing
+/// tenant-table query's tenant, so it never reaches another tenant's rows.
 library;
 
 import '../datasources/queries.dart';
 import '../datasources/sql_dialects.dart';
 import '../datasources/types_operator.dart';
 import 'annotation_analyzer.dart';
+import 'crud_repository.dart';
+import 'data_scope.dart';
 import 'entity_lifecycle.dart';
+import 'persistence_annotations.dart';
+import 'query_builder.dart';
 
 /// `SELECT <projection> FROM <the tables of types> WHERE <where>` — a
 /// subquery for [TomExists] and [TomInSubquery].
 class TomSubquery {
   /// A subquery over [types] filtered by [where], selecting [projection] (a
   /// column, for `IN`) or `1` (for `EXISTS`) when it is `null`.
+  ///
+  /// Throws `annotation_analyzer.tenant_table.mixed` when [types] mix tenant
+  /// tables and system tables.
   TomSubquery(this.types, {this.where, this.projection})
     : _info = [
         for (final type in types)
           TomAnnotationAnalyzer.analysePersistentType(type),
-      ];
+      ] {
+    TomAnnotationAnalyzer.verifySameClassification(types, 'A subquery');
+  }
+
+  /// The subqueries [predicate] contains, nested ones included.
+  static List<TomSubquery> within(TomOperator? predicate) {
+    final found = <TomSubquery>[];
+    void walk(TomOperator? node) {
+      if (node == null) return;
+      final subquery = switch (node) {
+        TomExists(:final subquery) => subquery,
+        TomInSubquery(:final subquery) => subquery,
+        _ => null,
+      };
+      if (subquery != null) {
+        found.add(subquery);
+        walk(subquery.where);
+        walk(subquery.projection);
+      }
+      for (final child in node.children) {
+        walk(child);
+      }
+    }
+
+    walk(predicate);
+    return found;
+  }
 
   /// The entity types read.
   final List<Type> types;
@@ -54,17 +94,33 @@ class TomSubquery {
     ];
   }
 
+  /// `<tenant column> IN (:__tomtenant_0)` for every tenant table read.
+  late final List<TomOperator<TomDbBool>> _tenantRows = [
+    for (var i = 0; i < types.length; i++)
+      if (TomAnnotationAnalyzer.findTenantTable(types[i]) case final table?)
+        TomDataScope.inColumn(
+          _SubqueryBuilder(),
+          TomAnnotationAnalyzer.determineColumn(table.field, [_info[i]]),
+          ['${TomSqlDatasourceRepository.tenantParameterPrefix}0'],
+        ),
+  ];
+
   /// The subquery's SQL.
   SqlString generate(TomStandardSqlDialect t) => t.subquery(
     projection?.generate(t) ?? '1',
     [for (final info in _info) info.table.table],
-    [?where?.generate(t), ..._liveRows],
+    [
+      ?where?.generate(t),
+      ..._liveRows,
+      for (final row in _tenantRows) row.generate(t),
+    ],
   );
 
   /// Its parameters, in the order their placeholders appear.
   List<String> getParameters(TomStandardSqlDialect t) => [
     ...?projection?.getParameters(t),
     ...?where?.getParameters(t),
+    for (final row in _tenantRows) ...row.getParameters(t),
   ];
 
   @override
@@ -129,3 +185,6 @@ class TomInSubquery<T> extends TomOperator<TomDbBool> {
   String analyze(int l) =>
       '${indent(l)} (TomInSubquery ${operand.analyze(l + 1)} $subquery)';
 }
+
+/// The builder a subquery's tenant predicate is made with.
+class _SubqueryBuilder with TomQueryBuilder {}

@@ -111,7 +111,8 @@ different index — and two devices could show the same preferences in two
 orders. The key is the ordering because it is the one value unique per caller
 that never changes while the preference exists: rewriting a value must not move
 it in the list. The caller's rows are read `ORDER BY preference_key`, which
-`uq_tom_user_preference (principal_id, preference_key)` serves off the index,
+`uq_tom_user_preference (tenant_id, principal_id, preference_key)` serves off
+the index,
 and the service then merges the defaults in under the keys the caller has not
 written and orders the merged list by key in code-unit order — the order the
 binary collation gives the column, and the order the device store answers.
@@ -181,23 +182,25 @@ attempt to write elsewhere.
 ```sql
 CREATE TABLE IF NOT EXISTS tom_user_preference (
   id BIGINT NOT NULL AUTO_INCREMENT,
+  tenant_id VARCHAR(32) NOT NULL DEFAULT 'default',
   principal_id VARCHAR(255) NOT NULL,
   preference_key VARCHAR(191) COLLATE utf8mb4_bin NOT NULL,
   value_type VARCHAR(191) COLLATE utf8mb4_bin NOT NULL,
   value_json TEXT NULL,
   updated_at DATETIME(6) NULL,
   PRIMARY KEY (id),
-  UNIQUE KEY uq_tom_user_preference (principal_id, preference_key),
+  UNIQUE KEY uq_tom_user_preference (tenant_id, principal_id, preference_key),
   KEY idx_tom_user_preference_principal (principal_id)
 );
 ```
 
-`(principal_id, preference_key)` is unique because that pair *is* the
-preference's identity: writing a key twice must replace the value, and a
+`(tenant_id, principal_id, preference_key)` is unique because the pair *is* the
+preference's identity within its tenant — the table is a tenant table
+(`@TomTenantTable`), and `tenant_id` defaults to `default`: writing a key twice must replace the value, and a
 duplicate would make which value a user gets depend on row order. It is also the
 conflict key every write names: `set`, `setEncoded` and `setAllEncoded` store
-through `TomSqlDatasourceRepository.saveByKey(conflictFields: ['principalId',
-'preferenceKey'])`, which for this entity is one `INSERT … ON DUPLICATE KEY
+through `TomSqlDatasourceRepository.saveByKey(conflictFields: ['tenantId',
+'principalId', 'preferenceKey'])`, which for this entity is one `INSERT … ON DUPLICATE KEY
 UPDATE` (PostgreSQL `INSERT … ON CONFLICT … DO UPDATE`) with no read before it —
 so two writers racing for a new key cannot both insert, and neither sees a
 duplicate-key error (see
@@ -301,6 +304,7 @@ reads.
 ```sql
 CREATE TABLE IF NOT EXISTS tom_preference_default (
   id BIGINT NOT NULL AUTO_INCREMENT,
+  tenant_id VARCHAR(32) NOT NULL DEFAULT 'default',
   scope_kind VARCHAR(16) NOT NULL,
   scope_name VARCHAR(191) COLLATE utf8mb4_bin NOT NULL,
   preference_key VARCHAR(191) COLLATE utf8mb4_bin NOT NULL,
@@ -309,14 +313,14 @@ CREATE TABLE IF NOT EXISTS tom_preference_default (
   precedence INT NOT NULL DEFAULT 0,
   updated_at DATETIME(6) NULL,
   PRIMARY KEY (id),
-  UNIQUE KEY uq_tom_preference_default (scope_kind, scope_name, preference_key)
+  UNIQUE KEY uq_tom_preference_default (tenant_id, scope_kind, scope_name, preference_key)
 );
 ```
 
 One row per default: `scope_kind` `deployment` with `scope_name` `''`, or `role`
-with the role's name. `(scope_kind, scope_name, preference_key)` is unique
-because that triple is the default's identity and the conflict key it is
-replaced on. The name, key and type columns are `utf8mb4_bin` for the reason
+with the role's name. `(tenant_id, scope_kind, scope_name, preference_key)` is
+unique because the triple is the default's identity within its tenant — a tenant
+table, like the preferences — and the conflict key it is replaced on. The name, key and type columns are `utf8mb4_bin` for the reason
 `tom_user_preference`'s are. The table has no owner column and the entity no
 row scope: a default is nobody's own row.
 
@@ -666,7 +670,7 @@ block every login.
   between the clients that share it.
   <!-- pinned: test/preferences_db_test.dart › a rewrite may change a key's type, and a typed reader then fails -->
 - **A preference is per principal and nothing else.** The row is keyed on
-  `(principal_id, preference_key)`, so there is no per-device, per-application
+  `(tenant_id, principal_id, preference_key)`, so there is no per-device, per-application
   or per-organization dimension: a user who wants one theme on their phone and
   another on their desktop encodes that in the key.
   <!-- unpinned: decision — the row is keyed on principal and key by design -->

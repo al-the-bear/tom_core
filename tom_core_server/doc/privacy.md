@@ -12,7 +12,7 @@ columns holding their data, `@TomRetention` on the class — and the application
 registers the repositories of those entities with `TomPrivacy`. Every operation
 then runs through the repositories, so it is the ordinary write path that
 deletes and updates: each row it touches is audited, its files are cascaded,
-encrypted columns stay encrypted and a tenant-owned entity stays in its tenant.
+encrypted columns stay encrypted and a tenant table stays in its tenant.
 
 ## Table of Contents
 
@@ -229,8 +229,8 @@ erasure in the audit trail.
 Because the work goes through the repository, its write path runs in full: a
 delete removes the blobs the row's `@TomFileReference` columns name, a versioned
 entity's version is checked and advanced, an encrypted column is written
-encrypted, a `@TomTenantOwned` entity's rows are only those of the tenant in
-context, and **every row deleted or updated is audited by its repository** —
+encrypted, a tenant table's (`@TomTenantTable`) rows are only those of the
+tenant in context, and **every row deleted or updated is audited by its repository** —
 the trail shows each row the erasure touched, under the caller's actor.
 
 An erasure opens no transaction of its own; each repository write commits the
@@ -258,8 +258,8 @@ only some of them would not be the export the law requires. **The operations
 therefore check no permission of their own.** Who may ask for an erasure or an
 export — the person themselves, a data-protection officer, an administrator — is
 the caller's decision, and an endpoint that offers either gates it. A
-`@TomTenantOwned` entity stays within the tenant in context all the same; the
-bypass is of row scopes, not of tenancy.
+tenant table (`@TomTenantTable`) stays within the tenant in context all the
+same; the bypass is of row scopes, not of tenancy.
 
 ### The erasure report
 
@@ -575,10 +575,15 @@ See [configuration.md](configuration.md#privacy).
 
 ## Tenancy
 
-Everything runs in the tenant in context. A `@TomTenantOwned` entity's
+Everything runs in the tenant in context. A tenant table's (`@TomTenantTable`)
 repository reaches the tenant's rows only, so an erasure in tenant `acme` erases
 `acme`'s user `7` and leaves `globex`'s alone; a deployment erasing a person
-known to several tenants erases them in each.
+known to several tenants erases them in each. With no tenant in context under an
+installed tenancy a tenant table's repository is refused
+(`tenancy.context.missing`) — except in `applyRetention`, which applies a tenant
+table's policy in every tenant in turn and reports their sum, since retention is
+the deployment's rule rather than a request's. A system table's policy runs
+once.
 
 The subject keys follow the data: `TomSqlSubjectKeyStore` resolves its data
 source by name on every call, through the tenant routing, so under `schema` or
@@ -743,6 +748,7 @@ repositories, so it is the live suite's.
 | [export](export.md) | module | `privacy.dart` | `TomTabularResult` / `TomTabularSection.ofEntities`, the subject-access export's shape, and `TomExportFormats`, its renderers |
 | [little_things](little_things.md) | module | `personal_data.dart` | `TomServerException`, the base of `TomPrivacyException` |
 | [object_persistence](object_persistence.md) | module | `personal_data.dart`, `privacy.dart`, `subject_keys.dart` | `TomAnnotationAnalyzer` and `TomColumnInformation`, to resolve the declarations; `TomRepository`, `TomPageRequest` / `TomSortField` and `TomDataScope.runUnscoped`, to run the operations; `TomAesGcm`, `TomKeyEncryptionKey` and `TomFieldEncryption.keyring`, to seal values and wrap keys; `TomDbTable` / `TomDbColumn` on `TomSubjectKeyRow` |
+| [tenancy](tenancy.md) | module | `privacy.dart` | `TomTenancy.current` and `forEachTenant`, which a retention run with no tenant applies a tenant table's policy in |
 
 - The object_persistence module — `TomSqlDatasourceRepository` passes the
   subjects of a row's personal fields to the audit trail, so their values are

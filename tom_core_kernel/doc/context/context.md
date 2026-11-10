@@ -69,7 +69,7 @@ all when it installs none: see [Tracing](#tracing).
 | `TomZoneValues` | class | `Map`-like view over a zone's values used when running in context. |
 | `TomContextProviders` | class | Static accessors for the ambient providers (organization, application, …). |
 | `TomTenantContext` | abstract final class | The current tenant, held in the zone: `currentId`, `run`, `require`, `validate`, `qualify`, `idPattern`. |
-| `TomTenantException` | class | A tenant id that cannot be used, or tenant-owned work with no tenant in context. |
+| `TomTenantException` | class | A tenant id that cannot be used, or a tenant's work with no tenant in context. |
 | `TomTenantScopedCommand` | class | A `TomCommand` that runs its inner command inside a tenant, wherever it executes. |
 | `TomTenantEvent` | class | An event for an event-triggered job, carrying the tenant it was raised for. |
 | `TomTraceContext` | class | The W3C trace and span the current zone's work belongs to: `parse`, `newRoot`, `child`, `traceparent`, `traceState`, `headers`, `current`, `run`. |

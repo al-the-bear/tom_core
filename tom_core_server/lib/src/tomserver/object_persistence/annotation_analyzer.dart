@@ -111,9 +111,9 @@ mixin TomAnnotationAnalyzer {
   /// (`null` = the entity declares no row scope).
   static final _dataScopeCache = <Type, TomDbScope?>{};
 
-  /// Cache of resolved `@TomTenantOwned` annotations per entity type
-  /// (`null` = the entity is not tenant-owned).
-  static final _tenantOwnedCache = <Type, TomTenantOwned?>{};
+  /// Cache of resolved `@TomTenantTable` annotations per entity type
+  /// (`null` = the entity is a system table).
+  static final _tenantTableCache = <Type, TomTenantTable?>{};
 
   /// Cache of the column-authorized (`@TomDbColumn(authKey: …)`) columns per
   /// entity type (an empty list = the entity declares no column access rights).
@@ -134,7 +134,7 @@ mixin TomAnnotationAnalyzer {
   ///
   /// Clearing all seven together is the whole point: they are derived from one
   /// another — the columns come from the mirror, the row scope, the tenant
-  /// ownership and the two
+  /// classification and the two
   /// column subsets come from the columns — so a caller emptying the ones it
   /// happens to know about would leave the rest describing an entity that no
   /// longer exists. `test/persistence_metadata_sharing_test.dart` asserts this
@@ -144,7 +144,7 @@ mixin TomAnnotationAnalyzer {
     _tableCache.clear();
     _columnInfoCache.clear();
     _dataScopeCache.clear();
-    _tenantOwnedCache.clear();
+    _tenantTableCache.clear();
     _authColumnCache.clear();
     _fileColumnCache.clear();
   }
@@ -290,15 +290,60 @@ mixin TomAnnotationAnalyzer {
     'tom_resource_grant',
   };
 
-  /// The entity's `@TomTenantOwned`, or `null` when it is not tenant-owned.
-  static TomTenantOwned? findTenantOwnership(Type dbType) {
-    if (_tenantOwnedCache.containsKey(dbType)) {
-      return _tenantOwnedCache[dbType];
+  /// The entity's `@TomTenantTable`, or `null` when it is a system table.
+  static TomTenantTable? findTenantTable(Type dbType) {
+    if (_tenantTableCache.containsKey(dbType)) {
+      return _tenantTableCache[dbType];
     }
     final mirror = findMirror(dbType);
-    final found = mirror?.metadata.whereType<TomTenantOwned>().firstOrNull;
-    _tenantOwnedCache[dbType] = found;
+    final found = mirror?.metadata.whereType<TomTenantTable>().firstOrNull;
+    _tenantTableCache[dbType] = found;
     return found;
+  }
+
+  /// Whether [dbType] is a tenant table (`@TomTenantTable`); every other entity
+  /// is a system table.
+  static bool isTenantTable(Type dbType) => findTenantTable(dbType) != null;
+
+  /// Every reflected `@TomDbTable` entity classified as a tenant table, with
+  /// its table — the tenant tables the deployment's code declares.
+  static Map<Type, TomDbTable> tenantTables() => {
+    for (final candidate in tomReflector.annotatedClasses)
+      if (candidate.metadata.any((m) => m is TomTenantTable))
+        if (candidate.metadata.whereType<TomDbTable>().firstOrNull
+            case final table?)
+          candidate.reflectedType: table,
+  };
+
+  /// Throws `annotation_analyzer.tenant_table.mixed` unless every one of
+  /// [types] has the same classification — all tenant tables or all system
+  /// tables. [what] names the construct that would put them in one statement
+  /// (a repository over several types, a subquery, an association).
+  ///
+  /// A tenant's rows can live in a schema or a database of their own at any
+  /// time, where one statement cannot reach the system schema too; so a
+  /// tenant table and a system table never meet in a join, whatever the
+  /// isolation models the deployment uses today.
+  static void verifySameClassification(Iterable<Type> types, String what) {
+    final list = types.toList();
+    if (list.length < 2) return;
+    final tenant = isTenantTable(list.first);
+    for (final type in list.skip(1)) {
+      if (isTenantTable(type) == tenant) continue;
+      final (tenantType, systemType) = tenant
+          ? (list.first, type)
+          : (type, list.first);
+      throw TomAnnotationAnalyzerSyntaxException(
+        'annotation_analyzer.tenant_table.mixed',
+        '$what joins the tenant table $tenantType and the system table '
+            '$systemType; the two meet by id, read by a second query.',
+        parameters: {
+          'what': what,
+          'tenant': '$tenantType',
+          'system': '$systemType',
+        },
+      );
+    }
   }
 
   /// Returns the row-level data scope of [dbType], or `null` when the entity is
@@ -569,6 +614,11 @@ mixin TomAnnotationAnalyzer {
             );
           }
         } else if (tbcObject is TomReference) {
+          verifySameClassification([
+            dbType,
+            tbcObject.joinEntity,
+            tbcObject.targetEntity,
+          ], 'The association $dbType.${dEntry.key}');
           Object? tbcObject2 = dEntry.value.metadata.firstWhere(
             (md) => md is TomDbColumn,
             orElse: () => Object(),

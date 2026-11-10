@@ -350,6 +350,7 @@ class TomMemoryOAuthTokenStore implements TomOAuthTokenStore {
 // Read from the primary: a change here — a revocation above all — must
 // take effect at once, not after a replica's lag.
 @TomPrimaryReads()
+@TomTenantTable()
 @TomDbTable(
   datasource: 'main',
   table: 'tom_external_identity_token',
@@ -360,6 +361,11 @@ class TomExternalIdentityToken {
   @TomEntityId()
   @TomDbColumn(columnName: 'id', isReadOnly: true)
   int id;
+
+  /// The tenant the row belongs to (`@TomTenantTable`): filled by the
+  /// repository from the tenant in context and bound into every statement.
+  @TomDbColumn(columnName: 'tenant_id')
+  String tenantId;
 
   /// The identity provider's issuer identifier — the first half of the key this
   /// row shares with [TomExternalIdentityLink].
@@ -396,6 +402,7 @@ class TomExternalIdentityToken {
   /// blank entity and fills it column by column when mapping a result.
   TomExternalIdentityToken({
     this.id = -1,
+    this.tenantId = '',
     this.issuer = '',
     this.subject = '',
     this.tokenData = '',
@@ -408,10 +415,10 @@ class TomExternalIdentityToken {
   /// migration so the two cannot drift — `test/reference_migrations_test.dart`
   /// fails if they do.
   ///
-  /// `(issuer, subject)` is unique because a second grant for the same identity
-  /// would make which credential an application presents depend on row order —
-  /// and the older of two rows is by definition the one whose refresh token the
-  /// provider may already have rotated away.
+  /// `(tenant_id, issuer, subject)` is unique because a second grant for the
+  /// same identity in one tenant would make which credential an application
+  /// presents depend on row order — and the older of two rows is by definition
+  /// the one whose refresh token the provider may already have rotated away.
   ///
   /// The two instant columns are `DATETIME(6)`, the width the instant convention
   /// writes (`datasources/sql_instant.dart`); a plain `DATETIME` rounds off the
@@ -419,6 +426,7 @@ class TomExternalIdentityToken {
   static const String createTableSql = '''
 CREATE TABLE IF NOT EXISTS tom_external_identity_token (
   id BIGINT NOT NULL AUTO_INCREMENT,
+  tenant_id VARCHAR(32) NOT NULL DEFAULT 'default',
   issuer VARCHAR(255) NOT NULL,
   subject VARCHAR(255) NOT NULL,
   token_data TEXT NULL,
@@ -426,7 +434,7 @@ CREATE TABLE IF NOT EXISTS tom_external_identity_token (
   obtained_at DATETIME(6) NULL,
   expires_at DATETIME(6) NULL,
   PRIMARY KEY (id),
-  UNIQUE KEY uq_tom_external_identity_token (issuer, subject)
+  UNIQUE KEY uq_tom_external_identity_token (tenant_id, issuer, subject)
 );''';
 }
 

@@ -4,7 +4,7 @@
 /// Every operation works through the repositories the application registers
 /// ([TomPrivacy.register]), so it is the repository's write path that runs:
 /// each deleted or anonymized row is audited, its file columns are cascaded,
-/// encrypted columns stay encrypted and a tenant-owned entity stays within its
+/// encrypted columns stay encrypted and a tenant table stays within its
 /// tenant. The operations themselves are audited too — one record per erasure,
 /// export and retention run — so the trail shows what was done for whom.
 ///
@@ -29,10 +29,12 @@ import '../audit/audit_record.dart';
 import '../audit/audit_trail.dart';
 import '../export/tabular_renderer.dart';
 import '../export/tabular_result.dart';
+import '../object_persistence/annotation_analyzer.dart';
 import '../object_persistence/crud_repository.dart';
 import '../object_persistence/data_scope.dart';
 import '../object_persistence/field_encryption.dart';
 import '../object_persistence/paging.dart';
+import '../tenancy/tenancy.dart';
 import 'personal_data.dart';
 import 'subject_keys.dart';
 
@@ -467,6 +469,10 @@ abstract final class TomPrivacy {
   /// Expired rows are deleted, or anonymized — every subject field and its
   /// personal fields cleared — through the entity's repository, a batch at a
   /// time. Each policy's run is audited ([retentionTarget]).
+  ///
+  /// A tenant table's policy run with no tenant in context under an installed
+  /// tenancy is applied in every tenant in turn, and its count is their sum; in
+  /// a tenant it is applied in that tenant only. A system table's runs once.
   static Future<List<TomRetentionCount>> applyRetention({
     Iterable<TomRetentionPolicy>? policies,
     DateTime? now,
@@ -475,44 +481,23 @@ abstract final class TomPrivacy {
     final results = <TomRetentionCount>[];
     for (final policy in policies ?? TomRetentionPolicy.declared()) {
       final entity = _registered(policy.entity);
-      final model = entity.model;
       final cutoff = at.subtract(policy.keep);
-      final anonymize = policy.action != TomErasure.delete;
-      final key = model.keys.isEmpty
-          ? policy.field
-          : model.keys.first.declaredName;
+      final tenancy = TomTenancy.current;
       var affected = 0;
-      for (var page = 0; ; page++) {
-        // Deleted rows leave the result, so a delete always reads the first
-        // page; anonymized rows stay, so the anonymizing run pages on.
-        final rows = await entity.find(
-          'find by ${policy.field} < :cutoff',
-          {'cutoff': cutoff},
-          TomPageRequest.page(
-            anonymize ? page : 0,
-            retentionBatchSize,
-            sort: [TomSortField.asc(key)],
-          ),
+      if (TomAnnotationAnalyzer.isTenantTable(policy.entity) &&
+          tenancy != null &&
+          TomTenantContext.currentId == null) {
+        await tenancy.forEachTenant(
+          (_) async => affected += await _retain(entity, policy, cutoff),
         );
-        if (rows.isEmpty) break;
-        for (final row in rows) {
-          if (anonymize) {
-            var changed = false;
-            for (final field in model.subjects) {
-              changed |= model.clear(row, field, anonymize: true);
-            }
-            if (!changed) continue;
-            await entity.save(row);
-          } else {
-            await entity.delete(row);
-          }
-          affected++;
-        }
-        if (rows.length < retentionBatchSize) break;
+      } else {
+        affected = await _retain(entity, policy, cutoff);
       }
       results.add(TomRetentionCount(policy, cutoff, affected));
       await TomAuditTrail.recordAction(
-        action: anonymize ? TomAuditAction.update : TomAuditAction.delete,
+        action: policy.action != TomErasure.delete
+            ? TomAuditAction.update
+            : TomAuditAction.delete,
         target: retentionTarget,
         targetKey: '${policy.entity}',
         outcome: TomAuditOutcome.succeeded,
@@ -521,6 +506,50 @@ abstract final class TomPrivacy {
     }
     return results;
   });
+
+  /// Applies [policy] to [entity] in the zone's tenant: the rows older than
+  /// [cutoff] deleted or anonymized; answers how many.
+  static Future<int> _retain(
+    _TomPrivacyEntity<Object> entity,
+    TomRetentionPolicy policy,
+    DateTime cutoff,
+  ) async {
+    final model = entity.model;
+    final anonymize = policy.action != TomErasure.delete;
+    final key = model.keys.isEmpty
+        ? policy.field
+        : model.keys.first.declaredName;
+    var affected = 0;
+    for (var page = 0; ; page++) {
+      // Deleted rows leave the result, so a delete always reads the first
+      // page; anonymized rows stay, so the anonymizing run pages on.
+      final rows = await entity.find(
+        'find by ${policy.field} < :cutoff',
+        {'cutoff': cutoff},
+        TomPageRequest.page(
+          anonymize ? page : 0,
+          retentionBatchSize,
+          sort: [TomSortField.asc(key)],
+        ),
+      );
+      if (rows.isEmpty) break;
+      for (final row in rows) {
+        if (anonymize) {
+          var changed = false;
+          for (final field in model.subjects) {
+            changed |= model.clear(row, field, anonymize: true);
+          }
+          if (!changed) continue;
+          await entity.save(row);
+        } else {
+          await entity.delete(row);
+        }
+        affected++;
+      }
+      if (rows.length < retentionBatchSize) break;
+    }
+    return affected;
+  }
 
   /// A scheduler job applying [policies] (default: the declared ones) on
   /// [schedule].

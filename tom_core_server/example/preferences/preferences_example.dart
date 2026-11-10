@@ -351,12 +351,12 @@ Future<void> run() async {
   check(
     preferencesDdl.contains('CREATE TABLE IF NOT EXISTS tom_user_preference') &&
         preferencesDdl.contains(
-          'uq_tom_user_preference (principal_id, preference_key)',
+          'uq_tom_user_preference (tenant_id, principal_id, preference_key)',
         ) &&
         defaultsDdl.contains(TomPreferenceDefault.createTableSql),
     'the migrations create the tables the entities map to, with the unique '
     'keys that make (principal, key) a preference\'s identity and '
-    '(scope, name, key) a default\'s',
+    '(scope, name, key) a default\'s, within the tenant',
   );
 
   print('\nPreferences example completed.');

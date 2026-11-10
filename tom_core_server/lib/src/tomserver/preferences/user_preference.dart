@@ -33,6 +33,7 @@ import '../privacy/personal_data.dart';
 
 /// One preference of one principal.
 @tomReflector
+@TomTenantTable()
 @TomDbTable(
   datasource: 'main',
   table: 'tom_user_preference',
@@ -44,6 +45,11 @@ class TomUserPreference {
   @TomEntityId()
   @TomDbColumn(columnName: 'id', isReadOnly: true)
   int id;
+
+  /// The tenant the row belongs to (`@TomTenantTable`): filled by the
+  /// repository from the tenant in context and bound into every statement.
+  @TomDbColumn(columnName: 'tenant_id')
+  String tenantId;
 
   /// The principal the preference belongs to ([TomPrincipal.qualifiedId]) —
   /// the scope column.
@@ -73,6 +79,7 @@ class TomUserPreference {
   /// blank entity and fills it column by column when mapping a result.
   TomUserPreference({
     this.id = -1,
+    this.tenantId = '',
     this.principalId = '',
     this.preferenceKey = '',
     this.valueType = '',
@@ -103,8 +110,8 @@ class TomUserPreference {
   /// migration so the two cannot drift — `test/reference_migrations_test.dart`
   /// fails if they do.
   ///
-  /// `(principal_id, preference_key)` is unique because that pair *is* the
-  /// preference's identity: writing a key twice must replace the value, and a
+  /// `(tenant_id, principal_id, preference_key)` is unique because the pair *is*
+  /// the preference's identity: writing a key twice must replace the value, and a
   /// duplicate would make which value a user gets depend on row order.
   ///
   /// `preference_key` and `value_type` are `COLLATE utf8mb4_bin`, so that
@@ -120,13 +127,14 @@ class TomUserPreference {
   static const String createTableSql = '''
 CREATE TABLE IF NOT EXISTS tom_user_preference (
   id BIGINT NOT NULL AUTO_INCREMENT,
+  tenant_id VARCHAR(32) NOT NULL DEFAULT 'default',
   principal_id VARCHAR(255) NOT NULL,
   preference_key VARCHAR(191) COLLATE utf8mb4_bin NOT NULL,
   value_type VARCHAR(191) COLLATE utf8mb4_bin NOT NULL,
   value_json TEXT NULL,
   updated_at DATETIME(6) NULL,
   PRIMARY KEY (id),
-  UNIQUE KEY uq_tom_user_preference (principal_id, preference_key),
+  UNIQUE KEY uq_tom_user_preference (tenant_id, principal_id, preference_key),
   KEY idx_tom_user_preference_principal (principal_id)
 );''';
 }

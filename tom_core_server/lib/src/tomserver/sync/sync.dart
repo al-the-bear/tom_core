@@ -43,6 +43,7 @@ import '../object_persistence/crud_repository.dart';
 import '../object_persistence/data_scope.dart';
 import '../object_persistence/entity_lifecycle.dart';
 import '../object_persistence/persistence_annotations.dart';
+import '../tenancy/tenancy.dart';
 import '../transactions/transaction_manager.dart';
 import 'sync_sql.dart';
 
@@ -493,7 +494,20 @@ abstract final class TomSync {
       );
     }
     final entity = _SyncedEntity<T, K>(collection, repository, validate);
-    await log.prepare(repository.datasourceInfo.datasource, collection);
+    // A tenant table's change log lives beside the tenant's rows: with a
+    // tenancy installed and no tenant in context it is prepared in every
+    // tenant served now; a tenant added later is prepared by its first push or
+    // pull, or by its migrations.
+    final tenancy = TomTenancy.current;
+    if (repository.isTenantTable &&
+        tenancy != null &&
+        TomTenantContext.currentId == null) {
+      await tenancy.forEachTenant(
+        (_) => log.prepare(repository.datasourceInfo.datasource, collection),
+      );
+    } else {
+      await log.prepare(repository.datasourceInfo.datasource, collection);
+    }
     _collections[collection] = entity as _SyncedEntity<Object, Object?>;
     _listeners.add(
       TomEntityLifecycle.onChange(

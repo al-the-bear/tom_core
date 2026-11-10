@@ -14,7 +14,7 @@ An entity declares what it holds about whom: `@TomDataSubject` on the `int` or
 data, and `@TomRetention` on the class. The application registers the entities'
 repositories with `TomPrivacy`, and every operation runs through them: each row
 it deletes or updates is audited, its files are cascaded, encrypted columns stay
-encrypted and a tenant-owned entity stays in its tenant. The operations read
+encrypted and a tenant table stays in its tenant. The operations read
 regardless of the caller's row scope, so who may ask for one is the caller's to
 gate.
 

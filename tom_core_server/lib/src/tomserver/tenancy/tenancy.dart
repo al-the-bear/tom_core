@@ -5,7 +5,7 @@
 ///
 /// | Model | Where a tenant's rows live | Isolation | Operating cost |
 /// | ----- | -------------------------- | --------- | -------------- |
-/// | [TomTenantIsolation.shared] | the shared database, every tenant-owned table carrying a tenant column | the row predicate | one database, one migration |
+/// | [TomTenantIsolation.shared] | the shared schema of its type — the system schema for the type `default` — every tenant table carrying a tenant column | the row predicate | one schema per type, one migration per type |
 /// | [TomTenantIsolation.schema] | a schema of its own on the shared server (on MariaDB, a database) | the schema boundary, and the predicate | one schema and one pool per tenant |
 /// | [TomTenantIsolation.database] | a database of its own, configured per tenant — another server, another region | the server boundary, and the predicate | one database, one pool and one migration run per tenant |
 ///
@@ -15,7 +15,10 @@
 /// and [TomTenancy.route] answers with the current tenant's — so application
 /// code is the same under all three.
 ///
-/// The row predicate (`@TomTenantOwned`) applies in every model. Under the
+/// Only tenant tables (`@TomTenantTable`) are routed; a system table — every
+/// other entity — is read and written in the system schema, the base data
+/// source's own, also inside a tenant. The row predicate applies to every
+/// tenant table in every model. Under the
 /// schema and database models it is a second wall rather than the only one,
 /// and it is what makes moving a tenant between models a copy of its rows
 /// rather than a schema change.
@@ -24,7 +27,7 @@
 ///
 /// | Concern | How |
 /// | ------- | --- |
-/// | Repositories | `@TomTenantOwned` predicate on every read and write; data source routed per tenant |
+/// | Repositories | a tenant table (`@TomTenantTable`): the tenant predicate on every read and write, its data source routed per tenant; a system table: never routed |
 /// | Caches | keys qualified by tenant (`TomCache`'s static API) |
 /// | Principal revocation | per tenant: revoking `alice` in one tenant leaves another tenant's `alice` alone |
 /// | Jobs | a run records its tenant and its body runs inside it, across isolates too |
@@ -44,6 +47,8 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 import '../configuration/base_server_configuration.dart';
 import '../datasources/datasource_initialization.dart';
 import '../little_things/server_exception.dart';
+import '../object_persistence/annotation_analyzer.dart';
+import '../object_persistence/persistence_annotations.dart';
 import 'tenant_registry.dart';
 import 'tenant_registry_sql.dart';
 import 'tenant_resolution.dart';
@@ -817,7 +822,7 @@ class TomTenancy {
   /// [TomTenantPathResolver]'s lookup does not know included; so is an id
   /// that is not one
   /// (`tenancy.id.invalid`, 400). No answer at all is not a rejection: the
-  /// request proceeds with no tenant, and tenant-owned data is closed to it.
+  /// request proceeds with no tenant, and tenant tables are closed to it.
   TomTenantResolution resolveRequest(Request request, {String? claim}) {
     String? named;
     for (final resolver in resolvers) {
@@ -895,6 +900,24 @@ class TomTenancy {
       lookup: (segment) => bySegment[segment],
     );
   }
+
+  /// The tenant of a deployment that installs no tenancy — the implicit
+  /// tenant tenant-table work with no tenant in context runs as.
+  static const String implicitTenant = TomTenant.defaultType;
+
+  /// The tenant work on a tenant table ([what] names it) runs as: the tenant
+  /// in context; with none, [implicitTenant] when no tenancy is installed, and
+  /// `tenancy.context.missing` when one is — an installed tenancy never
+  /// guesses whose rows these are.
+  static String tenantForWork(String what) =>
+      TomTenantContext.currentId ??
+      (current == null ? implicitTenant : TomTenantContext.require(what));
+
+  /// The tenant tables the deployment's code declares: every reflected
+  /// `@TomDbTable` entity marked `@TomTenantTable`, with its table, as the
+  /// annotation analyzer reports them.
+  static Map<Type, TomDbTable> get tenantTables =>
+      TomAnnotationAnalyzer.tenantTables();
 
   /// The exception for work in a tenant the deployment does not have.
   static TomTenancyException unknownTenant(String tenantId) =>

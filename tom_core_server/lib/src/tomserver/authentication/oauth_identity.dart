@@ -16,7 +16,9 @@
 ///
 /// ## Why several rows per account
 ///
-/// The table's unique key is `(issuer, subject)` — *not* the local username. An
+/// The table's unique key is `(tenant_id, issuer, subject)` — *not* the local
+/// username. A tenant table (`@TomTenantTable`), it links a provider account per
+/// tenant, so the same account may be linked in two tenants. An
 /// account may therefore hold a Google identity, a corporate SSO identity and a
 /// local password at once, which is the state every real deployment converges
 /// on: people sign up one way and later sign in another, and a framework that
@@ -57,6 +59,7 @@ import '../datasources/read_replicas.dart';
 // Read from the primary: a change here — a revocation above all — must
 // take effect at once, not after a replica's lag.
 @TomPrimaryReads()
+@TomTenantTable()
 @TomDbTable(
   datasource: 'main',
   table: 'tom_external_identity',
@@ -67,6 +70,11 @@ class TomExternalIdentityLink {
   @TomEntityId()
   @TomDbColumn(columnName: 'id', isReadOnly: true)
   int id;
+
+  /// The tenant the row belongs to (`@TomTenantTable`): filled by the
+  /// repository from the tenant in context and bound into every statement.
+  @TomDbColumn(columnName: 'tenant_id')
+  String tenantId;
 
   /// The identity provider's issuer identifier
   /// ([TomOAuthProviderConfig.issuer]).
@@ -108,6 +116,7 @@ class TomExternalIdentityLink {
   /// a blank entity and fills it column by column when mapping a result.
   TomExternalIdentityLink({
     this.id = -1,
+    this.tenantId = '',
     this.issuer = '',
     this.subject = '',
     this.localUsername = '',
@@ -120,9 +129,9 @@ class TomExternalIdentityLink {
   /// migration so the two cannot drift — `test/reference_migrations_test.dart`
   /// fails if they do.
   ///
-  /// `(issuer, subject)` is unique because that pair *is* the external
-  /// identity: a duplicate would make which local account a sign-in reaches
-  /// depend on row order. The index on `local_username` is what makes "every
+  /// `(tenant_id, issuer, subject)` is unique because the pair *is* the
+  /// external identity within its tenant: a duplicate would make which local
+  /// account a sign-in reaches depend on row order. The index on `local_username` is what makes "every
   /// identity linked to this account" — the account-settings question — a
   /// lookup rather than a scan.
   ///
@@ -132,6 +141,7 @@ class TomExternalIdentityLink {
   static const String createTableSql = '''
 CREATE TABLE IF NOT EXISTS tom_external_identity (
   id BIGINT NOT NULL AUTO_INCREMENT,
+  tenant_id VARCHAR(32) NOT NULL DEFAULT 'default',
   issuer VARCHAR(255) NOT NULL,
   subject VARCHAR(255) NOT NULL,
   local_username VARCHAR(255) NOT NULL,
@@ -139,7 +149,7 @@ CREATE TABLE IF NOT EXISTS tom_external_identity (
   linked_at DATETIME(6) NULL,
   last_login_at DATETIME(6) NULL,
   PRIMARY KEY (id),
-  UNIQUE KEY uq_tom_external_identity (issuer, subject),
+  UNIQUE KEY uq_tom_external_identity (tenant_id, issuer, subject),
   KEY idx_tom_external_identity_local (local_username)
 );''';
 }

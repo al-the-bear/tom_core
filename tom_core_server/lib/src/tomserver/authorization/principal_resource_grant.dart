@@ -48,6 +48,7 @@ import '../datasources/read_replicas.dart';
 // Read from the primary: a change here — a revocation above all — must
 // take effect at once, not after a replica's lag.
 @TomPrimaryReads()
+@TomTenantTable()
 @TomDbTable(
   datasource: 'main',
   table: 'tom_principal_resource_grant',
@@ -63,6 +64,11 @@ class TomPrincipalResourceGrant {
   @TomEntityId()
   @TomDbColumn(columnName: 'id', isReadOnly: true)
   int id;
+
+  /// The tenant the row belongs to (`@TomTenantTable`): filled by the
+  /// repository from the tenant in context and bound into every statement.
+  @TomDbColumn(columnName: 'tenant_id')
+  String tenantId;
 
   /// The principal the grant applies to, by its tenant-qualified id
   /// ([TomPrincipal.qualifiedId]; for another principal than the caller,
@@ -90,6 +96,7 @@ class TomPrincipalResourceGrant {
   /// build a fully-specified grant still pass the named arguments.
   TomPrincipalResourceGrant({
     this.id = -1,
+    this.tenantId = '',
     this.principalId = '',
     this.resourceKey = '',
     this.role = '',
@@ -98,7 +105,7 @@ class TomPrincipalResourceGrant {
   /// The canonical DDL for the `tom_principal_resource_grant` table.
   ///
   /// A principal has at most one direct role per resource, enforced by the
-  /// unique key. (Delegated roles from C-6 arrive as separate rows resolved
+  /// unique key `(tenant_id, principal_id, resource_key)`. (Delegated roles from C-6 arrive as separate rows resolved
   /// alongside these; the resolver folds duplicates by strength.)
   ///
   /// Shipped verbatim as the reference `db_migration` script, so the two cannot
@@ -106,11 +113,12 @@ class TomPrincipalResourceGrant {
   static const String createTableSql = '''
 CREATE TABLE IF NOT EXISTS tom_principal_resource_grant (
   id BIGINT NOT NULL AUTO_INCREMENT,
+  tenant_id VARCHAR(32) NOT NULL DEFAULT 'default',
   principal_id VARCHAR(255) NOT NULL,
   resource_key VARCHAR(255) NOT NULL,
   role VARCHAR(255) NOT NULL,
   PRIMARY KEY (id),
-  UNIQUE KEY uq_tom_principal_resource_grant (principal_id, resource_key)
+  UNIQUE KEY uq_tom_principal_resource_grant (tenant_id, principal_id, resource_key)
 );''';
 
   @override

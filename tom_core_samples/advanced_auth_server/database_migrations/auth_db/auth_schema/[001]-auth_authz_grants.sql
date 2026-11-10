@@ -13,11 +13,12 @@
 
 CREATE TABLE IF NOT EXISTS tom_resource_grant (
   id BIGINT NOT NULL AUTO_INCREMENT,
+  tenant_id VARCHAR(32) NOT NULL DEFAULT 'default',
   role_name VARCHAR(255) NOT NULL,
   resource_key VARCHAR(255) NOT NULL,
   access_level ENUM('none', 'disabled', 'read', 'full') NOT NULL DEFAULT 'none',
   PRIMARY KEY (id),
-  UNIQUE KEY uq_tom_resource_grant_role_key (role_name, resource_key)
+  UNIQUE KEY uq_tom_resource_grant_role_key (tenant_id, role_name, resource_key)
 );
 
 -- Per-principal-per-resource role grants. The table DDL is the canonical
@@ -33,11 +34,12 @@ CREATE TABLE IF NOT EXISTS tom_resource_grant (
 -- login folds them into TomAccessControlInformation.resourceRoles.
 CREATE TABLE IF NOT EXISTS tom_principal_resource_grant (
   id BIGINT NOT NULL AUTO_INCREMENT,
+  tenant_id VARCHAR(32) NOT NULL DEFAULT 'default',
   principal_id VARCHAR(255) NOT NULL,
   resource_key VARCHAR(255) NOT NULL,
   role VARCHAR(255) NOT NULL,
   PRIMARY KEY (id),
-  UNIQUE KEY uq_tom_principal_resource_grant (principal_id, resource_key)
+  UNIQUE KEY uq_tom_principal_resource_grant (tenant_id, principal_id, resource_key)
 );
 
 -- Per-principal delegation rows. The table DDL is the canonical
@@ -52,6 +54,7 @@ CREATE TABLE IF NOT EXISTS tom_principal_resource_grant (
 -- schema is the sole resource-access path.
 CREATE TABLE IF NOT EXISTS tom_principal_delegation (
   id BIGINT NOT NULL AUTO_INCREMENT,
+  tenant_id VARCHAR(32) NOT NULL DEFAULT 'default',
   delegator_id VARCHAR(255) NOT NULL,
   delegate_id VARCHAR(255) NOT NULL,
   mode VARCHAR(32) NOT NULL,
@@ -61,5 +64,6 @@ CREATE TABLE IF NOT EXISTS tom_principal_delegation (
   valid_to DATETIME(6) NULL,
   revoked TINYINT(1) NOT NULL DEFAULT 0,
   PRIMARY KEY (id),
+  KEY idx_tom_principal_delegation_tenant (tenant_id),
   KEY idx_tom_principal_delegation_delegate (delegate_id, revoked)
 );

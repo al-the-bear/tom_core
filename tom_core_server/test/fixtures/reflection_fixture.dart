@@ -1723,14 +1723,15 @@ class FixtureUntaggedRepository
 class FixtureTaskRepository
     extends TomSqlDatasourceRepository<FixtureTaskRecord, int> {}
 
-/// A reflected **tenant-owned** entity, for the multi-tenancy surfaces.
+/// A reflected **tenant table**, for the multi-tenancy surfaces.
 ///
-/// `@TomTenantOwned` puts every read and write behind the tenant in context,
-/// in every isolation model; `tenant_id` is filled from the context on insert.
-/// Maps to `fixture_tenant_note`, which the tenancy suite creates in every
-/// schema and database a tenant's data lives in.
+/// `@TomTenantTable` routes it to the current tenant's schema or database and
+/// puts every read and write behind the tenant in context, in every isolation
+/// model; `tenant_id` is filled from the context on insert. Maps to
+/// `fixture_tenant_note`, which the tenancy suites create in every schema and
+/// database a tenant's data lives in.
 @tomReflector
-@TomTenantOwned()
+@TomTenantTable()
 @TomDbTable(
   datasource: 'tom_core_server_test',
   table: 'fixture_tenant_note',
@@ -1754,6 +1755,119 @@ class FixtureTenantNote {
 /// The MariaDB-backed repository for [FixtureTenantNote].
 class FixtureTenantNoteRepository
     extends TomSqlDatasourceRepository<FixtureTenantNote, int> {}
+
+/// A reflected **system table** beside [FixtureTenantNote]: no
+/// `@TomTenantTable`, so it is read and written in the system schema — the
+/// registered data source, unrouted — also inside a tenant. Maps to
+/// `fixture_system_note`.
+@tomReflector
+@TomDbTable(
+  datasource: 'tom_core_server_test',
+  table: 'fixture_system_note',
+  primaryKeyFields: ['id'],
+)
+class FixtureSystemNote {
+  /// Surrogate primary key.
+  @TomEntityId()
+  @TomDbColumn(columnName: 'id', isReadOnly: true)
+  int? id;
+
+  /// The note's text.
+  @TomDbColumn(columnName: 'text')
+  String? text;
+}
+
+/// The repository for [FixtureSystemNote].
+class FixtureSystemNoteRepository
+    extends TomSqlDatasourceRepository<FixtureSystemNote, int> {}
+
+/// A reflected **tenant table** whose `@TomReference` reaches the system
+/// tables [FixtureTagLink] and [FixtureTag] — refused by the analyzer, because
+/// a tenant table and a system table never meet in one statement.
+///
+/// Carries no `@TomDbTable`: the refusal is the analysis of its columns, and a
+/// mapped table would put it in front of every walk over the entities.
+@tomReflector
+@TomTenantTable()
+class FixtureMixedReferenceRecord {
+  /// The reference across the two kinds.
+  @TomReference(
+    targetEntity: FixtureTag,
+    keyType: int,
+    repositoryType: FixtureTagRepository,
+    joinEntity: FixtureTagLink,
+    leftSideColumns: ['FixtureTagLink.taggedId=FixtureMixedReferenceRecord.id'],
+    rightSideColumns: ['FixtureTagLink.tagId=FixtureTag.id'],
+  )
+  List<FixtureTag> tags = [];
+}
+
+/// A synced **tenant table**: a client-chosen key and a `@TomVersion`, so the
+/// sync suite can expose it per tenant. Maps to `fixture_tenant_sync_note`.
+@tomReflector
+@TomTenantTable()
+@TomDbTable(
+  datasource: 'tom_core_server_test',
+  table: 'fixture_tenant_sync_note',
+  primaryKeyFields: ['id'],
+)
+class FixtureTenantSyncNote {
+  /// The device-chosen key.
+  @TomEntityId()
+  @TomDbColumn(columnName: 'id')
+  String? id;
+
+  /// The tenant the note belongs to.
+  @TomDbColumn(columnName: 'tenant_id')
+  String? tenantId;
+
+  /// The row's version, maintained by the repository.
+  @TomVersion()
+  @TomDbColumn(columnName: 'version')
+  int? version;
+
+  /// The note's text.
+  @TomDbColumn(columnName: 'text')
+  String? text;
+}
+
+/// The repository for [FixtureTenantSyncNote].
+class FixtureTenantSyncNoteRepository
+    extends TomSqlDatasourceRepository<FixtureTenantSyncNote, String> {}
+
+/// A **tenant table** with a retention period: a visit, deleted after seven
+/// days, in every tenant. Maps to `fixture_tenant_visit`.
+@tomReflector
+@TomTenantTable()
+@TomRetention(field: 'at', days: 7)
+@TomDbTable(
+  datasource: 'tom_core_server_test',
+  table: 'fixture_tenant_visit',
+  primaryKeyFields: ['id'],
+)
+class FixtureTenantVisit {
+  /// Surrogate primary key.
+  @TomEntityId()
+  @TomDbColumn(columnName: 'id', isReadOnly: true)
+  int? id;
+
+  /// The tenant the visit belongs to.
+  @TomDbColumn(columnName: 'tenant_id')
+  String? tenantId;
+
+  /// The visitor's user id.
+  @TomDataSubject()
+  @TomDbColumn(columnName: 'visitor_id')
+  int? visitorId;
+
+  /// When the visit was.
+  @TomDbColumn(columnName: 'at')
+  DateTime? at;
+}
+
+/// The repository for [FixtureTenantVisit].
+class FixtureTenantVisitRepository
+    extends TomSqlDatasourceRepository<FixtureTenantVisit, int> {}
 
 /// A reflected entity with a `@TomVersion` column, for optimistic locking.
 ///

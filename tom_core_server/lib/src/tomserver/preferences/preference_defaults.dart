@@ -168,7 +168,12 @@ class TomPreferenceDefaults {
     );
     final saved = await repository.saveByKey(
       row,
-      conflictFields: const ['scopeKind', 'scopeName', 'preferenceKey'],
+      conflictFields: const [
+        'tenantId',
+        'scopeKind',
+        'scopeName',
+        'preferenceKey',
+      ],
     );
     return saved.toDto();
   }

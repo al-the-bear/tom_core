@@ -251,20 +251,25 @@ void main() async {
               'globex 1',
             );
 
-            // With no tenant in context, tenant data is closed.
-            expect(await TomTenantContext.run(null, notes.findAll), isEmpty);
+            // With no tenant in context, a tenant table is refused under an
+            // installed tenancy: it never guesses whose rows these are.
+            final missing = throwsA(
+              isA<TomTenantException>().having(
+                (e) => e.key,
+                'key',
+                'tenancy.context.missing',
+              ),
+            );
+            await expectLater(
+              TomTenantContext.run(null, notes.findAll),
+              missing,
+            );
             await expectLater(
               TomTenantContext.run(
                 null,
                 () => notes.save(FixtureTenantNote()..text = 'nobody'),
               ),
-              throwsA(
-                isA<TomDataScopeAuthorizationException>().having(
-                  (e) => e.key,
-                  'key',
-                  'data_scope.write.no_tenant',
-                ),
-              ),
+              missing,
             );
 
             // Where the rows physically are.

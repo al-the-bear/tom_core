@@ -348,7 +348,7 @@ class TomUserPreferences {
     );
     final saved = await repository.saveByKey(
       row,
-      conflictFields: const ['principalId', 'preferenceKey'],
+      conflictFields: const ['tenantId', 'principalId', 'preferenceKey'],
     );
     return saved.toDto();
   }

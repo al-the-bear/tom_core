@@ -34,7 +34,7 @@ This guide is the server half.
 - [Resolving a Request's Tenant](#resolving-a-requests-tenant)
   - [Rejections](#rejections)
   - [A login binds the token to its tenant](#a-login-binds-the-token-to-its-tenant)
-- [Tenant-Owned Entities](#tenant-owned-entities)
+- [Tenant Tables and System Tables](#tenant-tables-and-system-tables)
 - [Principals per Tenant](#principals-per-tenant)
 - [Identity Federation per Tenant](#identity-federation-per-tenant)
 - [What Is Tenant-Scoped](#what-is-tenant-scoped)
@@ -110,12 +110,14 @@ other. A token therefore carries both claims, independently:
 
 | Model | Where a tenant's rows live | Isolation | Operating cost |
 | ----- | -------------------------- | --------- | -------------- |
-| `TomTenantIsolation.shared` | the shared database; every tenant-owned table carries a tenant column | the row predicate | one database, one migration run |
+| `TomTenantIsolation.shared` | the shared schema of its type — the system schema for the type `default`; every tenant table carries a tenant column | the row predicate | one schema and one migration run per type |
 | `TomTenantIsolation.schema` | a schema of its own on the shared server — on MariaDB a database, on PostgreSQL a schema inside the one database | the schema boundary, and the predicate | one schema and one connection pool per tenant |
 | `TomTenantIsolation.database` | a database of its own, configured per tenant — another server, another region | the server boundary, and the predicate | one database, one pool and one migration run per tenant |
 
-The row predicate that `@TomTenantOwned` adds (see
-[Tenant-Owned Entities](#tenant-owned-entities)) applies **in every model**.
+Only tenant tables are placed by the model; a system table stays in the system
+schema whatever the tenant (see
+[Tenant Tables and System Tables](#tenant-tables-and-system-tables)). The row
+predicate a tenant table carries applies **in every model**.
 Under `schema` and `database` it is a second wall rather than the only one, and
 it is what makes moving a tenant between models a copy of its rows rather than a
 schema change: the rows already carry their tenant.
@@ -497,8 +499,8 @@ request's tenant through `TomTenancy.resolveRequest` and runs the request inside
      serving the routes under the prefix is the deployment's router's.
    - `TomTenantHeaderResolver` answers the value of its header, trimmed.
 3. **No answer is not a rejection.** The request proceeds in an explicit
-   no-tenant context; tenant-owned data is closed to it, and everything else is
-   served normally.
+   no-tenant context; tenant tables are closed to it
+   (`tenancy.context.missing`), and system tables are served normally.
 
 A header is the weakest of the sources, because a client chooses it freely. It
 is safe here because it only ever *proposes* a tenant: data stays closed until a
@@ -537,14 +539,14 @@ to the request. See
 [authentication.md](authentication.md#tenancy-and-the-token) for the
 authentication side.
 
-## Tenant-Owned Entities
+## Tenant Tables and System Tables
 
-`@TomTenantOwned` (object_persistence) marks an entity whose every row belongs
-to a tenant:
+Every entity is a **tenant table** — declared with `@TomTenantTable`
+(object_persistence) — or a **system table**, every other entity:
 
 ```dart
 @tomReflector
-@TomTenantOwned()
+@TomTenantTable()
 @TomDbTable(datasource: 'main', table: 'invoice', primaryKeyFields: ['id'])
 class Invoice {
   @TomEntityId()
@@ -559,25 +561,60 @@ class Invoice {
 }
 ```
 
-The annotation's `field` names the entity field holding the tenant id —
-`tenantId` by default. The repository then:
+The classification, not a data-source name, decides where a repository reads
+and writes. Data-source names stay — a deployment may have `main` and
+`reporting` — but a data source's tenant tables are routed and its system
+tables never are:
 
-- adds `<field> = <current tenant>` as a bound predicate to every read —
-  `findAll`, `findById`, `count`, `findWhere`, the existence checks;
+| Table | Tenant in context | Data source |
+| ----- | ----------------- | ----------- |
+| system | any, or none | the base data source, unrouted — the system schema, also inside a tenant |
+| tenant | a `schema` or `database` tenant | the tenant's own schema or database |
+| tenant | a `shared` tenant | its type's shared schema — the system schema for the type `default`, `<databaseName>_<type>` otherwise |
+| tenant | none, under an installed tenancy | refused: `tenancy.context.missing` |
+| tenant | none, with no tenancy installed | the base data source, as the implicit tenant `default` |
+
+`TomTenancy.tenantForWork(what)` answers which tenant tenant-table work runs
+as — the tenant in context, else `TomTenancy.implicitTenant` (`default`) when
+no tenancy is installed — and throws `tenancy.context.missing` otherwise; an
+installed tenancy never guesses whose rows these are. `TomTenancy.tenantTables`
+is the set of tenant tables the code declares, as the annotation analyzer
+reports them, each with its `@TomDbTable`.
+
+Every tenant table has the tenant column (the annotation's `field`, `tenantId`
+by default) **in every isolation model**, because any tenant may be moved to
+another model. The repository then:
+
+- adds `<field> = <tenant>` as a bound predicate to every read — `findAll`,
+  `findById`, `count`, `findByQuery`, the existence checks, `historyOf`;
 - lets an update or delete touch only rows that predicate admits;
-- fills an unset tenant field on insert with the current tenant, and refuses an
-  entity naming another tenant (`data_scope.write.foreign_tenant`) — which also
-  stops an update from moving a row to another tenant;
-- with no tenant in context, reads nothing and refuses every write
-  (`data_scope.write.no_tenant`).
+- fills an unset tenant field on insert with the tenant, and refuses an entity
+  naming another tenant (`data_scope.write.foreign_tenant`) — which also stops
+  an update from moving a row to another tenant.
 
 The predicate is independent of `@TomDbScope` and is ANDed with it, so an
 entity can be a tenant's *and* scoped to its owner or to a resource grant. Unlike
 the data scope it is not suppressed while an async scope resolver computes its
 visible ids: a resolver working out one tenant's rows must not read another
-tenant's to do it. See
-[object_persistence.md](object_persistence.md#tenant-owned-rows) for the
-repository side.
+tenant's to do it.
+
+A tenant table and a system table **never meet in one statement**: a
+`@TomReference`, a subquery or a repository over both kinds is refused when it
+is analysed (`annotation_analyzer.tenant_table.mixed`), because a tenant's rows
+may move to a database of their own at any time. They refer to each other by
+id. **One transaction** may hold both: on one data source it is one branch; on
+two two-phase (`*_xa`) data sources it commits in two phases; on two data
+sources of which one is one-phase it is refused
+(`crud_repository.transaction.tenant_and_system_one_phase`). See
+[object_persistence.md](object_persistence.md#tenant-tables-and-system-tables)
+for the repository side.
+
+The framework's own per-tenant entities are tenant tables: the preferences and
+preference defaults, the resource grants and grades, the delegations, the 2FA
+enrolments and the external identities with their provider tokens. Each has a
+`tenant_id` column (`DEFAULT 'default'`) leading its unique key. Sync keeps a
+tenant table's change log beside the tenant's rows, and a retention run with no
+tenant applies a tenant table's policy in every tenant.
 
 ## Principals per Tenant
 
@@ -684,10 +721,10 @@ claimed organization is the session's.
 
 | Concern | How it is kept per tenant | Guide |
 | ------- | ------------------------- | ----- |
-| Repositories | data source routed per tenant; `@TomTenantOwned` predicate on every read and write | [object_persistence](object_persistence.md#tenant-owned-rows), [datasources](datasources.md#routing-per-tenant) |
+| Repositories | a tenant table (`@TomTenantTable`): data source routed per tenant, the tenant predicate on every read and write; a system table: never routed | [object_persistence](object_persistence.md#tenant-tables-and-system-tables), [datasources](datasources.md#routing-per-tenant) |
 | Caches | `TomCache`'s static API qualifies every key by the tenant in context — two tenants caching `plan` hold two entries | [cache](cache.md#tenant-scoped-entries) |
 | Principal revocation | `revokePrincipal('alice')` in a tenant revokes that tenant's `alice` only; another tenant's `alice` is a different person | [authorization](authorization.md#revocation-per-tenant) |
-| Per-principal rows | 2FA enrolments, preferences, resource grants and delegations are keyed by the tenant-qualified principal id; another tenant's `u1` is a different person | [Principals per Tenant](#principals-per-tenant) |
+| Per-principal rows | 2FA enrolments, preferences, resource grants and delegations are tenant tables, and are keyed by the tenant-qualified principal id; another tenant's `u1` is a different person | [Principals per Tenant](#principals-per-tenant) |
 | SCIM | `TomSqlScimStore.named` routed per tenant with a `tenant` column; secrets per tenant | [Identity Federation per Tenant](#identity-federation-per-tenant) |
 | External sign-in | a pending flow completes only in the tenant it began in; provider sets per tenant | [Identity Federation per Tenant](#identity-federation-per-tenant) |
 | Jobs | a run records its tenant; its body runs inside it, across a worker isolate too; its window and its overlap protection are per tenant | [scheduling](scheduling.md#runs-per-tenant) |
@@ -957,24 +994,16 @@ is reported as a conflict).
 | `tenancy.registry.unknown_datasource` | `TomSqlTenantRegistry` | The registry's data source is not registered. |
 | `tenancy.resolution.conflict` | `resolveRequest` | A request naming another tenant than its token (`403`). |
 | `tenancy.id.invalid` | kernel `TomTenantContext.validate`, `TomTenant`, `resolveRequest` | A tenant id that is not a lower-case identifier of at most 32 characters (`400` on a request). |
-| `tenancy.context.missing` | kernel `TomTenantContext.require` | Tenant-owned work ran with no tenant in context. |
-| `data_scope.write.no_tenant` | object_persistence | A tenant-owned row written with no tenant in context. |
-| `data_scope.write.foreign_tenant` | object_persistence | A tenant-owned row naming another tenant than the one in context. |
+| `tenancy.context.missing` | kernel `TomTenantContext.require`, `TomTenancy.tenantForWork` | A tenant table read or written with no tenant in context under an installed tenancy. |
+| `data_scope.write.foreign_tenant` | object_persistence | A tenant-table row naming another tenant than the one in context. |
+| `annotation_analyzer.tenant_table.mixed` | object_persistence | A `@TomReference`, a subquery or a repository over tenant tables and system tables together. |
+| `crud_repository.transaction.tenant_and_system_one_phase` | object_persistence | One transaction over a tenant table and a system table on two data sources, one of them one-phase. |
 | `login.error.tenant-mismatch` | authentication | An account of one tenant signing in through another tenant. |
 
 `TomTenancyException` extends `TomServerException`; the two kernel keys are
 raised as the kernel's `TomTenantException`.
 
 ## Not Yet Implemented
-
-- **External identities are linked per table, not per tenant key.**
-  `tom_external_identity` and `tom_external_identity_token` key a link by the
-  provider's `(issuer, subject)` and name the local account by username. Under
-  `schema` and `database` isolation each tenant has its own tables, so the same
-  provider account can be linked in two tenants; under `shared` the pair is
-  unique across the deployment, so one provider account can be linked to one
-  tenant's account only.
-  <!-- unpinned: absence — external identity is not keyed per tenant under shared isolation -->
 
 - **The framework's own stores are not tenant-scoped beyond their columns.** The
   audit trail and the blob store serve the whole deployment from the data
@@ -985,7 +1014,7 @@ raised as the kernel's `TomTenantException`.
   a token to the tenant a login ran in and refuses a principal placed in another,
   but which accounts exist in which tenant is the deployment's
   `TomAuthenticationService` to decide — typically by reading them through a
-  `@TomTenantOwned` entity.
+  `@TomTenantTable` entity.
   <!-- unpinned: decision — account placement belongs to the authentication service -->
 
 ## Verification
@@ -1014,6 +1043,17 @@ source refused. `test/tenant_registry_db_test.dart`,
 tagged `db`, runs the SQL store on MariaDB and PostgreSQL: every field's round
 trip, and two nodes over one registry table, a schema-isolated tenant added on
 one provisioned, routed and dropped by the other.
+
+`test/tenant_table_test.dart` covers the classification without a database:
+`@TomTenantTable` and `tenantTables`, the framework's own tenant tables, a
+reference, a subquery and a repository mixing the two kinds refused, the data
+source a repository picks inside and outside a tenant, `tenantForWork` and the
+implicit tenant. `test/tenant_table_db_test.dart`, tagged `db`, runs it on
+MariaDB and PostgreSQL with the tenant rows in the system schema, a type's
+shared schema, a schema and a database of their own: rows landing where the
+tenant lives and system rows in the system schema, the predicate in every
+model, a transaction over both kinds run, refused or committed in two phases,
+sync per tenant and retention in every tenant.
 
 `test/tenant_type_test.dart` covers tenant types without a database: the
 implicit type, `tenancy.types` and `tenancy.migrations` read from
@@ -1078,7 +1118,9 @@ result, and `test/examples_test.dart` runs it.
   `registryConflicts`), its routing (`route`, `isolationOf`, `typeOf`,
   `validateTenant`), work in a tenant
   (`runFor`, `forEachTenant`), request resolution (`resolveRequest`) and the
-  refusal of an unknown tenant (`unknownTenant`).
+  refusal of an unknown tenant (`unknownTenant`); the tenant tenant-table work
+  runs as (`tenantForWork`, `implicitTenant`) and the tenant tables the code
+  declares (`tenantTables`).
 - **`TomTenantRegistry`**, **`TomMemoryTenantRegistry`**,
   **`TomSqlTenantRegistry`** — the durable list of tenants; **`TomTenantRecord`**
   (one row), **`TomTenantStatus`**, **`TomTenantRegistryConflict`**,
@@ -1110,4 +1152,4 @@ result, and `test/examples_test.dart` runs it.
 | [configuration](configuration.md) | module | `tenancy.dart` | `TomServerConfigResourceProvider`, which `fromConfiguration` reads the `tenancy` key from |
 | [datasources](datasources.md) | module | `tenancy.dart`, `tenant_registry.dart`, `tenant_registry_sql.dart` | `TomDataSourceInfo` — the registry routed per tenant, the data sources opened over a tenant's schema or database — and the base data source's dialect, whose `createSchema` and `schemaSetting` say how a schema is made and pointed at; and `TomFrameworkTable`, `TomSchemaProvisioning` and `sqlInstant` / `parseSqlInstant`, the registry's table and its instants |
 | [little_things](little_things.md) | module | `tenancy.dart` | `TomServerException`, the base of `TomTenancyException` |
-| [object_persistence](object_persistence.md) | module | `tenant_registry.dart` | `@TomDbTable` / `@TomDbColumn`, the mapping of `TomTenantRow` |
+| [object_persistence](object_persistence.md) | module | `tenancy.dart`, `tenant_registry.dart` | `TomAnnotationAnalyzer.tenantTables` and `TomDbTable`, the tenant tables `tenantTables` reports; `@TomDbTable` / `@TomDbColumn`, the mapping of `TomTenantRow` |

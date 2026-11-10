@@ -82,7 +82,7 @@ TomErrorHandler
 
 One preference of one principal — a row of `tom_user_preference`.
 
-- **Annotations:** `@tomReflector`;
+- **Annotations:** `@tomReflector`; `@TomTenantTable()`;
   `@TomDbTable(datasource: 'main', table: 'tom_user_preference', primaryKeyFields: ['id'])`;
   `@TomDbScope(field: 'principal_id', scope: 'owner')`.
 
@@ -91,6 +91,7 @@ One preference of one principal — a row of `tom_user_preference`.
 ```dart
 TomUserPreference({
   int id = -1,
+  String tenantId = '',
   String principalId = '',
   String preferenceKey = '',
   String valueType = '',
@@ -107,6 +108,7 @@ fills it column by column when mapping a result.
 | Property | Type | Column | Description |
 | -------- | ---- | ------ | ----------- |
 | `id` | `int` | `id` (read-only) | Surrogate primary key; `-1` until persisted. |
+| `tenantId` | `String` | `tenant_id` | The row's tenant (`@TomTenantTable`): filled by the repository from the tenant in context and bound into every statement; `DEFAULT 'default'` leads the unique key. |
 | `principalId` | `String` | `principal_id` | The owning principal's `TomPrincipal.qualifiedId` — its id qualified by its tenant — the scope column, because that is what the built-in `owner` resolver yields. `@TomDataSubject()`: the row's data subject, so erasing the principal deletes the row. |
 | `preferenceKey` | `String` | `preference_key` | The preference key. |
 | `valueType` | `String` | `value_type` | The name of the type `valueJson` was written as. |
@@ -123,7 +125,7 @@ fills it column by column when mapping a result.
 
 | Constant | Type | Description |
 | -------- | ---- | ----------- |
-| `createTableSql` | `String` | The DDL this entity expects, reproduced verbatim by the framework migration so the two cannot drift — `test/reference_migrations_test.dart` fails if they do. `(principal_id, preference_key)` is unique, because that pair is the preference's identity; `updated_at` is `DATETIME(6)`, the width the instant convention writes. |
+| `createTableSql` | `String` | The DDL this entity expects, reproduced verbatim by the framework migration so the two cannot drift — `test/reference_migrations_test.dart` fails if they do. `(tenant_id, principal_id, preference_key)` is unique, because the pair is the preference's identity within its tenant; `updated_at` is `DATETIME(6)`, the width the instant convention writes. |
 
 ### TomUserPreferenceRepository
 
@@ -192,7 +194,7 @@ write, so two racing writes can overshoot by one or two. A value over
 `value_json`'s 64 KiB `TEXT`.
 
 **Every write is one statement.** The row is written through
-`repository.saveByKey(conflictFields: ['principalId', 'preferenceKey'])` — for
+`repository.saveByKey(conflictFields: ['tenantId', 'principalId', 'preferenceKey'])` — for
 this entity an upsert on `uq_tom_user_preference` with no read before it, so two
 writers racing for a new key cannot both insert.
 
@@ -202,8 +204,8 @@ threw synchronously instead would be caught by a `try` the caller wrote around
 the `await` and missed by everything else.
 
 `all()`'s order is a contract. The caller's rows are read `order by
-preference_key`, which `uq_tom_user_preference (principal_id, preference_key)`
-serves off the index, and the list merged with the defaults is ordered by key in
+preference_key`, which `uq_tom_user_preference (tenant_id, principal_id,
+preference_key)` serves off the index, and the list merged with the defaults is ordered by key in
 code-unit order. Ordering by key rather than by insertion or by `updated_at`
 means rewriting a value does not move the preference in the list, and two
 devices of one user see the same sequence.
@@ -271,7 +273,7 @@ always wins over both, and a role's over the deployment's. Unlike
 `TomUserPreference` the entity declares no row scope: a default is nobody's own
 row.
 
-- **Annotations:** `@tomReflector`;
+- **Annotations:** `@tomReflector`; `@TomTenantTable()`;
   `@TomDbTable(datasource: 'main', table: 'tom_preference_default', primaryKeyFields: ['id'])`.
 
 #### Constructors
@@ -279,6 +281,7 @@ row.
 ```dart
 TomPreferenceDefault({
   int id = -1,
+  String tenantId = '',
   String scopeKind = '',
   String scopeName = '',
   String preferenceKey = '',
@@ -297,6 +300,7 @@ fills it column by column when mapping a result.
 | Property | Type | Column | Description |
 | -------- | ---- | ------ | ----------- |
 | `id` | `int` | `id` (read-only) | Surrogate primary key; `-1` until persisted. |
+| `tenantId` | `String` | `tenant_id` | The row's tenant (`@TomTenantTable`): filled by the repository from the tenant in context and bound into every statement; `DEFAULT 'default'` leads the unique key. |
 | `scopeKind` | `String` | `scope_kind` | The `TomPreferenceDefaultScope` name: `deployment` or `role`. |
 | `scopeName` | `String` | `scope_name` | The role a role default applies to; `''` for a deployment default. |
 | `preferenceKey` | `String` | `preference_key` | The preference key. |
@@ -316,7 +320,7 @@ fills it column by column when mapping a result.
 
 | Constant | Type | Description |
 | -------- | ---- | ----------- |
-| `createTableSql` | `String` | The DDL this entity expects, reproduced verbatim by the framework migration `[2]-create_tom_preference_default.sql` — `test/reference_migrations_test.dart` fails if they drift. `(scope_kind, scope_name, preference_key)` is unique: the default's identity, and the conflict key a write replaces it on. The name, key and type columns are `utf8mb4_bin`. |
+| `createTableSql` | `String` | The DDL this entity expects, reproduced verbatim by the framework migration `[2]-create_tom_preference_default.sql` — `test/reference_migrations_test.dart` fails if they drift. `(tenant_id, scope_kind, scope_name, preference_key)` is unique: the default's identity within its tenant, and the conflict key a write replaces it on. The name, key and type columns are `utf8mb4_bin`. |
 
 ### TomPreferenceDefaultRepository
 

@@ -55,8 +55,14 @@
 -- This file is the canonical DDL and reproduces
 -- `TomExternalIdentityToken.createTableSql` verbatim;
 -- `test/reference_migrations_test.dart` fails if the two drift apart.
+-- `tenant_id` is the row's tenant: the entity is a tenant table
+-- (`@TomTenantTable`), and the repository binds `tenant_id = <tenant>` into
+-- every statement, in every isolation model. It defaults to `default`, the
+-- implicit tenant of a deployment without tenancy, and leads the unique key,
+-- so tenants sharing the table may each hold the same key.
 CREATE TABLE IF NOT EXISTS tom_external_identity_token (
   id BIGINT NOT NULL AUTO_INCREMENT,
+  tenant_id VARCHAR(32) NOT NULL DEFAULT 'default',
   issuer VARCHAR(255) NOT NULL,
   subject VARCHAR(255) NOT NULL,
   token_data TEXT NULL,
@@ -64,5 +70,5 @@ CREATE TABLE IF NOT EXISTS tom_external_identity_token (
   obtained_at DATETIME(6) NULL,
   expires_at DATETIME(6) NULL,
   PRIMARY KEY (id),
-  UNIQUE KEY uq_tom_external_identity_token (issuer, subject)
+  UNIQUE KEY uq_tom_external_identity_token (tenant_id, issuer, subject)
 );

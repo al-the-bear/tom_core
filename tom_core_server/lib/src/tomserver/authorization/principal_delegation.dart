@@ -60,6 +60,7 @@ enum TomDelegationMode {
 // Read from the primary: a change here — a revocation above all — must
 // take effect at once, not after a replica's lag.
 @TomPrimaryReads()
+@TomTenantTable()
 @TomDbTable(
   datasource: 'main',
   table: 'tom_principal_delegation',
@@ -75,6 +76,11 @@ class TomPrincipalDelegation {
   @TomEntityId()
   @TomDbColumn(columnName: 'id', isReadOnly: true)
   int id;
+
+  /// The tenant the row belongs to (`@TomTenantTable`): filled by the
+  /// repository from the tenant in context and bound into every statement.
+  @TomDbColumn(columnName: 'tenant_id')
+  String tenantId;
 
   /// The principal whose roles are lent (A, the delegator), by its
   /// tenant-qualified id, like [TomPrincipalResourceGrant.principalId].
@@ -131,6 +137,7 @@ class TomPrincipalDelegation {
   /// the named arguments.
   TomPrincipalDelegation({
     this.id = -1,
+    this.tenantId = '',
     this.delegatorId = '',
     this.delegateId = '',
     this.mode = '',
@@ -178,6 +185,7 @@ class TomPrincipalDelegation {
   static const String createTableSql = '''
 CREATE TABLE IF NOT EXISTS tom_principal_delegation (
   id BIGINT NOT NULL AUTO_INCREMENT,
+  tenant_id VARCHAR(32) NOT NULL DEFAULT 'default',
   delegator_id VARCHAR(255) NOT NULL,
   delegate_id VARCHAR(255) NOT NULL,
   mode VARCHAR(32) NOT NULL,
@@ -187,6 +195,7 @@ CREATE TABLE IF NOT EXISTS tom_principal_delegation (
   valid_to DATETIME(6) NULL,
   revoked TINYINT(1) NOT NULL DEFAULT 0,
   PRIMARY KEY (id),
+  KEY idx_tom_principal_delegation_tenant (tenant_id),
   KEY idx_tom_principal_delegation_delegate (delegate_id, revoked)
 );''';
 

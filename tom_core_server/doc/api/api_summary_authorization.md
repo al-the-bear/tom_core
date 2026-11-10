@@ -286,13 +286,14 @@ static; the class is not instantiable (private const constructor).
 A persistable grant of a single `TomAuthState` to a `(roleName, resourceKey)`
 pair — the storage row behind the four-state authorization model. Mapped to
 `tom_resource_grant` and reflection-discoverable (`@tomReflector`,
-`@TomDbTable`).
+`@TomDbTable`), and a tenant table (`@TomTenantTable`).
 
 #### Constructors
 
 ```dart
 TomResourceGrant({
   int id = -1,
+  String tenantId = '',
   String roleName = '',
   String resourceKey = '',
   TomAuthState accessLevel = TomAuthState.none,
@@ -310,6 +311,7 @@ TomResourceGrant({
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `id` | `int` | Surrogate primary key (`-1` until persisted). |
+| `tenantId` | `String` | The row's tenant (`@TomTenantTable`): filled by the repository from the tenant in context and bound into every statement; `DEFAULT 'default'` leads the unique key. |
 | `roleName` | `String` | The role the grant applies to. |
 | `resourceKey` | `String` | The resource key being graded. |
 | `accessLevel` | `TomAuthState` | The graded access level for `(roleName, resourceKey)`. |
@@ -367,13 +369,14 @@ How a `TomPrincipalDelegation` lends the delegator's roles to the delegate.
 A persistable delegation of a delegator's C-5 roles to a delegate — the storage
 row behind share/absence/intentional delegation. Mapped to
 `tom_principal_delegation` and reflection-discoverable (`@tomReflector`,
-`@TomDbTable`).
+`@TomDbTable`), and a tenant table (`@TomTenantTable`).
 
 #### Constructors
 
 ```dart
 TomPrincipalDelegation({
   int id = -1,
+  String tenantId = '',
   String delegatorId = '',
   String delegateId = '',
   String mode = '',
@@ -396,6 +399,7 @@ TomPrincipalDelegation({
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `id` | `int` | Surrogate primary key (`-1` until persisted). |
+| `tenantId` | `String` | The row's tenant (`@TomTenantTable`): filled by the repository from the tenant in context and bound into every statement; `DEFAULT 'default'`, indexed for that predicate. |
 | `delegatorId` | `String` | The principal whose roles are lent (A, the delegator). `@TomDataSubject()`: erasing the principal deletes the row. |
 | `delegateId` | `String` | The principal receiving the lent roles (B, the delegate). `@TomDataSubject()`: erasing the principal deletes the row. |
 | `mode` | `String` | The delegation mode, stored as the `TomDelegationMode` name. |
@@ -507,13 +511,14 @@ InMemoryPrincipalDelegationStore(List<TomPrincipalDelegation> delegations)
 A persistable grant of a single role to a `(principalId, resourceKey)` pair — the
 storage row behind per-principal-per-resource roles (C-5). Mapped to
 `tom_principal_resource_grant` and reflection-discoverable (`@tomReflector`,
-`@TomDbTable`).
+`@TomDbTable`), and a tenant table (`@TomTenantTable`).
 
 #### Constructors
 
 ```dart
 TomPrincipalResourceGrant({
   int id = -1,
+  String tenantId = '',
   String principalId = '',
   String resourceKey = '',
   String role = '',
@@ -531,6 +536,7 @@ TomPrincipalResourceGrant({
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `id` | `int` | Surrogate primary key (`-1` until persisted). |
+| `tenantId` | `String` | The row's tenant (`@TomTenantTable`): filled by the repository from the tenant in context and bound into every statement; `DEFAULT 'default'` leads the unique key. |
 | `principalId` | `String` | The principal the grant applies to, by its tenant-qualified id (`TomPrincipal.qualifiedId`). `@TomDataSubject()`: erasing the principal deletes the row. |
 | `resourceKey` | `String` | The resource the role is scoped to (a resource key / `tomId`). |
 | `role` | `String` | The role the principal holds on the resource. |

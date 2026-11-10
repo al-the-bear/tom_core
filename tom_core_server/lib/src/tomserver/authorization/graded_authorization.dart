@@ -97,6 +97,7 @@ class TomAuthStateCodec {
 // Read from the primary: a change here — a revocation above all — must
 // take effect at once, not after a replica's lag.
 @TomPrimaryReads()
+@TomTenantTable()
 @TomDbTable(
   datasource: 'main',
   table: 'tom_resource_grant',
@@ -110,6 +111,11 @@ class TomResourceGrant {
   @TomEntityId()
   @TomDbColumn(columnName: 'id', isReadOnly: true)
   int id;
+
+  /// The tenant the row belongs to (`@TomTenantTable`): filled by the
+  /// repository from the tenant in context and bound into every statement.
+  @TomDbColumn(columnName: 'tenant_id')
+  String tenantId;
 
   /// The role the grant applies to.
   @TomDbColumn(columnName: 'role_name')
@@ -139,6 +145,7 @@ class TomResourceGrant {
   /// Callers that build a fully-specified grant still pass the named arguments.
   TomResourceGrant({
     this.id = -1,
+    this.tenantId = '',
     this.roleName = '',
     this.resourceKey = '',
     this.accessLevel = TomAuthState.none,
@@ -153,11 +160,12 @@ class TomResourceGrant {
   static const String createTableSql = '''
 CREATE TABLE IF NOT EXISTS tom_resource_grant (
   id BIGINT NOT NULL AUTO_INCREMENT,
+  tenant_id VARCHAR(32) NOT NULL DEFAULT 'default',
   role_name VARCHAR(255) NOT NULL,
   resource_key VARCHAR(255) NOT NULL,
   access_level ENUM('none', 'disabled', 'read', 'full') NOT NULL DEFAULT 'none',
   PRIMARY KEY (id),
-  UNIQUE KEY uq_tom_resource_grant_role_key (role_name, resource_key)
+  UNIQUE KEY uq_tom_resource_grant_role_key (tenant_id, role_name, resource_key)
 );''';
 
   @override

@@ -19,6 +19,7 @@
 
 CREATE TABLE IF NOT EXISTS tom_user_two_factor_enrolment (
   id BIGINT NOT NULL AUTO_INCREMENT,
+  tenant_id VARCHAR(32) NOT NULL DEFAULT 'default',
   principal_id VARCHAR(255) NOT NULL,
   enrolment_id VARCHAR(255) NOT NULL,
   mechanism VARCHAR(64) NOT NULL,
@@ -27,6 +28,6 @@ CREATE TABLE IF NOT EXISTS tom_user_two_factor_enrolment (
   is_primary TINYINT(1) NOT NULL DEFAULT 0,
   secret_data TEXT NULL,
   PRIMARY KEY (id),
-  UNIQUE KEY uq_tom_user_two_factor_enrolment (principal_id, enrolment_id),
+  UNIQUE KEY uq_tom_user_two_factor_enrolment (tenant_id, principal_id, enrolment_id),
   KEY idx_tom_user_two_factor_enrolment_principal (principal_id)
 );

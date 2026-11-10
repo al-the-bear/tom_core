@@ -363,8 +363,8 @@ key rendered as text. It is not unique across tenants: another tenant's user
 with the same id is a different person, exactly as another tenant's `alice` is.
 Where rows of several tenants can share a table, the framework files them under
 `principal.qualifiedId` — `tenant:<tenant>/<id>`, or the bare id without
-tenancy — and so should a deployment's own per-user tables that are not
-tenant-owned. The eleven name, contact and
+tenancy — and so should a deployment's own per-user tables, which then stay
+apart even where tenants share one table. The eleven name, contact and
 locale fields are all nullable, so an identity from a provider that supplied
 nothing but a login name is a normal `TomUser`, not a broken one. `attributes`
 is never null either, merely empty by default; it carries whatever the

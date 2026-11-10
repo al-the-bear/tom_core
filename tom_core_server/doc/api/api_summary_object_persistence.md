@@ -22,7 +22,7 @@ column-level access rights (C-4) and field-level encryption at rest.
     - [TomBlindIndexNormalization](#tomblindindexnormalization)
     - [TomBlindIndex](#tomblindindex)
     - [TomDbScope](#tomdbscope)
-    - [TomTenantOwned](#tomtenantowned)
+    - [TomTenantTable](#tomtenanttable)
     - [TomReference&lt;TARGET, K, REPO&gt;](#tomreferencetarget-k-repo)
     - [TomColumnInformation](#tomcolumninformation)
   - [Repositories](#repositories)
@@ -469,32 +469,34 @@ resolver would deny itself its own input.
 | `scope` | `String` | The scope kind — a key into `TomDataScopeRegistry` selecting the resolver (default `'owner'`). |
 | `isOptOut` | `bool` | *(getter)* Whether this is the explicit opt-out (`scope == noScope`) rather than a scope declaration. `findDataScope` returns `null` for such an annotation. |
 
-#### TomTenantOwned
+#### TomTenantTable
 
-Annotation marking an entity as owned by a tenant: every row carries its tenant
-in `field`, and a repository reads and writes only the rows of the tenant in
-context (the kernel's `TomTenantContext`). It is independent of `TomDbScope` and
-is ANDed with it, so an entity can be a tenant's *and* scoped to its owner or to
-a resource grant.
+Annotation classifying an entity as a **tenant table**: its rows are one
+tenant's data. Every entity without it is a **system table**, whose rows belong
+to the deployment. The repository resolves its data source by the
+classification — a system table always through the registered data source,
+unrouted, also inside a tenant; a tenant table through the current tenant's
+route (its own schema or database, or its type's shared schema). With no tenant
+in context a tenant table is refused under an installed tenancy
+(`tenancy.context.missing`) and runs as the implicit tenant `default` without
+one. It is independent of `TomDbScope` and is ANDed with it.
 
-- every read — `findAll`, `findById`, `count`, `findWhere`, the existence checks
-  — carries `<field> = <tenant>` as a bound predicate (parameters prefixed
-  `TomSqlDatasourceRepository.tenantParameterPrefix`);
+- every read — `findAll`, `findById`, `count`, `findByQuery`, the existence
+  checks, `historyOf` — carries `<field> = <tenant>` as a bound predicate
+  (parameters prefixed `TomSqlDatasourceRepository.tenantParameterPrefix`);
 - every update and delete may touch only rows that predicate admits;
-- an insert whose `field` is unset is filled with the current tenant, and one
-  naming another tenant is refused with `data_scope.write.foreign_tenant`;
-- with no tenant in context the entity is unreadable, and every write is refused
-  with `data_scope.write.no_tenant`.
+- an insert whose `field` is unset is filled with the tenant, and one naming
+  another tenant is refused with `data_scope.write.foreign_tenant`.
 
-The predicate applies in every isolation model of the `tenancy` module. Where a
-tenant's rows live in a schema or a database of their own it is a second wall
-rather than the only one — which is what makes moving a tenant between models a
-copy of its rows rather than a schema change.
+The predicate applies in every isolation model; the column is on every tenant
+table, since any tenant may move. A `@TomReference`, a `TomSubquery` or a
+repository over tenant tables and system tables together is refused when
+analysed (`annotation_analyzer.tenant_table.mixed`).
 
 ##### Constructors
 
 ```dart
-const TomTenantOwned({String field = 'tenantId'})
+const TomTenantTable({String field = 'tenantId'})
 ```
 
 ##### Properties
@@ -722,7 +724,8 @@ TomSqlDatasourceRepository([List<Type>? queryTypes, Type? resultType])
 
 | Constant | Type | Value | Description |
 | -------- | ---- | ----- | ----------- |
-| `tenantParameterPrefix` | `String` | `'__tomtenant_'` | The parameter prefix of the `@TomTenantOwned` predicate, apart from the data scope's, so the two bind in one statement. |
+| `tenantParameterPrefix` | `String` | `'__tomtenant_'` | The parameter prefix of the tenant-table predicate, apart from the data scope's, so the two bind in one statement; a subquery over tenant tables binds `<prefix>0` too. |
+| `tenantSystemTransactionKey` | `String` | `'crud_repository.transaction.tenant_and_system_one_phase'` | The key of the refusal raised when one transaction would hold a tenant table and a system table on two data sources of which one commits in a single phase. |
 | `deletedAtParameter` | `String` | `'__tomdeleted_at'` | The bind name of the deletion time a soft delete sets (and a restore clears). |
 | `nextVersionParameter` | `String` | `'__tomversion_next'` | The bind name of the next version a versioned soft `delete(entity)` writes — a soft delete moves the version like any write. |
 | `versionParameter` | `String` | `'__tomversion_expected'` | The bind name of the version a versioned update or `delete(entity)` expects to find stored. Prefixed like the scope and tenant parameters so it cannot collide with a column's declared name. |
@@ -733,7 +736,8 @@ TomSqlDatasourceRepository([List<Type>? queryTypes, Type? resultType])
 | -------- | ---- | ----------- |
 | `primaryKeyColumns` | `List<TomColumnInformation>` | Resolved metadata for the primary-key columns, in `primaryKeyFields` order. |
 | `hasCompositeKey` | `bool` | *(getter)* Whether the key spans more than one field, making `K` a `TomCompositeKey`. |
-| `datasourceInfo` | `TomDataSourceInfo` | *(getter)* The data source this repository runs against: the registered one, or — in a multi-tenant deployment — the current tenant's schema or database (`TomDataSourceInfo.route`). Resolved on every access, so one repository serves every tenant; prepared statements are cached per data source, so a statement prepared on one tenant's database is never executed against another's. |
+| `isTenantTable` | `bool` | Whether the entity is a tenant table (`@TomTenantTable`) rather than a system table (late final). |
+| `datasourceInfo` | `TomDataSourceInfo` | *(getter)* The data source this repository runs against, by the entity's classification: a system table's registered data source, unrouted; a tenant table's route for the current tenant (`TomDataSourceInfo.route`) — refused with no tenant under an installed tenancy (`tenancy.context.missing`). Resolved on every access, so one repository serves every tenant; prepared statements are cached per data source. Inside a running transaction it refuses a tenant table and a system table on two data sources of which one is one-phase (`tenantSystemTransactionKey`). |
 | `persistenceInfo` | `TomTypePersistenceInfo` | The resolved persistence metadata of the entity. |
 | `dbTable` | `TomDbTable` | The table the entity maps to. |
 | `sqlDialect` | `TomStandardSqlDialect` | *(getter)* The SQL dialect used to render queries; defaults to the data source's dialect. |
@@ -1042,7 +1046,10 @@ subquery `TomExists` and `TomInSubquery` test. A column renders as
 correlate with it; a subquery over the enclosing query's own table cannot
 correlate, as the tree has no aliases. Every `@TomSoftDelete` type read adds
 `<table>.<deleted> IS NULL` as a condition of its own, unless
-`TomSoftDelete.includingDeleted` is on.
+`TomSoftDelete.includingDeleted` is on. Its types are all tenant tables or all
+system tables (`annotation_analyzer.tenant_table.mixed` otherwise), and every
+tenant table read adds `<tenant column> IN (:__tomtenant_0)`, bound to the
+enclosing tenant-table query's tenant.
 
 ##### Constructors
 
@@ -1063,8 +1070,9 @@ TomSubquery(List<Type> types, {TomOperator<TomDbBool>? where, TomOperator<Object
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `generate` | `SqlString generate(TomStandardSqlDialect t)` | The subquery's SQL, through the dialect's `subquery`. |
-| `getParameters` | `List<String> getParameters(TomStandardSqlDialect t)` | Its parameters in the order their placeholders appear: the projection's, then the `where`'s. |
+| `getParameters` | `List<String> getParameters(TomStandardSqlDialect t)` | Its parameters in the order their placeholders appear: the projection's, the `where`'s, then the tenant predicate's. |
 | `toString` | `String toString()` | `TomSubquery(<types>, <where>)`. |
+| `within` | `static List<TomSubquery> within(TomOperator? predicate)` | The subqueries `predicate` contains, nested ones included — what a repository checks against its own entity's classification. |
 
 #### TomExists
 
@@ -1740,7 +1748,10 @@ scoping the default rather than an annotation anyone has to remember — see
 | `analysePersistentType` | `static TomTypePersistenceInfo analysePersistentType(Type T)` | Resolves the full persistence metadata (table + columns) for entity `T`. Throws `TomAnnotationAnalyzerException` when the type is not reflectable or has no `@TomDbTable`, and lets its lookups' `TomAnnotationAnalyzerSyntaxException` through unchanged. |
 | `findMirror` | `static ClassMirror? findMirror(Type dbType)` | The cached/looked-up `ClassMirror` for `dbType`, or `null` when — and only when — `dbType` is not registered with `tomReflector`. Every other reflection failure is thrown as `TomAnnotationAnalyzerException`; see *Reflection failures*. |
 | `findTable` | `static TomDbTable? findTable(Type dbType)` | The `@TomDbTable` annotation on `dbType`, or `null` if absent. |
-| `findTenantOwnership` | `static TomTenantOwned? findTenantOwnership(Type dbType)` | The entity's `@TomTenantOwned`, or `null` when it is not tenant-owned. Memoised, `null` included, and cleared by `reset`. |
+| `findTenantTable` | `static TomTenantTable? findTenantTable(Type dbType)` | The entity's `@TomTenantTable`, or `null` for a system table. Memoised, `null` included, and cleared by `reset`. |
+| `isTenantTable` | `static bool isTenantTable(Type dbType)` | Whether `dbType` is a tenant table; every other entity is a system table. |
+| `tenantTables` | `static Map<Type, TomDbTable> tenantTables()` | Every reflected `@TomDbTable` entity marked `@TomTenantTable`, with its table — what `TomTenancy.tenantTables` reports. |
+| `verifySameClassification` | `static void verifySameClassification(Iterable<Type> types, String what)` | Throws `annotation_analyzer.tenant_table.mixed` unless every one of `types` is of one kind; `what` names the construct that would join them. |
 | `findDataScope` | `static TomDbScope? findDataScope(Type dbType)` | The row scope of `dbType`, or `null` when unscoped. An explicit `@TomDbScope` wins — including `@TomDbScope.unscoped()`, for which this returns `null`; failing that, `autoScopeFor` decides. |
 | `autoScopeFor` | `static TomDbScope? autoScopeFor(List<TomColumnInformation> columns)` | The scope an entity with these `columns` carries *implicitly* — a `TomDbScope(field: …, scope: resourceScope)` when one column is a resource key, `null` otherwise. `null` whenever any column names a `resourceScopeInputTables` table, which is decided for the whole list before the resource key is looked for. |
 | `findAuthColumns` | `static List<TomColumnInformation> findAuthColumns(Type dbType)` | The columns of `dbType` that opt into column-level access rights (C-4), or empty. |

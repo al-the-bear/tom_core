@@ -17,8 +17,14 @@
 -- `test/reference_migrations_test.dart` fails if the two drift apart.
 -- The db_migration module applies it as version [3] of the `tomcore` schema on
 -- the `main` datasource, after the per-principal grant table [2].
+-- `tenant_id` is the row's tenant: the entity is a tenant table
+-- (`@TomTenantTable`), and the repository binds `tenant_id = <tenant>` into
+-- every statement, in every isolation model. It defaults to `default`, the
+-- implicit tenant of a deployment without tenancy, and is indexed for
+-- that predicate.
 CREATE TABLE IF NOT EXISTS tom_principal_delegation (
   id BIGINT NOT NULL AUTO_INCREMENT,
+  tenant_id VARCHAR(32) NOT NULL DEFAULT 'default',
   delegator_id VARCHAR(255) NOT NULL,
   delegate_id VARCHAR(255) NOT NULL,
   mode VARCHAR(32) NOT NULL,
@@ -28,5 +34,6 @@ CREATE TABLE IF NOT EXISTS tom_principal_delegation (
   valid_to DATETIME(6) NULL,
   revoked TINYINT(1) NOT NULL DEFAULT 0,
   PRIMARY KEY (id),
+  KEY idx_tom_principal_delegation_tenant (tenant_id),
   KEY idx_tom_principal_delegation_delegate (delegate_id, revoked)
 );

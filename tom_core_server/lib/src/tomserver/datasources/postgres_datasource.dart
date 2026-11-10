@@ -205,6 +205,14 @@ class PostgresDatasource extends TomSqlDatasource {
   @override
   String get schemaName => schema.isEmpty ? 'public' : schema;
 
+  /// The database and the schema this source speaks to: two sources over two
+  /// schemas of one database — a schema-isolated tenant and the system schema —
+  /// hold two connections with a transaction each, so they are two resources
+  /// and enlist as two participants.
+  @override
+  String getParticipantId() =>
+      '$participantPrefix-$databaseName/$schemaName@$host:@$port';
+
   /// Also the same database: PostgreSQL reaches another schema of the
   /// connection's database, never another database.
   @override

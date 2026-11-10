@@ -1457,7 +1457,8 @@ predictable rather than durable.
 
 One persisted enrolment row (`@tomReflector`,
 `@TomDbTable(datasource: 'main', table: 'tom_user_two_factor_enrolment',
-primaryKeyFields: ['id'])`). A `UNIQUE KEY (principal_id, enrolment_id)` makes the
+primaryKeyFields: ['id'])`, `@TomTenantTable()`). A
+`UNIQUE KEY (tenant_id, principal_id, enrolment_id)` makes the
 upsert the database's rule and not only the store's; without it, which secret
 answers a login would depend on row order. Every field defaults, because the
 repository instantiates a blank entity and fills it column by column.
@@ -1470,6 +1471,7 @@ the Dart name is the one a caller writes.
 | Property | Type | Column | Description |
 | -------- | ---- | ------ | ----------- |
 | `id` | `int` | `id` | Surrogate primary key, `-1` until persisted. Read-only: the database assigns it. |
+| `tenantId` | `String` | `tenant_id` | The row's tenant (`@TomTenantTable`): filled by the repository from the tenant in context and bound into every statement; `DEFAULT 'default'` leads the unique key. |
 | `principalId` | `String` | `principal_id` | The principal the factor belongs to — `TomPrincipal.id` stringified, matching `TomPrincipalResourceGrant.principalId`. `@TomDataSubject()`: the row's data subject for the privacy module, so erasing the principal deletes the row. |
 | `enrolmentId` | `String` | `enrolment_id` | The enrolment's stable client-facing handle (`Tom2FAEnrolment.enrolmentId`). |
 | `mechanism` | `String` | `mechanism` | The mechanism key (`Tom2FAEnrolment.type`). |
@@ -2897,12 +2899,13 @@ default — a grant that vanishes on restart is a user sent through consent agai
 
 ### TomExternalIdentityToken
 
-One persisted grant. `@tomReflector`,
+One persisted grant. `@tomReflector`, `@TomTenantTable()`,
 `@TomDbTable(table: 'tom_external_identity_token')`.
 
 | Field | Column | Notes |
 | ----- | ------ | ----- |
 | `id` | `id` | Surrogate key, `-1` until persisted. |
+| `tenantId` | `tenant_id` | The row's tenant (`@TomTenantTable`): filled by the repository from the tenant in context and bound into every statement; `DEFAULT 'default'` leads the unique key. |
 | `issuer` | `issuer` | The provider's issuer identifier. |
 | `subject` | `subject` | The provider's stable identifier for the user, within `issuer`. |
 | `tokenData` | `token_data` | The **whole grant, encrypted** — `TomOAuthTokenGrant.toJson` through `TomJwtConfiguration.encrypt`. Neither token is ever written in the clear. |
@@ -2917,7 +2920,7 @@ rest. None of the three is authoritative — the values the code decides from li
 inside `token_data` — so a projection that drifted could not cause a stale token
 to be presented.
 
-`createTableSql` makes `(issuer, subject)` unique, matching the key of
+`createTableSql` makes `(tenant_id, issuer, subject)` unique, matching the key of
 `tom_external_identity`. There is deliberately **no foreign key** to that table,
 because a deployment may keep its identity links in a table of its own and still
 let the framework hold the credentials; the retention bound is enforced in code
@@ -2947,11 +2950,13 @@ the reference migration is
 
 ### TomExternalIdentityLink
 
-One persisted link row. `@tomReflector`, `@TomDbTable(table: 'tom_external_identity')`.
+One persisted link row. `@tomReflector`, `@TomTenantTable()`,
+`@TomDbTable(table: 'tom_external_identity')`.
 
 | Field | Column | Notes |
 | ----- | ------ | ----- |
 | `id` | `id` | Surrogate key, `-1` until persisted. |
+| `tenantId` | `tenant_id` | The row's tenant (`@TomTenantTable`): filled by the repository from the tenant in context and bound into every statement; `DEFAULT 'default'` leads the unique key. |
 | `issuer` | `issuer` | The provider's issuer identifier. |
 | `subject` | `subject` | The provider's stable identifier for the user, within `issuer`. |
 | `localUsername` | `local_username` | The local account. A username rather than a numeric id, because that is the handle the directory and `TomAuthenticationData` both already speak. |
@@ -2959,8 +2964,9 @@ One persisted link row. `@tomReflector`, `@TomDbTable(table: 'tom_external_ident
 | `linkedAt` | `linked_at` | When the link was created (UTC). |
 | `lastLoginAt` | `last_login_at` | When it was last used, or `null`. What lets an operator answer "is this link still in use?" before revoking a provider. |
 
-`createTableSql` makes `(issuer, subject)` unique — a duplicate would make which
-local account a sign-in reaches depend on row order — and indexes
+`createTableSql` makes `(tenant_id, issuer, subject)` unique — a duplicate would
+make which local account a sign-in reaches depend on row order, and the tenant
+lets one provider account be linked in two tenants — and indexes
 `local_username`, which turns "every identity linked to this account" into a
 lookup rather than a scan. The reference migration is
 `example/authentication/migrations/main/tomcore/[4]-create_tom_external_identity.sql`.

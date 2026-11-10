@@ -534,7 +534,7 @@ handler runs, through `TomTenancy.resolveRequest`:
    authoritative;
 2. otherwise the configured resolvers — host, then header — are asked in order;
 3. no answer at all is not a refusal: the request runs explicitly outside every
-   tenant, and tenant-owned data is closed to it.
+   tenant, and tenant tables are closed to it.
 
 The request then runs inside `TomTenantContext.run(tenant, …)`, which wraps the
 transaction scope and the zone values above, so everything it reaches — the
