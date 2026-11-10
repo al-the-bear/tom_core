@@ -57,7 +57,7 @@ What a question asks: the record fields it narrows to and the window.
 | `targetKey` | `final String? targetKey` | The key of what was acted on. |
 | `to` | `final DateTime? to` | The window's end (exclusive). |
 | `toJson` | `Map<String, Object?> toJson()` | The JSON form; only the keys that are set. |
-| `toQuery` | `TomAuditQuery toQuery(DateTime now)` | The query this filter asks at [now], newest first. |
+| `toQuery` | `TomAuditQuery toQuery(DateTime now, {String? tenant})` | The query this filter asks at [now], newest first — of [tenant]'s entries only when given. |
 | `writers` | `final List<String>? writers` | The writers to read; every writer when `null`. |
 
 ### TomAuditQuestionRow
@@ -79,7 +79,7 @@ What a question asks: the record fields it narrows to and the window.
 
 ### TomAuditQuestionStore
 
-**Kind:** `abstract class`
+**Kind:** `abstract class`, implementing `TomTenantData`
 
 The saved questions.
 
@@ -90,6 +90,7 @@ The saved questions.
 | `due` | `Future<List<TomAuditQuestion>> due(DateTime now, {int limit = 50})` | The questions whose next delivery is at or before [now], oldest due first, at most [limit]. |
 | `find` | `Future<TomAuditQuestion?> find(String id)` | The question with [id], or `null`. |
 | `ownedBy` | `Future<List<TomAuditQuestion>> ownedBy(String owner)` | The questions [owner] saved, by name. |
+| `purgeTenant` | `Future<int> purgeTenant(String tenant)` | *(TomTenantData)* Deletes the questions whose owner names [tenant] (`tenant:<id>/…`); answers how many. |
 | `remove` | `Future<bool> remove(String id)` | Removes the question with [id]; answers whether there was one. |
 | `save` | `Future<void> save(TomAuditQuestion question)` | Stores [question], replacing the one with its id. |
 
@@ -125,9 +126,9 @@ Answers, keeps and delivers audit questions.
 
 | Member | Declaration | Description |
 | ------ | ----------- | ----------- |
-| `ask` | `Future<TomAuditViewResult> ask(TomAuditQuestionFilter filter)` | [filter] asked now. |
+| `ask` | `Future<TomAuditViewResult> ask(TomAuditQuestionFilter filter)` | [filter] asked now — in a tenant's context of that tenant's entries only. |
 | `columns` | `static final List<TomTabularColumn> columns = [ TomTabularColumn('timestamp', label: 'Time'), TomTabularColumn('writer', label: 'Writer'), TomTabularColumn('actor', label: 'Actor'), TomTabularColumn('action', label: 'Action'), TomTabularColumn('target', label: 'Target'), TomTabularColumn('targetKey', label: 'Key'), TomTabularColumn('outcome', label: 'Outcome'), TomTabularColumn('requestId', label: 'Request'), TomTabularColumn('detail', label: 'Detail')]` | The columns of an exported answer. |
-| `deliverDue` | `Future<List<TomAuditReportDelivery>> deliverDue()` | Delivers every question due now; answers what each delivery did. |
+| `deliverDue` | `Future<List<TomAuditReportDelivery>> deliverDue()` | Delivers every question due now, each in its owner's tenant; a question of a tenant not served as active now is held, still due. Answers what each delivery did. |
 | `deliverSoon` | `Future<TomAuditQuestion> deliverSoon(String owner, String id)` | Marks [owner]'s question [id] for delivery at the next pass; refuses (`audit_reports.question.no_recipients`) a question with nowhere to go. |
 | `email` | `final TomExportEmailDelivery? email` | How a delivery is sent; `null` in a process that does not deliver. |
 | `exports` | `final TomExportService? exports` | Where delivered exports are stored; `null` in a process that does not deliver. |
@@ -253,6 +254,7 @@ A view's answer.
 | `due` | `Future<List<TomAuditQuestion>> due(DateTime now, {int limit = 50})` | *(override)* The questions whose next delivery is at or before `now`, earliest first. |
 | `find` | `Future<TomAuditQuestion?> find(String id)` | *(override)* The question with that id, or `null`. |
 | `ownedBy` | `Future<List<TomAuditQuestion>> ownedBy(String owner)` | *(override)* The owner's questions, by name. |
+| `purgeTenant` | `Future<int> purgeTenant(String tenant)` | *(override)* Deletes the questions whose owner names the tenant. |
 | `remove` | `Future<bool> remove(String id)` | *(override)* Removes the question, answering whether there was one. |
 | `save` | `Future<void> save(TomAuditQuestion question)` | *(override)* Stores the question, replacing one with the same id. |
 
@@ -287,6 +289,7 @@ A view's answer.
 | `find` | `Future<TomAuditQuestion?> find(String id)` | *(override)* The question with that id, or `null`. |
 | `named` | `factory TomSqlAuditQuestionStore.named(String datasourceName, {String table = defaultAuditQuestionTable, bool createSchema = true, DateTime Function()? clock})` | A store over the registered data source [datasourceName]; refuses (`audit_reports.store.unknown_datasource`) a name the registry does not hold. |
 | `ownedBy` | `Future<List<TomAuditQuestion>> ownedBy(String owner)` | *(override)* The owner's questions, by name. |
+| `purgeTenant` | `Future<int> purgeTenant(String tenant)` | *(override)* Deletes the questions whose owner names the tenant. |
 | `remove` | `Future<bool> remove(String id)` | *(override)* Removes the question, answering whether there was one. |
 | `save` | `Future<void> save(TomAuditQuestion question)` | *(override)* Stores the question, replacing one with the same id. |
 | `table` | `final String table` | The table. |

@@ -102,6 +102,18 @@ abstract final class TomTenantContext {
   /// tenants can share one table: a principal id is unique within its tenant
   /// only, so two tenants' `u1` are two keys here.
   static String qualifyCurrent(String name) => qualify(name, currentId);
+
+  /// The tenant [qualified] names — `acme` for `tenant:acme/u1` — or `null`
+  /// for a name [qualify] left unqualified. The inverse of [qualify], for a
+  /// store that has only a qualified key — a principal's `qualifiedId` — to
+  /// find the tenant to run its work in.
+  static String? tenantOf(String qualified) {
+    if (!qualified.startsWith('tenant:')) return null;
+    final slash = qualified.indexOf('/', 7);
+    if (slash < 0) return null;
+    final id = qualified.substring(7, slash);
+    return idPattern.hasMatch(id) ? id : null;
+  }
 }
 
 class _TenantBox {

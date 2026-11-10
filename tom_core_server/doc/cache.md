@@ -704,7 +704,10 @@ current tenant's entry, qualified exactly as `TomCache` keyed it, and
 `revokePrincipal(username)` revokes the current tenant's account of that name
 only — another tenant's `alice` is a different person (see
 [authorization.md](authorization.md#revocation-per-tenant)).
-`invalidateCache(cacheName)` empties the whole cache, every tenant's entries
+`invalidateCache(cacheName)` raised in a tenant's context empties that tenant's
+entries only — the invalidation carries the tenant, and every node removes the
+keys qualified with it — so one tenant's invalidation does not empty another's.
+Raised outside any tenant it empties the whole cache, every tenant's entries
 together.
 
 ## Cross-Node Invalidation
@@ -724,7 +727,7 @@ invalidator applies it in turn:
 | ---- | ------------- |
 | `TomCacheInvalidator.revokePrincipal(username)` | refuses every token `username` holds that was issued now or earlier, and drops the principals cached for them |
 | `TomCacheInvalidator.invalidateCacheEntry(cacheName, key)` | removes `key` from the cache named `cacheName` |
-| `TomCacheInvalidator.invalidateCache(cacheName)` | empties the cache named `cacheName` |
+| `TomCacheInvalidator.invalidateCache(cacheName)` | empties the cache named `cacheName` — the current tenant's entries only, in a tenant's context |
 | `TomCacheInvalidator.invalidateItemAuthorization(item, subject: subject)` | drops the cached item-authorization answers on `item` for `subject`, or for every subject — see [Item-Authorization Answers](#item-authorization-answers) |
 
 **A grant change calls `revokePrincipal`** — a role removed, a resource grant
@@ -836,7 +839,7 @@ An invalidation is a `TomCacheInvalidation`: a `TomInvalidationKind`, a
 | --------------------- | -------- | ---------- |
 | `principal` | the username, qualified by tenant (`tenant:<id>/<name>`) when raised in a tenant | `TomAuthorizationCache.revokeLocally(target, at)` — tokens issued at or before `at` are refused, and the user's cached principals are dropped |
 | `cacheEntry` | the cache name | `removeEntry(key)` on the cache registered under that name; `key` is already qualified by tenant when raised in one |
-| `cache` | the cache name | `clear()` on the cache registered under that name |
+| `cache` | the cache name; `key` the tenant when raised in one | `clear()` on the cache registered under that name — or, with a tenant, `removeWhere` over the keys qualified with it (`tenant:<id>/`) |
 | `item` | the item key, pattern `<type>:<prefix>*` or `*`, qualified by tenant when raised in one; `key` is the subject or `null` | `TomItemAuthorizationCache.invalidateLocally(target, key)` — drops the answers on the matching items for that subject, or for every subject |
 
 A cache name nothing registered on this node is nothing to invalidate, and is

@@ -3,6 +3,7 @@
 library;
 
 import 'package:test/test.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:tom_core_message_bus/conformance.dart';
 import 'package:tom_core_message_bus/tom_core_message_bus.dart';
 
@@ -91,5 +92,45 @@ void main() {
       TomBusHeaders.deadLetterReason: 'max-deliveries',
       TomBusHeaders.deadLetterAttempts: '5',
     });
+  });
+
+  test('MB-D6: a message whose tenant header is not a tenant id is '
+      'dead-lettered without reaching the handler', () async {
+    var handled = 0;
+    final message = TomBusMessage(
+      id: 'm-2',
+      topic: 'orders',
+      payload: 'hello',
+      headers: const {TomBusHeaders.tenant: 'Not A Tenant'},
+      publishedAt: DateTime.utc(2026, 11, 6),
+    );
+    final result = await tomDispatch<String>(
+      message,
+      attempt: 1,
+      group: 'billing',
+      codec: TomBusCodec<String>.reflected(),
+      handler: (_) => handled++,
+    );
+    expect(result, (TomBusOutcome.deadLettered, 'invalid-tenant'));
+    expect(handled, 0);
+  });
+
+  test('MB-D7: the handler runs in the tenant the message names', () async {
+    String? tenant;
+    final message = TomBusMessage(
+      id: 'm-3',
+      topic: 'orders',
+      payload: 'hello',
+      headers: const {TomBusHeaders.tenant: 'acme'},
+      publishedAt: DateTime.utc(2026, 11, 6),
+    );
+    await tomDispatch<String>(
+      message,
+      attempt: 1,
+      group: 'billing',
+      codec: TomBusCodec<String>.reflected(),
+      handler: (_) => tenant = TomTenantContext.currentId,
+    );
+    expect(tenant, 'acme');
   });
 }

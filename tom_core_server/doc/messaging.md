@@ -1760,8 +1760,16 @@ The relay records the trace position of the zone `publish` was called in, and
 publishes inside that trace, so the bus's `traceparent` header continues the
 request that queued the message and a consumer's handling joins it — however
 much later, and on whichever node, the relay publishes. A message queued in no
-trace is published from the relay's job run. The run records the tenant in
-context (`TomTenantContext.currentId`), as the outbox's do.
+trace is published from the relay's job run.
+
+The run records the tenant in context (`TomTenantContext.currentId`), as the
+outbox's do, and is filed under `runIdOf(id)` — the message id qualified by
+that tenant — so two tenants relaying one message id queue two messages. The
+scheduler runs the publish inside the run's tenant, so the bus message carries
+it in its `tom-tenant` header and the consumer handles it in that tenant
+(`tom_core_message_bus` [message_bus.md](../../tom_core_message_bus/doc/message_bus.md#the-tenant)).
+A suspended tenant's queued messages are held and a removed tenant's cancelled,
+like every run of the job queue ([tenancy.md](tenancy.md#suspending-a-tenant)).
 
 ### Bus relay failure keys
 
@@ -1883,7 +1891,13 @@ each message with the tenant it was sent for:
 
 - **`send` queues the message for the tenant in context.** The outbox's run
   records `TomTenantContext.currentId` as its tenant, so the message carries it
-  through the durable queue and across a restart.
+  through the durable queue and across a restart, and is filed under
+  `runIdOf(message.id)` — the message id qualified by the tenant — so two
+  tenants sending one message id send two messages, each once.
+- **The tenant's lifecycle holds it.** A suspended tenant's messages wait in
+  the queue until it is resumed, and a removed tenant's are cancelled — the job
+  queue's tenant gate and `cancelTenantRuns`
+  ([tenancy.md](tenancy.md#suspending-a-tenant)).
 - **Delivery runs inside that tenant.** The scheduler runs the run's body back
   inside its tenant, so a transport reading `TomTenantContext.currentId` at
   `send` time sees the tenant the message was composed in — which is how a

@@ -2,6 +2,20 @@
 
 ### Added
 
+- **Jobs planned per tenant** (`scheduling` module). A clock-driven job
+  declares the tenants it runs for — `TomJobDefinition.tenants` /
+  `@TomScheduledJob(tenants:)`, a `const TomJobTenants(types:, system:)` —
+  instead of looping over the tenants in its body: at every pass the scheduler
+  asks `TomScheduler.tenantsFor` (installed by `tom_core_server`'s tenancy) for
+  the active tenants of the types and plans each one's windows on its own, the
+  run built and executed in its tenant, and with `system` once outside any
+  tenant too. `TomJobStore.lastWindow(name, tenant:)` anchors each tenant on its
+  own history; a `windowsMissed` alert names its tenant (`TomJobAlert.tenant`).
+  Without a resolver such a job is planned once, outside any tenant; declaring
+  tenants on an event job is refused (`schedule.job.tenants_not_clock_driven`).
+- **`TomTenantContext.tenantOf(qualified)`** (`context` module) — the tenant a
+  `qualify`-qualified name names, its inverse.
+
 - **Holding, cancelling and purging a tenant's runs** (`scheduling` module).
   `TomScheduler.tenantGate`, shared by every scheduler of the isolate, is asked
   for each due run of a tenant as it is claimed; a run it refuses stays

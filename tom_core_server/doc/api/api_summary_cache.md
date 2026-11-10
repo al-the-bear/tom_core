@@ -325,7 +325,7 @@ cached outside any tenant's context. The instance methods take the key as given.
 | `stopTimers` | `void stopTimers()` | Cancels the deletion and clearance timers if they are running and clears both fields; the intervals are untouched, so `createTimers` restarts the cache. |
 | `createDeletionTimer` | `Timer createDeletionTimer()` | Builds the periodic timer that removes entries past their `deletionTime`, in `Zone.root`. |
 | `createClearanceTimer` | `Timer createClearanceTimer()` | Builds the periodic timer that empties the entire cache, in `Zone.root`. |
-| `clear` | `void clear()` | Removes every entry, resetting the MRU chain along with the backing map so a bounded cache is left consistently empty. The clearance timer and a cross-node `cache` invalidation (`TomCacheInvalidator.invalidateCache`) both come here. |
+| `clear` | `void clear()` | Removes every entry, resetting the MRU chain along with the backing map so a bounded cache is left consistently empty. The clearance timer and a cross-node `cache` invalidation of no tenant (`TomCacheInvalidator.invalidateCache` outside any tenant) both come here. |
 | `removeWhere` | `int removeWhere(bool Function(String key) test)` | Removes every entry whose stored key — tenant-qualified where it was stored in a tenant's context — satisfies `test`, each through `removeEntry`, and answers how many. An `item` invalidation comes here. |
 
 ### TomCacheStoreMessage
@@ -414,7 +414,8 @@ TomCacheRetrieveMessage(String cacheName, String key)
 
 One invalidation, as it travels between nodes: what is invalidated (`kind`),
 the username or cache name it names (`target`), the entry key of a single-entry
-invalidation or the subject of an item invalidation (`key`), when it was raised
+invalidation, the subject of an item invalidation or the tenant of a cache
+invalidation (`key`), when it was raised
 (`at`, in UTC) and the node that raised it (`origin`). The constructor is
 private; an invalidation is built by one of the five factories.
 
@@ -423,7 +424,7 @@ private; an invalidation is built by one of the five factories.
 ```dart
 factory TomCacheInvalidation.principal(String username, {DateTime? at, String? origin})
 factory TomCacheInvalidation.cacheEntry(String cacheName, String key, {DateTime? at, String? origin})
-factory TomCacheInvalidation.cache(String cacheName, {DateTime? at, String? origin})
+factory TomCacheInvalidation.cache(String cacheName, {String? tenant, DateTime? at, String? origin})
 factory TomCacheInvalidation.item(String item, {String? subject, DateTime? at, String? origin})
 factory TomCacheInvalidation.fromParts({required String kind, required String target, String? key, required DateTime at, required String origin})
 ```
@@ -431,7 +432,8 @@ factory TomCacheInvalidation.fromParts({required String kind, required String ta
 `at` defaults to now and `origin` to `TomCacheInvalidator.nodeId`; both are
 stored in UTC. `item` takes the item — key, pattern `<type>:<prefix>*` or `*` —
 as given; `TomCacheInvalidator.invalidateItemAuthorization` qualifies it by the
-tenant in context. `fromParts` rebuilds an invalidation from its stored parts and
+tenant in context. `cache` with a `tenant` empties only that tenant's entries —
+the keys `TomCache` qualified with it; without one, every entry. `fromParts` rebuilds an invalidation from its stored parts and
 throws `ArgumentError` for a `kind` name no `TomInvalidationKind` carries.
 
 #### Properties
@@ -529,7 +531,7 @@ Callable from any isolate: a worker forwards the call to the main isolate as a
 | `install` | `static Future<void> install(TomInvalidationChannel channel)` | Installs `channel`, stops the one it replaces and starts the new one with `apply` as its delivery callback. Called once at start-up, before serving requests, so the revocations still in force reach this node before it answers anyone. |
 | `revokePrincipal` | `static Future<void> revokePrincipal(String username)` | Revokes, on every node, the tokens `username` holds that were issued now or earlier, and drops the principals cached for them. In a tenant's context, revokes that tenant's `username` only — the name travels qualified (`TomTenantContext.qualify`), because another tenant's account of the same name is a different person. |
 | `invalidateCacheEntry` | `static Future<void> invalidateCacheEntry(String cacheName, String key)` | Removes `key` from the cache named `cacheName` on every node — the current tenant's entry, in a tenant's context, qualified as `TomCache` keys it. |
-| `invalidateCache` | `static Future<void> invalidateCache(String cacheName)` | Empties the cache named `cacheName` on every node. |
+| `invalidateCache` | `static Future<void> invalidateCache(String cacheName)` | Empties the cache named `cacheName` on every node — in a tenant's context only that tenant's entries, so one tenant's invalidation does not empty another's. |
 | `invalidateItemAuthorization` | `static Future<void> invalidateItemAuthorization(String item, {String? subject})` | Drops, on every node, the cached item-authorization answers on `item` — an item key `<type>:<id>`, a pattern `<type>:<prefix>*`, or `*` — for `subject`, or for every subject when it is `null`; the current tenant's, in a tenant's context. |
 | `raise` | `static Future<void> raise(TomCacheInvalidation invalidation)` | Applies `invalidation` here, then publishes it — on the main isolate; a worker forwards it there. |
 | `apply` | `static Future<void> apply(TomCacheInvalidation invalidation)` | Applies `invalidation` to this process's caches, whichever node raised it: a principal through `TomAuthorizationCache.revokeLocally`, an entry through `TomCache.removeEntry`, a cache through `TomCache.clear`, an item through `TomItemAuthorizationCache.invalidateLocally`. A cache name nothing registered here is nothing to invalidate. |
@@ -1004,7 +1006,7 @@ What a `TomCacheInvalidation` invalidates.
 | ----- | ------- |
 | `principal` | Every token a user holds that was issued at or before the invalidation; `target` is the username. |
 | `cacheEntry` | One entry of a named cache; `target` is the cache name and `key` the entry key. |
-| `cache` | Every entry of a named cache; `target` is the cache name. |
+| `cache` | Every entry of a named cache; `target` is the cache name, `key` the tenant whose entries alone go, or `null` for every entry. |
 | `item` | The cached item-authorization answers an item and a subject name; `target` is the tenant-qualified item key, pattern `<type>:<prefix>*` or `*`, and `key` the subject, or `null` for every subject. |
 
 ## Global Functions and Constants

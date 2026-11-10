@@ -273,11 +273,18 @@ class TomMessageOutbox implements TomClosable {
     'messaging.message.id': message.id,
   };
 
+  /// The id of the run that carries the message [messageId] queued in the
+  /// tenant in context: `<jobName>:<messageId>`, the message id qualified by
+  /// the tenant (`TomTenantContext.qualify`) — two tenants queueing the same
+  /// message id queue two messages, each sent once.
+  String runIdOf(String messageId) =>
+      '$jobName:${TomTenantContext.qualifyCurrent(messageId)}';
+
   Future<bool> _send(TomMessage message, DateTime? notBefore) async {
     _requireOpen();
     final now = _clock();
     final runAt = notBefore != null && notBefore.isAfter(now) ? notBefore : now;
-    final runId = '$jobName:${message.id}';
+    final runId = runIdOf(message.id);
     if (await store.findRun(runId) != null) return false;
     await store.enqueue(
       TomJobRun(

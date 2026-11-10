@@ -490,6 +490,15 @@ class TomScheduler implements TomClosable {
   /// tenant is resumed. A run of no tenant is never held.
   static bool Function(String tenant)? tenantGate;
 
+  /// The active tenants of the given types — of every type for an empty
+  /// list — for every scheduler of the isolate; `null` — the default — when
+  /// the deployment has no tenancy.
+  ///
+  /// What a job declaring [TomJobDefinition.tenants] is planned for: once per
+  /// tenant it answers, at every pass. `tom_core_server`'s tenancy installs
+  /// it; without it such a job is planned once, outside any tenant.
+  static Iterable<String> Function(List<String> types)? tenantsFor;
+
   /// The schedulers of this isolate that were started and not yet closed.
   ///
   /// A process shutting down gracefully walks it: [stop] every one so no new
@@ -776,7 +785,28 @@ class TomScheduler implements TomClosable {
   /// record too would enqueue one window further into the future on every tick,
   /// walking the plan forward forever.
   Future<void> _planWindows(TomJobDefinition job, DateTime now) async {
-    final last = await store.lastWindow(job.name);
+    for (final tenant in _tenantsOf(job)) {
+      await _planWindowsOf(job, now, tenant);
+    }
+  }
+
+  /// The tenants [job] is planned for this pass: `null` alone for a job of no
+  /// tenant — or for every job when no [tenantsFor] is installed — else each
+  /// active tenant of its types, and `null` before them when it also runs for
+  /// the system.
+  static List<String?> _tenantsOf(TomJobDefinition job) {
+    final declared = job.tenants;
+    final resolve = tenantsFor;
+    if (declared == null || resolve == null) return const [null];
+    return [if (declared.system) null, ...resolve(declared.types)];
+  }
+
+  Future<void> _planWindowsOf(
+    TomJobDefinition job,
+    DateTime now,
+    String? tenant,
+  ) async {
+    final last = await store.lastWindow(job.name, tenant: tenant);
 
     if (last == null) {
       // First sight of this job. Anchor on the present: treating all of history
@@ -784,7 +814,7 @@ class TomScheduler implements TomClosable {
       // day since the epoch.
       final first = job.schedule.nextFireAfter(now);
       if (first != null) {
-        await _enqueueWindow(job, first, first);
+        await _enqueueWindow(job, first, first, tenant);
       } else if (_neverFiresReported.add(job.name)) {
         // Anchoring on the present has one cost, and this is it: a job whose
         // only window is already behind it gets nothing planned, and would
@@ -803,7 +833,7 @@ class TomScheduler implements TomClosable {
     }
 
     if (job.missedWindowPolicy != TomMissedWindowPolicy.skip) {
-      if (!await _enqueueMissed(job, last, now)) {
+      if (!await _enqueueMissed(job, last, now, tenant)) {
         // The pass's catch-up budget ran out mid-backlog. Returning here skips
         // the look-ahead enqueue *deliberately*: look-ahead would push the last
         // window on record into the future, and the next pass — which anchors
@@ -819,6 +849,7 @@ class TomScheduler implements TomClosable {
           TomJobAlert(
             jobName: job.name,
             kind: TomJobAlertKind.windowsMissed,
+            tenant: tenant,
             missedWindows: missed,
           ),
         );
@@ -826,7 +857,9 @@ class TomScheduler implements TomClosable {
     }
 
     final upcoming = job.schedule.nextFireAfter(now);
-    if (upcoming != null) await _enqueueWindow(job, upcoming, upcoming);
+    if (upcoming != null) {
+      await _enqueueWindow(job, upcoming, upcoming, tenant);
+    }
   }
 
   /// Enqueues the missed windows [job]'s policy asks for, dating each run to
@@ -839,6 +872,7 @@ class TomScheduler implements TomClosable {
     TomJobDefinition job,
     DateTime last,
     DateTime now,
+    String? tenant,
   ) async {
     final wanted = job.missedWindowPolicy == TomMissedWindowPolicy.runOnce
         ? 1
@@ -870,6 +904,7 @@ class TomScheduler implements TomClosable {
         TomJobAlert(
           jobName: job.name,
           kind: TomJobAlertKind.windowsMissed,
+          tenant: tenant,
           missedWindows: scanned - recent.length,
         ),
       );
@@ -887,7 +922,7 @@ class TomScheduler implements TomClosable {
       // Due now, dated then: the run is late, and says so.
       // Only an enqueue that actually happened spends budget — a window already
       // on record did no work.
-      if (await _enqueueWindow(job, missed, now)) _catchUpBudget--;
+      if (await _enqueueWindow(job, missed, now, tenant)) _catchUpBudget--;
     }
     return true;
   }
@@ -906,7 +941,7 @@ class TomScheduler implements TomClosable {
     return count;
   }
 
-  /// Adds a run for [scheduledFor] unless one already exists.
+  /// Adds a run of [tenant] for [scheduledFor] unless one already exists.
   ///
   /// The existence check is the idempotence guarantee that makes a tick safe to
   /// replay after a crash.
@@ -917,8 +952,12 @@ class TomScheduler implements TomClosable {
     TomJobDefinition job,
     DateTime scheduledFor,
     DateTime runAt,
+    String? tenant,
   ) async {
-    if (await store.findWindow(job.name, scheduledFor) != null) return false;
+    if (await store.findWindow(job.name, scheduledFor, tenant: tenant) !=
+        null) {
+      return false;
+    }
     await store.enqueue(
       TomJobRun(
         id: _nextRunId(job.name),
@@ -926,6 +965,7 @@ class TomScheduler implements TomClosable {
         scheduledFor: scheduledFor,
         runAt: runAt,
         priority: job.priority,
+        tenant: tenant,
       ),
     );
     return true;

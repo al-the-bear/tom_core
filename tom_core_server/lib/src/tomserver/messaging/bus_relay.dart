@@ -158,7 +158,7 @@ class TomBusRelay implements TomClosable {
     }
     final json = (codec ?? TomBusCodec<T>.reflected()).encode(payload);
     final messageId = id ?? _newId();
-    final runId = '$jobName:$messageId';
+    final runId = runIdOf(messageId);
     if (await store.findRun(runId) != null) return messageId;
     final now = _clock();
     final trace = TomTraceContext.current;
@@ -184,6 +184,13 @@ class TomBusRelay implements TomClosable {
     );
     return messageId;
   }
+
+  /// The id of the run that carries the message [messageId] queued in the
+  /// tenant in context: `<jobName>:<messageId>`, the message id qualified by
+  /// the tenant (`TomTenantContext.qualify`) — two tenants publishing the same
+  /// message id queue two messages.
+  String runIdOf(String messageId) =>
+      '$jobName:${TomTenantContext.qualifyCurrent(messageId)}';
 
   String _newId() {
     final buffer = StringBuffer('msg-');

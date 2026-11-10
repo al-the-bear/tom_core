@@ -676,6 +676,9 @@ This module stores it:
 
 - `TomSqlJobStore` writes the run's tenant to `tom_job_run.tenant` — `''` for a
   run of no tenant — and reads `''` back as `null`.
+- `lastWindow(jobName, tenant: …)` answers the latest window of that tenant's
+  runs (`tenant = :tenant`), so a job planned per tenant
+  (`TomJobDefinition.tenants`) is anchored per tenant.
 - `findWindow(jobName, scheduledFor, tenant: …)` matches `tenant = :tenant`
   and `window_at = :scheduledFor`, so the window lookup that makes enqueueing idempotent is per tenant, and the
   unique key enforces the same thing in the database.
@@ -689,6 +692,16 @@ This module stores it:
 - A job with `allowOverlap: false` takes its lease on `job:<name>@<tenant>` for a
   run of a tenant, so `tom_lease` serialises per job and tenant and one tenant's
   long run never holds up another's.
+
+The installed tenancy tells the scheduler which tenants a job planned per
+tenant runs for (`TomScheduler.tenantsFor`, answered by
+`TomTenancy.activeTenantsOf`: the served, `active` tenants of the job's types)
+and which tenants' queued runs may run now (`TomScheduler.tenantGate`,
+`TomTenancy.servesWork`). The framework's own periodic work that touches tenant
+tables is declared per tenant this way — the privacy retention job
+(`TomPrivacy.retentionJob`) and the field re-encryption pass
+(`TomFieldReencryption.job`) are planned once per active tenant and once for the
+system, each run working on the tables of its place.
 
 See [tenancy.md](tenancy.md) for where tenants come from.
 

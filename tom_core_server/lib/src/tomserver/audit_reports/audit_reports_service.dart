@@ -18,6 +18,7 @@ import '../resources/localized_text_resources.dart';
 import 'audit_question.dart';
 import 'audit_question_store.dart';
 import 'audit_view.dart';
+import '../tenancy/tenancy.dart';
 
 /// What one delivery did.
 class TomAuditReportDelivery {
@@ -101,9 +102,13 @@ class TomAuditReports {
   /// The writers the trail holds records of.
   Future<List<String>> writers() => view.source.writers();
 
-  /// [filter] asked now.
-  Future<TomAuditViewResult> ask(TomAuditQuestionFilter filter) =>
-      view.query(filter.toQuery(_clock()), writers: filter.writers);
+  /// [filter] asked now — in a tenant's context of that tenant's entries
+  /// only: the trail is one table that serves every tenant, and a tenant's
+  /// auditor reads the tenant's part of it.
+  Future<TomAuditViewResult> ask(TomAuditQuestionFilter filter) => view.query(
+    filter.toQuery(_clock(), tenant: TomTenantContext.currentId),
+    writers: filter.writers,
+  );
 
   /// The questions [owner] saved.
   Future<List<TomAuditQuestion>> questionsOf(String owner) =>
@@ -174,6 +179,14 @@ class TomAuditReports {
 
   /// Delivers every question due now; answers what each delivery did.
   ///
+  /// A question of a tenant's auditor — its owner qualified with the tenant —
+  /// is delivered in that tenant ([TomTenantContext.run]): its answer holds
+  /// the tenant's entries only, and the export and the delivery's audit entry
+  /// are the tenant's. One whose tenant this process does not serve as active
+  /// now — suspended, removed, not yet known here — is held: it stays due and
+  /// is delivered by a later pass that serves the tenant
+  /// ([TomTenancy.servesWork]).
+  ///
   /// A delivery that fails does not stop the others: it is recorded in the
   /// audit trail as failed, and the question moves on to its next scheduled
   /// delivery (a question marked for one delivery is unmarked) — a broken
@@ -182,40 +195,58 @@ class TomAuditReports {
     final now = _clock().toUtc();
     final done = <TomAuditReportDelivery>[];
     for (final question in await questions.due(now)) {
-      TomAuditReportDelivery delivery;
-      try {
-        delivery = await _deliver(question, now);
-      } on Object catch (error) {
-        delivery = TomAuditReportDelivery(
-          question: question,
-          recordCount: 0,
-          error: error,
-        );
+      final tenant = TomTenantContext.tenantOf(question.owner);
+      if (tenant == null) {
+        done.add(await _deliverAndRecord(question, now));
+        continue;
       }
-      await TomAuditTrail.recordAction(
-        action: TomAuditAction.execute,
-        target: 'TomAuditQuestion',
-        targetKey: question.id,
-        outcome: delivery.succeeded
-            ? TomAuditOutcome.succeeded
-            : TomAuditOutcome.failed,
-        detail: delivery.succeeded
-            ? '${delivery.recordCount} record(s) to '
-                  '${question.recipients.length} recipient(s) as '
-                  '${delivery.exportKey}'
-            : 'delivery failed: ${delivery.error}',
-      );
-      final next = question.nextAfter(now);
-      await questions.save(
-        question.copyWith(
-          lastDeliveredAt: delivery.succeeded ? now : null,
-          nextDeliveryAt: next,
-          clearNextDelivery: next == null,
+      if (!(TomTenancy.current?.servesWork(tenant) ?? false)) continue;
+      done.add(
+        await TomTenantContext.run(
+          tenant,
+          () => _deliverAndRecord(question, now),
         ),
       );
-      done.add(delivery);
     }
     return done;
+  }
+
+  Future<TomAuditReportDelivery> _deliverAndRecord(
+    TomAuditQuestion question,
+    DateTime now,
+  ) async {
+    TomAuditReportDelivery delivery;
+    try {
+      delivery = await _deliver(question, now);
+    } on Object catch (error) {
+      delivery = TomAuditReportDelivery(
+        question: question,
+        recordCount: 0,
+        error: error,
+      );
+    }
+    await TomAuditTrail.recordAction(
+      action: TomAuditAction.execute,
+      target: 'TomAuditQuestion',
+      targetKey: question.id,
+      outcome: delivery.succeeded
+          ? TomAuditOutcome.succeeded
+          : TomAuditOutcome.failed,
+      detail: delivery.succeeded
+          ? '${delivery.recordCount} record(s) to '
+                '${question.recipients.length} recipient(s) as '
+                '${delivery.exportKey}'
+          : 'delivery failed: ${delivery.error}',
+    );
+    final next = question.nextAfter(now);
+    await questions.save(
+      question.copyWith(
+        lastDeliveredAt: delivery.succeeded ? now : null,
+        nextDeliveryAt: next,
+        clearNextDelivery: next == null,
+      ),
+    );
+    return delivery;
   }
 
   Future<TomAuditReportDelivery> _deliver(
@@ -232,7 +263,10 @@ class TomAuditReports {
         parameters: {'id': question.id},
       );
     }
-    final query = question.filter.toQuery(now);
+    final query = question.filter.toQuery(
+      now,
+      tenant: TomTenantContext.currentId,
+    );
     final answer = await view.query(query, writers: question.filter.writers);
     final stored = await exports.storeAs(
       tabularOf(question.name, answer),

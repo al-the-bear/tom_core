@@ -2259,7 +2259,10 @@ One `sweep` pages through the ledger's keys written before `now - grace`, in key
 order, `batchSize` (default 500) at a time. A key under none of `prefixes` is
 left alone — give them when the store also holds files no source describes; with
 none, every key is considered. Each `TomBlobReferenceSource` is asked which of
-the page's keys a row refers to, and the keys no source names are asked about a
+the page's keys a row refers to — a `TomRepositoryBlobReferences` over a tenant
+table (`@TomTenantTable`), asked outside any tenant under an installed tenancy,
+answers the rows of every served tenant, suspended ones included, since a key
+any tenant's row names is in use — and the keys no source names are asked about a
 **second time** immediately before they are deleted, so a row saved while the
 page was being checked keeps its file. The keys still unreferenced are deleted
 from the store, and then — unless `reclaim: false` — the store's `reclaim` runs,
@@ -2694,7 +2697,10 @@ final report = await TomFieldReencryption().run();
 
 By default it covers every reflected `@TomDbTable` entity declaring a
 `@TomEncrypted` field; `entities:` narrows it, and `batchSize` (200) is how many
-rows each statement reads. It reads the rows raw, in primary-key order, and
+rows each statement reads. Under an installed tenancy a run passes over the
+entities of its place: in a tenant's context the tenant tables — that tenant's
+rows, with its own data keys — and outside any tenant the system tables, with
+the system's; without a tenancy every entity. It reads the rows raw, in primary-key order, and
 writes each row that needs it with an `UPDATE` **guarded by the values it
 read**: a concurrent save that changed the row in between makes the update
 match nothing, and the row is counted as a conflict for the next pass instead of
@@ -2713,7 +2719,9 @@ pass can always run again; a second one over a converged table rewrites nothing.
 `pass.job(schedule: …)` makes the pass a scheduler job, named
 `object_persistence.reencrypt` (`tomReencryptionJobName`) unless given another
 name, with a one-hour timeout, recovery requested, and the report as the run's
-result:
+result. On a clock-driven schedule it is planned once per active tenant and
+once for the system (`TomJobTenants(system: true)`), so its runs together pass
+over every row; on an event schedule a run belongs to its event's tenant:
 
 ```dart
 final scheduler = TomScheduler(
@@ -3459,5 +3467,5 @@ is a string and `>` and `%` are directly writable in one. See
 | [file_storage](file_storage.md) | module | `blob_migration.dart`, `blob_orphan_sweep.dart`, `crud_repository.dart`, `file_reference.dart` | `TomBlobStore`, `TomBlobStoreInfo`, `TomStorageException`, `TomStoredBlob`; `TomDeduplicatingBlobStore` and `tomBlobKeyUnder` for the orphan sweep |
 | [little_things](little_things.md) | module | 8 of 19 files | `TomServerException` (base of the module's exceptions) |
 | [privacy](privacy.md) | module | `crud_repository.dart` | `TomPersonalDataModel.sealingSubjects`, which names the data subject each `@TomPersonal` value of an audit record is sealed for |
-| [tenancy](tenancy.md) | module | `crud_repository.dart`, `field_encryption.dart` | `TomTenancy.tenantForWork`, the tenant a tenant table's statements run as; `TomTenancy.current` and its tenants, which the re-encryption pass runs in |
+| [tenancy](tenancy.md) | module | `blob_orphan_sweep.dart`, `crud_repository.dart`, `field_encryption.dart` | `TomTenancy.tenantForWork`, the tenant a tenant table's statements run as; `TomTenancy.current`, whose installation decides which entities a re-encryption pass covers, and whose tenants a reference source over a tenant table asks |
 | [transactions](transactions.md) | module | `crud_repository.dart` | `TomTransactionManager.runInTransaction`, the transaction an observed entity's write runs in |

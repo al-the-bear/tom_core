@@ -1,6 +1,7 @@
 /// The trace context across the bus: the headers a publish adds, and the
-/// trace a delivery runs in. Every bus — the in-memory one and every adapter —
-/// goes through these two, so a trace crosses any broker the same way.
+/// trace and tenant a delivery runs in. Every bus — the in-memory one and
+/// every adapter — goes through these two, so a trace and a tenant cross any
+/// broker the same way.
 library;
 
 import 'dart:async';
@@ -13,13 +14,19 @@ import 'message.dart';
 /// The trace handling of the bus.
 abstract final class TomBusTrace {
   /// Runs [publish] with the headers to send: [headers] and, when the current
-  /// zone is in a trace, its position. With a tracer installed the publish is
-  /// a producer span, `<topic> publish`, and the position sent is the span's.
+  /// zone is in a trace, its position; in a tenant's context, the tenant
+  /// ([TomBusHeaders.tenant]) unless [headers] name one. With a tracer
+  /// installed the publish is a producer span, `<topic> publish`, and the
+  /// position sent is the span's.
   static Future<R> publishing<R>(
     String topic,
     Map<String, String> headers,
     Future<R> Function(Map<String, String> headers) publish,
   ) {
+    final tenant = TomTenantContext.currentId;
+    if (tenant != null && !headers.containsKey(TomBusHeaders.tenant)) {
+      headers = {...headers, TomBusHeaders.tenant: tenant};
+    }
     final span = TomTracing.start(
       '$topic publish',
       kind: TomSpanKind.producer,
@@ -45,6 +52,10 @@ abstract final class TomBusTrace {
   /// message was published in: a new span of it, whose trace id is the
   /// request id, or a trace of its own for a message published in none. With
   /// a tracer installed the handling is a consumer span, `<topic> process`.
+  ///
+  /// A message that names a tenant ([TomBusHeaders.tenant]) is handled in that
+  /// tenant ([TomTenantContext.run]), one that names none outside any;
+  /// [tenantOf] reads the header.
   static Future<R> delivering<R>(
     TomBusMessage message,
     String group,
@@ -68,8 +79,23 @@ abstract final class TomBusTrace {
     );
     final trace =
         span?.context ?? published?.child() ?? TomTraceContext.newRoot();
-    Future<R> run() => TomRequestId.run(TomRequestId.of(trace.traceId), handle);
+    final tenant = tenantOf(message);
+    Future<R> inTenant() =>
+        tenant == null ? handle() : TomTenantContext.run(tenant, handle);
+    Future<R> run() =>
+        TomRequestId.run(TomRequestId.of(trace.traceId), inTenant);
     if (span == null) return TomTraceContext.run(trace, run);
     return TomTracing.within(span, () => TomTracing.ending(span, run));
+  }
+
+  /// The tenant [message] was published in, from its [TomBusHeaders.tenant]
+  /// header, or `null` for a message that names none. Throws
+  /// `tenancy.id.invalid` for a header that is not a tenant id —
+  /// [tomDispatch] dead-letters such a message, reason `invalid-tenant`.
+  static String? tenantOf(TomBusMessage message) {
+    final tenant = message.headers[TomBusHeaders.tenant];
+    if (tenant == null) return null;
+    TomTenantContext.validate(tenant);
+    return tenant;
   }
 }

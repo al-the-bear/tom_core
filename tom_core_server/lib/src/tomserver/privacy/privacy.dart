@@ -470,9 +470,12 @@ abstract final class TomPrivacy {
   /// personal fields cleared — through the entity's repository, a batch at a
   /// time. Each policy's run is audited ([retentionTarget]).
   ///
-  /// A tenant table's policy run with no tenant in context under an installed
-  /// tenancy is applied in every tenant in turn, and its count is their sum; in
-  /// a tenant it is applied in that tenant only. A system table's runs once.
+  /// Under an installed tenancy a call applies the policies of its place: in
+  /// a tenant's context the tenant tables' policies, to that tenant's rows;
+  /// outside any tenant the system tables' policies. Without a tenancy it
+  /// applies every policy. [retentionJob] is planned once per tenant and once
+  /// for the system ([TomJobTenants]), so its runs together apply every
+  /// policy everywhere.
   static Future<List<TomRetentionCount>> applyRetention({
     Iterable<TomRetentionPolicy>? policies,
     DateTime? now,
@@ -480,19 +483,10 @@ abstract final class TomPrivacy {
     final at = (now ?? DateTime.now()).toUtc();
     final results = <TomRetentionCount>[];
     for (final policy in policies ?? TomRetentionPolicy.declared()) {
+      if (!_inPlace(policy.entity)) continue;
       final entity = _registered(policy.entity);
       final cutoff = at.subtract(policy.keep);
-      final tenancy = TomTenancy.current;
-      var affected = 0;
-      if (TomAnnotationAnalyzer.isTenantTable(policy.entity) &&
-          tenancy != null &&
-          TomTenantContext.currentId == null) {
-        await tenancy.forEachTenant(
-          (_) async => affected += await _retain(entity, policy, cutoff),
-        );
-      } else {
-        affected = await _retain(entity, policy, cutoff);
-      }
+      final affected = await _retain(entity, policy, cutoff);
       results.add(TomRetentionCount(policy, cutoff, affected));
       await TomAuditTrail.recordAction(
         action: policy.action != TomErasure.delete
@@ -506,6 +500,14 @@ abstract final class TomPrivacy {
     }
     return results;
   });
+
+  /// Whether [entity]'s rows belong to the place the call runs in: always
+  /// without a tenancy; under one, a tenant table's in a tenant's context and
+  /// a system table's outside any.
+  static bool _inPlace(Type entity) =>
+      TomTenancy.current == null ||
+      TomAnnotationAnalyzer.isTenantTable(entity) ==
+          (TomTenantContext.currentId != null);
 
   /// Applies [policy] to [entity] in the zone's tenant: the rows older than
   /// [cutoff] deleted or anonymized; answers how many.
@@ -552,7 +554,10 @@ abstract final class TomPrivacy {
   }
 
   /// A scheduler job applying [policies] (default: the declared ones) on
-  /// [schedule].
+  /// [schedule] — a clock-driven one planned once per active tenant and once
+  /// for the system (`TomJobTenants(system: true)`), an event-driven one run
+  /// in its event's tenant: each run applies the policies of its place
+  /// ([applyRetention]).
   ///
   /// The body uses the isolate's registrations, so register the job on a
   /// scheduler with a `TomInlineJobDispatcher`; a worker isolate has none.
@@ -565,6 +570,9 @@ abstract final class TomPrivacy {
     name: name,
     schedule: schedule,
     body: (run) => _TomRetentionCommand(policies?.toList(), run.scheduledFor),
+    // An event run belongs to its event's tenant; a clock-driven job is
+    // planned per tenant and for the system.
+    tenants: schedule.isClockDriven ? const TomJobTenants(system: true) : null,
     timeout: timeout,
     // A run deletes what is expired at its window; running it again finds
     // nothing more to do.

@@ -356,6 +356,145 @@ void main() {
     });
   });
 
+  group('a job planned per tenant', () {
+    tearDown(() => TomScheduler.tenantsFor = null);
+
+    TomJobDefinition perTenant(
+      List<String> ran, {
+      TomJobTenants tenants = const TomJobTenants(),
+    }) => TomJobDefinition(
+      name: 'nightly',
+      schedule: TomIntervalSchedule(const Duration(hours: 1)),
+      tenants: tenants,
+      body: (run) {
+        ran.add('${run.tenant}@${TomTenantContext.currentId}');
+        return OkCommand();
+      },
+    );
+
+    test('is planned once per tenant the resolver answers, each run in its '
+        'tenant; with system also once outside any tenant', () async {
+      final clock = FakeClock(DateTime.utc(2026, 3, 1, 10, 30));
+      final store = TomMemoryJobStore();
+      final ran = <String>[];
+      final asked = <List<String>>[];
+      TomScheduler.tenantsFor = (types) {
+        asked.add(types);
+        return ['acme', 'globex'];
+      };
+      final scheduler = schedulerFor(store, clock);
+      scheduler.register(
+        perTenant(
+          ran,
+          tenants: const TomJobTenants(types: ['standard'], system: true),
+        ),
+      );
+      await scheduler.tick();
+      final planned = await store.all();
+      expect(planned.map((r) => r.tenant).toList()..sort(_nullsFirst), [
+        null,
+        'acme',
+        'globex',
+      ]);
+      expect(planned.map((r) => r.scheduledFor).toSet(), {
+        DateTime.utc(2026, 3, 1, 11),
+      });
+      expect(asked.single, ['standard']);
+
+      clock.advance(const Duration(hours: 1));
+      await scheduler.tick();
+      await scheduler.drain();
+      expect(ran..sort(), ['acme@acme', 'globex@globex', 'null@null']);
+      await scheduler.close();
+    });
+
+    test('a tenant answered later starts with its next window, and a tenant '
+        'left out misses its windows until it is answered again', () async {
+      final clock = FakeClock(DateTime.utc(2026, 3, 1, 10, 30));
+      final store = TomMemoryJobStore();
+      final alerts = <TomJobAlert>[];
+      var tenants = ['acme'];
+      TomScheduler.tenantsFor = (_) => tenants;
+      final scheduler = schedulerFor(store, clock, alerts: alerts);
+      scheduler.register(perTenant([]));
+      await scheduler.tick();
+      expect(await store.lastWindow('nightly', tenant: 'acme'), isNotNull);
+      expect(await store.lastWindow('nightly', tenant: 'globex'), isNull);
+
+      // globex onboarded, acme suspended for three hours.
+      tenants = ['globex'];
+      clock.advance(const Duration(hours: 3));
+      await scheduler.tick();
+      expect(
+        await store.lastWindow('nightly', tenant: 'globex'),
+        DateTime.utc(2026, 3, 1, 14),
+        reason: 'anchored on the present, not on acme\'s history',
+      );
+      expect(
+        await store.lastWindow('nightly', tenant: 'acme'),
+        DateTime.utc(2026, 3, 1, 11),
+      );
+
+      // acme resumed: its missed windows are caught up per the policy.
+      tenants = ['acme', 'globex'];
+      await scheduler.tick();
+      final missed = alerts.where(
+        (a) => a.kind == TomJobAlertKind.windowsMissed,
+      );
+      expect(missed.single.tenant, 'acme');
+      expect(missed.single.describe(), contains('of tenant acme'));
+      final acmeRuns = (await store.all()).where((r) => r.tenant == 'acme');
+      expect(
+        acmeRuns.map((r) => r.scheduledFor).toSet(),
+        containsAll([
+          DateTime.utc(2026, 3, 1, 11),
+          DateTime.utc(2026, 3, 1, 13),
+          DateTime.utc(2026, 3, 1, 14),
+        ]),
+        reason: 'runOnce replays the latest missed window, then plans ahead',
+      );
+      await scheduler.close();
+    });
+
+    test('without a resolver it is planned once, outside any tenant', () async {
+      final clock = FakeClock(DateTime.utc(2026, 3, 1, 10, 30));
+      final store = TomMemoryJobStore();
+      final scheduler = schedulerFor(store, clock);
+      scheduler.register(perTenant([]));
+      await scheduler.tick();
+      expect((await store.all()).single.tenant, isNull);
+      await scheduler.close();
+    });
+
+    test('an event job cannot declare tenants', () {
+      expect(
+        () => TomJobDefinition(
+          name: 'evented',
+          schedule: TomEventSchedule(const Stream<Object?>.empty()),
+          tenants: const TomJobTenants(),
+          body: (_) => OkCommand(),
+        ),
+        throwsA(
+          isA<TomScheduleException>().having(
+            (e) => e.key,
+            'key',
+            'schedule.job.tenants_not_clock_driven',
+          ),
+        ),
+      );
+    });
+
+    test('TomTenantContext.tenantOf reads what qualify wrote', () {
+      expect(
+        TomTenantContext.tenantOf(TomTenantContext.qualify('u1', 'acme')),
+        'acme',
+      );
+      expect(TomTenantContext.tenantOf('u1'), isNull);
+      expect(TomTenantContext.tenantOf('tenant:Bad Id/u1'), isNull);
+      expect(TomTenantContext.tenantOf('tenant:acme'), isNull);
+    });
+  });
+
   // ===========================================================================
   // CRON
   // ===========================================================================
@@ -5637,3 +5776,6 @@ class _CheckpointFailingStore extends TomMemoryJobStore {
     Map<String, Object?>? checkpoint,
   ) => throw StateError('database unreachable');
 }
+
+int _nullsFirst(String? a, String? b) =>
+    a == null ? (b == null ? 0 : -1) : (b == null ? 1 : a.compareTo(b));

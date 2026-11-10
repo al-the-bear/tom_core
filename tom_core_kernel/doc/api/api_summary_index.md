@@ -333,6 +333,7 @@ declarations are omitted.
 | `TomCronSchedule`, `TomCalendarSchedule`, `TomIntervalSchedule`, `TomOnceSchedule`, `TomEventSchedule` | class | Cron, month-grid, fixed-interval, one-shot and stream-driven schedules. |
 | `TomCalendarRule` | enum | `dayOfMonth`, `weekdayOfMonth`. |
 | `TomJobDefinition` | class | A named schedule bound to a `TomCommand` factory, plus retry/timeout/overlap/catch-up policy. |
+| `TomJobTenants` | class | The tenants a clock-driven job is planned for, once each — the declaration that replaces a loop over the tenants. |
 | `TomRetryPolicy` | class | Exponential backoff with jitter (`none` for no retry). |
 | `TomMissedWindowPolicy` | enum | `skip`, `runOnce`, `runAll`. |
 | `TomJobDispatcher` | abstract class | How a job's command is executed. |

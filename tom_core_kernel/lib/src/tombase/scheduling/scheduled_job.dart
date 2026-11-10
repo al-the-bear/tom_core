@@ -222,6 +222,9 @@ class TomScheduledJob {
   /// How urgent the job's runs are — see [TomJobDefinition.priority].
   final int priority;
 
+  /// The tenants the job is planned for — see [TomJobDefinition.tenants].
+  final TomJobTenants? tenants;
+
   /// Declares a scheduled job. Exactly one of [cron], [interval], [calendar]
   /// and [event] must be given.
   const TomScheduledJob({
@@ -237,6 +240,7 @@ class TomScheduledJob {
     this.allowOverlap = false,
     this.requestsRecovery = false,
     this.priority = 0,
+    this.tenants,
   });
 }
 
@@ -385,6 +389,7 @@ class TomScheduledJobs {
         allowOverlap: annotation.allowOverlap,
         requestsRecovery: annotation.requestsRecovery,
         priority: annotation.priority,
+        tenants: annotation.tenants,
       );
     } on TomScheduleException catch (error) {
       throw TomScheduledJobException(

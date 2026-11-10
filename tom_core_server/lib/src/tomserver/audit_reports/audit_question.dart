@@ -203,8 +203,9 @@ class TomAuditQuestionFilter {
     if (limit != TomAuditQuery.defaultLimit) 'limit': limit,
   };
 
-  /// The query this filter asks at [now], newest first.
-  TomAuditQuery toQuery(DateTime now) => TomAuditQuery(
+  /// The query this filter asks at [now], newest first — of [tenant]'s
+  /// entries only when given.
+  TomAuditQuery toQuery(DateTime now, {String? tenant}) => TomAuditQuery(
     from:
         from ??
         (lastHours == null
@@ -217,6 +218,7 @@ class TomAuditQuestionFilter {
     targetKey: targetKey,
     outcome: outcome,
     requestId: requestId,
+    tenant: tenant,
     limit: limit,
   );
 }

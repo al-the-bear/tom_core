@@ -15,7 +15,8 @@ import 'trace.dart';
 /// and answers how the delivery ended, with the reason a rejection gave.
 ///
 /// A payload [codec] cannot decode ends dead-lettered, reason `undecodable`,
-/// without reaching [handler]. A handler that throws without settling the
+/// without reaching [handler], and so does a message whose tenant header is
+/// not a tenant id, reason `invalid-tenant`. A handler that throws without settling the
 /// delivery rejects it for redelivery, the error as its reason; one that
 /// returns without settling acknowledges it.
 Future<(TomBusOutcome, String?)> tomDispatch<T>(
@@ -25,6 +26,11 @@ Future<(TomBusOutcome, String?)> tomDispatch<T>(
   required TomBusCodec<T> codec,
   required TomBusHandler<T> handler,
 }) async {
+  try {
+    TomBusTrace.tenantOf(message);
+  } on TomTenantException {
+    return (TomBusOutcome.deadLettered, 'invalid-tenant');
+  }
   final T payload;
   try {
     payload = codec.decode(message.payload);

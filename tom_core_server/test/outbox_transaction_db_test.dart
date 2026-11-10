@@ -343,7 +343,7 @@ void main() async {
           throwsStateError,
         );
         expect(participants, hasLength(1), reason: 'one branch, one commit');
-        expect(await store.findRun('${outbox.jobName}:tenant-rb'), isNull);
+        expect(await store.findRun(_acmeRun(outbox, 'tenant-rb')), isNull);
       },
     );
 
@@ -352,7 +352,7 @@ void main() async {
         'acme',
         () => _placeOrder(routed(), outbox, 'tenant-ok'),
       );
-      final run = await store.findRun('${outbox.jobName}:tenant-ok');
+      final run = await store.findRun(_acmeRun(outbox, 'tenant-ok'));
       expect(run, isNotNull);
       expect(run!.tenant, 'acme');
       expect(
@@ -363,9 +363,14 @@ void main() async {
       // Delivered by the outbox's scheduler from the base schema.
       await outbox.tick();
       expect(
-        (await store.findRun('${outbox.jobName}:tenant-ok'))!.state,
+        (await store.findRun(_acmeRun(outbox, 'tenant-ok')))!.state,
         TomJobRunState.succeeded,
       );
     });
   }, skip: skip);
 }
+
+/// The run id [outbox] files the message [id] under when it is sent in the
+/// tenant `acme`.
+String _acmeRun(TomMessageOutbox outbox, String id) =>
+    TomTenantContext.run('acme', () => outbox.runIdOf(id));

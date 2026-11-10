@@ -29,6 +29,7 @@ reads.
 - [Dispatch and Idempotence](#dispatch-and-idempotence)
   - [What a dispatch reports](#what-a-dispatch-reports)
   - [Why a repeated dispatch sends nothing twice](#why-a-repeated-dispatch-sends-nothing-twice)
+  - [The tenant of a dispatch](#the-tenant-of-a-dispatch)
 - [Digests](#digests)
   - [When a digest is due](#when-a-digest-is-due)
   - [Where a digest is kept](#where-a-digest-is-kept)
@@ -545,6 +546,18 @@ event — `taskAssigned:4711:2026-10-27T10:00` — makes the same event the same
 notification wherever it is raised. The default is a random UUID, under which
 two raises of one event are two notifications.
 
+### The tenant of a dispatch
+
+The dispatcher has no tenant of its own: it works in the tenant in context
+when `dispatch` is called. The audience resolves recipients there, the
+preferences are read there, and every message it queues is queued in that
+tenant — the outbox records the tenant on each run, files the message id under
+it (`TomMessageOutbox.runIdOf`, so two tenants' notifications of one id are two
+messages) and delivers each in its tenant
+([messaging.md](messaging.md#messages-per-tenant)). Dispatch a tenant's
+notification inside the tenant — a request handler is; a background job planned
+per tenant (`TomJobTenants`) is too.
+
 ## Digests
 
 A user who chose an `hourly` or `daily` cadence for a type receives its
@@ -592,7 +605,9 @@ zone and keep their local time across a daylight-saving change.
 
 A digest is a **pending run of a scheduler job** (`notifications.digest`,
 `tomNotificationDigestJobName`), in the outbox's job store unless another is
-given. Its id (`runIdOf`) names the recipient, the channel and the due time; its
+given. Its id (`runIdOf`) names the recipient — qualified by the tenant in
+context, so two tenants' recipients of one id have two digests — the channel and
+the due time; it runs in that tenant, and its
 payload holds the recipient's address, locale and template parameters and the
 collected items (`TomNotificationDigestItem`: id, type, parameters, raised-at);
 it becomes due at the due time. So a digest is as durable as the outbox: a node

@@ -301,6 +301,26 @@ void runTomJobStoreContract(String variant, TomJobStoreFactory create) {
       expect(await store.lastWindow('job'), at.add(const Duration(days: 1)));
     });
 
+    test('lastWindow is per tenant: a tenant\'s windows anchor that tenant '
+        'only, and the runs of no tenant only themselves', () async {
+      await store.enqueue(makeRun('none'));
+      await store.enqueue(
+        TomJobRun(
+          id: 'acme',
+          jobName: 'job',
+          scheduledFor: at.add(const Duration(days: 2)),
+          runAt: at,
+          tenant: 'acme',
+        ),
+      );
+      expect(await store.lastWindow('job'), at);
+      expect(
+        await store.lastWindow('job', tenant: 'acme'),
+        at.add(const Duration(days: 2)),
+      );
+      expect(await store.lastWindow('job', tenant: 'globex'), isNull);
+    });
+
     test('claimDue takes a due run and leases it', () async {
       await store.enqueue(makeRun('a'));
       final claimed = await store.claimDue(at, 'owner-1');

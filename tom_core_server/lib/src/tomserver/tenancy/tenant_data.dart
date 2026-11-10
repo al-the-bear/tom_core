@@ -4,7 +4,8 @@ library;
 
 /// A store of a system table that records a tenant on its rows — the job
 /// queue, the blob manifest, delivery reports, the suppression list, OAuth
-/// sign-in state, service accounts and their API keys — and so can delete a
+/// sign-in state, service accounts and their API keys, saved audit questions —
+/// and so can delete a
 /// purged tenant's records. `TomTenancy.purgeTenant` calls it on every store
 /// it is handed.
 abstract interface class TomTenantData {

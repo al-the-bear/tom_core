@@ -39,6 +39,7 @@ fails*, and *which node in a cluster actually runs a given occurrence*.
 - [Running More Than One Node](#running-more-than-one-node)
   - [What the lease is taken on](#what-the-lease-is-taken-on)
 - [Runs and Tenants](#runs-and-tenants)
+  - [A job planned per tenant](#a-job-planned-per-tenant)
 - [Lease Locks](#lease-locks)
   - [Choosing a substrate](#choosing-a-substrate)
 - [Observability](#observability)
@@ -61,6 +62,7 @@ fails*, and *which node in a cluster actually runs a given occurrence*.
 | `TomEventSchedule` | class | A trigger fed by a source rather than a clock. |
 | `TomCalendarRule` | enum | `dayOfMonth`, `weekdayOfMonth`. |
 | `TomJobDefinition` | class | A named schedule bound to a `TomCommand` factory, plus retry/timeout/overlap/catch-up policy. |
+| `TomJobTenants` | class | The tenants a clock-driven job is planned for, once each — a [job planned per tenant](#a-job-planned-per-tenant). |
 | `TomRetryPolicy` | class | Exponential backoff with jitter (`none` for no retry). |
 | `TomMissedWindowPolicy` | enum | `skip`, `runOnce`, `runAll`. |
 | `TomJobDispatcher` | abstract class | How a job's command is executed. |
@@ -1241,8 +1243,8 @@ events.add(TomTenantEvent('acme', {'invoice': 42}));
 events.add(TomTenantEvent.inCurrentTenant({'invoice': 42}));
 ```
 
-A plain event is a run of no tenant. A periodic job has no tenant of its own;
-one that does each tenant's work loops over the tenants in its body.
+A plain event is a run of no tenant. A periodic job runs outside any tenant
+unless it declares the tenants it is planned for — see below.
 
 **A tenant's runs can be held.** `TomScheduler.tenantGate`, a predicate over a
 tenant id shared by every scheduler of the isolate, is asked for each due run
@@ -1257,6 +1259,44 @@ fails a tenant's pending runs with `TomJobStore.tenantRemovedError`, so they
 never run and their record stays — what removing a tenant does; a run already
 executing finishes. `TomJobStore.purgeTenant` deletes every run of a tenant,
 finished or not — what purging one does.
+
+### A job planned per tenant
+
+A clock-driven job that does each tenant's work declares it
+(`TomJobDefinition.tenants`, or `tenants:` on `@TomScheduledJob`) rather than
+looping over the tenants in its body:
+
+```dart
+TomJobDefinition(
+  name: 'invoices.remind',
+  schedule: TomCronSchedule('0 7 * * *'),
+  // Every active tenant of the type `standard`, and once outside any tenant.
+  tenants: const TomJobTenants(types: ['standard'], system: true),
+  body: (run) => RemindCommand(), // runs in run.tenant
+);
+```
+
+At every pass the scheduler asks `TomScheduler.tenantsFor` — installed by
+`tom_core_server`'s tenancy — for the active tenants of `types` (every type when
+empty) and plans each one's windows on its own: a run per tenant per window,
+`TomJobRun.tenant` set, the body built and run inside it. With `system: true`
+the job is also planned once outside any tenant, for the deployment's own
+tables. Each tenant is anchored on its own history
+(`TomJobStore.lastWindow(name, tenant:)`), so:
+
+- a tenant onboarded later starts with its next window rather than replaying
+  the others' history;
+- a suspended tenant is not answered, so its windows are not planned while it is
+  suspended; once resumed, its missed windows are caught up per the job's
+  `TomMissedWindowPolicy`, and a `windowsMissed` alert names it
+  (`TomJobAlert.tenant`);
+- each tenant's run is claimed, leased and retried on its own — a slow or
+  failing tenant does not hold up the others.
+
+Without a resolver installed — a deployment without tenancy — the job is planned
+once, outside any tenant, like an undeclared one. Only a clock-driven job takes
+`tenants`: an event job's run belongs to its event's tenant, and declaring
+tenants on one is refused (`schedule.job.tenants_not_clock_driven`).
 
 ## Lease Locks
 

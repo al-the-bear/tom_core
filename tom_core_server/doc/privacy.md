@@ -367,8 +367,9 @@ scheduler.register(
 ```
 
 `retentionJob(schedule:)` is a scheduler job named `privacy.retention`
-(`tomRetentionJobName`) unless given another name, with a one-hour timeout and
-recovery requested — a run deletes what is expired at its window, and running it
+(`tomRetentionJobName`) unless given another name, planned — on a clock-driven
+schedule — once per active tenant and once for the system (`TomJobTenants`; see
+[Tenancy](#tenancy) below), with a one-hour timeout and recovery requested — a run deletes what is expired at its window, and running it
 again finds nothing more to do. Each run applies the policies — the declared
 ones unless `policies:` is given — at the run's **window instant**, so a run
 recovered later cuts off where it was scheduled to, and answers the counts as
@@ -580,10 +581,13 @@ repository reaches the tenant's rows only, so an erasure in tenant `acme` erases
 `acme`'s user `7` and leaves `globex`'s alone; a deployment erasing a person
 known to several tenants erases them in each. With no tenant in context under an
 installed tenancy a tenant table's repository is refused
-(`tenancy.context.missing`) — except in `applyRetention`, which applies a tenant
-table's policy in every tenant in turn and reports their sum, since retention is
-the deployment's rule rather than a request's. A system table's policy runs
-once.
+(`tenancy.context.missing`). `applyRetention` applies the policies of its place:
+in a tenant's context the tenant tables' policies, to that tenant's rows;
+outside any tenant the system tables' policies; without a tenancy every policy.
+The retention job is planned once per active tenant and once for the system
+(`TomJobTenants(system: true)`), so its runs together apply every policy
+everywhere — each tenant's run in its own tenant, a suspended tenant's after it
+is resumed.
 
 The subject keys follow the data: `tom_subject_key` is a tenant table, and
 `TomSqlSubjectKeyStore` places its data source on every call, so under `schema`

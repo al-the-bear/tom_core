@@ -400,6 +400,11 @@ class TomJobAlert {
   /// report one.
   final TomLease? lease;
 
+  /// For [TomJobAlertKind.windowsMissed], the tenant whose windows were
+  /// missed — a job planned per tenant ([TomJobDefinition.tenants]) is
+  /// planned, and misses windows, for each on its own; `null` otherwise.
+  final String? tenant;
+
   /// Creates an alert.
   const TomJobAlert({
     required this.jobName,
@@ -411,6 +416,7 @@ class TomJobAlert {
     this.missedWindows = 0,
     this.schedule,
     this.lease,
+    this.tenant,
   });
 
   /// A one-line description suitable for a log line or a notification body.
@@ -430,7 +436,8 @@ class TomJobAlert {
       'Job "$jobName" run ${run?.id} was interrupted mid-execution and '
           'was NOT re-queued; the job does not set requestsRecovery.',
     TomJobAlertKind.windowsMissed =>
-      'Job "$jobName" skipped $missedWindows missed window(s).',
+      'Job "$jobName" skipped $missedWindows missed window(s)'
+          '${tenant == null ? '' : ' of tenant $tenant'}.',
     TomJobAlertKind.neverFires =>
       'Job "$jobName" has no future window and will never run '
           '(schedule: $schedule).',
@@ -526,6 +533,41 @@ class TomInlineJobDispatcher extends TomJobDispatcher {
 // JOB DEFINITION
 // =============================================================================
 
+/// The tenants a clock-driven job is planned for: once per tenant, each run
+/// built and executed inside its tenant ([TomJobRun.tenant]).
+///
+/// The declaration that replaces a body looping over the tenants: the
+/// scheduler asks [TomScheduler.tenantsFor] — installed by `tom_core_server`'s
+/// tenancy — for the active tenants of [types] at every pass and plans each
+/// one's windows on its own, anchored on its own history, so a tenant
+/// onboarded later starts with its next window and a suspended tenant's
+/// windows are not planned while it is suspended (its missed windows are
+/// caught up per the job's [TomMissedWindowPolicy] once it is resumed).
+/// With [system] the job is also planned once outside any tenant — for the
+/// deployment's own tables.
+///
+/// With no resolver installed — a deployment without tenancy — the job is
+/// planned once, outside any tenant, as an undeclared job is.
+///
+/// `const`, so it can be given in a `@TomScheduledJob` annotation.
+class TomJobTenants {
+  /// Every active tenant whose type is one of [types] — of every type when
+  /// [types] is empty — and, with [system], the deployment outside any
+  /// tenant as well.
+  const TomJobTenants({this.types = const [], this.system = false});
+
+  /// The tenant types the job runs for; empty for every type.
+  final List<String> types;
+
+  /// Whether the job also runs once outside any tenant.
+  final bool system;
+
+  @override
+  String toString() =>
+      'TomJobTenants(${types.isEmpty ? 'every type' : types.join(', ')}'
+      '${system ? ', and the system' : ''})';
+}
+
 /// A registered job: a trigger, a work body, and the policy around both.
 class TomJobDefinition {
   /// The job's identity. Used as the store key, so it must be stable across
@@ -611,6 +653,11 @@ class TomJobDefinition {
   /// urgent work never stops arriving.
   final int priority;
 
+  /// The tenants the job is planned for, once each, or `null` — the default —
+  /// for one run of no tenant per window. Only a clock-driven job takes it:
+  /// an event job's run belongs to the tenant of its event.
+  final TomJobTenants? tenants;
+
   /// Creates a job definition.
   TomJobDefinition({
     required this.name,
@@ -623,6 +670,7 @@ class TomJobDefinition {
     this.allowOverlap = false,
     this.requestsRecovery = false,
     this.priority = 0,
+    this.tenants,
   }) {
     if (name.trim().isEmpty) {
       throw TomScheduleException(
@@ -635,6 +683,14 @@ class TomJobDefinition {
         'schedule.job.catch_up_limit',
         'catchUpLimit must be at least 1; got $catchUpLimit.',
         parameters: {'job': name, 'catchUpLimit': catchUpLimit},
+      );
+    }
+    if (tenants != null && !schedule.isClockDriven) {
+      throw TomScheduleException(
+        'schedule.job.tenants_not_clock_driven',
+        "Job '$name' declares the tenants it runs for, but it is not "
+            'clock-driven: an event names its own tenant.',
+        parameters: {'job': name},
       );
     }
     if (timeout <= Duration.zero) {

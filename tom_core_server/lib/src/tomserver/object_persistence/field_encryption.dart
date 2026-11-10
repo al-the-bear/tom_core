@@ -1279,21 +1279,22 @@ class TomFieldReencryption {
         mirror.reflectedType,
   ];
 
-  /// Runs one pass over every entity, by its classification: a system table
-  /// once, in the system schema with the system's data keys; a tenant table in
-  /// every tenant when a [TomTenancy] is installed — each tenant's rows with
-  /// its own keys — and once otherwise.
+  /// Runs one pass over the entities of the place it runs in: under an
+  /// installed [TomTenancy], in a tenant's context the tenant tables — that
+  /// tenant's rows, with its own keys — and outside any tenant the system
+  /// tables, in the system schema with the system's data keys; without a
+  /// tenancy every entity. [job] is planned once per tenant and once for the
+  /// system ([TomJobTenants]), so its runs together pass over every row.
   Future<TomReencryptionReport> run() async {
     var report = const TomReencryptionReport();
     final tenancy = TomTenancy.current;
+    final inTenant = TomTenantContext.currentId != null;
     for (final entity in entities) {
-      if (tenancy == null || !TomAnnotationAnalyzer.isTenantTable(entity)) {
-        report += await _entity(entity);
+      if (tenancy != null &&
+          TomAnnotationAnalyzer.isTenantTable(entity) != inTenant) {
         continue;
       }
-      for (final tenant in List.of(tenancy.tenants.keys)) {
-        report += await TomTenantContext.run(tenant, () => _entity(entity));
-      }
+      report += await _entity(entity);
     }
     return report;
   }
@@ -1426,7 +1427,10 @@ class TomFieldReencryption {
     );
   }
 
-  /// A scheduler job running a pass on [schedule].
+  /// A scheduler job running a pass on [schedule] — a clock-driven one
+  /// planned once per active tenant and once for the system
+  /// (`TomJobTenants(system: true)`), an event-driven one run in its event's
+  /// tenant.
   ///
   /// The body uses the isolate's keyring, so register the job on a scheduler
   /// with a `TomInlineJobDispatcher`; a worker isolate has no keyring.
@@ -1438,6 +1442,9 @@ class TomFieldReencryption {
     name: name,
     schedule: schedule,
     body: (_) => _TomReencryptionCommand(this),
+    // An event run belongs to its event's tenant; a clock-driven job is
+    // planned per tenant and for the system.
+    tenants: schedule.isClockDriven ? const TomJobTenants(system: true) : null,
     timeout: timeout,
     // A pass rewrites under guards and can always run again.
     requestsRecovery: true,

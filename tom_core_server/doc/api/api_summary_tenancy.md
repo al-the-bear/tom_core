@@ -274,6 +274,7 @@ Throws `tenancy.config.not_a_map`, `tenancy.config.unknown_isolation`,
 | `resumeTenant` | `Future<void> resumeTenant(String tenantId)` | Records the tenant as `active` and serves it again; its held runs are claimed from the next tick. Throws `tenancy.tenant.unknown` for an unknown id. |
 | `statusOf` | `TomTenantStatus? statusOf(String tenantId)` | The registry status of a served tenant, or `null` for one the deployment does not have. |
 | `servesWork` | `bool servesWork(String tenantId)` | Whether the tenant's queued work runs now on this node — the scheduler's `TomScheduler.tenantGate` while this tenancy is installed: a served, `active` tenant's runs do; a suspended one's, a migration-failed one's and those of a tenant this node does not serve are held. |
+| `activeTenantsOf` | `List<String> activeTenantsOf(List<String> types)` | The served, `active` tenants whose type is one of `types` (every type when empty), in id order — what a job planned per tenant (`TomJobDefinition.tenants`) is planned for, as the scheduler's `TomScheduler.tenantsFor` while this tenancy is installed. |
 | `refreshFromRegistry` | `Future<TomTenantRegistryRefresh> refreshFromRegistry()` | Re-reads `registry` and brings this node's routing level with it: tenants another node added are provisioned and served, removed ones unrouted, changed statuses applied; a tenant that cannot be provisioned here is in the result's `failed`. |
 | `removeTenant` | `Future<TomTenant> removeTenant(String tenantId, {Iterable<TomJobStore> jobStores = const []})` | Records the tenant as `removed` in the registry, then withdraws it from the running deployment: its requests and work are refused as `tenancy.tenant.unknown`, its routes dropped, the data sources opened for it closed (their pools with them), and its queued runs cancelled in the job stores of the started schedulers and `jobStores` (`TomJobStore.cancelTenantRuns`). Its data stays for `purgeAfter`. Returns the tenant. Throws `tenancy.tenant.unknown` for an unknown id. |
 | `purgeTenant` | `Future<TomTenantPurgeReport> purgeTenant(String tenantId, {bool force = false, Iterable<TomTenantData> stores = const [], Iterable<TomJobStore> jobStores = const []})` | Deletes a removed tenant's data for good once `purgeAfter` has passed since its removal (or at once with `force`): a `schema` tenant's schema is dropped on each routed data source (`dropSchema`), a `database` tenant's database when the tenancy opened it on the base data source's server (`dropDatabase`; one named by reference, or on another server, is kept and reported), a `shared` tenant's rows are deleted from every tenant table of its type's shared schema — the application's and `frameworkTenantTables`; its system-table records go through `stores` and the job stores (`TomTenantData.purgeTenant`), and its registry row is deleted. The audit trail is kept; the personal values it sealed for the tenant's subjects become unreadable with their subject keys. Throws `tenancy.tenant.unknown`, `tenancy.purge.not_removed` or `tenancy.purge.retention`. |
@@ -728,13 +729,13 @@ const TomTenantPurgeReport(
 
 A store of a system table that records a tenant on its rows — the job queue,
 the blob manifest, delivery reports, the suppression list, OAuth sign-in state,
-service accounts and their API keys — and so can delete a purged tenant's
-records. `TomTenancy.purgeTenant` calls it on every store it is handed.
+service accounts and their API keys, saved audit questions — and so can delete
+a purged tenant's records. `TomTenancy.purgeTenant` calls it on every store it is handed.
 
 - **Kind:** abstract interface class.
 - **Implemented by:** `TomSqlJobStore`, `TomDatabaseBlobStore`,
   `TomSqlDeliveryReportStore`, `TomSqlSuppressionList`,
-  `TomSqlOAuthStateStore`, `TomSqlApiKeyStore`
+  `TomSqlOAuthStateStore`, `TomSqlApiKeyStore`, `TomAuditQuestionStore`
 
 #### Methods
 

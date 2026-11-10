@@ -10,11 +10,12 @@ import '../datasources/datasource_initialization.dart';
 import '../datasources/framework_table.dart';
 import '../datasources/sql_instant.dart';
 import '../object_persistence/persistence_annotations.dart';
+import '../tenancy/tenant_data.dart';
 import 'audit_question.dart';
 import 'audit_question_sql.dart';
 
 /// The saved questions.
-abstract class TomAuditQuestionStore {
+abstract class TomAuditQuestionStore implements TomTenantData {
   /// Creates a store.
   const TomAuditQuestionStore();
 
@@ -65,6 +66,16 @@ class TomMemoryAuditQuestionStore extends TomAuditQuestionStore {
 
   @override
   Future<bool> remove(String id) async => _questions.remove(id) != null;
+
+  /// Deletes the questions of [tenant]'s auditors — those whose owner is
+  /// qualified with it.
+  @override
+  Future<int> purgeTenant(String tenant) async {
+    final prefix = TomTenantContext.qualify('', tenant);
+    final before = _questions.length;
+    _questions.removeWhere((_, q) => q.owner.startsWith(prefix));
+    return before - _questions.length;
+  }
 }
 
 /// [TomAuditQuestionStore] over the `tom_audit_question` table.
@@ -167,6 +178,21 @@ class TomSqlAuditQuestionStore extends TomAuditQuestionStore {
       {'id': id},
     );
     return removed > BigInt.zero;
+  }
+
+  /// Deletes the questions of [tenant]'s auditors — those whose owner is
+  /// qualified with it (`tenant:<id>/…`).
+  @override
+  Future<int> purgeTenant(String tenant) async {
+    TomTenantContext.validate(tenant);
+    await ensureSchema();
+    final prefix = TomTenantContext.qualify('', tenant);
+    // A prefix compared, not LIKE: `_` in a tenant id is a LIKE wildcard.
+    final removed = await datasource.executeCommand(
+      'DELETE FROM $table WHERE LEFT(owner, ${prefix.length}) = :prefix',
+      {'prefix': prefix},
+    );
+    return removed.toInt();
   }
 
   Future<List<TomAuditQuestion>> _select(

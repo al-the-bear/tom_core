@@ -43,7 +43,8 @@ abstract final class TomBusHeaders {
   /// The group that gave it up.
   static const String deadLetterGroup = 'tom-dead-letter-group';
 
-  /// Why: the consumer's reason, `max-deliveries`, or `undecodable`.
+  /// Why: the consumer's reason, `max-deliveries`, `undecodable` or
+  /// `invalid-tenant`.
   static const String deadLetterReason = 'tom-dead-letter-reason';
 
   /// How many deliveries it had.
@@ -54,6 +55,10 @@ abstract final class TomBusHeaders {
 
   /// The W3C `tracestate` that goes with it.
   static const String tracestate = 'tracestate';
+
+  /// The tenant the message was published in — the tenant in context at the
+  /// publish — which its handling runs in ([TomBusTrace.delivering]).
+  static const String tenant = 'tom-tenant';
 }
 
 /// A message bus.

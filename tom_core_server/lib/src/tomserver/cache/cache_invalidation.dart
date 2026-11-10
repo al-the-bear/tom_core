@@ -44,7 +44,8 @@ enum TomInvalidationKind {
   cacheEntry,
 
   /// Every entry of a named cache: [TomCacheInvalidation.target] is the cache
-  /// name.
+  /// name, and [TomCacheInvalidation.key] the tenant whose entries alone go,
+  /// or `null` for every entry.
   cache,
 
   /// The cached item-authorization answers an item and a subject name:
@@ -91,15 +92,17 @@ class TomCacheInvalidation {
     origin ?? TomCacheInvalidator.nodeId,
   );
 
-  /// Empties the cache named [cacheName].
+  /// Empties the cache named [cacheName] — only [tenant]'s entries, the keys
+  /// `TomCache` qualified with it, when one is given.
   factory TomCacheInvalidation.cache(
     String cacheName, {
+    String? tenant,
     DateTime? at,
     String? origin,
   }) => TomCacheInvalidation._(
     TomInvalidationKind.cache,
     cacheName,
-    null,
+    tenant,
     (at ?? DateTime.now()).toUtc(),
     origin ?? TomCacheInvalidator.nodeId,
   );
@@ -264,9 +267,12 @@ abstract final class TomCacheInvalidator {
         ),
       );
 
-  /// Empties the cache named [cacheName] on every node.
-  static Future<void> invalidateCache(String cacheName) =>
-      _raise(TomCacheInvalidation.cache(cacheName));
+  /// Empties the cache named [cacheName] on every node — in a tenant's
+  /// context only that tenant's entries, so one tenant's invalidation does not
+  /// empty another's.
+  static Future<void> invalidateCache(String cacheName) => _raise(
+    TomCacheInvalidation.cache(cacheName, tenant: TomTenantContext.currentId),
+  );
 
   /// Drops, on every node, the cached item-authorization answers
   /// ([TomItemAuthorizationCache]) on [item] for [subject] — the current
@@ -318,7 +324,14 @@ abstract final class TomCacheInvalidator {
           invalidation.target,
         )?.removeEntry(invalidation.key!);
       case TomInvalidationKind.cache:
-        TomCacheManager.getCache(invalidation.target)?.clear();
+        final cache = TomCacheManager.getCache(invalidation.target);
+        final tenant = invalidation.key;
+        if (tenant == null) {
+          cache?.clear();
+        } else {
+          final prefix = TomTenantContext.qualify('', tenant);
+          cache?.removeWhere((key) => key.startsWith(prefix));
+        }
       case TomInvalidationKind.item:
         TomItemAuthorizationCache.invalidateLocally(
           invalidation.target,

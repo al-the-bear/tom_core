@@ -17,6 +17,7 @@ run, and a tick loop that plans, claims, dispatches and retries.
   - [TomEventSchedule](#tomeventschedule)
 - [Job definition](#job-definition)
   - [TomJobDefinition](#tomjobdefinition)
+  - [TomJobTenants](#tomjobtenants)
   - [TomRetryPolicy](#tomretrypolicy)
   - [TomJobDispatcher](#tomjobdispatcher)
   - [TomWorkerPoolJobDispatcher](#tomworkerpooljobdispatcher)
@@ -97,6 +98,8 @@ TomSchedule  (abstract)
     ├── TomIntervalSchedule
     ├── TomOnceSchedule
     └── TomEventSchedule
+
+TomJobTenants  (value — the tenants a job is planned for)
 
 TomJobDispatcher  (abstract)
     ├── TomWorkerPoolJobDispatcher
@@ -341,11 +344,13 @@ TomJobDefinition({
   bool allowOverlap = false,
   bool requestsRecovery = false,
   int priority = 0,
+  TomJobTenants? tenants,
 })
 ```
 
 Validates eagerly, throwing `TomScheduleException` for an empty `name`, a
-`catchUpLimit` below 1, or a non-positive `timeout`. It also calls
+`catchUpLimit` below 1, a non-positive `timeout`, or `tenants` on a job that
+is not clock-driven (`schedule.job.tenants_not_clock_driven`). It also calls
 `retryPolicy.validate(name)`, so an out-of-range retry policy is rejected here
 rather than at the constructor that built it — see `TomRetryPolicy.validate`.
 
@@ -363,12 +368,47 @@ rather than at the constructor that built it — see `TomRetryPolicy.validate`.
 | `allowOverlap` | `bool` | Whether a second run may start while one is still in flight. |
 | `requestsRecovery` | `bool` | Whether a run interrupted mid-execution may be re-queued — opt-in, because re-running could repeat work already done. |
 | `priority` | `int` | How urgent the job's runs are: among runs due at the same moment, a higher priority is claimed first. Copied onto each run when it is planned; it orders the claim only and never pre-empts a running run. |
+| `tenants` | `TomJobTenants?` | The tenants the job is planned for, once each, every run built and executed in its tenant; `null` (the default) for one run of no tenant per window. Clock-driven jobs only: an event job's run belongs to its event's tenant. |
 
 #### Methods
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `toString` | `String toString()` | *(override)* Name and schedule description. |
+
+### TomJobTenants
+
+The tenants a clock-driven job is planned for — the declaration that replaces
+a body looping over the tenants. At every pass the scheduler asks
+`TomScheduler.tenantsFor` for the active tenants of `types` and plans each
+one's windows on its own, anchored on its own history
+(`TomJobStore.lastWindow(tenant:)`): a tenant onboarded later starts with its
+next window, and a suspended tenant's windows are not planned while it is
+suspended — once resumed, its missed windows are caught up per the job's
+`TomMissedWindowPolicy`. With `system` the job is also planned once outside
+any tenant. Without a resolver installed — a deployment without tenancy — the
+job is planned once, outside any tenant.
+
+#### Constructors
+
+```dart
+const TomJobTenants({List<String> types = const [], bool system = false})
+```
+
+`const`, so it can be given in a `@TomScheduledJob` annotation.
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `types` | `List<String>` | The tenant types the job runs for; empty for every type. |
+| `system` | `bool` | Whether the job also runs once outside any tenant. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `toString` | `String toString()` | *(override)* The types, and whether the system is included. |
 
 ### TomRetryPolicy
 
@@ -489,6 +529,7 @@ const TomJobAlert({
   int missedWindows = 0,
   TomSchedule? schedule,
   TomLease? lease,
+  String? tenant,
 })
 ```
 
@@ -505,6 +546,7 @@ const TomJobAlert({
 | `missedWindows` | `int` | How many windows were skipped, for `windowsMissed`. |
 | `schedule` | `TomSchedule?` | The schedule, for `neverFires`. |
 | `lease` | `TomLease?` | The lease involved, for the lease kinds. |
+| `tenant` | `String?` | The tenant whose windows were missed, for `windowsMissed` of a job planned per tenant; `null` otherwise. |
 
 #### Methods
 
@@ -577,6 +619,7 @@ const TomScheduledJob({
   bool allowOverlap = false,
   bool requestsRecovery = false,
   int priority = 0,
+  TomJobTenants? tenants,
 })
 ```
 
@@ -589,7 +632,7 @@ const TomScheduledJob({
 | `interval` | `Duration?` | A fixed-interval trigger. |
 | `calendar` | `String?` | A calendar-rule trigger in textual form (e.g. last day of month, third Tuesday). |
 | `event` | `bool` | Declares a stream-driven trigger; the stream is supplied at discovery time. |
-| `retry`, `timeout`, `missedWindow`, `catchUpLimit`, `allowOverlap`, `requestsRecovery`, `priority` | — | The `TomJobDefinition` policy fields, verbatim. |
+| `retry`, `timeout`, `missedWindow`, `catchUpLimit`, `allowOverlap`, `requestsRecovery`, `priority`, `tenants` | — | The `TomJobDefinition` policy fields, verbatim. |
 
 ### TomScheduledJobs
 
@@ -815,7 +858,7 @@ re-reading the store.
 | `enqueue` | `Future<void> enqueue(TomJobRun run)` | Adds a run, or replaces the run recorded under its id. Idempotence is the caller's job — via `findWindow` for a windowed run, via `findRun` for one enqueued under an id of its own. Throws `schedule.job.payload` — **before** changing the queue — when `payload` is not JSON-encodable. |
 | `findRun` | `Future<TomJobRun?> findRun(String id)` | The run recorded under `id`, in any state, or `null`. A component that enqueues runs under ids of its own — the messaging outbox keys a run by its message — asks this before enqueueing, so the same id submitted again after its run finished does not run twice. A run removed by `purgeFinished` is not found. |
 | `findWindow` | `Future<TomJobRun?> findWindow(String jobName, DateTime scheduledFor, {String? tenant})` | The existing windowed run for a window of `tenant` (`null` for runs of no tenant), if it was already planned. A window belongs to one tenant: the same instant for two tenants is two windows. A run with `windowed: false` takes no window and is never answered. |
-| `lastWindow` | `Future<DateTime?> lastWindow(String jobName)` | The most recent window planned for a job, among its windowed runs — where catch-up resumes from. |
+| `lastWindow` | `Future<DateTime?> lastWindow(String jobName, {String? tenant})` | The most recent window planned for a job in `tenant` (`null` for the runs of no tenant), among its windowed runs — where catch-up resumes from. A job planned per tenant is anchored per tenant. |
 | `claimDue` | `Future<List<TomJobClaim>> claimDue(DateTime now, String owner, {int limit = 16, bool Function(TomJobRun run)? accept})` | Atomically claims up to `limit` due runs for `owner`, returning one ticket per run won. Takes runs by descending `priority`, insertion order among equals, and skips the runs of paused jobs. |
 | `release` | `Future<void> release(TomJobClaim claim)` | Hands a claimed run back to `pending` **without** charging an attempt — the voluntary counterpart of `recoverAbandoned`, so lease contention cannot drain a retry budget. |
 | `markStarted` | `Future<void> markStarted(TomJobClaim claim, DateTime now)` | Records that execution began. |
@@ -1151,6 +1194,7 @@ the interval is defaulted from it.
 | -------- | ---- | ----------- |
 | `maxCatchUpScan` | `int` | Hard ceiling (`100000`) on windows examined in one catch-up scan. |
 | `tenantGate` | `bool Function(String tenant)?` | Whether a tenant's runs may be claimed now, for every scheduler of the isolate; `null` (the default) claims every tenant's runs. `tom_core_server`'s tenancy installs it so a suspended tenant's runs stay pending until it is resumed. A run of no tenant is never held. |
+| `tenantsFor` | `Iterable<String> Function(List<String> types)?` | The active tenants of the given types (every type for an empty list), for every scheduler of the isolate; what a job declaring `TomJobDefinition.tenants` is planned for. `null` (the default) without tenancy: such a job is planned once, outside any tenant. `tom_core_server`'s tenancy installs it. |
 | `started` | `Set<TomScheduler>` | The schedulers of this isolate that were started and not yet closed, as an unmodifiable snapshot (getter). `start` adds a scheduler, `close` removes it; `stop` leaves it listed. A graceful shutdown walks it: `stop` every one, `drain` them within its deadline, then `close` them so their leases go back to the cluster at once — `TomServer.shutdown` in `tom_core_server` does exactly that. |
 
 #### Properties

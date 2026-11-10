@@ -967,7 +967,11 @@ publish — stays pending and unclaimed, on every node once it refreshed from th
 registry. Its data and routes stay, so `resumeTenant` serves it again at once,
 and its runs are claimed at the next tick. The gate holds the runs of every
 tenant this node does not serve as `active`, a tenant it does not know yet
-included.
+included. A job planned per tenant (`TomJobTenants`) plans no window for a
+suspended tenant — the tenancy answers the scheduler its active tenants only
+(`TomScheduler.tenantsFor`, `activeTenantsOf`) — and catches up the windows the
+tenant missed, per its missed-window policy, once it is resumed. An
+audit question of the tenant's auditor is held the same way.
 
 ## Removing a Tenant
 
@@ -1020,7 +1024,7 @@ registry does not hold (`tenancy.tenant.unknown`), one not removed
 | own schema (`schema` isolation) | dropped on each data source its type routes, through the dialect — `DROP DATABASE` on MariaDB, `DROP SCHEMA … CASCADE` on PostgreSQL |
 | own database (`database` isolation) | dropped (`DROP DATABASE`, on PostgreSQL `WITH (FORCE)`) when the tenancy opened it on the base data source's server; a data source named by reference, or a database on another server, is the deployment's and is reported as kept |
 | rows in its type's shared schema (`shared` isolation) | deleted from every tenant table there — the application's `@TomTenantTable` entities, by their tenant column, and the framework's tenant tables, by `tenant` |
-| records in system tables | deleted by every store it is handed (`stores`, each a `TomTenantData`: the blob store, service accounts and API keys, delivery reports, the suppression list, OAuth sign-in state) and by the job stores — the started schedulers' and `jobStores` — its queued and finished runs |
+| records in system tables | deleted by every store it is handed (`stores`, each a `TomTenantData`: the blob store, service accounts and API keys, delivery reports, the suppression list, OAuth sign-in state, saved audit questions) and by the job stores — the started schedulers' and `jobStores` — its queued and finished runs |
 | audit trail | **kept**: its hash chain is not rewritten. The personal values it sealed for the tenant's data subjects become unreadable, because their subject keys were in the tenant's own tables, dropped or deleted above |
 | registry row | deleted |
 

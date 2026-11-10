@@ -26,6 +26,7 @@ to a caller holding the `auditor` role.
   - [Which process delivers](#which-process-delivers)
   - [What a delivery does](#what-a-delivery-does)
   - [A delivery that fails](#a-delivery-that-fails)
+- [Tenants](#tenants)
 - [The Endpoints](#the-endpoints)
 - [Tables and the Reference Migration](#tables-and-the-reference-migration)
 - [Wiring a Server](#wiring-a-server)
@@ -149,7 +150,7 @@ node.
 ### What a delivery does
 
 `deliverDue` reads the questions due now (`TomAuditQuestionStore.due`) and, for
-each:
+each — inside its owner's tenant (see [Tenants](#tenants)):
 
 1. asks the question at that moment, across its writers;
 2. stores the answer as an export of one section — time, writer, actor, action,
@@ -174,6 +175,29 @@ one: a broken question must not be retried every pass for ever. A process
 without `exports` and `email` fails each due delivery with
 `audit_reports.delivery.not_configured`; missing text resources fail it with
 `audit_reports.delivery.text_missing`.
+
+## Tenants
+
+The trail is one system table that serves every tenant, each entry recording
+the tenant it was recorded in. A tenant's auditor reads the tenant's part of it:
+
+- **An ask is scoped to the tenant in context.** `TomAuditReports.ask` — and so
+  the query and answer endpoints, which run in the caller's tenant — asks only
+  the entries of the tenant in context (`TomAuditQuery.tenant`); outside any
+  tenant it asks every entry.
+- **A saved question belongs to its owner's tenant.** The owner is the
+  auditor's `qualifiedId`, which names the tenant (`tenant:<id>/<user>`), and
+  `deliverDue` delivers the question inside that tenant
+  (`TomTenantContext.tenantOf`): its answer holds the tenant's entries, and the
+  export and the delivery's audit entry are the tenant's. A question whose owner
+  names no tenant is delivered outside any.
+- **A tenant that is not served now is held.** A question of a tenant this
+  process does not serve as active — suspended, removed, not yet known to it
+  (`TomTenancy.servesWork`) — is not delivered and stays due, for a later pass
+  that serves the tenant.
+- **A purged tenant's questions go with it.** The question stores are
+  `TomTenantData`: `purgeTenant(tenant)` deletes the questions whose owner names
+  the tenant, which `TomTenancy.purgeTenant` does when it is handed the store.
 
 ## The Endpoints
 
@@ -312,6 +336,7 @@ runs a question across two writers, saves it weekly and delivers it.
 | [messaging](messaging.md) | module | `audit_reports_service.dart` | `TomRecipient` for the delivery's recipients |
 | [object_persistence](object_persistence.md) | module | `audit_question_store.dart`, `audit_view.dart` | `TomDbTable` / `TomDbColumn` on the row classes |
 | [resources](resources.md) | module | `audit_reports_service.dart` | `TomLocalizedTextResources`, the delivery's subject and text |
+| [tenancy](tenancy.md) | module | `audit_question_store.dart`, `audit_reports_service.dart` | `TomTenantData`, the purge contract the question stores implement; `TomTenancy.servesWork`, which holds a question of a tenant not served now |
 
 - The endpoints module — `TomEndpointRouting.registerFrameworkApis` registers
   `tomAuditReportsApi`, so every server mounts the routes.

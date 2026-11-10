@@ -2,6 +2,25 @@
 
 ### Added
 
+- **Queued work keeps its tenant** (`messaging`, `notifications`, `cache`,
+  `audit_reports`, `privacy`, `object_persistence`, `tenancy`). The outbox and
+  the bus relay file a message under its id qualified by the tenant it was
+  queued in (`TomMessageOutbox.runIdOf`, `TomBusRelay.runIdOf`), so two tenants'
+  messages of one id are two messages; a relayed message carries its tenant to
+  the consumer in the bus's `tom-tenant` header. A notification digest is per
+  tenant. `TomCacheInvalidator.invalidateCache` raised in a tenant empties that
+  tenant's entries only, on every node (`TomCacheInvalidation.cache(tenant:)`).
+  An audit-report ask reads the tenant in context's entries only; a saved
+  question is delivered in its owner's tenant and held while that tenant is not
+  served; the question stores are `TomTenantData`. The retention job and the
+  field re-encryption pass are planned per tenant and for the system
+  (`TomJobTenants`), each run working on the tables of its place
+  (`applyRetention` and `TomFieldReencryption.run` apply to the place they run
+  in). A blob reference source over a tenant table asks every served tenant
+  when the orphan sweep runs outside a tenant. The tenancy answers the
+  scheduler its active tenants by type (`TomTenancy.activeTenantsOf`, installed
+  as `TomScheduler.tenantsFor`). `TomSqlJobStore.lastWindow` takes `tenant:`.
+
 - **The tenant lifecycle** (`tenancy`, `db_migration`, `datasources`,
   `scheduling`, `healthcheck`). `TomTenancy.addTenant` records a tenant as
   `provisioning`, provisions it, migrates it by its type's tree

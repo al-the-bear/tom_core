@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- **The tenant crosses the bus.** A message published in a tenant's context
+  carries the tenant in `TomBusHeaders.tenant` (`tom-tenant`) unless the
+  caller's headers name one (`TomBusTrace.publishing`), and its handler runs in
+  that tenant (`TomBusTrace.delivering`, `TomBusTrace.tenantOf`). `tomDispatch`
+  dead-letters a message whose tenant header is not a tenant id, reason
+  `invalid-tenant`.
+
 ## 0.1.0
 
 ### Added

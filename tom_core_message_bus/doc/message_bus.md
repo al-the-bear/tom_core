@@ -317,6 +317,26 @@ The trace's position is written over a `traceparent` or `tracestate` the caller
 put in `headers`. Without a tracer the headers carry a child of the current
 trace context, and the handler runs in a child of the published one.
 
+### The tenant
+
+A message published in a tenant's context carries the tenant in
+`TomBusHeaders.tenant` (`tom-tenant`), and its handler runs in that tenant
+(`TomTenantContext.run`): a repository the handler reads through reaches the
+tenant's data, and an audit entry it writes is the tenant's. A message
+published in no tenant is handled in none. `TomBusTrace.publishing` adds the
+header from `TomTenantContext.currentId` unless the caller's `headers` name a
+tenant already, and `TomBusTrace.delivering` reads it back
+(`TomBusTrace.tenantOf`), so the tenant crosses every broker the way the trace
+does. A header that is not a tenant id is dead-lettered by `tomDispatch`,
+reason `invalid-tenant`, without reaching the handler.
+
+The tenant's lifecycle is applied where the message is queued, not by the bus:
+`tom_core_server`'s bus relay holds a suspended tenant's queued messages and
+cancels a removed tenant's. A message already published is handled in its
+tenant; under a tenancy, work in a tenant the deployment no longer has is
+refused by its routing (`tenancy.tenant.unknown`) and the delivery is
+redelivered, then dead-lettered.
+
 ## The Message on the Wire
 
 `TomBusMessage` is the message as it travels: `id`, `topic`, `key` (or `null`),
@@ -446,14 +466,16 @@ reason a rejection gave:
 
 | What happens | Answer |
 | ------------ | ------ |
+| The message's `tom-tenant` header is not a tenant id | `(deadLettered, 'invalid-tenant')`; the handler is not called |
 | `codec` cannot decode the payload | `(deadLettered, 'undecodable')`; the handler is not called |
 | The handler returns without settling, or calls `ack()` | `(acknowledged, null)` |
 | The handler calls `reject()` or `reject(requeue: false, reason: ...)` | `(requeued, reason)` or `(deadLettered, reason)` |
 | The handler throws without having settled | Logged as a warning; `(requeued, '<the error>')` |
 | The handler settles and then throws | The outcome it settled with |
 
-The handler runs inside `TomBusTrace.delivering(message, group, ...)`, as a
-`TomBusDelivery<T>` with the decoded payload, the attempt and the group.
+The handler runs inside `TomBusTrace.delivering(message, group, ...)` — in the
+published trace and the message's tenant — as a `TomBusDelivery<T>` with the
+decoded payload, the attempt and the group.
 
 `tomDeadLetter(message, {group, reason, attempts})` is the dead letter the
 adapter publishes: the same message on `tomDeadLetterTopic(message.topic)`

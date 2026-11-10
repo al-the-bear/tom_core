@@ -542,13 +542,16 @@ abstract class TomJobStore {
     String? tenant,
   });
 
-  /// The latest window ever enqueued for [jobName] — of its
-  /// [TomJobRun.windowed] runs — or `null` if the job has no history in this
-  /// store.
+  /// The latest window ever enqueued for [jobName] in [tenant] — of its
+  /// [TomJobRun.windowed] runs of that tenant, `null` for the runs of no
+  /// tenant — or `null` if the job has no such history in this store.
   ///
-  /// The scheduler uses `null` to mean "first sight of this job" and anchors on
-  /// the present instead of treating all of history as missed.
-  Future<DateTime?> lastWindow(String jobName);
+  /// The scheduler uses `null` to mean "first sight of this job" (for this
+  /// tenant) and anchors on the present instead of treating all of history as
+  /// missed. A job planned once per tenant ([TomJobDefinition.tenants]) is
+  /// anchored per tenant, so a tenant onboarded today does not replay the
+  /// windows of the others.
+  Future<DateTime?> lastWindow(String jobName, {String? tenant});
 
   /// Atomically claims up to [limit] runs that are due at [now], marking each
   /// `running` and leasing it to [owner].
@@ -824,10 +827,12 @@ class TomMemoryJobStore implements TomJobStore {
   }
 
   @override
-  Future<DateTime?> lastWindow(String jobName) async {
+  Future<DateTime?> lastWindow(String jobName, {String? tenant}) async {
     DateTime? latest;
     for (final run in _runs.values) {
-      if (run.jobName != jobName || !run.windowed) continue;
+      if (run.jobName != jobName || !run.windowed || run.tenant != tenant) {
+        continue;
+      }
       if (latest == null || run.scheduledFor.isAfter(latest)) {
         latest = run.scheduledFor;
       }
@@ -1243,8 +1248,8 @@ class TomFileJobStore extends TomMemoryJobStore {
   );
 
   @override
-  Future<DateTime?> lastWindow(String jobName) =>
-      _exclusively(() => super.lastWindow(jobName));
+  Future<DateTime?> lastWindow(String jobName, {String? tenant}) =>
+      _exclusively(() => super.lastWindow(jobName, tenant: tenant));
 
   @override
   Future<List<TomJobClaim>> claimDue(

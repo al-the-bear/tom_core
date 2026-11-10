@@ -347,12 +347,12 @@ class TomSqlJobStore implements TomJobStore, TomTenantData {
   }
 
   @override
-  Future<DateTime?> lastWindow(String jobName) async {
+  Future<DateTime?> lastWindow(String jobName, {String? tenant}) async {
     await ensureSchema();
     final rows = await datasource.executeQuery<TomJobRunWindowRow>(
       'SELECT MAX(window_at) AS scheduled_for FROM $table '
-      'WHERE job_name = :jobName',
-      {'jobName': jobName},
+      'WHERE job_name = :jobName AND tenant = :tenant',
+      {'jobName': jobName, 'tenant': tenant ?? ''},
     );
     if (rows.isEmpty) return null;
     final value = rows.first.scheduledFor;

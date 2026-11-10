@@ -544,6 +544,7 @@ class TomTenancy {
     _installed = tenancy;
     TomDataSourceInfo.router = tenancy.route;
     TomScheduler.tenantGate = tenancy.servesWork;
+    TomScheduler.tenantsFor = tenancy.activeTenantsOf;
     tenancy._startRefreshing();
   }
 
@@ -662,6 +663,7 @@ class TomTenancy {
     _installed = null;
     TomDataSourceInfo.router = null;
     TomScheduler.tenantGate = null;
+    TomScheduler.tenantsFor = null;
     if (previous == null) return;
     previous._refreshTimer?.cancel();
     previous._refreshTimer = null;
@@ -839,6 +841,17 @@ class TomTenancy {
   bool servesWork(String tenantId) =>
       tenants.containsKey(tenantId) &&
       (_statuses[tenantId] ?? TomTenantStatus.active) == TomTenantStatus.active;
+
+  /// The served, `active` tenants whose type is one of [types] — of every
+  /// type when [types] is empty — in id order: what a job planned per tenant
+  /// ([TomJobDefinition.tenants]) is planned for, as the scheduler's
+  /// [TomScheduler.tenantsFor] while this tenancy is installed.
+  List<String> activeTenantsOf(List<String> types) => [
+    for (final id in tenants.keys.toList()..sort())
+      if (servesWork(id) &&
+          (types.isEmpty || types.contains(tenants[id]!.type)))
+        id,
+  ];
 
   final Map<String, TomSchemaVersionCheck> _schemaChecks = {};
   final Map<String, Map<String, int>> _codeVersions = {};

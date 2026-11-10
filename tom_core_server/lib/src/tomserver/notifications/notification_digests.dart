@@ -129,7 +129,9 @@ class TomNotificationDigests implements TomClosable {
     );
   }
 
-  /// The id of the digest of [recipientId] on [channel] due at [dueAt].
+  /// The id of the digest of [recipientId] on [channel] due at [dueAt], in
+  /// the tenant in context: two tenants' recipients of the same id have two
+  /// digests, each sent in its own tenant.
   String runIdOf(
     String recipientId,
     TomMessageChannel channel,
@@ -137,7 +139,8 @@ class TomNotificationDigests implements TomClosable {
   ) {
     final digest = sha256.convert(
       utf8.encode(
-        '$recipientId\u0000${channel.name}\u0000'
+        '${TomTenantContext.qualifyCurrent(recipientId)}\u0000'
+        '${channel.name}\u0000'
         '${dueAt.toUtc().toIso8601String()}',
       ),
     );
@@ -247,7 +250,7 @@ class TomNotificationDigests implements TomClosable {
         scheduledFor: existing?.scheduledFor ?? now,
         runAt: dueAt,
         payload: {...payload, 'items': items},
-        tenant: existing?.tenant ?? TomTenantContext.currentId,
+        tenant: TomTenantContext.currentId,
         // Keyed by the digest's run id, not a window.
         windowed: false,
       ),

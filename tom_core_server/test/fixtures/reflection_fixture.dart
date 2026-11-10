@@ -1869,6 +1869,42 @@ class FixtureTenantVisit {
 class FixtureTenantVisitRepository
     extends TomSqlDatasourceRepository<FixtureTenantVisit, int> {}
 
+/// A **tenant table** holding a stored file and an encrypted value — what the
+/// system services working per tenant are asked about: the blob orphan sweep
+/// (does any tenant's row name this key?) and field re-encryption (each
+/// tenant's rows with its own keys). Maps to `fixture_tenant_document`.
+@tomReflector
+@TomTenantTable()
+@TomDbTable(
+  datasource: 'tom_core_server_test',
+  table: 'fixture_tenant_document',
+  primaryKeyFields: ['id'],
+)
+class FixtureTenantDocument {
+  /// Surrogate primary key.
+  @TomEntityId()
+  @TomDbColumn(columnName: 'id', isReadOnly: true)
+  int? id;
+
+  /// The tenant the document belongs to.
+  @TomDbColumn(columnName: 'tenant_id')
+  String? tenantId;
+
+  /// The stored file's key.
+  @TomFileReference(keyPrefix: 'fixture/tenant_document')
+  @TomDbColumn(columnName: 'attachment')
+  String? attachment;
+
+  /// A value encrypted at rest, under the tenant's data keys.
+  @TomEncrypted()
+  @TomDbColumn(columnName: 'secret')
+  String? secret;
+}
+
+/// The repository for [FixtureTenantDocument].
+class FixtureTenantDocumentRepository
+    extends TomSqlDatasourceRepository<FixtureTenantDocument, int> {}
+
 /// A reflected entity with a `@TomVersion` column, for optimistic locking.
 ///
 /// The second of two saves of one loaded row is refused rather than silently

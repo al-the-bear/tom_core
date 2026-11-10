@@ -341,38 +341,77 @@ void main() async {
           expect(globex.changes, isEmpty);
         });
 
-        test('TTB-4: retention run with no tenant is applied in every '
-            'tenant', () async {
-          TomPrivacy.reset();
-          TomPrivacy.register(FixtureTenantVisitRepository());
-          final visits = FixtureTenantVisitRepository();
-          final now = DateTime.utc(2026, 11, 10, 12);
-          for (final id in ['acme', 'globex']) {
-            await tenancy.runFor(id, () async {
-              await visits.save(
-                FixtureTenantVisit()
-                  ..visitorId = 1
-                  ..at = now.subtract(const Duration(days: 30)),
-              );
-              await visits.save(
-                FixtureTenantVisit()
-                  ..visitorId = 2
-                  ..at = now.subtract(const Duration(days: 1)),
-              );
-            });
-          }
-          final results = await TomPrivacy.applyRetention(now: now);
-          expect(results.single.affected, 2, reason: 'one in each tenant');
-          for (final id in ['acme', 'globex']) {
+        test(
+          'TTB-4: retention applies the policies of its place, and the '
+          'retention job, planned per tenant, reaches every tenant',
+          () async {
+            TomPrivacy.reset();
+            TomPrivacy.register(FixtureTenantVisitRepository());
+            final visits = FixtureTenantVisitRepository();
+            final now = DateTime.utc(2026, 11, 10, 12);
+            for (final id in ['acme', 'globex']) {
+              await tenancy.runFor(id, () async {
+                await visits.save(
+                  FixtureTenantVisit()
+                    ..visitorId = 1
+                    ..at = now.subtract(const Duration(days: 30)),
+                );
+                await visits.save(
+                  FixtureTenantVisit()
+                    ..visitorId = 2
+                    ..at = now.subtract(const Duration(days: 1)),
+                );
+              });
+            }
+            Future<List<int>> left(String id) async => [
+              for (final v in await tenancy.runFor(id, visits.findAll))
+                v.visitorId!,
+            ]..sort();
             expect(
-              (await tenancy.runFor(
-                id,
-                visits.findAll,
-              )).map((v) => v.visitorId),
-              [2],
+              await TomPrivacy.applyRetention(now: now),
+              isEmpty,
+              reason: 'outside any tenant only system tables are retained',
             );
-          }
-        });
+            final inAcme = await tenancy.runFor(
+              'acme',
+              () => TomPrivacy.applyRetention(now: now),
+            );
+            expect(inAcme.single.affected, 1);
+            expect(await left('acme'), [2]);
+            expect(await left('globex'), [1, 2]);
+
+            // The job: planned for acme, globex and the system, each run in
+            // its place.
+            var clock = now;
+            final scheduler = TomScheduler(
+              store: TomMemoryJobStore(),
+              dispatcher: const TomInlineJobDispatcher(),
+              clock: () => clock,
+            );
+            addTearDown(scheduler.close);
+            scheduler.register(
+              TomPrivacy.retentionJob(
+                schedule: TomIntervalSchedule(const Duration(hours: 1)),
+              ),
+            );
+            await scheduler.tick();
+            final planned = await scheduler.store.all();
+            expect(planned.map((r) => r.tenant).toSet(), {
+              null,
+              'acme',
+              'globex',
+            });
+            clock = clock.add(const Duration(hours: 1));
+            await scheduler.tick();
+            await scheduler.drain();
+            final runs = await scheduler.store.all();
+            expect(
+              runs.where((r) => r.state == TomJobRunState.succeeded).length,
+              3,
+            );
+            expect(await left('globex'), [2]);
+          },
+        );
       });
     }
   }, skip: skipReason);

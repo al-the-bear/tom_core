@@ -24,6 +24,7 @@ tenant's runs.
 | ---- | -------------- |
 | `TomScheduler` | The engine: recovers interrupted runs, plans windows, claims, dispatches, records. |
 | `TomJobDefinition` | A registered job — trigger, body, priority, and the retry, timeout and overlap policy around both. |
+| `TomJobTenants` | The tenants a clock-driven job is planned for (`TomJobDefinition.tenants`): once per active tenant of its types, each run in its tenant, and with `system` once outside any — what `TomScheduler.tenantsFor` answers. |
 | `TomJobBase` | What a declared job extends; gives the body the `TomJobRun` it is executing. |
 | `TomScheduledJob` | Annotation that makes a class its own registration. |
 | `TomScheduledJobs` | Scans the annotated classes and registers what it finds. |

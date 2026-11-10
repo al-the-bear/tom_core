@@ -156,5 +156,45 @@ void main() {
       expect(back.headers, {'traceparent': 'x'});
       expect(back.publishedAt, DateTime.utc(2026, 11, 4, 12));
     });
+
+    test('MB-M9: a message published in a tenant carries it and is handled '
+        'in it; one published in none is handled in none', () async {
+      final seen = <String?>[];
+      final headers = <String?>[];
+      await bus.subscribe<String>(
+        'orders',
+        group: 'billing',
+        handler: (d) {
+          seen.add(TomTenantContext.currentId);
+          headers.add(d.message.headers[TomBusHeaders.tenant]);
+        },
+      );
+      await TomTenantContext.run('acme', () => bus.publish('orders', 'o-1'));
+      await bus.settled();
+      await bus.publish('orders', 'o-2');
+      await bus.settled();
+      expect(seen, ['acme', null]);
+      expect(headers, ['acme', null]);
+    });
+
+    test('MB-M10: a tenant the publisher names in the headers is the one '
+        'sent', () async {
+      final seen = <String?>[];
+      await bus.subscribe<String>(
+        'orders',
+        group: 'billing',
+        handler: (_) => seen.add(TomTenantContext.currentId),
+      );
+      await TomTenantContext.run(
+        'acme',
+        () => bus.publish(
+          'orders',
+          'o-1',
+          headers: {TomBusHeaders.tenant: 'globex'},
+        ),
+      );
+      await bus.settled();
+      expect(seen, ['globex']);
+    });
   });
 }

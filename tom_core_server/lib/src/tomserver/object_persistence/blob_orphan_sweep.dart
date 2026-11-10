@@ -28,6 +28,7 @@ import 'annotation_analyzer.dart';
 import 'crud_repository.dart';
 import 'entity_lifecycle.dart';
 import 'persistence_annotations.dart';
+import '../tenancy/tenancy.dart';
 
 /// Something that knows which blob keys its rows refer to.
 abstract class TomBlobReferenceSource {
@@ -73,8 +74,28 @@ class TomRepositoryBlobReferences<T extends Object, K>
 
   final List<TomColumnInformation> _columns;
 
+  /// Which of [keys] a row refers to — under an installed tenancy, for a
+  /// tenant table asked outside any tenant (the sweep's own job), a row of
+  /// any served tenant, suspended ones included: a key one tenant's row names
+  /// is in use. In a tenant's context, that tenant's rows.
   @override
-  Future<Set<String>> referenced(List<String> keys) =>
+  Future<Set<String>> referenced(List<String> keys) async {
+    final tenancy = TomTenancy.current;
+    if (tenancy == null ||
+        TomTenantContext.currentId != null ||
+        !TomAnnotationAnalyzer.isTenantTable(T)) {
+      return _referencedHere(keys);
+    }
+    final found = <String>{};
+    for (final tenant in List.of(tenancy.tenants.keys)) {
+      found.addAll(
+        await TomTenantContext.run(tenant, () => _referencedHere(keys)),
+      );
+    }
+    return found;
+  }
+
+  Future<Set<String>> _referencedHere(List<String> keys) =>
       TomSoftDelete.includingDeleted(() async {
         final found = <String>{};
         for (var start = 0; start < keys.length; start += batchSize) {

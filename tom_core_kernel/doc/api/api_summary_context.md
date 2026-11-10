@@ -308,6 +308,7 @@ The current tenant, held in the zone. All members are static.
 | `validate` | `static void validate(String tenantId)` | Throws `tenancy.id.invalid` unless `tenantId` matches `idPattern`. |
 | `qualify` | `static String qualify(String name, [String? tenantId])` | `name` qualified by `tenantId` — `tenant:<id>/<name>` — or `name` itself when `tenantId` is `null`. The one spelling every tenant-scoped key uses (cache entries, revocations), so two tenants' `alice` never meet. |
 | `qualifyCurrent` | `static String qualifyCurrent(String name)` | `name` qualified by the tenant in context — `qualify(name, currentId)`. The key a store files a per-tenant name under where several tenants' rows share one table, e.g. another principal's id in a resource grant. |
+| `tenantOf` | `static String? tenantOf(String qualified)` | The tenant `qualified` names — `acme` for `tenant:acme/u1` — or `null` for a name `qualify` left unqualified. The inverse of `qualify`, for a store holding only a qualified key (a principal's `qualifiedId`) to find the tenant to run its work in. |
 
 ### TomTenantException
 
