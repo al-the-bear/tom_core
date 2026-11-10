@@ -1,3 +1,8 @@
+-- tom:expand
+-- Expand: this migration only creates tables, so the app server — whose own
+-- chain in this history ends below [100] — still serves the schema it leaves
+-- (the schema version guard reads this marker; see the framework's
+-- db_migration guide, "Expand, then contract").
 -- The saved audit questions (the framework's audit_reports module), in app_db.
 --
 -- The ops server delivers saved questions on their schedules — it is the

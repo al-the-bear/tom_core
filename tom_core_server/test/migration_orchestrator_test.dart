@@ -196,7 +196,7 @@ void main() {
       expect(initech!.status, TomTenantStatus.migrationFailed);
       expect(initech.statusDetail, contains('tenant_enterprise'));
       final acme = await tenancy.registry.find('acme');
-      expect(acme!.migrated, {'main': 2});
+      expect(acme!.migrated, {'main': 2, 'main/requires': 2});
       expect(acme.statusDetail, isNull);
     });
 
@@ -356,7 +356,10 @@ void main() {
         'acme_db/tenant_default': [1],
       });
       expect(tenancy.statusOf('solo'), TomTenantStatus.active);
-      expect((await tenancy.registry.find('duo'))!.migrated, {'main': 1});
+      expect((await tenancy.registry.find('duo'))!.migrated, {
+        'main': 1,
+        'main/requires': 1,
+      });
 
       final one = await TomDbMigrations.migrateAll(
         root.path,

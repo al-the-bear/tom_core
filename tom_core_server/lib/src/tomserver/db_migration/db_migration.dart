@@ -11,6 +11,7 @@ import '../tenancy/tenancy.dart';
 import '../tenancy/tenant_registry.dart';
 import '../tenancy/tenant_type.dart';
 import 'migration_run.dart';
+import 'schema_versions.dart';
 
 /// Thrown when a database migration cannot be discovered, parsed, or applied
 /// (missing adaptor or data source, a malformed migration filename, a failed
@@ -108,6 +109,15 @@ abstract class TomDbMigrator {
   /// Releases the current `(data source, schema)` binding and its
   /// applied-version state, so this instance can serve the next pair.
   void reset();
+
+  /// The migrations applied successfully to [schemaName] in [dsi], version to
+  /// recorded script — empty when nothing was ever applied there. Read only:
+  /// it creates no versioning table and binds nothing. What the schema version
+  /// guard compares with the code ([TomDbMigrations.checkSystemSchema]).
+  Future<Map<int, String>> appliedScripts(
+    TomDataSourceInfo dsi,
+    String schemaName,
+  );
 
   /// Runs [body] holding [dsi]'s migration lock: one migration run per
   /// database at a time, across every process that migrates it.
@@ -923,7 +933,7 @@ class TomDbMigrations {
         await tenancy!.setStatus(id, TomTenantStatus.migrating);
       }
       final label = tenantHistoryLabel(target.type);
-      final migrated = <String, int>{};
+      final migrated = <String, TomChainVersion>{};
       Object? failure;
       try {
         for (final chain in _subdirectoriesOf(target.tree)) {
@@ -957,7 +967,13 @@ class TomDbMigrations {
           continue;
         }
         for (final MapEntry(:key, :value) in migrated.entries) {
-          await tenancy!.registry.setMigrated(id, key, value, at: at);
+          await tenancy!.registry.setMigrated(id, key, value.version, at: at);
+          await tenancy.registry.setMigrated(
+            id,
+            requiresKey(key),
+            value.requires,
+            at: at,
+          );
         }
         await tenancy!.setStatus(
           id,
@@ -965,6 +981,11 @@ class TomDbMigrations {
               ? TomTenantStatus.suspended
               : TomTenantStatus.active,
         );
+      }
+      // The node's guard judges the target's tenants again against what was
+      // just recorded.
+      if (tenancy != null && target.tenants.isNotEmpty) {
+        await tenancy.checkSchemaVersions(target.tenants);
       }
       if (failure != null) throw failure;
     }
@@ -1017,8 +1038,12 @@ class TomDbMigrations {
   static List<TomMigrationRun> get runs =>
       List.unmodifiable(_currentRuns.values);
 
-  /// Forgets [runs], as a fresh process starts. For tests.
-  static void resetRuns() => _currentRuns.clear();
+  /// Forgets [runs] and [systemSchemaCheck], as a fresh process starts. For
+  /// tests.
+  static void resetRuns() {
+    _currentRuns.clear();
+    _systemCheck = null;
+  }
 
   /// A fresh migrator for [dsInfo]'s type, from the adaptors the reflection
   /// scan found ([TomDbMigrationAdaptor]) — one per target, so targets
@@ -1461,8 +1486,10 @@ class TomDbMigrations {
   /// Applies the one chain in [chain] — a tenant type's `<datasource>/`
   /// folder — to [dsInfo] under the history [label], through [migrator] and
   /// under [dsInfo]'s migration lock; answers the highest version it holds
-  /// for [environmentName], or `null` when it holds none.
-  static Future<int?> migrateTree(
+  /// for [environmentName] and the lowest code version that schema serves
+  /// ([TomSchemaVersionCheck.requiredCodeVersion]), or `null` when it holds
+  /// none.
+  static Future<TomChainVersion?> migrateTree(
     TomDbMigrator migrator,
     TomDataSourceInfo dsInfo,
     Directory chain,
@@ -1479,7 +1506,7 @@ class TomDbMigrations {
     );
   }
 
-  static Future<int?> _applyChain(
+  static Future<TomChainVersion?> _applyChain(
     TomDbMigrator migrator,
     TomDataSourceInfo dsInfo,
     Directory chain,
@@ -1503,20 +1530,252 @@ class TomDbMigrations {
     // migration tagged for a non-active environment (C-16); a malformed name
     // throws.
     final ordered = orderMigrationNames(migrations.keys);
-    int? highest;
+    final applied = <int, String>{};
     for (final entry in selectForEnvironment(ordered, environmentName)) {
+      final sql = migrations[entry.basename]!.readAsStringSync();
       await migrator.applyMigration(
         dsInfo,
         label,
         entry.parsed.version,
         entry.parsed.description,
-        migrations[entry.basename]!.readAsStringSync(),
+        sql,
       );
-      highest = max(highest ?? entry.parsed.version, entry.parsed.version);
+      applied[entry.parsed.version] = sql;
     }
-    return highest;
+    return applied.isEmpty
+        ? null
+        : (
+            version: applied.keys.reduce(max),
+            requires: TomSchemaVersionCheck.requiredCodeVersion(applied),
+          );
+  }
+
+  /// The registry key under which `migrateAll` records, beside a tenant's
+  /// version of [datasource], the lowest code version its schema serves:
+  /// `<datasource>/requires`.
+  static String requiresKey(String datasource) => '$datasource/requires';
+
+  /// The highest version of the one chain in [chain] that applies in
+  /// [environmentName], with the lowest code version a schema at it serves;
+  /// `null` for a chain with none.
+  static TomChainVersion? chainVersion(
+    Directory chain,
+    String environmentName,
+  ) {
+    final files = collectMigrationFiles(chain.listSync());
+    final selected = selectForEnvironment(
+      orderMigrationNames(files.keys),
+      environmentName,
+    );
+    if (selected.isEmpty) return null;
+    return (
+      version: selected.last.parsed.version,
+      requires: TomSchemaVersionCheck.requiredCodeVersion({
+        for (final entry in selected)
+          entry.parsed.version: files[entry.basename]!.readAsStringSync(),
+      }),
+    );
+  }
+
+  /// The highest version of each `<datasource>/` chain of a tenant type's
+  /// [tree] that applies in [environmentName] — what this code expects of a
+  /// tenant of the type. Empty for a missing tree.
+  static Map<String, int> treeVersions(Directory tree, String environmentName) {
+    if (!tree.existsSync()) return const {};
+    return {
+      for (final chain in _subdirectoriesOf(tree))
+        if (chainVersion(chain, environmentName) case final version?)
+          p.basename(chain.path): version.version,
+    };
+  }
+
+  static TomSchemaVersionCheck? _systemCheck;
+
+  /// The last [checkSystemSchema] answer of this process, or `null`. Read by
+  /// the framework readiness check.
+  static TomSchemaVersionCheck? get systemSchemaCheck => _systemCheck;
+
+  /// Compares the system tree under the migration [root] with the system
+  /// schema, per `<datasource>/<schema>` history: a version the code carries
+  /// for the active environment that the history has not applied
+  /// ([TomDbMigrator.appliedScripts]) is behind — a set comparison, so a gap
+  /// below the history's highest version counts; versions the history applied
+  /// above the code's highest — a newer release's, or a package contributing
+  /// to the same history above this one — are ahead, served when every one is
+  /// marked expand ([TomSchemaVersionCheck.expandMarker]). The check's
+  /// `requires` is the highest of those not marked expand (`0`: none). Reads
+  /// only; a root without `system/` is current.
+  static Future<TomSchemaVersionCheck> checkSystemSchema(
+    String root, {
+    TomDbMigrator Function(TomDataSourceInfo dsInfo)? migrators,
+  }) async {
+    requireMigrationsDirectory(Directory(root), 'Migrations directory');
+    final migratorOf = migrators ?? newMigratorFor;
+    final environmentName = resolveActiveEnvironment();
+    final code = <String, int>{};
+    final recorded = <String, int>{};
+    final requires = <String, int>{};
+    final skews = <TomSchemaSkew>[];
+    final system = Directory(p.join(root, systemTreeName));
+    if (system.existsSync()) {
+      for (final database in _subdirectoriesOf(system)) {
+        final dsInfo = _baseInfoOf(p.basename(database.path));
+        for (final chain in _subdirectoriesOf(database)) {
+          final files = collectMigrationFiles(chain.listSync());
+          final versions = {
+            for (final entry in selectForEnvironment(
+              orderMigrationNames(files.keys),
+              environmentName,
+            ))
+              entry.parsed.version,
+          };
+          if (versions.isEmpty) continue;
+          final schema = p.basename(chain.path);
+          final history = '${dsInfo.name}/$schema';
+          final scripts = await migratorOf(
+            dsInfo,
+          ).appliedScripts(dsInfo, schema);
+          final highest = versions.reduce(max);
+          code[history] = highest;
+          // Behind is a set comparison, not the highest version: several
+          // packages may contribute to one history, each carrying only its
+          // own versions, so a version the code carries and the schema lacks
+          // is behind even below the schema's highest. Ahead counts only what
+          // lies above the code's highest — a newer release's migrations, or
+          // a package contributing above this one — not another package's
+          // versions below it.
+          final extras = {
+            for (final MapEntry(key: version, value: script) in scripts.entries)
+              if (version > highest) version: script,
+          };
+          if (scripts.isNotEmpty) {
+            recorded[history] = scripts.keys.reduce(max);
+            requires[history] = TomSchemaVersionCheck.requiredCodeVersion(
+              extras,
+            );
+          }
+          skews.add(
+            !scripts.keys.toSet().containsAll(versions)
+                ? TomSchemaSkew.behind
+                : extras.isEmpty
+                ? TomSchemaSkew.current
+                : extras.values.every(TomSchemaVersionCheck.isExpand)
+                ? TomSchemaSkew.aheadCompatible
+                : TomSchemaSkew.aheadIncompatible,
+          );
+        }
+      }
+    }
+    return _systemCheck = TomSchemaVersionCheck(
+      TomMigrationRun.systemTarget,
+      TomSchemaVersionCheck.worst(skews),
+      code: code,
+      recorded: recorded,
+      requires: requires,
+    );
+  }
+
+  /// Refuses to go on unless the system schema serves this code
+  /// ([checkSystemSchema]): behind the code it throws
+  /// `db_migration.schema.system_behind` — after waiting up to [wait] for
+  /// another process to migrate it, checking every [poll] — and ahead with a
+  /// migration in between not marked expand,
+  /// `db_migration.schema.system_ahead`; both name the versions. Answers the
+  /// check.
+  static Future<TomSchemaVersionCheck> guardSystemSchema(
+    String root, {
+    Duration wait = Duration.zero,
+    Duration poll = const Duration(seconds: 2),
+    TomDbMigrator Function(TomDataSourceInfo dsInfo)? migrators,
+  }) async {
+    final deadline = DateTime.now().add(wait);
+    var check = await checkSystemSchema(root, migrators: migrators);
+    while (check.skew == TomSchemaSkew.behind &&
+        DateTime.now().isBefore(deadline)) {
+      tomLog.info('Waiting for the system schema: ${check.detail}');
+      await Future<void>.delayed(poll);
+      check = await checkSystemSchema(root, migrators: migrators);
+    }
+    switch (check.skew) {
+      case TomSchemaSkew.current:
+        break;
+      case TomSchemaSkew.aheadCompatible:
+        tomLog.info(
+          'The system schema is ahead of this code by expand migrations only: '
+          '${check.detail}',
+        );
+      case TomSchemaSkew.behind:
+        throw TomDbMigrationException(
+          'db_migration.schema.system_behind',
+          'The system schema is behind this code — migrate it first: '
+              '${check.detail}.',
+          parameters: {
+            'code': check.code,
+            'recorded': check.recorded,
+            'waitedSeconds': wait.inSeconds,
+          },
+          autoLog: true,
+        );
+      case TomSchemaSkew.aheadIncompatible:
+        throw TomDbMigrationException(
+          'db_migration.schema.system_ahead',
+          'The system schema is ahead of this code by a migration not marked '
+              'expand — this release cannot serve it: ${check.detail}.',
+          parameters: {
+            'code': check.code,
+            'recorded': check.recorded,
+            'requires': check.requires,
+          },
+          autoLog: true,
+        );
+    }
+    return check;
+  }
+
+  /// Runs [guardSystemSchema] at start as the [configurationKey] settings
+  /// [config] say — `guard` (default `true`), `onBehind: refuse | wait`
+  /// (default `refuse`), `waitSeconds` (default 300), `root` (else
+  /// [defaultRoot]) — when the migration root exists; answers the check, or
+  /// `null` when not run. Called by `TomServer.start` after `migrateOnStart`.
+  static Future<TomSchemaVersionCheck?> guardOnStart(
+    Object? config,
+    String defaultRoot, {
+    TomDbMigrator Function(TomDataSourceInfo dsInfo)? migrators,
+  }) async {
+    if (config != null && config is! Map) {
+      throw TomDbMigrationException(
+        'db_migration.config.invalid',
+        'The migrations settings must be a map, not a ${config.runtimeType}.',
+      );
+    }
+    final settings = (config as Map?) ?? const {};
+    if (settings['guard'] == false) return null;
+    final root = '${settings['root'] ?? defaultRoot}';
+    if (!Directory(root).existsSync()) return null;
+    final onBehind = '${settings['onBehind'] ?? 'refuse'}';
+    final rawWait = settings['waitSeconds'] ?? 300;
+    final waitSeconds = rawWait is int ? rawWait : int.tryParse('$rawWait');
+    if ((onBehind != 'refuse' && onBehind != 'wait') ||
+        waitSeconds == null ||
+        waitSeconds < 0) {
+      throw TomDbMigrationException(
+        'db_migration.config.invalid',
+        "The migrations setting 'onBehind' is 'refuse' or 'wait', and "
+            "'waitSeconds' a whole number of seconds; got onBehind: "
+            "$onBehind, waitSeconds: $rawWait.",
+      );
+    }
+    return guardSystemSchema(
+      root,
+      wait: onBehind == 'wait' ? Duration(seconds: waitSeconds) : Duration.zero,
+      migrators: migrators,
+    );
   }
 }
+
+/// The highest [version] of a migration chain, and the lowest code version a
+/// schema at it serves ([requires]).
+typedef TomChainVersion = ({int version, int requires});
 
 /// A tenant target of [TomDbMigrations.migrateAll]: a [type]'s [tree] applied
 /// to a shared schema or to one tenant's own.

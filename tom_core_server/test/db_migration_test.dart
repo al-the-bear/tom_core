@@ -1628,6 +1628,12 @@ class _RecordingMigrator implements TomDbMigrator {
   void reset() => events.add('reset');
 
   @override
+  Future<Map<int, String>> appliedScripts(
+    TomDataSourceInfo dsi,
+    String schemaName,
+  ) async => const {};
+
+  @override
   Future<void> initializeMigration(
     TomDataSourceInfo dsi,
     String schemaName,

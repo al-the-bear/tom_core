@@ -1210,6 +1210,9 @@ in a release step with a start script's `--migrate` instead.
 | `onStart` | `bool` | `false` | Whether `start()` runs `migrateAll`. |
 | `root` | `String` | `databaseMigrationsDirectory` | The migration root. |
 | `parallelism` | `int` | `1` | How many shared schemas, then tenants, migrate at once. |
+| `guard` | `bool` | `true` | Whether `start()` refuses a system schema that does not serve this code (`TomServer.guardSchemaOnStart`), when the root exists — see [db_migration.md](db_migration.md#the-system-schema-at-start). |
+| `onBehind` | `String` | `refuse` | A system schema behind the code: `refuse` the start (`db_migration.schema.system_behind`), or `wait` for another process to migrate it. |
+| `waitSeconds` | `int` | `300` | With `onBehind: wait`, how long `start()` waits before refusing. |
 
 ```yaml
 # assets/config-resources_default.yaml
@@ -1224,7 +1227,11 @@ sources — and the tenancy, when the deployment has one — are installed first
 failing system schema stops the start; a failing tenant is marked
 `migration-failed` in the registry and the start goes on, the tenant refused
 until it is migrated again. A value of the wrong shape — not a map, or a
-`parallelism` that is not a whole number — throws `db_migration.config.invalid`.
+`parallelism` that is not a whole number, an `onBehind` other than `refuse` or
+`wait`, a `waitSeconds` that is not a whole number — throws
+`db_migration.config.invalid`. After migrating, `start()` checks the system
+schema's version against the code (`guard`): behind or ahead by a migration
+not marked expand, the start stops.
 `migrations` is not a field of the configuration base, so the startup warning
 about [unknown keys](#unknown-keys-in-the-configuration-resources) names it.
 

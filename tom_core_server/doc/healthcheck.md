@@ -241,6 +241,7 @@ restart the process.
 | ----- | ------------------- | ---------- |
 | every registered data source | `datasource <name>` | it reports operational, and an SQL data source answers `SELECT 1` within `dataSourceTimeout` (two seconds by default). A `delegateTo` alias is checked once, under its target. |
 | migrations | `migrations <target>` per target of the last `TomDbMigrations.migrateAll` call (`TomDbMigrations.runs`) | The system schema's run is not `running` and not `failed`. A shared schema's or a tenant's run is listed with its state and passes whatever it is: a tenant still migrating, or whose migration failed, is refused on its own (`tenancy.tenant.unavailable`) while the others are served. A process that never called `migrateAll` has one `migrations` check that passes — `not run in this process` — because a deployment whose schema is applied by a DBA or a job never calls it, and a check waiting for it would never pass. |
+| every schema not current | `schema system`, `schema tenant:<id>` | the system schema's last guard (`TomDbMigrations.systemSchemaCheck`) serves this code — current, or ahead by expand migrations only; a tenant's skew (`TomTenancy.schemaChecks`) is listed and passes, because that tenant is refused on its own (`tenancy.tenant.schema_behind` / `schema_ahead`) while the others are served. |
 | every started outbox | `outbox <jobName>` | its scheduler is running — an outbox in `TomMessageOutbox.started` whose scheduler was stopped is `not delivering` — and, only when `maxOutboxWait` is set, no due message has waited longer than it. |
 
 The registries it reads are static state, and static state belongs to an
@@ -710,6 +711,7 @@ step of both checks its own result, and `test/examples_test.dart` runs them.
 | [endpoints](endpoints.md) | module | `health_check.dart` | `tomService` and `TomEndpoint`, the two annotations by which the endpoints pipeline discovers the route |
 | [little_things](little_things.md) | module | `health_check.dart` | `TomServerException`, the family `TomHealthCheckCancelled` belongs to |
 | [messaging](messaging.md) | module | `framework_readiness.dart` | `TomMessageOutbox.started` and `oldestWaitingSince` |
+| [tenancy](tenancy.md) | module | `framework_readiness.dart` | `TomTenancy.current` and its `schemaChecks`, the tenants whose schema does not serve this code |
 
 `health_check.dart` imports exactly three things, and between them they supply
 every symbol it uses:

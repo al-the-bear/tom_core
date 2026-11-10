@@ -225,7 +225,7 @@ void main() async {
 
         final records = {for (final r in await registry.all()) r.id: r};
         expect(records['moacme']!.status, TomTenantStatus.active);
-        expect(records['moacme']!.migrated, {'main': 2});
+        expect(records['moacme']!.migrated, {'main': 2, 'main/requires': 2});
         expect(records['moglobex']!.status, TomTenantStatus.active);
         expect(records['moinitech']!.status, TomTenantStatus.migrationFailed);
         expect(records['moinitech']!.statusDetail, isNotEmpty);
@@ -285,6 +285,31 @@ void main() async {
         final again = await TomDbMigrations.migrateAll(root.path);
         expect(again.succeeded, isTrue);
         expect(await hasColumn(await routed('moacme'), 'note'), isTrue);
+      }, skip: skipReason);
+
+      test('MOD-4: the version guard reads the versioning tables and the '
+          'registry: every schema is current', () async {
+        final migrator = TomDbMigrations.newMigratorFor(main);
+        expect(await migrator.appliedScripts(main, 'tomcore'), {
+          1: 'CREATE TABLE mo_system (id INT);',
+        });
+        expect(
+          await migrator.appliedScripts(main, 'no_such_history'),
+          isEmpty,
+          reason: 'a history never migrated, and no table created for it',
+        );
+        final system = await TomDbMigrations.guardSystemSchema(root.path);
+        expect(system.skew, TomSchemaSkew.current);
+        expect(system.code, {'main/tomcore': 1});
+
+        await tenancy.checkSchemaVersions();
+        for (final id in ['moacme', 'moglobex', 'moinitech']) {
+          expect(
+            tenancy.schemaCheckOf(id)!.skew,
+            TomSchemaSkew.current,
+            reason: id,
+          );
+        }
       }, skip: skipReason);
     });
   }, skip: skipReason);

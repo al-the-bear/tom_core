@@ -32,6 +32,7 @@ library;
 import 'dart:io';
 
 import 'package:test/test.dart';
+import 'package:tom_core_server/tom_core_server.dart';
 
 /// This package's contribution to the chain.
 const String _opsSchemaDir = 'database_migrations/system/app_db/app_schema/';
@@ -149,6 +150,24 @@ void main() {
         expect(_appSchemaDir, contains('app_db/app_schema'));
       },
     );
+
+    test('every ops migration is marked expand', () {
+      // The ops server contributes [100] and up to the app server's history.
+      // The app server's schema version guard sees them as migrations above
+      // its own chain and serves the schema only when every one is marked
+      // expand — they only create tables, so it may.
+      final files = Directory(
+        _opsSchemaDir,
+      ).listSync().whereType<File>().where((f) => f.path.endsWith('.sql'));
+      expect(files, isNotEmpty);
+      for (final file in files) {
+        expect(
+          TomSchemaVersionCheck.isExpand(file.readAsStringSync()),
+          isTrue,
+          reason: file.path,
+        );
+      }
+    });
 
     test('this package adds no second chain', () {
       // The sample's promise: no new database. A folder for another datasource

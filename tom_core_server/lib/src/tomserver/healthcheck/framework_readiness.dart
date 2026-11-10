@@ -31,6 +31,8 @@ import '../datasources/datasource_initialization.dart';
 import '../datasources/sql_datasource.dart';
 import '../db_migration/db_migration.dart';
 import '../db_migration/migration_run.dart';
+import '../db_migration/schema_versions.dart';
+import '../tenancy/tenancy.dart';
 import '../messaging/outbox.dart';
 import 'health_check.dart';
 
@@ -113,7 +115,7 @@ class TomFrameworkReadinessAnalyzer extends TomHealthAnalyzer {
     final outboxes = await Future.wait(
       TomMessageOutbox.started.map(_checkOutbox),
     );
-    return [...dataSources, ...migrations, ...outboxes];
+    return [...dataSources, ...migrations, ..._checkSchemas(), ...outboxes];
   }
 
   /// The registered data sources, each once: a `delegateTo` alias shares its
@@ -192,6 +194,30 @@ class TomFrameworkReadinessAnalyzer extends TomHealthAnalyzer {
         ),
     ];
   }
+
+  /// One check per schema that is not current: the system schema's last
+  /// guard ([TomDbMigrations.systemSchemaCheck]) — failing unless it is served
+  /// — and each tenant's ([TomTenancy.schemaChecks]), passing with its skew as
+  /// the detail, because that tenant is refused on its own while the others
+  /// are served.
+  static List<TomReadinessCheck> _checkSchemas() => [
+    if (TomDbMigrations.systemSchemaCheck case final system?
+        when system.skew != TomSchemaSkew.current)
+      TomReadinessCheck(
+        'schema system',
+        passed: system.skew.isServed,
+        detail: system.detail,
+      ),
+    for (final check
+        in TomTenancy.current?.schemaChecks.values ??
+            const <TomSchemaVersionCheck>[])
+      if (check.skew != TomSchemaSkew.current)
+        TomReadinessCheck(
+          'schema ${check.target}',
+          passed: true,
+          detail: check.detail,
+        ),
+  ];
 
   Future<TomReadinessCheck> _checkOutbox(TomMessageOutbox outbox) async {
     final subject = 'outbox ${outbox.jobName}';

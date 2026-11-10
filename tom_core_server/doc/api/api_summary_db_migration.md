@@ -18,6 +18,8 @@ with a down script beside it can be rolled back.
   - [TomMigrationRun](#tommigrationrun)
   - [TomMigrationResult](#tommigrationresult)
   - [TomMemoryDbMigrator](#tommemorydbmigrator)
+  - [TomSchemaVersionCheck](#tomschemaversioncheck)
+  - [TomChainVersion](#tomchainversion)
   - [TomDbMigrations](#tomdbmigrations)
   - [TomDbMigrator](#tomdbmigrator)
   - [TomDbMigrationAdaptor](#tomdbmigrationadaptor)
@@ -49,6 +51,7 @@ with a down script beside it can be rolled back.
 - [Enums](#enums)
   - [TomMigrationRunState](#tommigrationrunstate)
   - [TomMigrationTargetKind](#tommigrationtargetkind)
+  - [TomSchemaSkew](#tomschemaskew)
   - [TomMigrationRepair](#tommigrationrepair)
   - [TomSchemaDivergenceKind](#tomschemadivergencekind)
 - [Extensions](#extensions)
@@ -66,6 +69,7 @@ Sources: `lib/src/tomserver/db_migration/db_migration.dart`,
 `lib/src/tomserver/db_migration/schema_convergence.dart`,
 `lib/src/tomserver/db_migration/schema_ddl_reader.dart`,
 `lib/src/tomserver/db_migration/schema_model.dart`,
+`lib/src/tomserver/db_migration/schema_versions.dart`,
 `lib/src/tomserver/db_migration/sql_migration_adaptor.dart`. The SQL lexer both the
 applier and the reader are written on, `TomSqlLexer`, is documented with the
 [datasources](api_summary_datasources.md#tomsqllexer) module, where it lives.
@@ -289,7 +293,7 @@ instances share as one database is shared by every migrator over it.
 
 | Constructor | Signature | Description |
 | ----------- | --------- | ----------- |
-| `TomMemoryDbMigrator` | `TomMemoryDbMigrator({Map<String, List<int>>? history, Set<String> failing = const {}})` | A migrator over `history` that fails the migrations named in `failing` as `<datasource>/<label>/<version>`. |
+| `TomMemoryDbMigrator` | `TomMemoryDbMigrator({Map<String, List<int>>? history, Map<String, Map<int, String>>? scripts, Set<String> failing = const {}})` | A migrator over `history` and `scripts` that fails the migrations named in `failing` as `<datasource>/<label>/<version>`. |
 
 #### Properties
 
@@ -297,6 +301,7 @@ instances share as one database is shared by every migrator over it.
 | -------- | ---- | ----------- |
 | `history` | `Map<String, List<int>>` | The applied versions by `<datasource>/<label>`, in the order applied (final). |
 | `failing` | `Set<String>` | The migrations that fail, as `<datasource>/<label>/<version>`; a failing one throws `db_migration.memory.apply_failed` and is not recorded (final). |
+| `scripts` | `Map<String, Map<int, String>>` | The script each applied version was applied with, by `<datasource>/<label>` — what `appliedScripts` answers; shared like `history` (final). |
 
 #### Static Methods
 
@@ -312,9 +317,68 @@ instances share as one database is shared by every migrator over it.
 | `initializeMigration` | `Future<void> initializeMigration(TomDataSourceInfo dsi, String schemaName)` | *(override)* Binds to `dsi` and `schemaName`. |
 | `applyMigration` | `Future<void> applyMigration(TomDataSourceInfo dsi, String schemaName, int version, String description, String sql)` | *(override)* Records `version` unless applied; a version named in `failing` throws `db_migration.memory.apply_failed`; an unbound pair throws `db_migration.memory.not_initialized`. |
 | `reset` | `void reset()` | *(override)* Releases the binding. |
+| `appliedScripts` | `Future<Map<int, String>> appliedScripts(TomDataSourceInfo dsi, String schemaName)` | *(override)* The applied versions of the pair with their recorded scripts (`''` for one applied without `scripts`). |
 | `withMigrationLock` | `Future<R> withMigrationLock<R>(TomDataSourceInfo dsi, Future<R> Function() body)` | *(override)* Runs `body`. |
 | `repair` | `Future<void> repair(TomDataSourceInfo dsi, String schemaName, int version, TomMigrationRepair action)` | *(override)* Stops failing `version`, and records it for `markResolved`. |
 | `rollback` | `Future<List<int>> rollback(TomDataSourceInfo dsi, String schemaName, int toVersion, Map<int, TomMigrationScript> scripts)` | *(override)* Forgets the versions above `toVersion`, newest first; one without a down script in `scripts` throws `db_migration.memory.no_down_script`. |
+
+### TomSchemaVersionCheck
+
+The comparison of one target — the system schema's histories, or one tenant's —
+with the code: per history (`<datasource>/<schema>` for the system schema,
+`<datasource>` for a tenant), the code's highest version, the recorded one, and
+the lowest code version the recorded schema still serves. Built by
+`TomDbMigrations.checkSystemSchema` and `TomTenancy.checkSchemaVersions`.
+
+- **Extends:** none
+
+#### Constructors
+
+| Constructor | Signature | Description |
+| ----------- | --------- | ----------- |
+| `TomSchemaVersionCheck` | `const TomSchemaVersionCheck(String target, TomSchemaSkew skew, {Map<String, int> code = const {}, Map<String, int> recorded = const {}, Map<String, int> requires = const {}})` | A check of `target`. |
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `target` | `String` | `system` or `tenant:<id>` (final). |
+| `skew` | `TomSchemaSkew` | How it stands: the worst of its histories (final). |
+| `code` | `Map<String, int>` | The highest version the code's tree carries, per history (final). |
+| `recorded` | `Map<String, int>` | The highest version the schema recorded, per history; a history never migrated is absent (final). |
+| `requires` | `Map<String, int>` | The lowest code version the recorded schema serves, per history: its highest migration not marked expand (final). |
+| `detail` | `String` | *(getter)* `current`, or the skew and each history that is not current with its versions — a log line or a readiness check's detail. |
+
+#### Static Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `expandMarker` | `static const String` | `-- tom:expand`: the leading comment line that marks a migration expand — it only adds, so the release before still works on the schema it leaves. |
+
+#### Static Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `isExpand` | `static bool isExpand(String script)` | Whether one of `script`'s leading comment lines — before its first statement — is `expandMarker`, case and the space after `--` aside. |
+| `requiredCodeVersion` | `static int requiredCodeVersion(Map<int, String> scripts)` | The lowest code version a schema migrated by `scripts` (version → script) serves: the highest version not marked expand, `0` when every one is. |
+| `skewOf` | `static TomSchemaSkew skewOf(int code, int? recorded, int? requires)` | How a history recorded at `recorded` (`null`: never migrated) that serves code from `requires` (`null`: only its own version) stands against `code`. |
+| `worst` | `static TomSchemaSkew worst(Iterable<TomSchemaSkew> skews)` | The worst of `skews`: behind, then ahead-incompatible, then ahead-compatible, then current. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `toString` | `String toString()` | *(override)* `<target>: <detail>`. |
+
+### TomChainVersion
+
+```dart
+typedef TomChainVersion = ({int version, int requires});
+```
+
+The highest `version` of a migration chain, and the lowest code version a
+schema at it serves (`requires`) — what `TomDbMigrations.migrateTree` and
+`chainVersion` answer.
 
 ### TomDbMigrations
 
@@ -336,6 +400,7 @@ system schema, `tenant/<type>/<datasource>/` for each tenant type's targets.
 | `repairActionOption` | `static const String` | `repair-action`: the command-line option choosing the repair, `--repair-action=remove` or `--repair-action=resolve`. |
 | `rollbackMigrationsOption` | `static const String` | `rollback-migrations`: the command-line option asking for a rollback, `--rollback-migrations=system/<datasource>/<schema>/<version>` or `--rollback-migrations=tenant:<id>/<datasource>/<version>`, keeping the migrations up to `<version>` (`-1` for none). |
 | `downSuffix` | `static const String` | `.down`: the suffix that marks a down script — `[3]-add_column.down.sql` undoes `[3]-add_column.sql`, `[3]-x@dev.down.sql` undoes `[3]-x@dev.sql`. |
+| `systemSchemaCheck` | `static TomSchemaVersionCheck? get` | The last `checkSystemSchema` answer of this process, or `null`; the readiness check lists it while it is not current. |
 | `runs` | `static List<TomMigrationRun> get` | Every target's run in this process's most recent `migrateAll` call, as it stands now — running ones included, in the order they started; empty before the first call. The fact the framework readiness check reads: a running or failed system schema keeps the server from traffic; a failed tenant is reported while the others are served. |
 
 #### Static Methods
@@ -352,8 +417,14 @@ system schema, `tenant/<type>/<datasource>/` for each tenant type's targets.
 | `resolveActiveEnvironment` | `static String resolveActiveEnvironment()` | The environment name migrations are filtered against, via `TomRuntime` (falling back to the production-safe default). |
 | `selectForEnvironment` | `static List<({String basename, TomMigrationFileName parsed})> selectForEnvironment(Iterable<({String basename, TomMigrationFileName parsed})> ordered, String environmentName)` | Filters an ordered migration list to those applying in `environmentName`, preserving order. |
 | `migrateAll` | `static Future<TomMigrationResult> migrateAll(String root, {int parallelism = 1, String? tenant, TomDbMigrator Function(TomDataSourceInfo dsInfo)? migrators})` | Migrates the system schema, then every tenant by its type. Checks the whole tree first — the root exists (`db_migration.migration.migrations_directory_not_found`), holds only `system/` and `tenant/` (`db_migration.layout.unknown_entry`), every type folder is a declared type (`db_migration.tenant.undeclared_type`) and every data-source folder of a type tree is routed by the type (`db_migration.tenant.unrouted_datasource`). Then applies `system/` to the registered data sources, unrouted — **fatal**: a failure is recorded and rethrown; then each type's tree once to its shared schema (target `shared:<type>`) and to each tenant with a schema or database of its own (`tenant:<id>`), at most `parallelism` at once (below one: `db_migration.migration.invalid_parallelism`), each under its database's migration lock and `TomTenantRegistry.withMigrationLock` of the target, under the history `tenantHistoryLabel(type)`. A target's tenants go `migrating`, then `active` (a `suspended` one stays `suspended`) with `setMigrated(id, '<datasource>', highest version)`, or `migration-failed` with the error as status detail; a failing target does not stop the others. Without a tenancy it applies `system/` and the type `default`'s tree to the registered data sources. `tenant` migrates that tenant's target alone, not the system schema (`tenancy.tenant.unknown` for one the deployment does not have). `migrators` replaces `newMigratorFor`. Records every target in `runs`. |
-| `resetRuns` | `static void resetRuns()` | Forgets `runs`, as a fresh process starts. For tests. |
-| `migrateTree` | `static Future<int?> migrateTree(TomDbMigrator migrator, TomDataSourceInfo dsInfo, Directory chain, String label, String environmentName)` | Applies the one chain in `chain` — a type tree's `<datasource>/` folder — to `dsInfo` under the history `label`, through `migrator` and under `dsInfo`'s migration lock; answers the highest version it holds for `environmentName`, or `null` when it holds none. |
+| `resetRuns` | `static void resetRuns()` | Forgets `runs` and `systemSchemaCheck`, as a fresh process starts. For tests. |
+| `migrateTree` | `static Future<TomChainVersion?> migrateTree(TomDbMigrator migrator, TomDataSourceInfo dsInfo, Directory chain, String label, String environmentName)` | Applies the one chain in `chain` — a type tree's `<datasource>/` folder — to `dsInfo` under the history `label`, through `migrator` and under `dsInfo`'s migration lock; answers the highest version it holds for `environmentName` and the lowest code version that schema serves (`TomSchemaVersionCheck.requiredCodeVersion`), or `null` when it holds none. |
+| `requiresKey` | `static String requiresKey(String datasource)` | `<datasource>/requires`: the registry key under which `migrateAll` records, beside a tenant's version of `datasource`, the lowest code version its schema serves. |
+| `chainVersion` | `static TomChainVersion? chainVersion(Directory chain, String environmentName)` | The highest version of the one chain in `chain` that applies in `environmentName`, with the lowest code version a schema at it serves; `null` for a chain with none. |
+| `treeVersions` | `static Map<String, int> treeVersions(Directory tree, String environmentName)` | The highest version of each `<datasource>/` chain of a tenant type's `tree` that applies in `environmentName` — what this code expects of a tenant of the type; empty for a missing tree. |
+| `checkSystemSchema` | `static Future<TomSchemaVersionCheck> checkSystemSchema(String root, {TomDbMigrator Function(TomDataSourceInfo dsInfo)? migrators})` | Compares the system tree under `root` with the system schema, per `<datasource>/<schema>` history: behind when a version the code carries for the active environment is not applied (`TomDbMigrator.appliedScripts`) — a set comparison, so a gap below the history's highest counts; ahead when versions are applied above the code's highest, served when every one is marked expand (`requires`: the highest of them not marked expand, `0` for none). Several packages may contribute to one history; each is judged only by what lies above its own versions. Reads only; records the answer in `systemSchemaCheck`. |
+| `guardSystemSchema` | `static Future<TomSchemaVersionCheck> guardSystemSchema(String root, {Duration wait = Duration.zero, Duration poll = const Duration(seconds: 2), TomDbMigrator Function(TomDataSourceInfo dsInfo)? migrators})` | `checkSystemSchema`, refusing a schema that does not serve this code: behind, `db_migration.schema.system_behind` — after waiting up to `wait`, checking every `poll` — and ahead by a migration not marked expand, `db_migration.schema.system_ahead`; both carry the versions (`code`, `recorded`, `requires`). Ahead by expand migrations only is logged and answered. |
+| `guardOnStart` | `static Future<TomSchemaVersionCheck?> guardOnStart(Object? config, String defaultRoot, {TomDbMigrator Function(TomDataSourceInfo dsInfo)? migrators})` | `guardSystemSchema` as the `migrations` settings say — `guard` (default `true`), `onBehind: refuse \| wait` (default `refuse`), `waitSeconds` (default 300), `root` (else `defaultRoot`) — when the root exists; `null` when not run. A malformed setting throws `db_migration.config.invalid`. Called by `TomServer.start` after `migrateOnStart`. |
 | `newMigratorFor` | `static TomDbMigrator newMigratorFor(TomDataSourceInfo dsInfo)` | A fresh migrator for `dsInfo`'s type from the scanned adaptors — one per target, so targets migrated at once share no binding. An unknown type throws `db_migration.migration.no_migrator_found_for_datasource_type`. |
 | `tenantHistoryLabel` | `static String tenantHistoryLabel(String type)` | `tenant_<type>`: the history label of tenant type `type`'s tree — its versioning table is `tenant_<type>_versioning` in every target. |
 | `tenantTreeOf` | `static String tenantTreeOf(String root, TomTenantType? type, String name)` | The directory of tenant type `name`'s tree: `type`'s own `TomTenantType.migrations`, else `<root>/tenant/<name>`. |
@@ -386,6 +457,7 @@ history.
 | `initializeMigration` | `Future<void> initializeMigration(TomDataSourceInfo dsi, String schemaName)` | Binds this migrator to the `(dsi, schemaName)` pair — **rebinding**, so the loaded version state is replaced, not accumulated — and prepares that pair's version tracking. Returns nothing: the applied-version history it loads is the useful output, and no single number stands for it, so representing it is left to the implementation (see `MariadbMigrationAdaptor.versions`). |
 | `applyMigration` | `Future<void> applyMigration(TomDataSourceInfo dsi, String schemaName, int version, String description, String sql)` | Applies — or verifies, if already applied — the identified migration. |
 | `reset` | `void reset()` | Releases the current `(data source, schema)` binding and its applied-version state, so this instance can serve the next pair. |
+| `appliedScripts` | `Future<Map<int, String>> appliedScripts(TomDataSourceInfo dsi, String schemaName)` | The migrations applied successfully to `schemaName` in `dsi`, version to recorded script — empty when nothing was applied there. Read only: creates no versioning table, binds nothing. What the schema version guard compares with the code. |
 | `withMigrationLock` | `Future<R> withMigrationLock<R>(TomDataSourceInfo dsi, Future<R> Function() body)` | Runs `body` holding `dsi`'s migration lock: one migration run per database at a time, across every process that migrates it. Released when `body` returns or throws, and by the database when the process holding it dies. Re-entrant, so a caller may hold it around several runs and the runs inside take it without waiting for themselves. |
 | `repair` | `Future<void> repair(TomDataSourceInfo dsi, String schemaName, int version, TomMigrationRepair action)` | Resolves the failed record of migration `version` in `schemaName` — the record that makes `initializeMigration` refuse the schema — by `action`, under the migration lock. Changes the history only; never runs a script. The next run applies a `remove`d migration again and skips a `markResolved` one. |
 | `rollback` | `Future<List<int>> rollback(TomDataSourceInfo dsi, String schemaName, int toVersion, Map<int, TomMigrationScript> scripts)` | Undoes every migration of `schemaName` applied above `toVersion` — all of them for `-1` — newest first by installation order, with the down scripts of `scripts` (keyed by version), and answers the versions it undid in that order. Checked before anything runs: every migration to undo has a down script and is recorded with the description and the up script `scripts` holds. The caller holds the migration lock. |
@@ -529,6 +601,7 @@ database it came from:
 | `forgetMigration` | `Future<void> forgetMigration(TomDataSourceInfo dsi, String schemaName, int version)` | *(protected)* Deletes the record of migration `version` from `schemaName`'s versioning table, so a later forward run applies it again. |
 | `recordMigration` | `Future<void> recordMigration(TomDataSourceInfo dsi, String schemaName, int version, String description, String sql, {required bool success, required int elapsedMs})` | *(protected)* Inserts migration `version`'s row — every value a bound parameter, since a script routinely contains quote characters. A failure is `<applyKeyPrefix>.apply_migration.update_version_table_failed`. |
 | `reset` | `void reset()` | *(override)* Drops the `(data source, schema)` binding and the applied-versions list. |
+| `appliedScripts` | `Future<Map<int, String>> appliedScripts(TomDataSourceInfo dsi, String schemaName)` | *(override)* The successful rows of `<schemaName>_versioning`, version to recorded script; empty when the table does not exist in the data source's current schema (checked in `information_schema.tables`, not created). |
 | `applyMigration` | `Future<void> applyMigration(TomDataSourceInfo dsi, String schemaName, int version, String description, String sql)` | *(override)* Throws `<applyKeyPrefix>.apply_migration.not_initialized_for_schema` unless bound to this exact pair; then skips (after verifying) an applied version, otherwise runs `applyScript`. Verification of an applied version fails with `description_mismatch`, `checksum_unreadable` (the stored value is not a digest this adaptor could have written) or `checksum_mismatch` (it is a digest, but a different one) — each message naming the data source, schema and version, since one instance walks them all. |
 | `withMigrationLock` | `Future<R> withMigrationLock<R>(TomDataSourceInfo dsi, Future<R> Function() body)` | *(override)* `TomSqlDatasource.withSessionLock(migrationLockName(databaseName), body, wait: lockWait)` on `dsi`'s data source. A data source that is not a `TomSqlDatasource` is refused with `<initializeKeyPrefix>.lock.not_a_sql_datasource`. |
 | `repair` | `Future<void> repair(TomDataSourceInfo dsi, String schemaName, int version, TomMigrationRepair action)` | *(override)* Under the migration lock: `reset()`s the binding, so the next run reads the history again; reads `version`'s rows whose `success` is not `1` and refuses when there are none with `<initializeKeyPrefix>.repair.no_failed_record` (parameters `schema`, `datasource`, `version`); then deletes them (`remove`) or sets `success = 1` on them (`markResolved`) and logs the repair. A failed read or write is `<initializeKeyPrefix>.repair.failed`, carrying the database's error as its root cause. |
@@ -1217,6 +1290,20 @@ What a migration target is — the `kind` of a `TomMigrationRun`.
 | `system` | The system schema, migrated by `<root>/system/`. |
 | `shared` | A tenant type's shared schema, migrated once by the type's tree for every shared-isolation tenant of the type. |
 | `tenant` | One tenant's own schema or database, migrated by its type's tree. |
+
+### TomSchemaSkew
+
+How a schema's recorded versions stand against the code's — the `skew` of a
+`TomSchemaVersionCheck`.
+
+| Value | Meaning |
+| ----- | ------- |
+| `current` | Every history is at the code's version. Served. |
+| `behind` | A history is below the code's version, or was never migrated. Not served: the system schema refuses the start (`db_migration.schema.system_behind`), a tenant's requests are refused (`tenancy.tenant.schema_behind`). |
+| `aheadCompatible` | A history is above the code's version and every migration in between is marked expand. Served. |
+| `aheadIncompatible` | A history is above the code's version and a migration in between is not marked expand. Not served (`db_migration.schema.system_ahead`, `tenancy.tenant.schema_ahead`). |
+
+The getter `isServed` answers whether a schema in the state is served.
 
 ### TomMigrationRepair
 

@@ -470,6 +470,9 @@ Summary: [api_summary_audit_reports.md](api_summary_audit_reports.md)
 | `TomMigrationTargetKind` | enum | `system`, `shared` or `tenant`. |
 | `TomMigrationResult` | class | Every target's run of one `migrateAll` call. |
 | `TomMemoryDbMigrator` | class | A migrator in memory, for tests and examples of the orchestration. |
+| `TomSchemaVersionCheck` | class | How the system schema or a tenant's schema stands against the code's migration versions. |
+| `TomSchemaSkew` | enum | `current`, `behind`, `aheadCompatible` or `aheadIncompatible`. |
+| `TomChainVersion` | typedef | A chain's highest version and the lowest code version a schema at it serves. |
 | `TomMigrationRepair` | enum | What repair does with a failed migration: `remove` it or `markResolved`. |
 | `TomSchemaColumn` | class | One column, in the vocabulary the convergence check compares in. |
 | `TomSchemaTable` | class | One table: its columns, primary key and origin. |
@@ -1447,6 +1450,7 @@ Summary: [api_summary_audit_reports.md](api_summary_audit_reports.md)
 | `TomCacheRemoveMessage` | Cache |
 | `TomCacheRetrieveMessage` | Cache |
 | `TomCacheStoreMessage` | Cache |
+| `TomChainVersion` | Database Migration |
 | `TomChartType` | Export |
 | `TomClassScanResult` | Endpoints |
 | `TomClientAddress` | Rate Limiting |
@@ -1922,7 +1926,9 @@ Summary: [api_summary_audit_reports.md](api_summary_audit_reports.md)
 | `TomSchemaDivergenceKind` | Database Migration |
 | `TomSchemaModel` | Database Migration |
 | `TomSchemaProvisioning` | Datasources |
+| `TomSchemaSkew` | Database Migration |
 | `TomSchemaTable` | Database Migration |
+| `TomSchemaVersionCheck` | Database Migration |
 | `TomScimAnd` | Authentication |
 | `TomScimApi` | Authentication |
 | `TomScimComparison` | Authentication |

@@ -2,6 +2,26 @@
 
 ### Added
 
+- **Schema version guard** (`db_migration`, `tenancy`, `server`,
+  `healthcheck`): every node compares the highest migration version its trees
+  carry with what each schema recorded (`TomSchemaVersionCheck`,
+  `TomSchemaSkew`). The system schema behind the code refuses the start
+  (`db_migration.schema.system_behind`, or waits with
+  `migrations.onBehind: wait` / `waitSeconds`), ahead by a migration not marked
+  expand refuses it too (`db_migration.schema.system_ahead`) —
+  `TomServer.guardSchemaOnStart`, `TomDbMigrations.checkSystemSchema`,
+  `guardSystemSchema`, `guardOnStart`, `migrations.guard`. A tenant behind or
+  ahead incompatibly is refused per request with 503
+  `tenancy.tenant.schema_behind` / `tenancy.tenant.schema_ahead` while the
+  others are served (`TomTenancy.checkSchemaVersions`, `schemaCheckOf`,
+  `schemaChecks`, `codeVersionsOf`, judged at install, on refresh and after
+  `migrateAll`), and readiness lists every schema not current. A migration is
+  marked expand by a leading `-- tom:expand` comment line; `migrateAll`
+  records beside a tenant's version the lowest code version its schema serves
+  (`migrated['<datasource>/requires']`, `requiresKey`), and the system
+  schema's is read from the versioning table's scripts
+  (`TomDbMigrator.appliedScripts`). `migrateTree` answers a `TomChainVersion`;
+  `chainVersion` and `treeVersions` read a tree's versions.
 - **One migration entry point** (`db_migration`, `tenancy`, `server`,
   `healthcheck`): `TomDbMigrations.migrateAll(root)` applies
   `root/system/<datasource>/<schema>/` to the system schema (fatal on failure),

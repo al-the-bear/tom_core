@@ -29,6 +29,10 @@ with a down script beside it can be [rolled back](#rolling-migrations-back).
   - [Tenants, by their type](#tenants-by-their-type)
   - [When migrations run](#when-migrations-run)
   - [Where the last run stands](#where-the-last-run-stands)
+- [Rolling Deploys: Version Skew](#rolling-deploys-version-skew)
+  - [Expand, then contract](#expand-then-contract)
+  - [The system schema at start](#the-system-schema-at-start)
+  - [A tenant behind or ahead](#a-tenant-behind-or-ahead)
 - [Adaptor Discovery](#adaptor-discovery)
 - [The SQL Adaptors](#the-sql-adaptors)
   - [The outcome row is written with bound parameters](#the-outcome-row-is-written-with-bound-parameters)
@@ -99,6 +103,9 @@ them run against a live server.
 | `TomMigrationTargetKind` | enum | What a target is: the `system` schema, a type's `shared` schema, or one `tenant`'s own |
 | `TomMigrationResult` | class | Every target's run of one `migrateAll` call, with `succeeded`, `failed` and `runOf` |
 | `TomMemoryDbMigrator` | class | A migrator that records what it applies instead of running SQL — for tests and examples of the orchestration |
+| `TomSchemaVersionCheck` | class | How the system schema or a tenant's schema stands against the code's migration versions, with the expand marker (`-- tom:expand`) and its arithmetic |
+| `TomSchemaSkew` | enum | `current`, `behind`, `aheadCompatible` or `aheadIncompatible` — whether a schema serves the code |
+| `TomChainVersion` | typedef | A chain's highest version and the lowest code version a schema at it serves |
 | `TomDbMigrationException` | class | Orchestration / discovery / parsing failures |
 | `TomSqlMigrationException` | class | SQL migration failures, whichever adaptor raised them |
 | `MariadbMigrationException` / `PostgresMigrationException` | class | Its MariaDB and PostgreSQL subtypes |
@@ -724,6 +731,112 @@ own requests are refused while it is not active. A process that never migrates
 
 A call replaces the record of the one before. `TomDbMigrations.resetRuns()`
 forgets it, as a fresh process starts — for tests.
+
+## Rolling Deploys: Version Skew
+
+During a rolling deploy, and after a migration run that left a tenant behind,
+nodes of two releases and schemas at two versions coexist. Every node knows the
+highest version its own tree carries — per `<datasource>/<schema>` history of
+`system/` and per `<datasource>` chain of each type's tree, for the active
+environment — and compares it with what each schema has recorded
+(`TomSchemaVersionCheck`, its `TomSchemaSkew`):
+
+| Skew | When | Served |
+| ---- | ---- | ------ |
+| `current` | every history is at the code's version | yes |
+| `behind` | a history is below the code's version, or was never migrated | no — the code expects tables the schema does not have yet |
+| `aheadCompatible` | a history is above the code's version, and every migration in between is marked expand | yes — the schema only grew |
+| `aheadIncompatible` | a history is above the code's version, and a migration in between is not marked expand | no — it removed or changed what this code reads |
+
+### Expand, then contract
+
+A migration is **marked expand** by a leading comment line — before its first
+statement — `-- tom:expand` (`TomSchemaVersionCheck.expandMarker`; case and the
+space after `--` aside):
+
+```sql
+-- tom:expand
+-- Adds the invoice note; nullable, so the release before keeps writing rows.
+ALTER TABLE invoice ADD COLUMN note VARCHAR(200) NULL;
+```
+
+An expand migration only adds — a table, a nullable or defaulted column, an
+index — so the code of the release before it still works on the schema it
+leaves. Anything else — dropping or renaming a column, tightening a
+constraint, changing a type — is a **contract** migration, unmarked. A change
+that needs both is split over two releases:
+
+1. **Release N expands**: it adds the new column (marked expand) and writes
+   both the old and the new; nodes of release N−1 still serve, because the
+   migration in between is expand.
+2. **Release N+1 contracts**: once no node of release N−1 runs, it drops the
+   old column (unmarked); nodes of release N would now be refused by a schema
+   ahead incompatibly — which is why the contraction waits a release.
+
+The marker is in the script, not the file name, because it has to travel with
+the schema: the versioning table records the script, so a node of an older
+release — whose tree has never seen the newer files — reads the marker from
+the history. The lowest code version a schema serves is the highest version of
+its migrations not marked expand
+(`TomSchemaVersionCheck.requiredCodeVersion`).
+
+### The system schema at start
+
+`TomServer.start` checks the system schema right after it migrated
+(`migrateOnStart`) — `TomServer.guardSchemaOnStart`, through
+`TomDbMigrations.guardOnStart` — when the migration root exists, comparing
+each history's applied versions (`TomDbMigrator.appliedScripts`, which reads
+the versioning table without creating it) with the code's. **Behind** is a set
+comparison: any version the code carries that the history has not applied,
+even below the history's highest. **Ahead** counts only applied versions above
+the code's highest. Both matter because several packages may contribute to one
+history — the advanced sample's ops server adds `[100]` and up to the app
+server's `app_db/app_schema` — and each carries only its own versions: the app
+server serves that history because the ops migrations above its `[004]` are
+marked expand, and the ops server is not judged by the app server's migrations
+below its own.
+
+| The system schema | At start |
+| ----------------- | -------- |
+| behind the code | refused with `db_migration.schema.system_behind`, naming each history's code and recorded versions — or, with `onBehind: wait`, waited for up to `waitSeconds` (a release job migrating meanwhile) before refusing |
+| ahead, by expand migrations only | started, the skew logged |
+| ahead, by a migration not marked expand | refused with `db_migration.schema.system_ahead`, naming the versions and what the schema requires |
+
+```yaml
+migrations:
+  onBehind: wait      # refuse (default) | wait
+  waitSeconds: 600    # default 300
+  # guard: false      # turns the check off
+```
+
+`TomDbMigrations.checkSystemSchema(root)` answers the comparison without
+refusing, and `guardSystemSchema(root, wait:, poll:)` refuses as the start
+does; the last answer is `TomDbMigrations.systemSchemaCheck`, which the
+readiness check lists while it is not current. A malformed setting is refused
+with `db_migration.config.invalid`.
+
+### A tenant behind or ahead
+
+A tenant's recorded versions are its registry row's: `migrateAll` writes,
+beside the highest version of each data source (`migrated['main']`), the lowest
+code version that schema serves (`migrated['main/requires']`,
+`TomDbMigrations.requiresKey`); a record without it serves only its own
+version. Each node compares them with its type's tree
+(`TomTenancy.checkSchemaVersions`) at install, on every refresh from the
+registry, and after `migrateAll` migrated the tenant:
+
+| The tenant's schema | Its requests |
+| ------------------- | ------------ |
+| behind the code | refused, 503 `tenancy.tenant.schema_behind` |
+| ahead, by expand migrations only | served |
+| ahead, by a migration not marked expand | refused, 503 `tenancy.tenant.schema_ahead` |
+
+The other tenants are served meanwhile, and the readiness check lists every
+tenant that is not current (`schema tenant:<id>`) without holding the server
+back. `TomTenancy.schemaCheckOf(id)` answers one tenant's comparison. Run the
+migration of a release before its nodes take traffic — `--migrate` as the
+release job — and a node of the new release refuses only the tenants whose
+migration failed.
 
 ## Adaptor Discovery
 
@@ -1703,6 +1816,20 @@ table each, `enterprise`'s failing in a tenant's own database, the tenant
 repaired (MariaDB) and migrated alone to `active`, and a tenant rollback
 undoing its own target only.
 
+`test/schema_version_guard_test.dart` covers the [version
+guard](#rolling-deploys-version-skew) with the in-memory migrator: the expand
+marker and the arithmetic of `requiredCodeVersion`, `skewOf` and `worst`; a
+system schema behind the code refused with its versions, waited for while
+another run migrates it, ahead by an expand migration served and by a contract
+migration refused; `guardOnStart`'s settings; a tenant never migrated refused
+with `tenancy.tenant.schema_behind` and served once migrated while another is
+still refused and listed by readiness; an older release serving a tenant ahead
+by expand migrations and refusing one ahead by a contract migration
+(`tenancy.tenant.schema_ahead`); and a refresh from the registry judging again.
+`test/migration_orchestrator_db_test.dart` reads the real versioning tables:
+`appliedScripts` of a history and of one never migrated, and every schema
+current after the run.
+
 `test/db_migration_lock_db_test.dart` covers the [migration
 lock](#one-run-per-database-at-a-time-the-migration-lock) and
 [repair](#repairing-a-failed-migration) against a live server, two data sources
@@ -1881,7 +2008,7 @@ here it cannot drift silently.
 | [authentication](authentication.md) | module | `framework_convergence.dart` | `defaultApiKeyTable`, `defaultOAuthStateTable`, `defaultScimResourceTable`, `defaultServiceAccountTable`, `apiKeyTable`, `oauthStateTable`, `scimResourceTable`, `serviceAccountTable` |
 | [cache](cache.md) | module | `framework_convergence.dart` | `defaultInvalidationTable`, `invalidationTable` |
 | [cmdline](cmdline.md) | module | `db_migration.dart` | `TomArgs.parseArgsToMap`, reading `--repair-migration`, `--repair-action` and `--rollback-migrations` |
-| [datasources](datasources.md) | module | 9 of 10 files | `TomDataSourceInfo` (named data sources) and its `executeCommand` / `executeQuery`; `TomSqlLexer`, the statement splitter and quote scanner; the connected data source's dialect, which `verifyLive` classifies and queries the catalogue with; `TomSqlDatasource.withSessionLock`, which holds the migration lock |
+| [datasources](datasources.md) | module | 9 of 11 files | `TomDataSourceInfo` (named data sources) and its `executeCommand` / `executeQuery`; `TomSqlLexer`, the statement splitter and quote scanner; the connected data source's dialect, which `verifyLive` classifies and queries the catalogue with; `TomSqlDatasource.withSessionLock`, which holds the migration lock |
 | [endpoints](endpoints.md) | module | `framework_convergence.dart` | `defaultIdempotencyTable`, `idempotencyTable` |
 | [export](export.md) | module | `framework_convergence.dart` | `defaultExportRegisterTable`, `exportRegisterTable` |
 | [file_storage](file_storage.md) | module | `framework_convergence.dart` | `blobChunkTable`, `blobContentTable`, `blobLedgerTable`, `blobManifestTable`, `defaultBlobChunkTable`, `defaultBlobContentTable`, `defaultBlobLedgerTable`, `defaultBlobManifestTable` |

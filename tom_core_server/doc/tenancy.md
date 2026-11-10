@@ -396,6 +396,13 @@ which the row does hold.
 tenant's new status into the registry **before** they change this node's
 routing, and `statusOf(id)` answers a served tenant's status.
 
+An `active` tenant is served only while its schema serves this node's code:
+a schema behind the node's type tree is refused with `503`,
+`tenancy.tenant.schema_behind`, one ahead by a migration not marked expand with
+`503`, `tenancy.tenant.schema_ahead` — judged on each node at install, on every
+refresh and after `migrateAll` (`checkSchemaVersions`, `schemaCheckOf(id)`); see
+[db_migration.md](db_migration.md#a-tenant-behind-or-ahead).
+
 ### A cluster reads one registry
 
 Every node of a cluster reads the same registry. `refreshFromRegistry()` brings a
@@ -519,6 +526,8 @@ body is a small JSON object carrying the key and a message:
 | `400` | `tenancy.id.invalid` | The request names something that is not a tenant id. |
 | `403` | `tenancy.tenant.suspended` | The tenant is suspended ([Suspending a Tenant](#suspending-a-tenant)). |
 | `503` | `tenancy.tenant.unavailable` | The tenant is provisioning, migrating, or its migration failed. |
+| `503` | `tenancy.tenant.schema_behind` | The tenant's schema is behind this node's code. |
+| `503` | `tenancy.tenant.schema_ahead` | The tenant's schema is ahead of this node's code by a migration not marked expand. |
 
 ### A login binds the token to its tenant
 
@@ -976,6 +985,16 @@ is reported as a conflict).
   complete only when every tenant's run succeeded — run `migrateAll` as part of
   the deployment (`--migrate`, or `migrations.onStart`), not on first request
   ([Per-tenant migrations](#per-tenant-migrations)).
+- **Version skew during a rolling deploy.** Until every tenant's run of a
+  release succeeded, tenants sit at two schema versions while nodes of two
+  releases serve them. Each node refuses a tenant whose schema is behind its
+  code, and one ahead of it by a migration not marked expand — `503`, while
+  the other tenants are served — so a release whose migrations are all
+  `-- tom:expand` rolls out with no tenant refused by the older nodes, and a
+  contraction (dropping what the older release reads) waits for the release
+  after ([db_migration.md](db_migration.md#expand-then-contract)). A tenant
+  left behind by a failed run stays refused by the new release until it is
+  migrated again.
 - **Moving a tenant between models** is a copy of its rows into the new place
   and a configuration change: the rows already carry their tenant, so no schema
   changes.
@@ -1004,6 +1023,8 @@ is reported as a conflict).
 | `tenancy.tenant.unknown` | `route`, `runFor`, `resolveRequest`, `suspendTenant`, `resumeTenant`, `removeTenant` | Work or a request for a tenant the deployment does not have (`404` on a request; `clientThrow: true`). |
 | `tenancy.tenant.suspended` | `resolveRequest` | A request for a suspended tenant (`403`). |
 | `tenancy.tenant.unavailable` | `resolveRequest` | A request for a tenant that is provisioning, migrating or whose migration failed (`503`). |
+| `tenancy.tenant.schema_behind` | `resolveRequest` | A request for a tenant whose schema is behind this node's code (`503`). |
+| `tenancy.tenant.schema_ahead` | `resolveRequest` | A request for a tenant whose schema is ahead of this node's code by a migration not marked expand (`503`). |
 | `tenancy.registry.unknown_tenant` | `TomTenantRegistry.setStatus`, `setMigrated` | A change to a tenant the registry does not hold. |
 | `tenancy.registry.unknown_status` | `TomTenantStatus.parse` | A stored status this code does not know. |
 | `tenancy.registry.unknown_datasource` | `TomSqlTenantRegistry` | The registry's data source is not registered. |
@@ -1028,6 +1049,14 @@ raised as the kernel's `TomTenantException`.
   <!-- unpinned: decision — account placement belongs to the authentication service -->
 
 ## Verification
+
+`test/schema_version_guard_test.dart` covers the per-tenant [version
+guard](db_migration.md#a-tenant-behind-or-ahead): a tenant never migrated is
+refused with `tenancy.tenant.schema_behind` and served once `migrateAll`
+migrated it, while another tenant stays refused and is listed by readiness; an
+older release serves a tenant ahead by expand migrations and refuses one ahead
+by a contract migration (`tenancy.tenant.schema_ahead`); and a refresh from the
+registry judges again.
 
 `test/tenancy_test.dart` covers the module without a database: resolving a
 request's tenant by subdomain, by a host of its own and by header; the token
@@ -1156,11 +1185,12 @@ result, and `test/examples_test.dart` runs it.
 | ---------- | ---- | ----------- | --- |
 | `dart:async` | dart | `tenancy.dart`, `tenant_registry.dart` | `FutureOr`, the body type of `runFor` and `forEachTenant`; `Timer`, the registry refresh; `Completer` and `unawaited`, the registry's migration lock within the process |
 | `dart:convert` | dart | `tenant_registry.dart` | `jsonEncode` / `jsonDecode`, the registry's `datasources` and `migrated` columns |
-| `dart:io` | dart | `tenant_type.dart` | `Directory`, whether a type's migration tree exists |
+| `dart:io` | dart | `tenancy.dart`, `tenant_type.dart` | `Directory`, whether a type's migration tree exists and the tree `codeVersionsOf` reads |
 | `crypto` | package | `tenant_registry.dart` | `sha256`, a migration lock name too long for MariaDB hashed to fit |
 | `shelf` | package | `tenancy.dart`, `tenant_resolution.dart` | `Request`, which a resolver reads and `resolveRequest` resolves |
 | `tom_core_kernel` | package | `tenancy.dart`, `tenant_registry.dart` | `TomTenantContext` — the zone-carried tenant, the id rule and `qualify`; `TomDataSource`, `tomLog` and `tomReflector` |
 | [configuration](configuration.md) | module | `tenancy.dart` | `TomServerConfigResourceProvider`, which `fromConfiguration` reads the `tenancy` key from |
 | [datasources](datasources.md) | module | `tenancy.dart`, `tenant_registry.dart`, `tenant_registry_sql.dart` | `TomDataSourceInfo` — the registry routed per tenant, the data sources opened over a tenant's schema or database — and the base data source's dialect, whose `createSchema` and `schemaSetting` say how a schema is made and pointed at; and `TomFrameworkTable`, `TomSchemaProvisioning` and `sqlInstant` / `parseSqlInstant`, the registry's table and its instants |
+| [db_migration](db_migration.md) | module | `tenancy.dart` | `TomDbMigrations.treeVersions`, `requiresKey` and `resolveActiveEnvironment`, what a type's tree carries; `TomSchemaVersionCheck`, `TomSchemaSkew` and `TomMigrationRun.tenantTarget`, a tenant's schema check |
 | [little_things](little_things.md) | module | `tenancy.dart` | `TomServerException`, the base of `TomTenancyException` |
 | [object_persistence](object_persistence.md) | module | `tenancy.dart`, `tenant_registry.dart` | `TomAnnotationAnalyzer.tenantTables` and `TomDbTable`, the tenant tables `tenantTables` reports; `@TomDbTable` / `@TomDbColumn`, the mapping of `TomTenantRow` |

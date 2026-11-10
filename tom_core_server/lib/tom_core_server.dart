@@ -120,6 +120,7 @@ export 'src/tomserver/db_migration/sql_migration_adaptor.dart';
 export 'src/tomserver/db_migration/schema_convergence.dart';
 export 'src/tomserver/db_migration/schema_ddl_reader.dart';
 export 'src/tomserver/db_migration/schema_model.dart';
+export 'src/tomserver/db_migration/schema_versions.dart';
 export 'src/tomserver/endpoints/cors.dart';
 export 'src/tomserver/endpoints/endpoint_annotation.dart';
 export 'src/tomserver/endpoints/endpoint_pipeline.dart';

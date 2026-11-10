@@ -5604,6 +5604,7 @@ final x = SampledType();
         'TomMigrationRunState',
         'TomMigrationTargetKind',
         'TomSchemaDivergenceKind',
+        'TomSchemaSkew',
       ]);
       expect(
         _enumSectionHeadingsOf(_summary('datasources')),

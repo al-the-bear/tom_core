@@ -1,3 +1,8 @@
+-- tom:expand
+-- Expand: this migration only creates tables, so the app server — whose own
+-- chain in this history ends below [100] — still serves the schema it leaves
+-- (the schema version guard reads this marker; see the framework's
+-- db_migration guide, "Expand, then contract").
 -- Framework scheduling and audit tables, in the app server's existing app_db.
 --
 -- **Why this file is in the ops server's package and not the app server's.**

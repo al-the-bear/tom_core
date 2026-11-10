@@ -9,8 +9,8 @@ import 'db_migration.dart';
 ///
 /// Its history is kept per data source and history label (the `<schema>`
 /// level of the system tree, `tenant_<type>` for a type's tree), in
-/// [applied], and survives across instances that share the [history] map —
-/// pass one map to every instance a test creates, as one database is shared
+/// [applied], and survives across instances that share the [history] (and
+/// [scripts]) map — pass one map to every instance a test creates, as one database is shared
 /// by every migrator over it. A migration named in [failing] by
 /// `<datasource>/<label>/<version>` throws when it is applied, and is not
 /// recorded.
@@ -18,8 +18,10 @@ class TomMemoryDbMigrator implements TomDbMigrator {
   /// A migrator over [history] that fails the migrations in [failing].
   TomMemoryDbMigrator({
     Map<String, List<int>>? history,
+    Map<String, Map<int, String>>? scripts,
     Set<String> failing = const {},
   }) : history = history ?? {},
+       scripts = scripts ?? {},
        failing = Set.of(failing);
 
   /// The applied versions by `<datasource>/<label>`, in the order applied.
@@ -27,6 +29,11 @@ class TomMemoryDbMigrator implements TomDbMigrator {
 
   /// The migrations that fail, as `<datasource>/<label>/<version>`.
   final Set<String> failing;
+
+  /// The script each applied version was applied with, by
+  /// `<datasource>/<label>` — what [appliedScripts] answers; shared like
+  /// [history].
+  final Map<String, Map<int, String>> scripts;
 
   String? _bound;
 
@@ -72,6 +79,19 @@ class TomMemoryDbMigrator implements TomDbMigrator {
       );
     }
     versions.add(version);
+    (scripts[key] ??= {})[version] = sql;
+  }
+
+  @override
+  Future<Map<int, String>> appliedScripts(
+    TomDataSourceInfo dsi,
+    String schemaName,
+  ) async {
+    final key = keyOf(dsi, schemaName);
+    return {
+      for (final version in history[key] ?? const <int>[])
+        version: scripts[key]?[version] ?? '',
+    };
   }
 
   @override

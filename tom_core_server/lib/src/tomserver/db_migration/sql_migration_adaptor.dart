@@ -5,6 +5,7 @@ import 'package:crypto/crypto.dart';
 import 'package:meta/meta.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 import '../little_things/server_exception.dart';
+import '../object_persistence/crud_repository.dart';
 import '../object_persistence/persistence_annotations.dart';
 import '../datasources/datasource_initialization.dart';
 import '../datasources/sql_datasource.dart';
@@ -231,6 +232,31 @@ abstract class TomSqlMigrationAdaptor implements TomDbMigrator {
   /// nothing, because the history is what callers want and a single number
   /// cannot carry it.
   List<TomDbVersion> versions = [];
+
+  @override
+  Future<Map<int, String>> appliedScripts(
+    TomDataSourceInfo dsi,
+    String schemaName,
+  ) async {
+    final table = '${schemaName}_versioning';
+    final datasource = dsi.datasource;
+    final exists = await datasource.executeQuery<TomCountResult>(
+      'SELECT COUNT(*) AS count FROM information_schema.tables '
+      'WHERE table_schema = ${datasource.sqlDialect.currentSchema} '
+      'AND LOWER(table_name) = :table',
+      {'table': table.toLowerCase()},
+    );
+    if (exists.single.count == 0) return const {};
+    final rows = await datasource.executeQuery<TomDbVersion>(
+      'SELECT installedRank, version, description, checksum, installedBy, '
+      'installedOn, executionTimeMs, success, script FROM $table '
+      'ORDER BY installedRank',
+    );
+    return {
+      for (final row in rows)
+        if (row.success == 1) row.version: row.script,
+    };
+  }
 
   @override
   void reset() {

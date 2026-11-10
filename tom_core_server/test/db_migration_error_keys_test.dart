@@ -74,6 +74,12 @@ class _IdleMigrator implements TomDbMigrator {
 
   @override
   void reset() {}
+
+  @override
+  Future<Map<int, String>> appliedScripts(
+    TomDataSourceInfo dsi,
+    String schemaName,
+  ) async => const {};
 }
 
 /// A scripted data source whose commands fail when they start with [failing].

@@ -40,12 +40,16 @@
 library;
 
 import 'dart:async';
+import 'dart:io';
 
 import 'package:shelf/shelf.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../configuration/base_server_configuration.dart';
 import '../datasources/datasource_initialization.dart';
+import '../db_migration/db_migration.dart';
+import '../db_migration/migration_run.dart';
+import '../db_migration/schema_versions.dart';
 import '../little_things/server_exception.dart';
 import '../object_persistence/annotation_analyzer.dart';
 import '../object_persistence/persistence_annotations.dart';
@@ -70,6 +74,8 @@ import 'tenant_type.dart';
 /// | `tenancy.tenant.unknown` | Work for a tenant the deployment does not have. |
 /// | `tenancy.tenant.suspended` | A request for a suspended tenant (403). |
 /// | `tenancy.tenant.unavailable` | A request for a tenant that is provisioning, migrating or whose migration failed (503). |
+/// | `tenancy.tenant.schema_behind` | A request for a tenant whose schema is behind this server's code (503). |
+/// | `tenancy.tenant.schema_ahead` | A request for a tenant whose schema is ahead of this server's code by a migration not marked expand (503). |
 /// | `tenancy.config.schema_collision` | A schema-isolated tenant whose schema is a tenant type's shared schema. |
 /// | `tenancy.type.invalid` | A tenant type name that is not a lowercase identifier of at most 32 characters. |
 /// | `tenancy.type.unknown` | A tenant of a type the deployment does not declare. |
@@ -482,6 +488,7 @@ class TomTenancy {
     for (final tenant in tenancy.tenants.values) {
       await tenancy._provision(tenant);
     }
+    await tenancy.checkSchemaVersions();
     _installed = tenancy;
     TomDataSourceInfo.router = tenancy.route;
     tenancy._startRefreshing();
@@ -586,6 +593,7 @@ class TomTenancy {
       await _unroute(id);
       removed.add(id);
     }
+    await checkSchemaVersions();
     return TomTenantRegistryRefresh(
       added: added,
       removed: removed,
@@ -709,6 +717,75 @@ class TomTenancy {
   /// tenant the deployment does not have.
   TomTenantStatus? statusOf(String tenantId) => _statuses[tenantId];
 
+  final Map<String, TomSchemaVersionCheck> _schemaChecks = {};
+  final Map<String, Map<String, int>> _codeVersions = {};
+
+  /// How the served tenant [tenantId]'s schema stands against this code's
+  /// type tree, as last checked ([checkSchemaVersions]), or `null` for a
+  /// tenant not checked.
+  TomSchemaVersionCheck? schemaCheckOf(String tenantId) =>
+      _schemaChecks[tenantId];
+
+  /// Every served tenant's last schema check, by tenant id.
+  Map<String, TomSchemaVersionCheck> get schemaChecks =>
+      Map.unmodifiable(_schemaChecks);
+
+  /// The highest version of each `<datasource>` chain of [type]'s tree that
+  /// this code carries for the active environment
+  /// ([TomDbMigrations.treeVersions]); empty for a type without a tree.
+  Map<String, int> codeVersionsOf(TomTenantType type) =>
+      _codeVersions[type.name] ??= type.migrations == null
+      ? const {}
+      : TomDbMigrations.treeVersions(
+          Directory(type.migrations!),
+          TomDbMigrations.resolveActiveEnvironment(),
+        );
+
+  /// Compares the schema of each served tenant — [tenantIds], or all — with
+  /// this code: per data source of its type's tree, the code's highest version
+  /// against the one the [registry] records (`migrated[<datasource>]`), and
+  /// for a schema ahead, the lowest code version it serves
+  /// (`migrated[<datasource>/requires]`, written by
+  /// [TomDbMigrations.migrateAll]; a record without it serves only its own
+  /// version). A tenant [TomSchemaSkew.behind] or
+  /// [TomSchemaSkew.aheadIncompatible] is refused
+  /// (`tenancy.tenant.schema_behind` / `tenancy.tenant.schema_ahead`, 503)
+  /// while the others are served. Run at [install], on [refreshFromRegistry]
+  /// and by `migrateAll` after each target.
+  Future<void> checkSchemaVersions([Iterable<String>? tenantIds]) async {
+    final wanted = tenantIds?.toSet();
+    final records = {for (final r in await registry.all()) r.id: r};
+    for (final tenant in List.of(tenants.values)) {
+      if (wanted != null && !wanted.contains(tenant.id)) continue;
+      final code = codeVersionsOf(typeOf(tenant));
+      final migrated = records[tenant.id]?.migrated ?? const <String, int>{};
+      final recorded = <String, int>{};
+      final requires = <String, int>{};
+      final skews = <TomSchemaSkew>[];
+      for (final MapEntry(key: datasource, value: version) in code.entries) {
+        final at = migrated[datasource];
+        final from = migrated[TomDbMigrations.requiresKey(datasource)];
+        if (at != null) recorded[datasource] = at;
+        if (from != null) requires[datasource] = from;
+        skews.add(TomSchemaVersionCheck.skewOf(version, at, from));
+      }
+      final check = TomSchemaVersionCheck(
+        TomMigrationRun.tenantTarget(tenant.id),
+        TomSchemaVersionCheck.worst(skews),
+        code: code,
+        recorded: recorded,
+        requires: requires,
+      );
+      final before = _schemaChecks[tenant.id]?.skew;
+      _schemaChecks[tenant.id] = check;
+      if (before != check.skew && check.skew != TomSchemaSkew.current) {
+        tomLog.warn(
+          'Tenancy: the schema of ${check.target} is ${check.detail}',
+        );
+      }
+    }
+  }
+
   /// Removes the tenant [tenantId] from the running deployment — the
   /// counterpart of [addTenant], for a tenant whose deletion is final.
   ///
@@ -745,6 +822,7 @@ class TomTenancy {
   Future<void> _unroute(String tenantId) async {
     tenants.remove(tenantId);
     _statuses.remove(tenantId);
+    _schemaChecks.remove(tenantId);
     _routes.removeWhere((key, _) => key.$2 == tenantId);
     final owned = [
       for (final info in _opened)
@@ -877,7 +955,22 @@ class TomTenancy {
     }
     switch (_statuses[tenant] ?? TomTenantStatus.active) {
       case TomTenantStatus.active:
-        break;
+        switch (_schemaChecks[tenant]?.skew) {
+          case TomSchemaSkew.behind:
+            return const TomTenantResolution.rejected(
+              503,
+              'tenancy.tenant.schema_behind',
+              "The tenant's schema is behind this server's code.",
+            );
+          case TomSchemaSkew.aheadIncompatible:
+            return const TomTenantResolution.rejected(
+              503,
+              'tenancy.tenant.schema_ahead',
+              "The tenant's schema is ahead of this server's code.",
+            );
+          case _:
+            break;
+        }
       case TomTenantStatus.suspended:
         return const TomTenantResolution.rejected(
           403,

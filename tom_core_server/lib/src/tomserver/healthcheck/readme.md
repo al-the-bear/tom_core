@@ -28,7 +28,8 @@ against `cancelled`, stops its work.
 the application installed a readiness analyzer of its own (configuration key
 `frameworkReadiness`, on by default): every registered data source operational
 and answering `SELECT 1`, the system schema of the last migration run neither
-running nor failed (each shared schema and tenant listed with its state), every started
+running nor failed (each shared schema and tenant listed with its state), the
+system schema serving this code (a tenant whose schema does not is listed), every started
 message outbox delivering. The body is `ready` or `not ready` followed by one
 line per check. Liveness is left alone.
 

@@ -34,6 +34,7 @@ import '../authorization/authorization_cache.dart';
 import '../ratelimit/rate_limit.dart';
 import '../db_migration/db_migration.dart';
 import '../db_migration/migration_run.dart';
+import '../db_migration/schema_versions.dart';
 import '../tenancy/tenancy.dart';
 import '../tenancy/tenant_resolution.dart';
 import '../transactions/transaction_manager.dart';
@@ -793,6 +794,7 @@ class TomServer {
     await configureFieldEncryption();
     configurePrivacy();
     await migrateOnStart();
+    await guardSchemaOnStart();
     await recoverTransactions();
     await _installServerPrincipal();
     warnOnUnenforcedResourceKeys();
@@ -1176,6 +1178,27 @@ class TomServer {
     if (!provider.exists(TomDbMigrations.configurationKey)) return null;
     return TomDbMigrations.migrateOnStart(
       provider.get(TomDbMigrations.configurationKey),
+      configuration.databaseMigrationsDirectory,
+    );
+  }
+
+  /// Refuses the start unless the system schema serves this code —
+  /// [TomDbMigrations.guardOnStart] with the server configuration's
+  /// [TomDbMigrations.configurationKey] map (or [config]): behind the code
+  /// (`db_migration.schema.system_behind`, after waiting when `onBehind:
+  /// wait`) or ahead by a migration not marked expand
+  /// (`db_migration.schema.system_ahead`). Runs when the migration root —
+  /// `root`, else [TomBaseServerConfiguration.databaseMigrationsDirectory] —
+  /// exists, unless `guard: false`. Called by [start] after [migrateOnStart].
+  Future<TomSchemaVersionCheck?> guardSchemaOnStart([
+    TomServerConfigResourceProvider? config,
+  ]) async {
+    final provider =
+        config ?? TomServerConfigResourceProvider.getServerConfig();
+    return TomDbMigrations.guardOnStart(
+      provider.exists(TomDbMigrations.configurationKey)
+          ? provider.get(TomDbMigrations.configurationKey)
+          : null,
       configuration.databaseMigrationsDirectory,
     );
   }

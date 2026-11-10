@@ -140,7 +140,9 @@ personal values are recorded as they are — see
 `onStart: true` it runs `TomDbMigrations.migrateAll` — the system schema, then
 every tenant by its type — before anything else reads a table. A failing system
 schema stops the start; a failing tenant is marked `migration-failed` and the
-start goes on — see
+start goes on. Then it refuses to start unless the system schema serves this
+code (`TomServer.guardSchemaOnStart`): behind the code, or ahead by a migration
+not marked `-- tom:expand` — see
 [`doc/configuration.md`](../../../../doc/configuration.md#migrations-at-start).
 
 **Transaction recovery.** Then `start` awaits the `transactions` key
