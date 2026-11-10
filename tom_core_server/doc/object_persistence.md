@@ -2501,7 +2501,7 @@ tests and for a single process whose encrypted data is in memory too.
 `TomSqlDataKeyStore('main')` resolves the data source by name on every call and
 creates the table on first use in each data source it reaches; with
 `createSchema: false` the deployment applies the reference migration
-`example/object_persistence/migrations/main/tomcore/[1]-create_tom_encryption_key.sql`
+`example/object_persistence/migrations/tenant/default/main/[1]-create_tom_encryption_key.sql`
 (or its `migrations_postgresql` form) instead. `TomSqlDataKeyStore.over(datasource)`
 binds one data source once. A name that resolves to no registered data source
 raises `field_encryption.no_datasource`.
@@ -2746,20 +2746,31 @@ A column that already holds data is encrypted in four steps:
 
 ### Tenancy
 
-The data keys live in the data source the store names, and
-`TomSqlDataKeyStore` resolves it by name on every call, through the tenant
-routing. When that data source is one of `TomTenancy.datasources`, a `schema` or
-`database` tenant's data keys are kept in that tenant's schema or database —
-created there on first use or, with `createSchema: false`, by the migration in
-the per-tenant tree — so each tenant's data is encrypted under keys of its own.
-Shared tenants share the one table and its keys. The keyring keeps what it read
-per data source.
+Data keys follow the table whose values they encrypt. `tom_encryption_key` is a
+tenant table keyed by `(tenant, key_id)`, and `TomFieldEncryption.forEntity`
+chooses whose keys an entity's values use by its classification:
+
+- a **tenant table**'s (`@TomTenantTable`) values are encrypted under the
+  tenant in context's data keys, kept in that tenant's data source — its own
+  schema or database, or its type's shared schema — under its `tenant`. Each
+  tenant's data is encrypted under keys of its own, in a shared schema too;
+- a **system table**'s values are encrypted under the system's data keys, kept
+  in the system data source under tenant `''`, whatever tenant is in context
+  (`TomFieldEncryption.isSystemScope`), so every tenant reads them back.
+
+`TomSqlDataKeyStore` places its data source on every call, so the keys are
+created in the tenant's data source on first use or, with `createSchema: false`,
+by the migration in the tenant tree. The keyring keeps what it read per data
+source and tenant.
 
 `rotateDataKey`, `rotateIndexKey`, `rewrap` and `load` act on the current
-context's keys; a deployment rotating every tenant's runs them in each
-(`tenancy.forEachTenant`). The re-encryption pass runs in the current context
-and then, when a `TomTenancy` is installed, in every tenant's. See
-[tenancy.md](tenancy.md#what-stays-deployment-wide).
+context's keys — the system's inside `forEntity` of a system entity; a
+deployment rotating every tenant's runs them in each
+(`tenancy.forEachTenant`). The re-encryption pass encrypts a system entity's
+rows once, under the system's keys, and a tenant entity's in every tenant of an
+installed tenancy (the current context's when none is), each tenant's rows
+under its own keys. See
+[tenancy.md](tenancy.md#framework-tables).
 
 ### Audit records
 

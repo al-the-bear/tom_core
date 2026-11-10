@@ -2350,7 +2350,7 @@ returning user through provisioning again, so a deployment that installs no
 store is told what is missing rather than given a store that loses its rows.
 
 The persistent store needs `TomExternalIdentityLink.createTableSql`, shipped as
-`example/authentication/migrations/main/tomcore/[4]-create_tom_external_identity.sql`.
+`example/authentication/migrations/tenant/default/main/[3]-create_tom_external_identity.sql`.
 
 A link pointing at an account that no longer exists **refuses** the login rather
 than provisioning a replacement — recreating a deleted account from a stale row
@@ -3448,7 +3448,7 @@ The unique `(tenant, resource_type, name_key)` key arbitrates the one race the s
 has: two identity-provider requests creating the same user at once both pass
 the service's uniqueness check, and only one of them writes. The reference
 migration is
-`example/authentication/migrations/main/tomcore/[5]-create_tom_scim_resource.sql`;
+`example/authentication/migrations/tenant/default/main/[4]-create_tom_scim_resource.sql`;
 `scimResourceTableDdl(table)` returns the same `CREATE TABLE`, and
 `test/framework_schema_test.dart` fails if the two drift apart. With
 `createSchema: true` (the default) the store creates the table on first use; a
@@ -3527,9 +3527,8 @@ uninstalls it. A server with no `TomApiKeys` installed reads no `X-API-Key`: it
 ignores the header with a warning and the request proceeds unauthenticated.
 
 Install it before the server starts, beside the other start-up stores. The
-tables are deployment-wide, like the framework's other tables — build the store
-over a data source that is not routed per tenant; an account names its tenant
-itself.
+tables are system tables: the store keeps them in the system data source
+whichever pool it was built over, and an account names its tenant itself.
 
 ### A key is shown once
 
@@ -4136,8 +4135,9 @@ the case-insensitive `attribute` lookup. `TomScimResourceType` is `user` or
 ### `TomScimStore` / `TomMemoryScimStore` / `TomSqlScimStore`
 
 Where resources are kept. The memory store is per process, partitioned by the
-tenant in context; the SQL store keeps them in `tom_scim_resource` — over a data
-source name (`named`) routed per tenant, and with a `tenant` column every
+tenant in context; the SQL store keeps them in `tom_scim_resource` — a tenant table
+placed for the tenant in context on every call (`TomFrameworkTable.placed`),
+over a data source name (`named`) or object, with a `tenant` column every
 statement filters on — declared by `scimResourceTable(table)` and named
 by default from `defaultScimResourceTable`, with `scimResourceTableDdl(table)`
 its `CREATE TABLE`. See
@@ -4300,7 +4300,7 @@ and `TomSessionCookieException` both refusals. See
 - **The identity *store* has no default at all**, deliberately — see
   [The linking table](#the-linking-table). `TomPersistentExternalIdentityStore`
   needs `TomExternalIdentityLink.createTableSql`, shipped as
-  `example/authentication/migrations/main/tomcore/[4]-create_tom_external_identity.sql`.
+  `example/authentication/migrations/tenant/default/main/[3]-create_tom_external_identity.sql`.
   <!-- pinned: test/documented_limitations_test.dart › no identity store is installed by default -->
 - **The framework retains no provider token unless a provider opts in.**
   `storeTokens` defaults to `false`, so a deployment that only wants "Sign in
@@ -4314,7 +4314,7 @@ and `TomSessionCookieException` both refusals. See
   a table of its own and still let the framework hold credentials, or the
   reverse. `TomPersistentOAuthTokenStore` needs
   `TomExternalIdentityToken.createTableSql`, shipped as
-  `example/authentication/migrations/main/tomcore/[3]-create_tom_external_identity_token.sql`.
+  `example/authentication/migrations/tenant/default/main/[2]-create_tom_external_identity_token.sql`.
   <!-- unpinned: decision — opting in and installing a store are separate halves on purpose -->
 - **Revocation reaches only providers that publish an endpoint.** `unlink`
   revokes through `revocationEndpoint` (RFC 7009) where a provider configures

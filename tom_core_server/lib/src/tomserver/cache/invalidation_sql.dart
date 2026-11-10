@@ -35,6 +35,7 @@ const String defaultInvalidationTable = 'tom_cache_invalidation';
 TomFrameworkTable invalidationTable(String table) => TomFrameworkTable(
   name: table,
   origin: 'invalidationTable',
+  kind: TomTableKind.system,
   columns: const [
     TomFrameworkColumn('id', 'BIGINT', autoIncrement: true),
     TomFrameworkColumn('kind', 'VARCHAR(16)'),

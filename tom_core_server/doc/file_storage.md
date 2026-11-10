@@ -704,10 +704,16 @@ connected database's words), the chunk `INSERT`, the manifest's replacing write
 declarations, so a column exists in the code in exactly
 one place.
 
+Both are **system tables**: whichever pool the store was built over, it keeps
+them in the system data source, once for the deployment. The manifest records,
+in its `tenant` column, the tenant in context when a blob was written — `''`
+outside a tenant — so `keysOfTenant(tenant)` lists one tenant's blobs, which is
+what exporting or erasing a tenant's files starts from.
+
 A deployment whose database user may not run DDL applies that schema itself and
 constructs the store with `createSchema: false`. For the default table names the
 statements ship as reference migrations under
-`example/file_storage/migrations/main/tomcore/`. For a store constructed with
+`example/file_storage/migrations/system/main/tomcore/`. For a store constructed with
 `manifestTable:` or `chunkTable:` set to something else there is no shipped file
 — its schema exists only as what `blobManifestTableDdl()` and
 `blobChunkTableDdl()` return for those names, which is what those two functions
@@ -865,7 +871,7 @@ rows of two framework-owned tables in a `TomDataSource`:
 
 With `createSchema: true` (the default) the ledger creates both on first use;
 otherwise the migration module owns them, and the reference migrations are
-`example/file_storage/migrations/main/tomcore/[3]-create_tom_blob_ledger.sql`
+`example/file_storage/migrations/system/main/tomcore/[3]-create_tom_blob_ledger.sql`
 and `[4]-create_tom_blob_content.sql` (PostgreSQL forms under
 `migrations_postgresql/`). Both tables are listed by `frameworkOwnedTables`
 (`blobLedger`, `blobContent`), so the framework schema check covers them.

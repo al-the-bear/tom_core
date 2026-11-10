@@ -91,6 +91,7 @@ module builds its query DSL and repositories on top of this layer.
     - [PostgresDatasourceException](#postgresdatasourceexception)
     - [PostgresConnectionLostException](#postgresconnectionlostexception)
 - [Enums](#enums)
+  - [TomTableKind](#tomtablekind)
   - [TomAggregateFunction](#tomaggregatefunction)
   - [TomSqlTypeFamily](#tomsqltypefamily)
   - [TomSqlFailureMode](#tomsqlfailuremode)
@@ -2099,6 +2100,7 @@ TomFrameworkTable({
   required String name,
   required List<TomFrameworkColumn> columns,
   required String origin,
+  required TomTableKind kind,
   List<String> primaryKey = const [],
   List<TomFrameworkKey> keys = const [],
 })
@@ -2114,6 +2116,7 @@ because a descriptor is built once at start-up, where the alternative is a
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `name` | `String` | The table's name, which is a per-instance argument of the owning store. |
+| `kind` | `TomTableKind` | Whether the table is the deployment's (`system`) or a tenant's (`tenant`): where its store reaches it (`placed`) and which migration tree ships it. |
 | `columns` | `List<TomFrameworkColumn>` | The columns, in declaration order. |
 | `primaryKey` | `List<String>` | The primary-key column names, in key order. |
 | `keys` | `List<TomFrameworkKey>` | The unique constraints and secondary indexes. |
@@ -2134,6 +2137,10 @@ because a descriptor is built once at start-up, where the alternative is a
 | `replaceRow` | `Future<void> replaceRow(TomDataSource datasource, Map<String, String> values, Map<String, dynamic> params, {String? table})` | Writes a row over every row it supersedes, in `datasource`: one statement on MariaDB; a `DELETE` and an `INSERT` run in one transaction where the database has no `REPLACE`. `values` names the SQL text per column as for `insertRow`; `params` binds it. `table` names the table as the statement addresses it — a schema-qualified name (`TomSqlDatasource.qualify`) when `datasource` is not the one the table lives in — and defaults to `name`. |
 | `createStatements` | `List<String> createStatements(TomStandardSqlDialect dialect)` | The statements building this table in `dialect`'s database: the `CREATE TABLE IF NOT EXISTS`, then — where the database cannot declare an index inside the table — one `CREATE INDEX IF NOT EXISTS` per index. `IF NOT EXISTS` because every store calls it on first use and a second process must not fail on a table the first one created. |
 | `create` | `Future<void> create(TomDataSource datasource)` | Creates this table in `datasource` if it does not exist, running `createStatements` in the data source's own dialect. |
+| `placedInfo` | `TomDataSourceInfo placedInfo(TomDataSourceInfo held)` | Where a store of this table reaches it in the current zone — the one placement rule every framework store follows. The system data source of `held` (`systemInfoOf`) for a `system` table, never routed; `TomDataSourceInfo.route` of it for a `tenant` table — the tenant in context's schema or database, or the system data source with no tenant. |
+| `placed` | `TomDataSource placed(TomDataSource held)` | `placedInfo` for a store holding a data source object: found by its registered name; one registered under no name is used as it is. |
+| `systemOf` | `static TomDataSource systemOf(TomDataSource held)` | The system data source of `held`: itself, or the base `<name>` of a tenant pool `<name>@…`. A system store applies it once, when it is built. |
+| `systemInfoOf` | `static TomDataSourceInfo systemInfoOf(TomDataSourceInfo info)` | The registered system data source `info` belongs to: the base `<name>` of a tenant pool `<name>@…`, else `info`. |
 | `toString` | `String toString()` | *(override)* `"TomFrameworkTable(<name>)"`. |
 
 #### TomSchemaProvisioning
@@ -2370,6 +2377,15 @@ PostgresConnectionLostException(
 ```
 
 ## Enums
+
+### TomTableKind
+
+Whether a framework table holds the deployment's rows or one tenant's.
+
+| Value | Meaning |
+| ----- | ------- |
+| `system` | The deployment's: reached in the system schema — the base data source's own — and never routed; shipped in a module's `system/` migration tree. A system table that does work for tenants carries a `tenant` column. |
+| `tenant` | One tenant's: reached where the tenant in context's data lives; shipped in the `tenant/` tree every tenant type applies. |
 
 ### TomAggregateFunction
 

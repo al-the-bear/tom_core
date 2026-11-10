@@ -54,7 +54,7 @@ void main() {
       // the trigger, and the DELETE guard actively blocks retention. Both must
       // therefore be opt-in; the `@env` tag is how a migration says so.
       final names = Directory(
-        'example/audit/migrations/main/tomcore',
+        'example/audit/migrations/system/main/tomcore',
       ).listSync().map((e) => e.uri.pathSegments.last).toList();
       expect(names.where((n) => n.contains('@')), hasLength(2));
       expect(

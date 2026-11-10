@@ -252,9 +252,9 @@ final limiter = TomSqlRateLimiter(
 );
 ```
 
-The table is deployment-wide, like the framework's other tables: build the
-limiter over a data source that is not routed per tenant. Its keys already name
-the tenant where the scope does.
+The table is a system table: the limiter keeps it in the system data source
+whichever pool it was built over. Its keys already name the tenant where the
+scope does.
 
 ## The Client Address
 

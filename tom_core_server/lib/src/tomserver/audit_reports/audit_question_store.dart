@@ -96,11 +96,12 @@ class TomSqlAuditQuestionStore extends TomAuditQuestionStore {
 
   /// Keeps the questions in [table] of [datasource].
   TomSqlAuditQuestionStore(
-    this.datasource, {
+    TomDataSource datasource, {
     this.table = defaultAuditQuestionTable,
     this.createSchema = true,
     DateTime Function()? clock,
-  }) : _clock = clock ?? DateTime.now;
+  }) : datasource = TomFrameworkTable.systemOf(datasource),
+       _clock = clock ?? DateTime.now;
 
   /// A store over the registered data source [datasourceName]; refuses
   /// (`audit_reports.store.unknown_datasource`) a name the registry does not

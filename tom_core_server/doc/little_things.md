@@ -535,8 +535,9 @@ verbs, a rollback), and the transaction manager calls `invalidate` on every
 rollback. A lookup after a write reads the database again. A write to one of
 the framework's own bookkeeping tables (`bookkeepingTables`: the job queue and
 its locks, the blob store, the audit trail, the inbox and delivery reports,
-idempotency keys, sagas, keys, the export register, the sync change log — the
-tables `frameworkOwnedTables` lists, at their default names) leaves the cache
+idempotency keys, sagas, keys, the export register, the sync change log, the
+tenant registry, service accounts and API keys, the rate limiter's counters —
+the tables `frameworkOwnedTables` lists, at their default names) leaves the cache
 as it is: no cached lookup reads them, and an upload's blob rows would
 otherwise empty it in the middle of the request. Across requests nothing is kept, so a
 revocation takes effect on the caller's next request.

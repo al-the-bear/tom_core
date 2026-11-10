@@ -69,7 +69,8 @@ abstract final class TomRequestCache {
   /// queue and its locks, the blob store, the audit trail and its saved
   /// questions, the outbox's inbox, delivery reports and suppression list,
   /// idempotency keys, sagas, keys, the export register, the sync change
-  /// log and the tenant registry. No lookup the cache keeps reads them, so a write
+  /// log, the tenant registry, service accounts and API keys, and the rate
+  /// limiter's counters. No lookup the cache keeps reads them, so a write
   /// to one leaves it as it is — an upload's blob rows would otherwise empty it
   /// in the middle of a request. `test/request_cache_test.dart` holds the set
   /// to the tables `frameworkOwnedTables` lists.
@@ -100,6 +101,9 @@ abstract final class TomRequestCache {
     'tom_sync_change',
     'tom_sync_sequence',
     'tom_tenant',
+    'tom_service_account',
+    'tom_api_key',
+    'tom_rate_limit',
   };
 
   static final RegExp _target = RegExp(

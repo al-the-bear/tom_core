@@ -186,6 +186,21 @@ void main() {
       expect(json.containsKey('detail'), isFalse);
     });
 
+    test('a tenant is in the hashed text only when there is one', () {
+      expect(_record('r1').toJson().containsKey('tenant'), isFalse);
+      final record = TomAuditRecord(
+        id: 'r1',
+        timestamp: DateTime.utc(2026, 7, 28, 10, 30),
+        actor: TomAuditActor.system,
+        action: TomAuditAction.update,
+        target: 'Widget',
+        outcome: TomAuditOutcome.succeeded,
+        tenant: 'acme',
+      );
+      expect(record.toJson()['tenant'], 'acme');
+      expect(TomAuditRecord.fromJson(record.toJson()).tenant, 'acme');
+    });
+
     test('toJson key order is canonical, so the hash is stable', () {
       // The sink hashes this encoding; an order that varied between two
       // encodings of the same record would break the chain for no reason.
@@ -1548,6 +1563,26 @@ void main() {
       // No sink, no throw: pretending to audit into nowhere would be worse
       // than plainly not auditing, but so would failing every action.
       expect(TomAuditTrail.sink, isNull);
+    });
+
+    test('an entry records the tenant it was written in', () async {
+      final sink = TomMemoryAuditSink();
+      TomAuditTrail.install(sink);
+      addTearDown(TomAuditTrail.uninstall);
+      await TomTenantContext.run(
+        'acme',
+        () => TomAuditTrail.recordAction(
+          action: TomAuditAction.execute,
+          target: 'report',
+          outcome: TomAuditOutcome.succeeded,
+        ),
+      );
+      await TomAuditTrail.recordAction(
+        action: TomAuditAction.execute,
+        target: 'report',
+        outcome: TomAuditOutcome.succeeded,
+      );
+      expect(sink.entries.map((e) => e.record.tenant), ['acme', null]);
     });
 
     test('installing a sink turns auditing on', () {

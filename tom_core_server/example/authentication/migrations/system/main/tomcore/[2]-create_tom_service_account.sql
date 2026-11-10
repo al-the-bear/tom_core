@@ -1,0 +1,20 @@
+-- Reference migration for the API-key store's service accounts.
+--
+-- Creates `tom_service_account`: one row per non-human principal an API key is
+-- issued to — its name, roles, the tenant and organization it acts for, and
+-- whether it is disabled. A system table: the deployment's accounts, in the
+-- system schema; `tenant` names the tenant an account acts for.
+--
+-- The canonical DDL of `serviceAccountTable` (authentication/sql_api_key_store.dart);
+-- `test/framework_schema_test.dart` fails if the two drift apart. A deployment
+-- whose database user may not run DDL applies it and builds `TomSqlApiKeyStore`
+-- with `createSchema: false`.
+CREATE TABLE IF NOT EXISTS tom_service_account (
+  id           VARCHAR(191) NOT NULL,
+  name         VARCHAR(191) NOT NULL,
+  roles        TEXT         NOT NULL,
+  tenant       VARCHAR(32)  NULL,
+  organization VARCHAR(191) NULL,
+  disabled     TINYINT(1)   NOT NULL DEFAULT 0,
+  PRIMARY KEY (id)
+);

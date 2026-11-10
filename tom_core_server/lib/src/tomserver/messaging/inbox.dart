@@ -188,7 +188,9 @@ class TomMemoryInbox extends TomInbox {
 /// The inbox in a SQL data source, written in the same transaction as the
 /// consumer's work — see the library documentation.
 class TomSqlInbox extends TomInbox {
-  /// An inbox in [table] of [datasource].
+  /// An inbox in [table] of [datasource] — placed per call for the tenant in
+  /// context ([TomFrameworkTable.placed]): the inbox is a tenant table, kept
+  /// where the tenant's data and the consumer's work are.
   ///
   /// With [createSchema] (the default) the table is created on first use; a
   /// deployment whose database user may not run DDL applies the shipped
@@ -200,8 +202,15 @@ class TomSqlInbox extends TomInbox {
     DateTime Function()? clock,
   }) : _clock = clock ?? DateTime.now;
 
-  /// The data source the inbox and the consumer's work share.
+  /// The data source the store was built over; [placedDatasource] is where the
+  /// inbox and the consumer's work meet for the tenant in context.
   final TomDataSource datasource;
+
+  /// The data source the inbox is reached in for the tenant in context.
+  TomDataSource get placedDatasource => _inbox.placed(datasource);
+
+  /// The tenant in context as the `tenant` column holds it — `''` for none.
+  static String get _tenant => TomTenantContext.currentId ?? '';
 
   /// The inbox table's name.
   final String table;
@@ -210,14 +219,18 @@ class TomSqlInbox extends TomInbox {
   final bool createSchema;
 
   final DateTime Function() _clock;
-  final TomSchemaProvisioning _schema = TomSchemaProvisioning();
+  final Expando<TomSchemaProvisioning> _schemas = Expando();
   late final TomFrameworkTable _inbox = inboxTable(table);
 
-  /// Creates the inbox table if it does not exist. Idempotent, and called by
-  /// every operation; exposed so a start-up can provision it before consuming.
-  Future<void> ensureSchema() => _schema.ensure(() async {
-    if (createSchema) await _inbox.create(datasource);
-  });
+  /// Creates the inbox table in the tenant in context's data source if it does
+  /// not exist. Idempotent, and called by every operation; exposed so a
+  /// start-up can provision it before consuming.
+  Future<void> ensureSchema() {
+    final target = placedDatasource;
+    return (_schemas[target] ??= TomSchemaProvisioning()).ensure(() async {
+      if (createSchema) await _inbox.create(target);
+    });
+  }
 
   @override
   Future<TomInboxOutcome> recordAndRun(
@@ -228,14 +241,17 @@ class TomSqlInbox extends TomInbox {
     // Outside the transaction: DDL commits implicitly on MariaDB, and must not
     // end the consumer's transaction half way.
     await ensureSchema();
+    final target = placedDatasource;
     return TomTransactionManager.runInTransaction((_) async {
-      final inserted = await datasource.executeCommand(
-        _inbox.insertRow(datasource.sqlDialect, const {
+      final inserted = await target.executeCommand(
+        _inbox.insertRow(target.sqlDialect, const {
+          'tenant': ':tenant',
           'consumer': ':consumer',
           'message_id': ':messageId',
           'processed_at': ':processedAt',
         }, ignoreConflict: true),
         {
+          'tenant': _tenant,
           'consumer': consumer,
           'messageId': messageId,
           'processedAt': sqlInstant(_clock()),
@@ -250,18 +266,21 @@ class TomSqlInbox extends TomInbox {
   @override
   Future<bool> hasProcessed(String consumer, String messageId) async {
     await ensureSchema();
-    final rows = await datasource.executeQuery<TomInboxRow>(
-      'SELECT consumer, message_id FROM $table '
-      'WHERE consumer = :consumer AND message_id = :messageId',
-      {'consumer': consumer, 'messageId': messageId},
+    final rows = await placedDatasource.executeQuery<TomInboxRow>(
+      'SELECT consumer, message_id FROM $table WHERE tenant = :tenant '
+      'AND consumer = :consumer AND message_id = :messageId',
+      {'tenant': _tenant, 'consumer': consumer, 'messageId': messageId},
     );
     return rows.isNotEmpty;
   }
 
+  /// Purges the data source the tenant in context reaches — the records of
+  /// every tenant kept there; a tenant with a schema or a database of its own
+  /// is purged inside that tenant (`TomTenancy.forEachTenant`).
   @override
   Future<int> purgeProcessedBefore(DateTime before) async {
     await ensureSchema();
-    final removed = await datasource.executeCommand(
+    final removed = await placedDatasource.executeCommand(
       'DELETE FROM $table WHERE processed_at < :before',
       {'before': sqlInstant(before)},
     );
@@ -272,7 +291,7 @@ class TomSqlInbox extends TomInbox {
   /// it exists for provisioning and tests.
   Future<void> deleteAll() async {
     await ensureSchema();
-    await datasource.executeCommand('DELETE FROM $table');
+    await placedDatasource.executeCommand('DELETE FROM $table');
   }
 }
 

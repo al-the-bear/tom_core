@@ -160,8 +160,8 @@ class TomSqlSubjectKeyStore implements TomSubjectKeyStore {
 
   TomDataSource _resolve() {
     final fixed = _fixed;
-    if (fixed != null) return fixed;
-    final info = TomDataSourceInfo.getDataSourceInfo(datasourceName!);
+    if (fixed != null) return _table.placed(fixed);
+    final info = TomDataSourceInfo.getBaseDataSourceInfo(datasourceName!);
     if (info == null) {
       throw TomPrivacyException(
         'privacy.no_datasource',
@@ -170,7 +170,7 @@ class TomSqlSubjectKeyStore implements TomSubjectKeyStore {
         parameters: {'datasource': datasourceName},
       );
     }
-    return info.datasource;
+    return _table.placedInfo(info).datasource;
   }
 
   @override
@@ -495,6 +495,7 @@ class TomSubjectKeys {
       targetKey: record.targetKey,
       outcome: record.outcome,
       requestId: record.requestId,
+      tenant: record.tenant,
       before: await openAll(record.before),
       after: await openAll(record.after),
       detail: record.detail,

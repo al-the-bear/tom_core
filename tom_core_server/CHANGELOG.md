@@ -2,6 +2,37 @@
 
 ### Added
 
+- **Framework tables classified as system or tenant** (`datasources`,
+  `db_migration`, every module with a framework table): `TomFrameworkTable`
+  takes a required `kind` (`TomTableKind.system` / `.tenant`), and every store
+  finds its data source by one rule — `placedInfo` / `placed`: the system data
+  source (`systemOf`, `systemInfoOf`) for a system table, whichever pool the
+  store was built over, and the tenant in context's data source for a tenant
+  table, placed on every call. System: `tom_tenant`, the job queue, leases, roll
+  call, the audit trail and its saved questions, the blob pair and ledger,
+  delivery reports, the suppression list, OAuth state, service accounts and API
+  keys, rate limits, cache invalidation, the export register and the
+  transaction decision log. Tenant: the message inbox, idempotency keys, sagas,
+  field-encryption keys, subject keys, SCIM resources and the sync change log
+  and sequence. `tom_message_inbox` gains a `tenant` column leading its primary
+  key; `tom_encryption_key` a `tenant` column leading its primary key — a tenant
+  table's values are encrypted under the tenant's own keys, a system table's
+  under the system's (`TomFieldEncryption.forEntity`, `isSystemScope`;
+  `prepareRead` takes the `entity`), and `TomFieldReencryption.run` re-encrypts
+  a system entity once and a tenant entity in every tenant. `tom_audit_trail`
+  gains a `tenant` column with a `(tenant, recorded_at)` index,
+  `TomAuditRecord.tenant` and `TomAuditQuery.tenant`; `tom_blob` a `tenant`
+  column and `TomDatabaseBlobStore.keysOfTenant`. `frameworkOwnedTables` lists
+  the service-account, API-key and rate-limit tables;
+  `frameworkSystemTables` / `frameworkTenantTables` list one kind;
+  `TomFrameworkSchemaCheck.verifyTree` checks a migration tree and reports a
+  table of the other kind as `TomSchemaDivergenceKind.misplacedTable`. The
+  reference migrations are two trees per module,
+  `example/<module>/migrations/system/main/tomcore/` and
+  `example/<module>/migrations/tenant/default/main/`, with new migrations for
+  `tom_service_account`, `tom_api_key` and `tom_rate_limit`, and their
+  PostgreSQL forms at the same paths under `migrations_postgresql/`.
+  `TomSqlInbox.placedDatasource` is where the inbox and the consumer's work meet.
 - **Tenant tables and system tables** (`object_persistence`, `tenancy`):
   `@TomTenantTable` classifies an entity as a tenant table; every other entity
   is a system table. `@TomTenantOwned` is gone — `@TomTenantTable` replaces it.
@@ -307,7 +338,7 @@
   older than `maxAge` with `purge({now})`, or as the job
   `jobDefinition({name = 'tom.export.purge', schedule})` run by a
   `TomInlineJobDispatcher`. Reference migration
-  `example/export/migrations/main/tomcore/[1]-create_tom_export.sql` and its
+  `example/export/migrations/system/main/tomcore/[1]-create_tom_export.sql` and its
   PostgreSQL form; `doc/export.md` § Charts, § The Email Channel, § The Export
   Register, § Quota, § Retention and § Error Keys;
   `example/export/export_email.dart`, `example/export/export_retention.dart`
@@ -334,7 +365,7 @@
   `TomUserPreferencesErrorHandler` answers `preferences.bulk.malformed` with a
   `400`. Every preference write goes through `saveByKey` on `(principalId,
   preferenceKey)`. Reference migration
-  `example/preferences/migrations/main/tomcore/[2]-create_tom_preference_default.sql`
+  `example/preferences/migrations/tenant/default/main/[2]-create_tom_preference_default.sql`
   and its PostgreSQL form; `doc/preferences.md` § Defaults Beneath a Principal's
   Own Values, § Writing Several Preferences at Once; step 13 of
   `example/preferences/preferences_example.dart`; tests in
@@ -376,7 +407,7 @@
   `deleteAll` empties all three tables, `TomJobRunRow` carries `priority` and
   `checkpoint`, `TomJobRunArchiveRow` maps an archived run, and `frameworkOwnedTables` lists both tables
   (arguments `jobPause`, `jobRunArchive`). Reference migrations
-  `example/scheduling/migrations/main/tomcore/[1]-create_tom_job_run.sql` (the
+  `example/scheduling/migrations/system/main/tomcore/[1]-create_tom_job_run.sql` (the
   two columns), `[4]-create_tom_job_pause.sql`,
   `[5]-create_tom_job_run_archive.sql` and their PostgreSQL forms;
   `doc/scheduling.md` § Priority, Pausing and Checkpoints and § The Archive;
@@ -415,7 +446,7 @@
   `transactions.recovery.config.invalid`, an unregistered log data source
   `transactions.recovery.no_datasource` (`TomTransactionRecoveryException`).
   Reference migration
-  `example/transactions/migrations/main/tomcore/[2]-create_tom_transaction_decision.sql`
+  `example/transactions/migrations/system/main/tomcore/[1]-create_tom_transaction_decision.sql`
   and its PostgreSQL form; `example/transactions/transaction_recovery_example.dart`.
 - **Down migrations and rollback** (`db_migration` module). A migration may
   have a down script beside it, named after its basename plus `.down`
@@ -610,7 +641,7 @@
   `configureFieldEncryption`. Failures are `TomPrivacyException`s
   (`privacy.not_registered`, `privacy.no_subject_keys`, `privacy.seal.invalid`,
   `privacy.no_datasource`, `privacy.config.invalid`). Reference migration
-  `example/privacy/migrations/main/tomcore/[1]-create_tom_subject_key.sql` with
+  `example/privacy/migrations/tenant/default/main/[1]-create_tom_subject_key.sql` with
   its PostgreSQL form; `frameworkOwnedTables` lists the table under the new
   `subjectKey` parameter. `TomUserPreference`, `TomUserTwoFactorEnrolment`,
   `TomPrincipalResourceGrant` and `TomPrincipalDelegation` declare their
@@ -646,7 +677,7 @@
   `tom_encryption_key` (`encryptionKeyTable`, `encryptionKeyTableDdl`,
   `defaultEncryptionKeyTable`, read back as `TomDataKeyRow`; listed by
   `frameworkOwnedTables` under the new `encryptionKey` parameter; reference
-  migration `example/object_persistence/migrations/main/tomcore/[1]-create_tom_encryption_key.sql`
+  migration `example/object_persistence/migrations/tenant/default/main/[1]-create_tom_encryption_key.sql`
   with its PostgreSQL form), wrapped under a `TomKeyEncryptionKey` —
   `TomAesKeyEncryptionKey`, an application-held AES-256 key — by a
   `TomDataKeyStore` (`TomSqlDataKeyStore`, resolved by name per call so a
@@ -705,7 +736,7 @@
   `.over(datasource)` — in `tom_saga`, declared once by `sagaTable`
   (`sagaTableDdl`, `defaultSagaTable`, read back as `TomSagaRow`), listed by
   `frameworkOwnedTables` under the new `saga` parameter, and shipped as the
-  reference migration `example/transactions/migrations/main/tomcore/[1]-create_tom_saga.sql`
+  reference migration `example/transactions/migrations/tenant/default/main/[1]-create_tom_saga.sql`
   with its PostgreSQL form. `TomSagaException` carries
   `transactions.saga.invalid_definition`, `…already_registered`, `…unknown`,
   `…invalid_id`, `…id_taken`, `…data_not_json`, `…closed` and
@@ -745,7 +776,7 @@
   once by `idempotencyTable` (`idempotencyTableDdl`, `defaultIdempotencyTable`,
   read back as `TomIdempotencyRow`), listed by `frameworkOwnedTables` under the
   new `idempotency` parameter, and shipped as the reference migration
-  `example/endpoints/migrations/main/tomcore/[1]-create_tom_idempotency_key.sql`
+  `example/endpoints/migrations/tenant/default/main/[1]-create_tom_idempotency_key.sql`
   with its PostgreSQL form. `TomIdempotencyScope`, `TomIdempotencyRecord` and
   `TomIdempotencyClaim` make up the store contract; `TomIdempotencyException`
   carries the keys above plus `endpoint.idempotency.no_datasource` and
@@ -773,7 +804,7 @@
   declared once by `inboxTable` (`inboxTableDdl`, `defaultInboxTable`, read back
   as `TomInboxRow`), listed by `frameworkOwnedTables` under the new `inbox`
   parameter, and shipped as the reference migration
-  `example/messaging/migrations/main/tomcore/[2]-create_tom_message_inbox.sql`
+  `example/messaging/migrations/tenant/default/main/[1]-create_tom_message_inbox.sql`
   with its PostgreSQL form. `TomInboxException` refuses an empty or over-long
   consumer name or message id (`messaging.inbox.invalid_consumer`,
   `messaging.inbox.invalid_message_id`). Broker-neutral: there is no message bus
@@ -1260,7 +1291,7 @@
   over the new framework table `tom_scim_resource` (`scimResourceTable`,
   `scimResourceTableDdl`, `defaultScimResourceTable` in
   `authentication/scim_sql.dart`; reference migration
-  `example/authentication/migrations/main/tomcore/[5]-create_tom_scim_resource.sql`).
+  `example/authentication/migrations/tenant/default/main/[4]-create_tom_scim_resource.sql`).
   Filtering (`eq` `ne` `co` `sw` `ew` `gt` `ge` `lt` `le` `pr`, `and` / `or` /
   `not`, value filters), paging, `attributes` / `excludedAttributes`, and PATCH
   in the forms Entra ID and Okta send (`TomScimFilter`, `TomScimPath`,
@@ -1555,7 +1586,7 @@
 - **`tom_job_run.job_name` is `VARCHAR(150)`**, so the window key
   `(job_name, tenant, scheduled_for)` stays inside the 767-byte index limit of
   older InnoDB row formats; the reference migration
-  `example/scheduling/migrations/main/tomcore/[1]-create_tom_job_run.sql`
+  `example/scheduling/migrations/system/main/tomcore/[1]-create_tom_job_run.sql`
   declares the new shape.
 - **`TomSqlDatasourceRepository.datasourceInfo` is a getter** resolved through
   `TomDataSourceInfo.route` on every access, and prepared statements are cached
@@ -1592,7 +1623,7 @@
   for `TomOAuthProviderConfig`.
 - **Breaking: `tom_oauth_state` has two more columns**, `nonce VARCHAR(191) NOT
   NULL` and `asserted_identity TEXT NULL`
-  (`example/authentication/migrations/main/tomcore/[2]-create_tom_oauth_state.sql`).
+  (`example/authentication/migrations/system/main/tomcore/[1]-create_tom_oauth_state.sql`).
   `CREATE TABLE IF NOT EXISTS` leaves an existing table as it is, so a
   deployment holding one adds the two columns itself, or drops the table —
   it holds only ten-minute pending records. `TomOAuthStateRow` maps both.
@@ -1826,7 +1857,7 @@
   `invalidationTableDdl` and `defaultInvalidationTable`
   (`cache/invalidation_sql.dart`), listed by `frameworkOwnedTables` (new
   parameter `invalidation`), with the reference migration
-  `example/cache/migrations/main/tomcore/[1]-create_tom_cache_invalidation.sql`.
+  `example/cache/migrations/system/main/tomcore/[1]-create_tom_cache_invalidation.sql`.
 - **Principal revocation in `TomAuthorizationCache`**: `revokeLocally(username,
   at)`, `revokedAt(username)`, `isRevoked(token)` and `revocationRetention`
   (24 h). `getPrincipal` refuses a token issued at or before its user's last

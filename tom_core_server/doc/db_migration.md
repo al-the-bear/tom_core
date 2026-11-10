@@ -107,10 +107,11 @@ them run against a live server.
 | `TomEntitySchemaReader` | class | Reads the schema the `@TomDbTable` entity classes expect |
 | `TomSchemaConvergenceReport` | class | What one `<datasource>/<schema>` pair was checked against, and how it disagreed |
 | `TomSchemaDivergence` | class | One disagreement: kind, table, column, origin, message |
-| `TomSchemaDivergenceKind` | enum | Which of the ten disagreements it is — each a different culprit |
+| `TomSchemaDivergenceKind` | enum | Which of the eleven disagreements it is — each a different culprit |
 | `TomFrameworkSchemaCheck` | class | The same comparison for the tables the framework itself owns |
 | `TomInformationSchemaColumnRow` | class | One `information_schema.COLUMNS` row, as the live check reads it |
 | `frameworkOwnedTables` | function | Every framework-owned table, at its default name |
+| `frameworkSystemTables` / `frameworkTenantTables` | function | The framework-owned tables of one kind: the system tree's and the tenant tree's |
 
 ### The shared schema model and DDL replay
 
@@ -795,11 +796,18 @@ single-statement operation.
 ### Reference migrations for PostgreSQL
 
 Every module that owns framework tables ships its reference migrations under
-`example/<module>/migrations/main/tomcore/`, written in the framework's
-canonical DDL — MariaDB's spelling, which is also what the convergence guard
-reads ([The Framework's Own Tables](#the-frameworks-own-tables)). Beside each
-such tree sits its PostgreSQL form, `example/<module>/migrations_postgresql/main/tomcore/`,
-under the same file names: the canonical script put through
+`example/<module>/migrations/`, in two trees by the tables' kind
+([The Framework's Own Tables](#the-frameworks-own-tables)):
+
+| Tree | Holds | Applied |
+| ---- | ----- | ------- |
+| `system/main/tomcore/` | the module's system tables | once, to the system schema |
+| `tenant/default/main/` | the module's tenant tables | where each tenant's data lives — every tenant type's tree holds them |
+
+Both are written in the framework's canonical DDL — MariaDB's spelling, which
+is also what the convergence guard reads. Beside them sits their PostgreSQL
+form, `example/<module>/migrations_postgresql/`, at the same relative paths
+and under the same file names: the canonical script put through
 `PostgresSqlDialect.translateCanonicalScript` (see
 [datasources.md](datasources.md#one-declaration-every-database)) under a
 three-line header naming the file it came from. A PostgreSQL deployment copies
@@ -1286,6 +1294,7 @@ The framework's tables — `tom_job_run`, `tom_lease`, `tom_scheduler_node`,
 `tom_job_pause`, `tom_job_run_archive`,
 `tom_blob`, `tom_blob_chunk`, `tom_blob_ledger`, `tom_blob_content`,
 `tom_audit_trail`, `tom_audit_question`, `tom_oauth_state`,
+`tom_service_account`, `tom_api_key`, `tom_rate_limit`,
 `tom_scim_resource`, `tom_delivery_report`, `tom_message_suppression`,
 `tom_message_inbox`,
 `tom_cache_invalidation`, `tom_idempotency_key`, `tom_saga`,
@@ -1294,12 +1303,12 @@ The framework's tables — `tom_job_run`, `tom_lease`, `tom_scheduler_node`,
 application entities
 and deliberately stay that way: making them entities would pull them into the
 application's reflection build and have `discoverEntityTypes()` report them
-against every application schema. So they sit outside the guard above, and used
-to be the one part of the schema with no guard at all.
+against every application schema. So they sit outside the guard above and have
+a guard of their own.
 
-Each is now declared exactly once, as a **`TomFrameworkTable`** descriptor
-(`datasources/framework_table.dart`) — a name, an ordered column list with types
-and nullability, and its keys. Everything else is derived from it:
+Each is declared exactly once, as a **`TomFrameworkTable`** descriptor
+(`datasources/framework_table.dart`) — a name, its kind, an ordered column list
+with types and nullability, and its keys. Everything else is derived from it:
 
 | Derived from the descriptor | By |
 | --------------------------- | -- |
@@ -1317,30 +1326,34 @@ Table names stay per-instance constructor arguments, so the descriptor is a
 *factory* (`jobRunTable(name)`), and index names are derived from the table name
 so two queues in one schema cannot collide.
 
-`frameworkOwnedTables()` returns them all at their default names.
+`frameworkOwnedTables()` returns them all at their default names;
+`frameworkSystemTables()` and `frameworkTenantTables()` return those of one
+kind.
 
-The set is the same in a multi-tenant deployment: these tables serve the whole
-deployment and are not created per tenant. `tom_tenant`, the tenant registry,
-lives in the system schema — the base schema of its data source, never routed. Two of them carry the tenant as a
-column — `tom_job_run.tenant` (`VARCHAR(32) NOT NULL DEFAULT ''`, part of the
-unique window key `(job_name, tenant, window_at)`) and
-`tom_delivery_report.tenant` (`VARCHAR(32) NULL`) — and their reference
-migrations, `example/scheduling/migrations/main/tomcore/[1]-create_tom_job_run.sql`
-and `example/messaging/migrations/main/tomcore/[1]-create_tom_delivery_report.sql`,
-declare them.
+**The kind decides where a table lives** (`TomTableKind`). A **system** table is
+kept once, in the system schema — the base schema of its data source, never
+routed, also when a tenant is in context — and a system table that does work for
+tenants names the tenant in a column: `tom_job_run.tenant` (part of the unique
+window key `(job_name, tenant, window_at)`), `tom_audit_trail.tenant`,
+`tom_blob.tenant`, `tom_delivery_report.tenant`,
+`tom_message_suppression.tenant`, `tom_oauth_state.tenant` and
+`tom_service_account.tenant`. A **tenant** table — `tom_message_inbox`,
+`tom_idempotency_key`, `tom_saga`, `tom_encryption_key`, `tom_subject_key`,
+`tom_scim_resource`, `tom_sync_change` and `tom_sync_sequence` — is kept where
+the tenant in context's data lives, and every row names its tenant. Every store
+finds its data source by one rule, `TomFrameworkTable.placedInfo`; the table of
+every framework table with its kind and its store is in
+[tenancy.md](tenancy.md#framework-tables).
 
-Seven of them can live where a tenant's data lives instead. `tom_message_inbox`
-belongs in the data source the consumer's work writes to,
-`tom_idempotency_key` in the data source the idempotency store names,
-`tom_saga` in the data source the saga store names, beside the data the saga's
-steps change, `tom_encryption_key` in the data source the field-encryption
-configuration names, beside the data its keys encrypt, and `tom_subject_key` in
-the data source the privacy configuration names, and `tom_sync_change` and
-`tom_sync_sequence` in the data source of each entity exposed for sync, beside
-the entity's rows — which, when tenancy routes that data source, is the
-tenant's own schema or database.
-Their migrations then belong in the per-tenant tree; see
-[tenancy.md](tenancy.md#what-stays-deployment-wide).
+**Each kind has its migration tree.** A module's reference migrations for its
+system tables are under `example/<module>/migrations/system/main/tomcore/`,
+migrated once into the system schema; those for its tenant tables under
+`example/<module>/migrations/tenant/default/main/`, migrated into every
+tenant's data source. `verifyTree(kind: …, chain: …)` checks one tree: it
+converges every framework table of that kind the tree builds (as `verifyChain`
+does) and reports a table of the other kind built there — a framework table, or
+the table of an entity passed as `entities` whose `@TomTenantTable`
+classification is the other kind — as `misplacedTable`.
 
 ### The Four Places a Column Name Could Have Been Spelled
 
@@ -1412,7 +1425,7 @@ test mutates a constant to prove the comparison can fail.
 The guard that matters most there is not any individual pin but the one that
 counts them. A pin that was never written leaves nothing behind to fail — the
 absence is invisible, which is exactly how two of these seven shipped unpinned.
-So the same file walks `example/*/migrations/main/tomcore/` and requires every
+So the same file walks both trees of `example/*/migrations/` and requires every
 `.sql` it finds to be named either by the entity-pin table or by the list of
 migrations covered elsewhere (`framework_schema_test.dart` for descriptors,
 `audit_sql_test.dart` and `scheduling_schema_test.dart` for the triggers and
@@ -1737,7 +1750,7 @@ here it cannot drift silently.
 | `tom_core_kernel` | package | `db_migration.dart`, `framework_convergence.dart`, `mariadb_migration_adapter.dart`, `postgres_migration_adapter.dart`, `sql_migration_adaptor.dart`, `schema_convergence.dart` | `tomReflector` (adaptor discovery, row mapping), `tomLog` |
 | [audit](audit.md) | module | `framework_convergence.dart` | `auditTrailTable`, `defaultAuditTrailTable` |
 | [audit_reports](audit_reports.md) | module | `framework_convergence.dart` | `auditQuestionTable`, `defaultAuditQuestionTable` |
-| [authentication](authentication.md) | module | `framework_convergence.dart` | `defaultOAuthStateTable`, `defaultScimResourceTable`, `oauthStateTable`, `scimResourceTable` |
+| [authentication](authentication.md) | module | `framework_convergence.dart` | `defaultApiKeyTable`, `defaultOAuthStateTable`, `defaultScimResourceTable`, `defaultServiceAccountTable`, `apiKeyTable`, `oauthStateTable`, `scimResourceTable`, `serviceAccountTable` |
 | [cache](cache.md) | module | `framework_convergence.dart` | `defaultInvalidationTable`, `invalidationTable` |
 | [cmdline](cmdline.md) | module | `db_migration.dart` | `TomArgs.parseArgsToMap`, reading `--repair-migration`, `--repair-action` and `--rollback-migrations` |
 | [datasources](datasources.md) | module | 8 of 8 files | `TomDataSourceInfo` (named data sources) and its `executeCommand` / `executeQuery`; `TomSqlLexer`, the statement splitter and quote scanner; the connected data source's dialect, which `verifyLive` classifies and queries the catalogue with; `TomSqlDatasource.withSessionLock`, which holds the migration lock |
@@ -1745,9 +1758,10 @@ here it cannot drift silently.
 | [export](export.md) | module | `framework_convergence.dart` | `defaultExportRegisterTable`, `exportRegisterTable` |
 | [file_storage](file_storage.md) | module | `framework_convergence.dart` | `blobChunkTable`, `blobContentTable`, `blobLedgerTable`, `blobManifestTable`, `defaultBlobChunkTable`, `defaultBlobContentTable`, `defaultBlobLedgerTable`, `defaultBlobManifestTable` |
 | [little_things](little_things.md) | module | `db_migration.dart`, `mariadb_migration_adapter.dart`, `postgres_migration_adapter.dart`, `sql_migration_adaptor.dart` | `TomServerException` |
-| [messaging](messaging.md) | module | `framework_convergence.dart` | `defaultDeliveryReportTable`, `deliveryReportTable`, `defaultInboxTable`, `inboxTable` |
-| [object_persistence](object_persistence.md) | module | `framework_convergence.dart`, `sql_migration_adaptor.dart`, `schema_convergence.dart` | `TomDbTable` / `TomDbColumn` on `TomDbVersion`; `defaultEncryptionKeyTable` and `encryptionKeyTable`, the data-key table of field-level encryption |
+| [messaging](messaging.md) | module | `framework_convergence.dart` | `defaultDeliveryReportTable`, `deliveryReportTable`, `defaultSuppressionTable`, `suppressionTable`, `defaultInboxTable`, `inboxTable` |
+| [object_persistence](object_persistence.md) | module | `framework_convergence.dart`, `sql_migration_adaptor.dart`, `schema_convergence.dart` | `TomDbTable` / `TomDbColumn` on `TomDbVersion`; `defaultEncryptionKeyTable` and `encryptionKeyTable`, the data-key table of field-level encryption; `TomAnnotationAnalyzer.isTenantTable` and `findTable`, which `verifyTree` reads an entity's classification and table with |
 | [privacy](privacy.md) | module | `framework_convergence.dart` | `defaultSubjectKeyTable`, `subjectKeyTable` |
+| [ratelimit](ratelimit.md) | module | `framework_convergence.dart` | `defaultRateLimitTable`, `rateLimitTable` |
 | [scheduling](scheduling.md) | module | `framework_convergence.dart` | `defaultJobRunTable`, `defaultLeaseTable`, `defaultSchedulerNodeTable`, `defaultJobPauseTable`, `defaultJobRunArchiveTable`, `jobRunTable`, `leaseTable`, `schedulerNodeTable`, `jobPauseTable`, `jobRunArchiveTable` |
 | [sync](sync.md) | module | `framework_convergence.dart` | `defaultSyncChangeTable`, `defaultSyncSequenceTable`, `syncChangeTable`, `syncSequenceTable` |
 | [tenancy](tenancy.md) | module | `framework_convergence.dart` | `defaultTenantTable`, `tenantTable` |

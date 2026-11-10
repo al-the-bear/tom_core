@@ -30,6 +30,7 @@ const String defaultSagaTable = 'tom_saga';
 TomFrameworkTable sagaTable(String table) => TomFrameworkTable(
   name: table,
   origin: 'sagaTable',
+  kind: TomTableKind.tenant,
   columns: const [
     TomFrameworkColumn('tenant', 'VARCHAR(32)'),
     TomFrameworkColumn('saga_id', 'VARCHAR(191)'),

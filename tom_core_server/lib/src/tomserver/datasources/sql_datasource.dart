@@ -1749,7 +1749,7 @@ abstract class TomSqlDatasource implements TomDataSource {
         await TomFieldEncryption.prepareRead([
           for (final row in result.rows)
             for (final col in encrypted) row.text(col.field),
-        ]);
+        ], entity: rType);
       }
       for (var row in result.rows) {
         // Per row: the stack is drained at the end of this iteration.

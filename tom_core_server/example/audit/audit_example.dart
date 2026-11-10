@@ -302,7 +302,7 @@ Future<void> run() async {
   //    are ordinary statements, so the guarantee has to come from outside the
   //    code — and the grant is not a thing a library can hold. See
   //    `doc/audit.md` § "The Write-Once Story"; the migrations that go with it
-  //    are in `example/audit/migrations/main/tomcore/`.
+  //    are in `example/audit/migrations/system/main/tomcore/`.
   final ddl = auditTrailTableDdl(defaultAuditTrailTable);
   print('9. chain linearity as a constraint:');
   print('   ${ddl.split('\n').firstWhere((l) => l.contains('uq_')).trim()}');

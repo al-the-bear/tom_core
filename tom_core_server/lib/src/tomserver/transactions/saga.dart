@@ -450,8 +450,8 @@ class TomSqlSagaStore implements TomSagaStore {
 
   TomDataSource _resolve() {
     final fixed = _fixed;
-    if (fixed != null) return fixed;
-    final info = TomDataSourceInfo.getDataSourceInfo(datasourceName!);
+    if (fixed != null) return _table.placed(fixed);
+    final info = TomDataSourceInfo.getBaseDataSourceInfo(datasourceName!);
     if (info == null) {
       throw TomSagaException(
         'transactions.saga.no_datasource',
@@ -459,7 +459,7 @@ class TomSqlSagaStore implements TomSagaStore {
         parameters: {'datasource': datasourceName},
       );
     }
-    return info.datasource;
+    return _table.placedInfo(info).datasource;
   }
 
   @override

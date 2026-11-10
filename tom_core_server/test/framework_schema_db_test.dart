@@ -44,17 +44,21 @@ const String _migrationSchema = 'tomframework';
 /// database — on a warm one the table is already there from whichever suite
 /// created it, and the missing chain is indistinguishable from an applied one.
 ///
-/// Discovering them removes the whole class: a chain added under
-/// `example/<module>/migrations/main/tomcore` is applied here the moment it
-/// exists, with nothing to remember. Sorted, so the concatenated version
-/// numbers are the same on every run and on every machine.
+/// Discovering them removes the whole class: a chain added under a module's
+/// system tree (`migrations/system/main/tomcore`) or tenant tree
+/// (`migrations/tenant/default/main`) is applied here the moment it exists,
+/// with nothing to remember. Both trees go into the one schema, which is what
+/// a deployment without tenancy — or a shared tenant of the type `default` —
+/// has. Sorted, so the concatenated version numbers are the same on every run
+/// and on every machine.
 List<String> _migrationChains() {
   final chains = [
     for (final module in Directory('example').listSync().whereType<Directory>())
-      if (Directory(
-        '${module.path}/${TestDatabase.referenceMigrations}/main/tomcore',
-      ).existsSync())
-        '${module.path}/${TestDatabase.referenceMigrations}/main/tomcore',
+      for (final tree in ['system/main/tomcore', 'tenant/default/main'])
+        if (Directory(
+          '${module.path}/${TestDatabase.referenceMigrations}/$tree',
+        ).existsSync())
+          '${module.path}/${TestDatabase.referenceMigrations}/$tree',
   ]..sort();
   // The discovery is the point of failure if `example/` is ever restructured,
   // and an empty list would make the migration half of this suite assert

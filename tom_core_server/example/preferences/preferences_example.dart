@@ -337,7 +337,7 @@ Future<void> run() async {
   //     it expects, and the shipped migrations reproduce it verbatim so the
   //     two cannot drift — which is what lets a deployment apply them and know
   //     the entities will map onto what they created.
-  const folder = 'example/preferences/migrations/main/tomcore/';
+  const folder = 'example/preferences/migrations/tenant/default/main/';
   final preferencesDdl = File(
     '$folder[1]-create_tom_user_preference.sql',
   ).readAsStringSync();

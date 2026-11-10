@@ -865,7 +865,7 @@ declared once by `invalidationTable(table)` and listed by
 
 With `createSchema` left `true` the channel creates the table on first use.
 Where the application's database user may not run DDL, apply the reference
-migration `example/cache/migrations/main/tomcore/[1]-create_tom_cache_invalidation.sql`
+migration `example/cache/migrations/system/main/tomcore/[1]-create_tom_cache_invalidation.sql`
 and pass `createSchema: false`; for a renamed table, apply what
 `invalidationTableDdl(name)` returns.
 

@@ -26,6 +26,7 @@ const String defaultBlobContentTable = 'tom_blob_content';
 TomFrameworkTable blobLedgerTable(String table) => TomFrameworkTable(
   name: table,
   origin: 'blobLedgerTable',
+  kind: TomTableKind.system,
   columns: [
     TomFrameworkColumn('blob_key', 'VARCHAR(${TomBlobStore.maxKeyLength})'),
     const TomFrameworkColumn('owner', 'VARCHAR(191)', defaultValue: "''"),
@@ -51,6 +52,7 @@ TomFrameworkTable blobLedgerTable(String table) => TomFrameworkTable(
 TomFrameworkTable blobContentTable(String table) => TomFrameworkTable(
   name: table,
   origin: 'blobContentTable',
+  kind: TomTableKind.system,
   columns: [
     const TomFrameworkColumn('content_digest', 'CHAR(64)'),
     TomFrameworkColumn('content_key', 'VARCHAR(${TomBlobStore.maxKeyLength})'),
@@ -82,11 +84,11 @@ class TomSqlBlobLedger extends TomBlobLedger {
   /// Creates a ledger over [datasource]; with [createSchema] the tables are
   /// created on first use, otherwise the migration module owns them.
   TomSqlBlobLedger(
-    this.datasource, {
+    TomDataSource datasource, {
     this.ledgerTable = defaultBlobLedgerTable,
     this.contentTable = defaultBlobContentTable,
     this.createSchema = true,
-  });
+  }) : datasource = TomFrameworkTable.systemOf(datasource);
 
   /// The data source the tables live in.
   final TomDataSource datasource;

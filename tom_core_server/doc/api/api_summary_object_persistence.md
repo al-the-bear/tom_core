@@ -2401,7 +2401,8 @@ and the data source call. All members are static.
 | `keyIdOf` | `static String? keyIdOf(String? stored)` | The data key id `stored` was encrypted under, or `null` for plaintext. |
 | `storedLength` | `static int storedLength(int plaintextBytes)` | How many characters a stored value of `plaintextBytes` UTF-8 bytes takes: what an encrypted column's width must allow. |
 | `encrypt` | `static Future<String?> encrypt(TomColumnInformation column, String? plaintext)` | `plaintext` encrypted for `column` under the active data key of the current context; `null` stays `null`. Throws `field_encryption.not_configured` without a keyring. |
-| `prepareRead` | `static Future<void> prepareRead(Iterable<String?> stored)` | Loads the data keys the ciphertexts among `stored` name, so `decrypt` finds them. Called by the data source before it maps a result. |
+| `prepareRead` | `static Future<void> prepareRead(Iterable<String?> stored, {required Type entity})` | Loads the data keys the ciphertexts among `stored` name, so `decrypt` finds them — the keys of `entity`'s classification (`forEntity`). Called by the data source before it maps a result. |
+| `forEntity` | `static R forEntity<R>(Type entity, R Function() body)` | Runs `body` with the data keys of `entity`'s classification: a system table's are the system's (`isSystemScope`), a tenant table's the tenant in context's. Every entry point that knows its entity — `encrypt`, `decrypt`, `blindIndex`, `blindIndexCandidates`, `prepareRead` — runs through it. |
 | `decrypt` | `static String? decrypt(TomColumnInformation column, String? stored)` | The plaintext of `stored`, read from `column`; `null` stays `null`. A value that is not ciphertext reads as it is while `acceptPlaintext` is on, and throws `field_encryption.plaintext_refused` otherwise; a key the keyring does not hold throws `field_encryption.unknown_key`, a value that does not authenticate `field_encryption.decrypt_failed`. |
 | `blindIndex` | `static Future<String?> blindIndex(TomColumnInformation indexColumn, String? plaintext, {String? keyId})` | The blind index of `plaintext` for the index column `indexColumn`, under the index key `keyId` — the active one unless given; `null` stays `null`. |
 | `blindIndexOf` | `static Future<String?> blindIndexOf(Type entity, String field, String? plaintext)` | The value `entity`'s blind index of the encrypted field `field` holds for `plaintext` under the active index key. Enough while no index-key rotation is being rewritten. Throws `ArgumentError` when `field` has no `@TomBlindIndex`. |
@@ -2417,6 +2418,7 @@ and the data source call. All members are static.
 | `keyKinds` | `Iterable<String>` | *(static, getter)* The kinds registered with `registerKeyKind`, besides `aes`. |
 | `acceptPlaintext` | `bool` | *(static)* Whether a value of an encrypted column that is not ciphertext reads as it is. On by default, so a column marked `@TomEncrypted` after it held data keeps reading until a pass has encrypted it; off once every column is. |
 | `isRaw` | `bool` | *(static, getter)* Whether the current zone reads raw. |
+| `isSystemScope` | `bool` | *(static, getter)* Whether the zone's encryption work is for a system table: its data keys are kept in the system data source under tenant `''`, whatever tenant is in context, so every tenant reads the row back. |
 
 #### TomReencryptionReport
 

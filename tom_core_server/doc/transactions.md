@@ -754,7 +754,7 @@ as every framework table is (see
 
 With `createSchema` (the default) the log creates the table on first use; a
 deployment whose database user may not run DDL applies
-`example/transactions/migrations/main/tomcore/[2]-create_tom_transaction_decision.sql`
+`example/transactions/migrations/system/main/tomcore/[1]-create_tom_transaction_decision.sql`
 (or its `migrations_postgresql/` twin) to the decision log's data source and
 sets `createSchema: false`. `test/framework_schema_test.dart` replays the
 migration chain and compares the schema it builds with `decisionTable`, so the
@@ -997,14 +997,14 @@ and a durable job store.
 A saga belongs to the tenant `begin` was called in: its state records the
 tenant, its runs carry it, and the scheduler runs every step and compensation
 inside it. `find` and the store see only the tenant in context's sagas.
-`TomSqlSagaStore` resolves its data source by name on every call, so under
-tenancy a tenant's sagas live in the tenant's data source, beside the data its
+`tom_saga` is a tenant table and `TomSqlSagaStore` places its data source on
+every call, so under tenancy a tenant's sagas live in the tenant's data source, beside the data its
 steps change — which is what lets a step's work and its transition commit
 together.
 
 `resume()` looks in the context's tenant and, when a `TomTenancy` is installed,
 in every tenant's, so one sweep finds every tenant's unfinished sagas. See
-[tenancy.md](tenancy.md#what-stays-deployment-wide).
+[tenancy.md](tenancy.md#framework-tables).
 
 ### The saga store and its table
 
@@ -1039,7 +1039,7 @@ framework table is (see
 `(status, updated_at)` is indexed for resumption and the purge. With
 `createSchema` (the default) the store creates the table on first use in each
 data source; a deployment whose database user may not run DDL applies
-`example/transactions/migrations/main/tomcore/[1]-create_tom_saga.sql` (or its
+`example/transactions/migrations/tenant/default/main/[1]-create_tom_saga.sql` (or its
 `migrations_postgresql/` twin) and passes `createSchema: false`. Under tenancy
 with a database or schema per tenant the migration belongs in each tenant's
 tree.

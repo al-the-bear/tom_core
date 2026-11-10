@@ -317,6 +317,7 @@ class TomAuditTrail {
         targetKey: targetKey,
         outcome: outcome,
         requestId: currentRequestId(),
+        tenant: TomTenantContext.currentId,
         before: await _sealPersonal(
           policy.applyRedaction(before),
           beforeSubjects,
@@ -386,6 +387,7 @@ class TomAuditTrail {
         targetKey: targetKey,
         outcome: outcome,
         requestId: currentRequestId(),
+        tenant: TomTenantContext.currentId,
         detail: detail,
       ),
     );

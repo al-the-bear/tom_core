@@ -28,6 +28,7 @@ const String defaultSuppressionTable = 'tom_message_suppression';
 TomFrameworkTable suppressionTable(String table) => TomFrameworkTable(
   name: table,
   origin: 'suppressionTable',
+  kind: TomTableKind.system,
   columns: const [
     TomFrameworkColumn('channel', 'VARCHAR(64)'),
     TomFrameworkColumn('address', 'VARCHAR(191)'),

@@ -28,6 +28,7 @@ const String defaultRateLimitTable = 'tom_rate_limit';
 TomFrameworkTable rateLimitTable(String table) => TomFrameworkTable(
   name: table,
   origin: 'rateLimitTable',
+  kind: TomTableKind.system,
   columns: const [
     TomFrameworkColumn('bucket', 'VARCHAR(191)'),
     TomFrameworkColumn('rule', 'VARCHAR(64)'),
@@ -45,11 +46,12 @@ class TomSqlRateLimiter implements TomRateLimiter {
   /// A limiter counting in [table] of [datasource], creating the table on
   /// first use unless [createSchema] is false.
   TomSqlRateLimiter(
-    this.datasource, {
+    TomDataSource datasource, {
     this.table = defaultRateLimitTable,
     this.createSchema = true,
     DateTime Function()? clock,
-  }) : _clock = clock ?? DateTime.now;
+  }) : datasource = TomFrameworkTable.systemOf(datasource),
+       _clock = clock ?? DateTime.now;
 
   /// The data source the counters live in.
   final TomDataSource datasource;

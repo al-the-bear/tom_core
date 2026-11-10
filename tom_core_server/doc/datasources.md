@@ -67,6 +67,7 @@ declared.
   - [`TomReplicaRouting`](#tomreplicarouting)
   - [Two-phase primaries](#two-phase-primaries)
 - [Framework-Owned Tables](#framework-owned-tables)
+  - [System tables and tenant tables](#system-tables-and-tenant-tables)
   - [One declaration, every database](#one-declaration-every-database)
   - [Creating a store's tables once](#creating-a-stores-tables-once)
 - [Verification](#verification)
@@ -124,6 +125,7 @@ declared.
 | `TomSqlDatasourceException` / `MariadbDatasourceException` / `PostgresDatasourceException` | class | A SQL connect, execute or result-mapping failure, and its per-driver subtypes |
 | `TomSqlConnectionLostException` / `MariadbPreparedStatementException` / `PostgresConnectionLostException` | class | A statement failed with no live link to have run on — raising it *is* the decision to retry once — and its per-driver subtypes |
 | `TomFrameworkTable` / `TomFrameworkColumn` / `TomFrameworkKey` | class | The single declaration of a table the framework itself owns, from which its DDL, column lists and row writes are derived — in each database's own words |
+| `TomTableKind` | enum | Whether a framework table is a `system` table, kept once in the system data source, or a `tenant` table, kept where each tenant's data lives |
 | `TomSchemaProvisioning` | class | Creates a store's tables at most once, however many first calls arrive together |
 | `unknownFrameworkColumns` | function | Audits a hand-written statement for column references no framework table declares |
 | `tomDbStatementDurationMetric` / `tomDbStatementErrorsMetric` / `tomDbPoolConnectionsMetric` / `tomDbPoolAcquireDurationMetric` / `tomDbPoolAcquireFailuresMetric` | const String | The names of the statement and pool series every `TomSqlDatasource` records, labelled with its `registeredName` — see [metrics.md](metrics.md#data-sources) |
@@ -2048,6 +2050,40 @@ and numbers are stripped before the scan and a fixed set of SQL words is
 ignored; anything else that survives is reported. A word missing from that set
 is a false positive in a test — noisy and self-correcting — whereas a missed
 column reference is the production failure the whole file exists to prevent.
+
+### System tables and tenant tables
+
+Every descriptor names its kind, a `TomTableKind`, and the kind decides where
+the table's rows live:
+
+| Kind | Kept in | Rows |
+| ---- | ------- | ---- |
+| `system` | the system data source — the registered base, never routed, also when a tenant is in context | the deployment's; a table that does work for tenants names the tenant in a column |
+| `tenant` | the tenant in context's data source — `TomDataSourceInfo.route` of the base | one tenant's, each naming it |
+
+A store finds its data source by one rule. `placedInfo(held)` answers it for the
+`TomDataSourceInfo` a store looked up: `systemInfoOf(held)` — the registered base
+of `held`, so a tenant's pool `main@acme` or a type's pool `main@type.retail`
+answers `main` — for a system table, and that base routed for the tenant in
+context for a tenant table. `placed(datasource)` answers the same for a data
+source object, looking it up by its `registeredName`; one registered under no
+name — a test's fake, a store's private pool — is used as it is, and
+`TomFrameworkTable.systemOf(datasource)` answers the system data source for it.
+
+A system store applies the rule once, in its constructor, so whichever pool it
+was handed it writes to the system data source. A tenant store applies it on
+every call, so one store built at start-up serves every tenant:
+
+```dart
+final inbox = inboxTable('tom_message_inbox');   // kind: TomTableKind.tenant
+
+final ds = TomTenantContext.run('acme', () => inbox.placed(base));
+// acme's schema or database
+final system = jobRunTable('tom_job_run').placed(base); // always the base
+```
+
+The framework's tables with their kind and store are listed in
+[tenancy.md](tenancy.md#framework-tables).
 
 ### One declaration, every database
 

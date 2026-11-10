@@ -154,12 +154,12 @@ class TomSqlOAuthStateStore implements TomOAuthStateStore {
   /// control and nothing else: expiry is enforced by the `expires_at` predicate
   /// on every read, so a row the sweep has not reached yet is already invisible.
   TomSqlOAuthStateStore(
-    this.datasource, {
+    TomDataSource datasource, {
     this.table = defaultOAuthStateTable,
     this.createSchema = true,
     this.timeToLive = const Duration(minutes: 10),
     this.sweepInterval = const Duration(minutes: 1),
-  });
+  }) : datasource = TomFrameworkTable.systemOf(datasource);
 
   /// Creates a store over the registered data source named [datasourceName].
   ///
@@ -175,7 +175,7 @@ class TomSqlOAuthStateStore implements TomOAuthStateStore {
     Duration timeToLive = const Duration(minutes: 10),
     Duration sweepInterval = const Duration(minutes: 1),
   }) {
-    final info = TomDataSourceInfo.getDataSourceInfo(datasourceName);
+    final info = TomDataSourceInfo.getBaseDataSourceInfo(datasourceName);
     if (info == null) {
       throw TomServerException(
         'oauth.state_store.unknown_datasource',

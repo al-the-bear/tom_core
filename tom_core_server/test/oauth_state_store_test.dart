@@ -232,7 +232,7 @@ void main() {
     test('the migration is the DDL the store creates', () {
       expect(
         normaliseSql(
-          readMigration('authentication', '[2]-create_tom_oauth_state.sql'),
+          readMigration('authentication', '[1]-create_tom_oauth_state.sql'),
         ),
         normaliseSql(oauthStateTableDdl(defaultOAuthStateTable)),
       );

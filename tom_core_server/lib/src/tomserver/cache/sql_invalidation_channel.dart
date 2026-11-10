@@ -40,12 +40,13 @@ class TomSqlInvalidationChannel
   /// defaults to [TomAuthorizationCache.revocationRetention], which is how long
   /// a revocation has to be remembered.
   TomSqlInvalidationChannel(
-    this.datasource, {
+    TomDataSource datasource, {
     this.table = defaultInvalidationTable,
     this.pollInterval = const Duration(seconds: 2),
     Duration? retention,
     this.createSchema = true,
-  }) : retention = retention ?? TomAuthorizationCache.revocationRetention;
+  }) : datasource = TomFrameworkTable.systemOf(datasource),
+       retention = retention ?? TomAuthorizationCache.revocationRetention;
 
   /// Creates a channel over the registered data source named [datasourceName].
   ///
@@ -59,7 +60,7 @@ class TomSqlInvalidationChannel
     Duration? retention,
     bool createSchema = true,
   }) {
-    final info = TomDataSourceInfo.getDataSourceInfo(datasourceName);
+    final info = TomDataSourceInfo.getBaseDataSourceInfo(datasourceName);
     if (info == null) {
       throw TomCacheException(
         'cache.invalidation.unknown_datasource',

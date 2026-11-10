@@ -27,6 +27,7 @@ const String defaultApiKeyTable = 'tom_api_key';
 TomFrameworkTable serviceAccountTable(String table) => TomFrameworkTable(
   name: table,
   origin: 'serviceAccountTable',
+  kind: TomTableKind.system,
   columns: const [
     TomFrameworkColumn('id', 'VARCHAR(191)'),
     TomFrameworkColumn('name', 'VARCHAR(191)'),
@@ -42,6 +43,7 @@ TomFrameworkTable serviceAccountTable(String table) => TomFrameworkTable(
 TomFrameworkTable apiKeyTable(String table) => TomFrameworkTable(
   name: table,
   origin: 'apiKeyTable',
+  kind: TomTableKind.system,
   columns: const [
     TomFrameworkColumn('id', 'VARCHAR(64)'),
     TomFrameworkColumn('account_id', 'VARCHAR(191)'),
@@ -65,11 +67,11 @@ class TomSqlApiKeyStore implements TomApiKeyStore {
   /// them on first use unless [createSchema] is false (a deployment whose
   /// migrations create them).
   TomSqlApiKeyStore(
-    this.datasource, {
+    TomDataSource datasource, {
     this.accountTable = defaultServiceAccountTable,
     this.keyTable = defaultApiKeyTable,
     this.createSchema = true,
-  });
+  }) : datasource = TomFrameworkTable.systemOf(datasource);
 
   /// The data source holding both tables.
   final TomDataSource datasource;

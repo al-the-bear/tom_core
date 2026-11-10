@@ -50,6 +50,10 @@ const String defaultAuditTrailTable = 'tom_audit_trail';
 ///    collision between two writers into a failed insert — and a failed insert
 ///    here fails the audited action closed. Identity across writers is the
 ///    actor and timestamp; linearity is the `writer`-scoped unique keys above.
+///  * a system table ([TomTableKind.system]) that serves every tenant: `tenant`
+///    is the tenant the entry was recorded in (`NULL` for the deployment's own
+///    work), part of the hashed record too, and indexed with the time, so a
+///    tenant's entries are listed, exported and — on a tenant's purge — found.
 ///  * `record` is the canonical JSON that was hashed, and is authoritative. The
 ///    projection columns (`actor`, `action`, `target`, `target_key`, `outcome`,
 ///    `request_id`) are a lossy index for operators: they are truncated to fit,
@@ -64,6 +68,7 @@ const String defaultAuditTrailTable = 'tom_audit_trail';
 TomFrameworkTable auditTrailTable(String table) => TomFrameworkTable(
   name: table,
   origin: 'auditTrailTable',
+  kind: TomTableKind.system,
   columns: const [
     TomFrameworkColumn('seq', 'BIGINT', autoIncrement: true),
     TomFrameworkColumn('writer', 'VARCHAR(64)'),
@@ -76,6 +81,7 @@ TomFrameworkTable auditTrailTable(String table) => TomFrameworkTable(
     TomFrameworkColumn('target_key', 'VARCHAR(191)', nullable: true),
     TomFrameworkColumn('outcome', 'VARCHAR(16)'),
     TomFrameworkColumn('request_id', 'VARCHAR(191)', nullable: true),
+    TomFrameworkColumn('tenant', 'VARCHAR(32)', nullable: true),
     TomFrameworkColumn('previous_hash', 'CHAR(64)'),
     TomFrameworkColumn('hash', 'CHAR(64)'),
     TomFrameworkColumn('record', 'LONGTEXT'),
@@ -88,6 +94,7 @@ TomFrameworkTable auditTrailTable(String table) => TomFrameworkTable(
     TomFrameworkKey('time', ['writer', 'recorded_at']),
     TomFrameworkKey('target', ['target', 'action']),
     TomFrameworkKey('actor', ['actor']),
+    TomFrameworkKey('tenant', ['tenant', 'recorded_at']),
   ],
 );
 

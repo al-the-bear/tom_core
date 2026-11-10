@@ -417,7 +417,8 @@ Summary: [api_summary_audit_reports.md](api_summary_audit_reports.md)
 | `TomPrimaryReads` | class | Annotation pinning an entity's reads to the primary, never a read replica. |
 | `SqlPlaceholderScan` | class | SQL placeholder scanner. |
 | `TomSqlLexer` | class | The package's one quote/comment scanner and statement splitter. |
-| `TomFrameworkTable` | class | The single declaration of a table the framework itself owns. |
+| `TomFrameworkTable` | class | The single declaration of a table the framework itself owns, with its kind and placement. |
+| `TomTableKind` | enum | `system` or `tenant` — whether a framework table is the deployment's or a tenant's. |
 | `TomFrameworkColumn` | class | One column of a framework-owned table. |
 | `TomFrameworkKey` | class | One index or unique constraint of a framework-owned table. |
 | `TomSchemaProvisioning` | class | Creates a store's tables at most once, however many first calls arrive together. |
@@ -484,6 +485,7 @@ Summary: [api_summary_audit_reports.md](api_summary_audit_reports.md)
 | `TomInformationSchemaColumnRow` | class | One `information_schema.COLUMNS` row, as the live check reads it. |
 | `TomSqlTypeFamilyCompatibility` | extension | How tolerantly two type families still count as agreeing. |
 | `frameworkOwnedTables` | function | Every table the framework owns, at its default name. |
+| `frameworkSystemTables` / `frameworkTenantTables` | function | The framework's system tables and its tenant tables. |
 | `TomDbMigrationException` | class | Migration error (extends `TomServerException`). |
 | `TomSqlMigrationException` | class | SQL migration error (extends `TomServerException`). |
 | `MariadbMigrationException` | class | MariaDB migration error (extends `TomSqlMigrationException`). |
@@ -1183,6 +1185,8 @@ Summary: [api_summary_audit_reports.md](api_summary_audit_reports.md)
 | `extractAuthentication` | Server |
 | `filterAuditEntries` | Audit |
 | `frameworkOwnedTables` | Database Migration |
+| `frameworkSystemTables` | Database Migration |
+| `frameworkTenantTables` | Database Migration |
 | `Group` | Object Persistence |
 | `Gt` | Object Persistence |
 | `Gte` | Object Persistence |
@@ -2057,6 +2061,7 @@ Summary: [api_summary_audit_reports.md](api_summary_audit_reports.md)
 | `TomSyncRejection` | Sync |
 | `TomSyncSequenceRow` | Sync |
 | `TomSyncServer` | Sync |
+| `TomTableKind` | Datasources |
 | `TomTabularChart` | Export |
 | `TomTabularColumn` | Export |
 | `TomTabularRenderer` | Export |

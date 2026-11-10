@@ -26,6 +26,7 @@ TomAuditRecord _record({
   String? targetKey = '42',
   TomAuditOutcome outcome = TomAuditOutcome.succeeded,
   String? requestId,
+  String? tenant,
 }) => TomAuditRecord(
   id: id,
   timestamp: at ?? DateTime.utc(2026, 3, 4, 10),
@@ -35,6 +36,7 @@ TomAuditRecord _record({
   targetKey: targetKey,
   outcome: outcome,
   requestId: requestId,
+  tenant: tenant,
 );
 
 List<TomAuditEntry> _chain(List<TomAuditRecord> records) {
@@ -88,6 +90,17 @@ void main() {
       );
       expect(const TomAuditQuery(requestId: 'req-7').matches(record), isTrue);
       expect(const TomAuditQuery(requestId: 'req-8').matches(record), isFalse);
+    });
+
+    test("a tenant narrows to that tenant's entries", () {
+      final acme = _record(tenant: 'acme');
+      expect(const TomAuditQuery(tenant: 'acme').matches(acme), isTrue);
+      expect(const TomAuditQuery(tenant: 'globex').matches(acme), isFalse);
+      expect(
+        const TomAuditQuery(tenant: 'acme').matches(_record()),
+        isFalse,
+        reason: 'an entry of no tenant is no tenant\'s',
+      );
     });
 
     test('several fields are an AND, not an OR', () {

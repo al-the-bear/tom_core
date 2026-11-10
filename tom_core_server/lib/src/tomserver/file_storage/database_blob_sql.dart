@@ -41,6 +41,9 @@ const String defaultBlobChunkTable = 'tom_blob_chunk';
 ///    truncating the download.
 ///  * `file_name` is nullable and that is the ordinary case: most blobs are
 ///    written by key, not by name.
+///  * a system table ([TomTableKind.system]) that serves every tenant:
+///    `tenant` is the tenant a blob was written in (`''` for none), indexed so
+///    a tenant's blobs are listed and — on a tenant's purge — found.
 ///  * `stored_at` is `DATETIME(6)`, and the width is not a precision
 ///    preference — it is the column agreeing with its writer. Every `DateTime`
 ///    bound by this data source is rendered by `sqlInstant`, which always emits
@@ -52,6 +55,7 @@ const String defaultBlobChunkTable = 'tom_blob_chunk';
 TomFrameworkTable blobManifestTable(String table) => TomFrameworkTable(
   name: table,
   origin: 'blobManifestTable',
+  kind: TomTableKind.system,
   columns: [
     TomFrameworkColumn('storage_key', 'VARCHAR(${TomBlobStore.maxKeyLength})'),
     const TomFrameworkColumn('upload_id', 'VARCHAR(64)'),
@@ -72,8 +76,12 @@ TomFrameworkTable blobManifestTable(String table) => TomFrameworkTable(
     // to the index. Empty for a manifest row written without one.
     const TomFrameworkColumn('digest', 'CHAR(64)'),
     const TomFrameworkColumn('stored_at', 'DATETIME(6)'),
+    const TomFrameworkColumn('tenant', 'VARCHAR(32)', defaultValue: "''"),
   ],
   primaryKey: const ['storage_key'],
+  keys: const [
+    TomFrameworkKey('tenant', ['tenant']),
+  ],
 );
 
 /// The many-rows-per-blob content table [table], declared once.
@@ -89,6 +97,7 @@ TomFrameworkTable blobManifestTable(String table) => TomFrameworkTable(
 TomFrameworkTable blobChunkTable(String table) => TomFrameworkTable(
   name: table,
   origin: 'blobChunkTable',
+  kind: TomTableKind.system,
   columns: const [
     TomFrameworkColumn('upload_id', 'VARCHAR(64)'),
     TomFrameworkColumn('chunk_index', 'INT'),

@@ -38,7 +38,7 @@ This guide is the server half.
 - [Principals per Tenant](#principals-per-tenant)
 - [Identity Federation per Tenant](#identity-federation-per-tenant)
 - [What Is Tenant-Scoped](#what-is-tenant-scoped)
-- [What Stays Deployment-Wide](#what-stays-deployment-wide)
+- [Framework Tables](#framework-tables)
 - [Working in a Tenant Outside a Request](#working-in-a-tenant-outside-a-request)
 - [Onboarding a Tenant](#onboarding-a-tenant)
 - [Suspending a Tenant](#suspending-a-tenant)
@@ -360,7 +360,7 @@ want.
 
 The store creates its table on first use; a deployment whose database user may
 not run DDL applies the reference migration
-`example/tenancy/migrations/main/tomcore/[1]-create_tom_tenant.sql` (or
+`example/tenancy/migrations/system/main/tomcore/[1]-create_tom_tenant.sql` (or
 `migrations_postgresql/`) to the system schema and configures
 `registry: {createSchema: false}`.
 
@@ -470,7 +470,7 @@ database, so the outer hold covers the tenants sharing the base data source's
 database — the `shared` tenants and, on PostgreSQL, the `schema` tenants; a
 tenant with a database of its own is serialised by its own run's lock. Keeping the two
 trees apart is what keeps the framework's tables out of every tenant's schema —
-see [What Stays Deployment-Wide](#what-stays-deployment-wide).
+see [Framework Tables](#framework-tables).
 
 ## Resolving a Request's Tenant
 
@@ -730,134 +730,157 @@ claimed organization is the session's.
 | Jobs | a run records its tenant; its body runs inside it, across a worker isolate too; its window and its overlap protection are per tenant | [scheduling](scheduling.md#runs-per-tenant) |
 | Messaging outbox | a message is queued for the tenant in context and delivered inside it; its receipt and its delivery correlation name the tenant; queued inside a transaction under `schema` isolation, it commits with the tenant's writes | [messaging](messaging.md#messages-per-tenant) |
 | Delivery reports | `tom_delivery_report.tenant` attributes a carrier's report, which arrives carrying nothing but the carrier's id, to its tenant | [messaging](messaging.md#messages-per-tenant) |
-| Idempotency keys | a key is scoped to the tenant in context, its principal and the operation; the SQL store resolves its data source by name per request, so a routed data source keeps a tenant's keys in the tenant's schema or database | [endpoints](endpoints.md#stores-clusters-and-tenants) |
-| Sagas | a saga belongs to the tenant it began in, and its steps and compensations run inside it; `TomSqlSagaStore` resolves its data source by name on every call, so a routed data source keeps a tenant's sagas beside the data its steps change; a resumption looks into every tenant | [transactions](transactions.md#sagas-per-tenant) |
-| Field-encryption keys | `TomSqlDataKeyStore` resolves its data source by name on every call, so a routed data source keeps a tenant's data keys in the tenant's schema or database; the re-encryption pass runs in every tenant | [object_persistence](object_persistence.md#tenancy) |
+| Idempotency keys | a key is scoped to the tenant in context, its principal and the operation; `tom_idempotency_key` is a tenant table, kept in the tenant's data source | [endpoints](endpoints.md#stores-clusters-and-tenants) |
+| Sagas | a saga belongs to the tenant it began in, and its steps and compensations run inside it; `tom_saga` is a tenant table, kept beside the data its steps change; a resumption looks into every tenant | [transactions](transactions.md#sagas-per-tenant) |
+| Field-encryption keys | a tenant table's values are encrypted under the tenant's own data keys, kept in its data source; a system table's under the system's; the re-encryption pass runs a tenant entity in every tenant |
+| Audit trail | every entry records the tenant in context; `TomAuditQuery(tenant: …)` reads one tenant's entries | [audit](audit.md) |
+| Blobs | the manifest records the tenant a blob was written in; `keysOfTenant` lists a tenant's blobs | [file_storage](file_storage.md) |
+| Message inbox | `tom_message_inbox` is a tenant table, reached in the tenant's data source, so a message is recorded with the consumer's writes | [messaging](messaging.md) | [object_persistence](object_persistence.md#tenancy) |
 
 A tenant-scoped key is spelled one way everywhere —
 `TomTenantContext.qualify(name, tenant)`, which is `tenant:<id>/<name>`, or the
 bare name with no tenant. A value meant for every tenant is cached, or a
 principal revoked, outside any tenant's context.
 
-## What Stays Deployment-Wide
+## Framework Tables
 
-The framework's own tables serve the whole deployment and are **not routed**:
-each store is built over a data source at start-up and keeps it, whatever tenant
-is in context, and its rows live in that data source. Where the tenant matters,
-it is a column.
+Every table the framework itself owns is declared once, as a
+`TomFrameworkTable`, and its descriptor names its kind (`TomTableKind`, see
+[datasources.md](datasources.md#framework-owned-tables)). The kind, not the data
+source a store was built over, decides where its rows live:
 
-| Table | Store | Tenant |
-| ----- | ----- | ------ |
-| `tom_job_run` | `TomSqlJobStore` | a `tenant` column; `''` for a run of no tenant; part of the unique window key |
-| `tom_lease` | `TomSqlLeaseLock` | none — a lease names a run or a job, and a job's lease names its tenant |
-| `tom_job_pause` | `TomSqlJobStore` | none — a pause names a job, and holds for every tenant's runs of it |
-| `tom_job_run_archive` | `TomSqlJobStore` | the archived run's `tenant` column, carried over from `tom_job_run` |
-| `tom_scheduler_node` | `TomSqlSchedulerNodes` | none — nodes serve every tenant |
-| `tom_delivery_report` | `TomSqlDeliveryReportStore` | a nullable `tenant` column |
-| `tom_cache_invalidation` | `TomSqlInvalidationChannel` | none — the keys it carries are already qualified |
-| `tom_oauth_state` | `TomSqlOAuthStateStore` | a `tenant` column; `''` for a flow of no tenant; every read and the completion name the tenant in context |
-| `tom_blob`, `tom_blob_chunk` | `TomDatabaseBlobStore` | none |
-| `tom_blob_ledger`, `tom_blob_content` | `TomSqlBlobLedger` | an `owner` column on each key, which a quota sums; contents are shared across owners |
-| `tom_audit_trail` | `TomSqlAuditSink` | none |
-| `tom_service_account`, `tom_api_key` | `TomSqlApiKeyStore` | a nullable `tenant` column on the account, carried onto the principal its keys authenticate |
-| `tom_rate_limit` | `TomSqlRateLimiter` | none — a `principal` rule's counter key already names the tenant |
+- a **system** table is kept once, in the system data source — the base data
+  source, never routed, also when a tenant is in context;
+- a **tenant** table is kept where the tenant in context's data lives — the
+  tenant's own schema or database, or its type's shared schema — and every row
+  names its tenant.
 
-Build these stores over a data source that is not in `TomTenancy.datasources`,
-or construct them outside any tenant's context, which is where a server's
-start-up runs anyway. Their migrations belong in the deployment-wide tree.
+One rule places every store. `TomFrameworkTable.placedInfo(held)` answers the
+data source for the data source a store holds: for a system table the
+registered base of what it holds (`systemInfoOf`, so a store handed a tenant's
+pool `main@acme` still writes to `main`), for a tenant table that base routed
+for the tenant in context (`TomDataSourceInfo.route`). A system store places
+once, in its constructor; a tenant store places on every call, so one store
+built at start-up serves every tenant. A data source registered under no name
+— a test's fake, a private pool — is used as it is.
+
+| Table | Store | Placement | Tenant |
+| ----- | ----- | --------- | ------ |
+| `tom_tenant` | `TomSqlTenantRegistry` | system | the row is the tenant |
+| `tom_job_run`, `tom_job_run_archive` | `TomSqlJobStore` | system | a `tenant` column; `''` for a run of no tenant; part of the unique window key |
+| `tom_job_pause` | `TomSqlJobStore` | system | none — a pause holds for every tenant's runs of a job |
+| `tom_lease` | `TomSqlLeaseLock` | system | none — a job's lease names its tenant |
+| `tom_scheduler_node` | `TomSqlSchedulerNodes` | system | none — nodes serve every tenant |
+| `tom_audit_trail` | `TomSqlAuditSink` | system | a nullable `tenant` column on every entry: the tenant in context when it was recorded |
+| `tom_audit_question` | `TomSqlAuditQuestionStore` | system | an `owner` column |
+| `tom_blob`, `tom_blob_chunk` | `TomDatabaseBlobStore` | system | a `tenant` column on the manifest; `''` outside a tenant |
+| `tom_blob_ledger`, `tom_blob_content` | `TomSqlBlobLedger` | system | an `owner` column on each key, which a quota sums; contents are shared across owners |
+| `tom_delivery_report` | `TomSqlDeliveryReportStore` | system | a nullable `tenant` column |
+| `tom_message_suppression` | `TomSqlSuppressionList` | system | a nullable `tenant` column |
+| `tom_oauth_state` | `TomSqlOAuthStateStore` | system | a `tenant` column; every read and the completion name the tenant in context |
+| `tom_rate_limit` | `TomSqlRateLimiter` | system | none — a `principal` rule's counter key already names the tenant |
+| `tom_service_account`, `tom_api_key` | `TomSqlApiKeyStore` | system | a nullable `tenant` column on the account, carried onto the principal its keys authenticate |
+| `tom_cache_invalidation` | `TomSqlInvalidationChannel` | system | none — the keys it carries are already qualified |
+| `tom_export` | `TomSqlExportRegister` | system | an `owner` column |
+| `tom_transaction_decision` | `TomSqlDecisionLog` | system | none — a decision names the branches of every data source it spans |
+| `tom_message_inbox` | `TomSqlInbox` | tenant | `tenant` leads the primary key |
+| `tom_idempotency_key` | `TomSqlIdempotencyStore` | tenant | a `tenant` column |
+| `tom_saga` | `TomSqlSagaStore` | tenant | a `tenant` column |
+| `tom_encryption_key` | `TomSqlDataKeyStore` | tenant | `tenant` leads the primary key |
+| `tom_subject_key` | `TomSqlSubjectKeyStore` | tenant | a `tenant` column |
+| `tom_scim_resource` | `TomSqlScimStore` | tenant | a `tenant` column |
+| `tom_sync_change`, `tom_sync_sequence` | `TomSync` | tenant | a `tenant` column |
+
+The framework's eight per-tenant entities — preferences, preference defaults,
+resource grants and grades, delegations, 2FA enrolments, external identities and
+their provider tokens — are tenant tables by `@TomTenantTable`
+([Tenant Tables and System Tables](#tenant-tables-and-system-tables)).
+
+**A system table that does work for tenants carries the tenant.** The audit
+trail, the blob manifest, the job queue (and the outbox on it), the delivery
+reports and the suppression list record the tenant in context on every row, so
+a tenant's records can be listed and exported from the one table:
+`TomAuditQuery(tenant: 'acme')` reads one tenant's audit entries,
+`TomDatabaseBlobStore.keysOfTenant('acme')` lists its blobs.
+
+**Each tree holds its own kind.** The reference migrations come as two trees per
+module — `example/<module>/migrations/system/main/tomcore/` for the system
+tables, migrated once into the system schema, and
+`example/<module>/migrations/tenant/default/main/` for the tenant tables,
+migrated into every tenant's data source
+([Per-tenant migrations](#per-tenant-migrations)).
+`TomFrameworkSchemaCheck.verifyTree` checks a tree against its kind and reports
+a table of the other kind built there as `misplacedTable`; see
+[db_migration.md](db_migration.md#the-frameworks-own-tables).
 
 **The job queue's write inside a transaction uses the tenant's connection.**
-`tom_job_run` still lives in the base data source, but a `TomSqlJobStore.enqueue`
+`tom_job_run` lives in the system data source, but a `TomSqlJobStore.enqueue`
 — and the `findRun` before it — made inside a transaction of a tenant whose data
 source is routed to one on the same server (`TomSqlDatasource.canQualify`: same
 driver, host, port and user, on PostgreSQL also the same database) runs on the
-tenant's data source and names the table qualified by the base schema
+tenant's data source and names the table qualified by the system schema
 (`TomSqlDatasource.qualify`). That is what `schema` isolation gives: the row rides
 on the tenant's transaction branch, so a message queued on the outbox commits or
 rolls back with the tenant's business writes in one commit, and lands in the
-base table the scheduler polls. Under `database` isolation on another server
+system table the scheduler polls. Under `database` isolation on another server
 `canQualify` fails and the store's own data source enlists as a second
 participant — see
 [messaging.md](messaging.md#queueing-inside-a-transaction) for what that commits.
 
-**The message inbox is the exception, and on purpose.** `TomSqlInbox` records
-a message in the same transaction as the consumer's own writes, so it must live
-where those writes go. A consumer whose work is routed to a tenant's database or
-schema builds its inbox over that tenant's data source — resolved inside the
-tenant, as the work's own repository resolves it — and the `tom_message_inbox`
-migration belongs in the per-tenant tree:
+**The message inbox lives with the consumer's writes.** `TomSqlInbox` records a
+message in the same transaction as the consumer's own writes; as a tenant table
+it is reached, on every call, in the tenant in context's data source
+(`placedDatasource`), so one inbox built at start-up serves every tenant and the
+consumer's work writes through the same data source:
 
 ```dart
-await tenancy.runFor(tenantId, () async {
-  final ds = TomDataSourceInfo.getDataSourceInfo('app')!.datasource;
-  await TomSqlInbox(ds).process(
-    'billing',
-    message.id,
-    () => invoices.record(message),
-    acknowledge: message.ack,
-  );
-});
+final inbox = TomSqlInbox(TomDataSourceInfo.getBaseDataSourceInfo('app')!.datasource);
+
+await tenancy.runFor(tenantId, () => inbox.process(
+  'billing',
+  message.id,
+  () => invoices.record(message),
+  acknowledge: message.ack,
+));
 ```
 
-Under row-level isolation the routed data source is the shared one, and a
-single inbox serves every tenant.
-
-**The idempotency keys follow the data source they are configured on.**
-`TomSqlIdempotencyStore` — installed by `TomServer.start` when the
-`idempotency` configuration names a data source — looks that data source up by
-name on every request, through the routing. When the name is one of
-`TomTenancy.datasources`, a request in a `schema` or `database` tenant stores
-its key in that tenant's schema or database; the store creates
-`tom_idempotency_key` there on first use, or, with `createSchema: false`, the
-migration belongs in the per-tenant tree. A shared tenant's keys, and every key
-when the data source is not a tenant one, go to the one table, where the
-`tenant` column keeps them apart:
-
-```yaml
-idempotency:
-  datasource: main          # in TomTenancy.datasources: keys live per tenant
-```
-
-See [endpoints.md](endpoints.md#stores-clusters-and-tenants).
+**The idempotency keys follow the tenant.** `TomSqlIdempotencyStore` —
+installed by `TomServer.start` when the `idempotency` configuration names a data
+source — places that data source on every request: a request in a `schema` or
+`database` tenant stores its key in that tenant's schema or database, created
+there on first use or, with `createSchema: false`, by the migration in the
+tenant tree. A shared tenant's keys go to its type's shared schema, where the
+`tenant` column keeps them apart. See
+[endpoints.md](endpoints.md#stores-clusters-and-tenants).
 
 **The sagas live with the data their steps change.** A saga's step runs in a
-local transaction with the update that moves the saga on, so `tom_saga` has to
-be in the data source the steps write to. `TomSqlSagaStore('main')` looks `main`
-up by name on every call, inside the tenant the saga runs for: when `main` is
-one of `TomTenancy.datasources`, a `schema` or `database` tenant's sagas are
-kept in that tenant's schema or database, created there on first use or, with
-`createSchema: false`, by the migration in the per-tenant tree. A shared
-tenant's sagas go to the one table, where the `tenant` column keeps them apart.
-The orchestrator's job runs stay in the deployment-wide queue and carry the
-tenant, and `TomSagaOrchestrator.resume` — at start and on every sweep — runs in
-every tenant of the installed tenancy, so each tenant's unfinished sagas are
-found in its own data source. See
-[transactions.md](transactions.md#sagas-per-tenant).
+local transaction with the update that moves the saga on, so `tom_saga` is a
+tenant table, kept beside the data the steps write. The orchestrator's job runs
+stay in the system queue and carry the tenant, and
+`TomSagaOrchestrator.resume` — at start and on every sweep — runs in every tenant
+of the installed tenancy, so each tenant's unfinished sagas are found in its own
+data source. See [transactions.md](transactions.md#sagas-per-tenant).
 
-**The data keys live with the data they encrypt.** The data keys of
-`@TomEncrypted` columns are kept in `tom_encryption_key` of the data source the
-`fieldEncryption` configuration names, and `TomSqlDataKeyStore` looks that name
-up on every call. When it is one of `TomTenancy.datasources`, a `schema` or
-`database` tenant's data keys are kept in that tenant's schema or database —
-created there on first use or, with `createSchema: false`, by the migration in
-the per-tenant tree — so its values are encrypted under keys no other tenant's
-data shares. Shared tenants share the one table and its keys. A rotation acts on
-the keys of the tenant in context, so rotating every tenant's runs inside each
-(`forEachTenant`); `TomFieldReencryption.run` looks into every tenant of the
-installed tenancy on its own. See
+**The data keys follow the table they encrypt.** The data keys of
+`@TomEncrypted` columns are kept in `tom_encryption_key`, keyed by tenant. A
+tenant table's values are encrypted under the tenant in context's keys, kept in
+that tenant's data source — so a tenant's values share no key with another
+tenant's, in a shared schema too. A system table's values are encrypted under
+the system's keys (tenant `''` in the system data source), whatever tenant is
+in context, so every tenant reads them back. `TomFieldEncryption.forEntity`
+chooses by the entity's classification. A rotation acts on the keys of the
+scope it runs in, so rotating every tenant's runs inside each
+(`forEachTenant`); `TomFieldReencryption.run` re-encrypts a system entity once
+and a tenant entity in every tenant of the installed tenancy. See
 [object_persistence.md](object_persistence.md#tenancy).
 
 **The subject keys live with the data they cover.** The privacy module's subject
 keys — under which personal values in the audit trail are sealed, one key per
-data subject — are kept in `tom_subject_key` of the data source the `privacy`
-configuration names, and `TomSqlSubjectKeyStore` looks that name up on every
-call. When it is one of `TomTenancy.datasources`, a `schema` or `database`
-tenant's subject keys are kept in that tenant's schema or database — created
-there on first use or, with `createSchema: false`, by the migration in the
-per-tenant tree. A shared tenant's keys go to the one table, where the `tenant`
-column keeps them apart. Erasing a subject shreds the key of the tenant in
-context, as it erases that tenant's rows. See
-[privacy.md](privacy.md#tenancy).
+data subject — are kept in `tom_subject_key`, a tenant table: a `schema` or
+`database` tenant's subject keys are kept in that tenant's schema or database,
+a shared tenant's in its type's shared schema under its `tenant` column.
+Erasing a subject shreds the key of the tenant in context, as it erases that
+tenant's rows. See [privacy.md](privacy.md#tenancy).
 
 ## Working in a Tenant Outside a Request
 
@@ -1005,11 +1028,6 @@ raised as the kernel's `TomTenantException`.
 
 ## Not Yet Implemented
 
-- **The framework's own stores are not tenant-scoped beyond their columns.** The
-  audit trail and the blob store serve the whole deployment from the data
-  source they were built over, and their rows carry no tenant. A deployment that needs a tenant's audit trail or blobs apart
-  builds one store per tenant.
-  <!-- unpinned: decision — framework tables are deployment-wide and not routed -->
 - **A tenant's accounts are the authentication service's.** The framework binds
   a token to the tenant a login ran in and refuses a principal placed in another,
   but which accounts exist in which tenant is the deployment's

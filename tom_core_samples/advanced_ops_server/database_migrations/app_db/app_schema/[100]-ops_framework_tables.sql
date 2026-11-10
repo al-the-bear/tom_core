@@ -33,8 +33,8 @@
 -- fact. It also keeps the sample's promise: no new infrastructure.
 --
 -- The DDL is copied verbatim from the framework's canonical reference migrations
--- (tom_core_server/example/scheduling/migrations/main/tomcore/[1]–[5] and
--- example/audit/migrations/main/tomcore/[1]) and kept in step with the
+-- (tom_core_server/example/scheduling/migrations/system/main/tomcore/[1]–[5] and
+-- example/audit/migrations/system/main/tomcore/[1]) and kept in step with the
 -- jobRunTable() / leaseTable() / schedulerNodeTable() / jobPauseTable() /
 -- jobRunArchiveTable() / auditTrailTable() descriptors by test/ops_framework_schema_test.dart, which fails if this file
 -- and those descriptors drift apart.
@@ -187,14 +187,16 @@ CREATE TABLE IF NOT EXISTS tom_audit_trail (
   target_key    VARCHAR(191) NULL,
   outcome       VARCHAR(16)  NOT NULL,
   request_id    VARCHAR(191) NULL,
+  tenant        VARCHAR(32)  NULL,
   previous_hash CHAR(64)     NOT NULL,
   hash          CHAR(64)     NOT NULL,
   record        LONGTEXT     NOT NULL,
   PRIMARY KEY (seq),
-  UNIQUE KEY uq_tom_audit_trail_prev (writer, previous_hash),
+  UNIQUE KEY uq_tom_audit_trail_link (writer, previous_hash),
   UNIQUE KEY uq_tom_audit_trail_hash (writer, hash),
   UNIQUE KEY uq_tom_audit_trail_index (writer, entry_index),
   KEY ix_tom_audit_trail_time (writer, recorded_at),
   KEY ix_tom_audit_trail_target (target, action),
-  KEY ix_tom_audit_trail_actor (actor)
+  KEY ix_tom_audit_trail_actor (actor),
+  KEY ix_tom_audit_trail_tenant (tenant, recorded_at)
 );

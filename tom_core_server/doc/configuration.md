@@ -1043,7 +1043,7 @@ memory, which holds on one process only.
 | --- | ---- | ------- | --------------- |
 | `datasource` | `String` | none | The registered data source the records are kept in: a `TomSqlIdempotencyStore` over it replaces the in-memory store, so every instance sharing the database sees every key. Resolved by name on each request, so under tenancy a routed data source keeps each tenant's keys in the tenant's schema or database. Absent: the in-memory store. |
 | `table` | `String` | `tom_idempotency_key` | The table's name. Only read with `datasource`. |
-| `createSchema` | `bool` | `true` | Whether the store creates the table on first use in each data source. `false` for a database user that may not run DDL; the deployment then applies the reference migration `example/endpoints/migrations/main/tomcore/[1]-create_tom_idempotency_key.sql` (or its `migrations_postgresql` form). Only read with `datasource`. |
+| `createSchema` | `bool` | `true` | Whether the store creates the table on first use in each data source. `false` for a database user that may not run DDL; the deployment then applies the reference migration `example/endpoints/migrations/tenant/default/main/[1]-create_tom_idempotency_key.sql` (or its `migrations_postgresql` form). Only read with `datasource`. |
 | `retentionMinutes` | `int` | `1440` | How long a stored response is replayed (`TomIdempotency.defaultRetention`); an endpoint's `@TomIdempotent(retention:)` overrides it. Choose it longer than clients keep retrying. |
 | `inProgressTimeoutSeconds` | `int` | `300` | How long a claimed key may stay unfinished before a retry takes it over (`TomIdempotency.inProgressTimeout`), for a request whose process died. Keep it longer than the slowest idempotent request. |
 
@@ -1090,7 +1090,7 @@ than storing plaintext.
 | --- | ---- | ------- | --------------- |
 | `datasource` | `String` | required | The registered data source the data-key table is in: a `TomSqlDataKeyStore` over it. Resolved by name on every call, so under tenancy a routed data source keeps each tenant's data keys in the tenant's schema or database. |
 | `table` | `String` | `tom_encryption_key` | The table's name. |
-| `createSchema` | `bool` | `true` | Whether the store creates the table on first use in each data source. `false` for a database user that may not run DDL; the deployment then applies the reference migration `example/object_persistence/migrations/main/tomcore/[1]-create_tom_encryption_key.sql` (or its `migrations_postgresql` form). |
+| `createSchema` | `bool` | `true` | Whether the store creates the table on first use in each data source. `false` for a database user that may not run DDL; the deployment then applies the reference migration `example/object_persistence/migrations/tenant/default/main/[1]-create_tom_encryption_key.sql` (or its `migrations_postgresql` form). |
 | `keys` | list of maps | required | The key-encryption keys, **primary first**: each with an `id`, its name (1 to 128 characters, recorded with every data key it wraps), and a `kind`, default `aes`. An `aes` entry carries `key`, the base64 of its 32 bytes or a `secret:` reference to it; an entry of another kind carries the settings of a key held by a key-management service, built by the factory a package registered for the kind (`aws-kms`, `vault-transit` and `azure-keyvault` from `tom_core_secrets`; see [object_persistence.md](object_persistence.md#keys-held-by-a-key-management-service)). The primary wraps every data key created; the others only unwrap, so a rotated-out key stays listed until the data keys are re-wrapped. |
 | `refreshSeconds` | `int` | `300` | How often a node reads the data keys again, which is how it learns of a rotation another node made. |
 | `acceptPlaintext` | `bool` | `true` | Whether a stored value of an encrypted column that is not ciphertext reads as it is (`TomFieldEncryption.acceptPlaintext`). On while a column that held plaintext is being encrypted; off once every column is, and a plaintext value then fails its read with `field_encryption.plaintext_refused`. |
@@ -1161,7 +1161,7 @@ trail records personal values as they are.
 | --- | ---- | ------- | --------------- |
 | `datasource` | `String` | required | The registered data source the subject-key table is in. Resolved by name on every call, so under tenancy a routed data source keeps each tenant's subject keys in the tenant's schema or database. |
 | `table` | `String` | `tom_subject_key` | The table's name. |
-| `createSchema` | `bool` | `true` | Whether the store creates the table on first use in each data source. `false` for a database user that may not run DDL; the deployment then applies the reference migration `example/privacy/migrations/main/tomcore/[1]-create_tom_subject_key.sql` (or its `migrations_postgresql` form). |
+| `createSchema` | `bool` | `true` | Whether the store creates the table on first use in each data source. `false` for a database user that may not run DDL; the deployment then applies the reference migration `example/privacy/migrations/tenant/default/main/[1]-create_tom_subject_key.sql` (or its `migrations_postgresql` form). |
 
 ```yaml
 # assets/config-resources_default.yaml
@@ -1213,7 +1213,7 @@ nothing is recovered.
 | --- | ---- | ------- | --------------- |
 | `decisionLog` | `String` | none | The registered data source decisions are recorded in, as a `TomSqlDecisionLog` installed as `TomTransactionManager.decisionLog`. A **one-phase** data source (`mariadb`, `postgresql`): a decision has to be durable on its own before the first branch commits. Without it nothing is recorded, and a recovery can only roll back. |
 | `decisionTable` | `String` | `tom_transaction_decision` | The decision table's name. |
-| `createSchema` | `bool` | `true` | Whether the log creates the table on first use. `false` for a database user that may not run DDL; the deployment then applies the reference migration `example/transactions/migrations/main/tomcore/[2]-create_tom_transaction_decision.sql` (or its `migrations_postgresql` form). |
+| `createSchema` | `bool` | `true` | Whether the log creates the table on first use. `false` for a database user that may not run DDL; the deployment then applies the reference migration `example/transactions/migrations/system/main/tomcore/[1]-create_tom_transaction_decision.sql` (or its `migrations_postgresql` form). |
 | `recoverOnStart` | `bool` | `false` | Whether `start()` recovers every registered two-phase data source before the server takes a request. |
 | `recoveryMinimumAgeSeconds` | `int` | `60` | How old a prepared branch has to be before a recovery resolves it (`TomTransactionRecovery.minimumAge`). Longer than any two-phase transaction stays open, plus the clock skew between nodes: a younger branch may belong to a live process between its phases. |
 

@@ -1,0 +1,37 @@
+-- Reference migration for the data-key store of field-level encryption
+-- (`TomSqlDataKeyStore`).
+--
+-- Creates `tom_encryption_key`: one row per data key a `TomFieldKeyring` holds,
+-- each wrapped under a key-encryption key that never reaches the database. This
+-- file is the canonical DDL and is kept in sync with `encryptionKeyTable()` in
+-- `lib/src/tomserver/object_persistence/field_encryption_sql.dart`;
+-- `test/framework_schema_test.dart` replays this chain and compares the schema
+-- it builds against the descriptor, so the two cannot drift apart.
+--
+-- Apply this file when the application's database user is not permitted to run
+-- DDL, and configure the store with `createSchema: false`. Under tenancy with a
+-- database or schema per tenant, apply it in each tenant's tree: the store
+-- resolves its data source per call, so each tenant's data is encrypted under
+-- keys of its own.
+--
+-- Notes on the shape:
+--
+--  * `purpose` is `encryption` or `blindIndex`; `state` is `active` for the key
+--    new values use and `previous` for a key kept so older values decrypt.
+--  * `wrapped_key` is the data key encrypted under the key-encryption key
+--    `kek_id` names (base64): the table never holds a usable key.
+--  * `(purpose, state)` is indexed: a keyring reads the active keys first.
+-- A tenant table: `tenant` leads the primary key, so every tenant has data keys
+-- of its own also where tenants share one schema; a system table's values are
+-- encrypted under the keys of tenant ''.
+CREATE TABLE IF NOT EXISTS tom_encryption_key (
+  tenant      VARCHAR(32)  NOT NULL DEFAULT '',
+  key_id      VARCHAR(64)  NOT NULL,
+  purpose     VARCHAR(16)  NOT NULL,
+  state       VARCHAR(16)  NOT NULL,
+  kek_id      VARCHAR(128) NOT NULL,
+  wrapped_key VARCHAR(255) NOT NULL,
+  created_at  DATETIME(6)  NOT NULL,
+  PRIMARY KEY (tenant, key_id),
+  KEY ix_tom_encryption_key_purpose_state (purpose, state)
+);

@@ -274,6 +274,7 @@ TomAuditRecord({
   required TomAuditOutcome outcome,
   String? targetKey,
   String? requestId,
+  String? tenant,
   Map<String, Object?> before = const {},
   Map<String, Object?> after = const {},
   String? detail,
@@ -302,6 +303,7 @@ archive written by a version that had a value this one does not.
 | `targetKey` | `String?` | The key of the affected record, when the action names one (final). |
 | `outcome` | `TomAuditOutcome` | How the action ended (final). |
 | `requestId` | `String?` | The request the action ran under; stitches an endpoint denial to the repository writes of the same request (final). |
+| `tenant` | `String?` | The tenant the action happened in — the tenant in context when it was recorded — or `null` for the deployment's own work. The trail is a system table serving every tenant, and part of the hashed record (final). |
 | `before` | `Map<String, Object?>` | The changed fields' prior values, unmodifiable; empty for a create (final). |
 | `after` | `Map<String, Object?>` | The changed fields' new values, unmodifiable; empty for a delete (final). |
 | `detail` | `String?` | A human-readable note — the denial reason, the exception message (final). |
@@ -448,7 +450,8 @@ rather than a method on anything, because the question is storage-neutral even
 though answering it is not — the same arrangement `verifyAuditChain` has.
 
 - **Fields:** `from` (inclusive), `to` (exclusive), `actor`, `action`, `target`,
-  `targetKey`, `outcome`, `requestId`, `limit`, `newestFirst`.
+  `targetKey`, `outcome`, `requestId`, `tenant` (the entries recorded in that
+  tenant), `limit`, `newestFirst`.
 
 #### Constructors
 
@@ -462,6 +465,7 @@ const TomAuditQuery({
   String? targetKey,
   TomAuditOutcome? outcome,
   String? requestId,
+  String? tenant,
   int limit = TomAuditQuery.defaultLimit,
   bool newestFirst = true,
 })

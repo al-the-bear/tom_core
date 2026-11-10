@@ -36,6 +36,7 @@ const String defaultScimResourceTable = 'tom_scim_resource';
 TomFrameworkTable scimResourceTable(String table) => TomFrameworkTable(
   name: table,
   origin: 'scimResourceTable',
+  kind: TomTableKind.tenant,
   columns: const [
     TomFrameworkColumn('id', 'BIGINT', autoIncrement: true),
     TomFrameworkColumn('resource_type', 'VARCHAR(16)'),

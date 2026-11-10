@@ -260,7 +260,7 @@ void main() {
     test('a value naming a key nobody has is refused', () async {
       await install();
       const stored = '${TomFieldEncryption.prefix}no-such-key:AAAA';
-      await TomFieldEncryption.prepareRead([stored]);
+      await TomFieldEncryption.prepareRead([stored], entity: FixturePatient);
       expect(
         () => TomFieldEncryption.decrypt(_column('name'), stored),
         _refused('field_encryption.unknown_key'),
@@ -395,6 +395,38 @@ void main() {
   });
 
   group('everything around it', () {
+    test("a system table's keys are the system's, a tenant table's the "
+        "tenant's", () {
+      final datasource = MariaDbDatasource();
+      final keys = TomSqlDataKeyStore.over(datasource);
+      Object scopeOf(Type entity) => TomTenantContext.run(
+        'acme',
+        () => TomFieldEncryption.forEntity(entity, () => keys.scope),
+      );
+
+      expect(
+        TomFieldEncryption.forEntity(
+          FixtureSystemNote,
+          () => TomFieldEncryption.isSystemScope,
+        ),
+        isTrue,
+      );
+      expect(
+        TomFieldEncryption.forEntity(
+          FixtureTenantNote,
+          () => TomFieldEncryption.isSystemScope,
+        ),
+        isFalse,
+      );
+      expect(scopeOf(FixtureSystemNote), (datasource, ''));
+      expect(scopeOf(FixtureTenantNote), (datasource, 'acme'));
+      expect(
+        TomFieldEncryption.forEntity(FixtureTenantNote, () => keys.scope),
+        (datasource, ''),
+        reason: 'no tenant in context',
+      );
+    });
+
     test('an audit image never carries an encrypted value', () {
       final image = TomFieldEncryption.redact(FixturePatient, {
         'id': 1,

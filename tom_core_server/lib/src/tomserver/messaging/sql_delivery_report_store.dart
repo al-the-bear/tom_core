@@ -34,10 +34,10 @@ class TomSqlDeliveryReportStore extends TomDeliveryReportStore {
   /// deployment wants; set it `false` when the schema is owned by the migration
   /// module and the application's database user may not run DDL.
   TomSqlDeliveryReportStore(
-    this.datasource, {
+    TomDataSource datasource, {
     this.table = defaultDeliveryReportTable,
     this.createSchema = true,
-  });
+  }) : datasource = TomFrameworkTable.systemOf(datasource);
 
   /// Creates a store over the registered data source named [datasourceName].
   ///
@@ -51,7 +51,7 @@ class TomSqlDeliveryReportStore extends TomDeliveryReportStore {
     String table = defaultDeliveryReportTable,
     bool createSchema = true,
   }) {
-    final info = TomDataSourceInfo.getDataSourceInfo(datasourceName);
+    final info = TomDataSourceInfo.getBaseDataSourceInfo(datasourceName);
     if (info == null) {
       throw TomServerException(
         'messaging.delivery_report.unknown_datasource',

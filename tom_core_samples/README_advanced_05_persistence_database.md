@@ -332,7 +332,7 @@ for exactly this reason.
 The two **blob-table** migrations (`app_db` `[003]`, `auth_db` `[006]`) are
 byte-identical to each other and copied verbatim from the framework's canonical
 reference migrations under
-`tom_core_server/example/file_storage/migrations/main/tomcore/`. They are
+`tom_core_server/example/file_storage/migrations/system/main/tomcore/`. They are
 duplicated rather than shared because each server backs its store with its *own*
 database — that duplication is the two-database boundary, not an oversight. Since
 the DDL now lives in two sample files and the framework separately describes the

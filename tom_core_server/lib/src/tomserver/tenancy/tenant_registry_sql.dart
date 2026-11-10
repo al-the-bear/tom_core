@@ -29,6 +29,7 @@ const String defaultTenantTable = 'tom_tenant';
 TomFrameworkTable tenantTable(String table) => TomFrameworkTable(
   name: table,
   origin: 'tenantTable',
+  kind: TomTableKind.system,
   columns: const [
     TomFrameworkColumn('id', 'VARCHAR(32)'),
     TomFrameworkColumn('type', 'VARCHAR(64)'),

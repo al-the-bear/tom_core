@@ -26,6 +26,7 @@ import 'package:tom_core_server/tom_core_server.dart';
 /// auto-increment key, a plain `NOT NULL`, a nullable one, and one with a
 /// `DEFAULT`.
 TomFrameworkTable thingTable({String name = 'thing'}) => TomFrameworkTable(
+  kind: TomTableKind.system,
   name: name,
   origin: 'thingTable',
   columns: const [
@@ -173,6 +174,7 @@ void main() {
       // is the class of failure this type exists to remove.
       expect(
         () => TomFrameworkTable(
+          kind: TomTableKind.system,
           name: 'thing',
           origin: 'thingTable',
           columns: const [TomFrameworkColumn('id', 'BIGINT')],
@@ -191,6 +193,7 @@ void main() {
     test('an index naming no column is refused too', () {
       expect(
         () => TomFrameworkTable(
+          kind: TomTableKind.system,
           name: 'thing',
           origin: 'thingTable',
           columns: const [TomFrameworkColumn('id', 'BIGINT')],
@@ -214,6 +217,7 @@ void main() {
       // not a typo the guard should reject.
       expect(
         () => TomFrameworkTable(
+          kind: TomTableKind.system,
           name: 'thing',
           origin: 'thingTable',
           columns: const [TomFrameworkColumn('id', 'BIGINT')],
@@ -230,6 +234,7 @@ void main() {
       // could not have been valid SQL anyway.
       expect(
         () => TomFrameworkTable(
+          kind: TomTableKind.system,
           name: 'thing',
           origin: 'thingTable',
           columns: const [],
@@ -402,6 +407,7 @@ CREATE TABLE IF NOT EXISTS thing (
     test('a table with neither primary key nor index renders neither line', () {
       expect(
         TomFrameworkTable(
+          kind: TomTableKind.system,
           name: 'plain',
           origin: 'plainTable',
           columns: const [TomFrameworkColumn('value', 'BIGINT')],
@@ -479,6 +485,7 @@ CREATE TABLE IF NOT EXISTS thing (
       // The audit takes the whole set a store owns, because one statement may
       // join two of them.
       final other = TomFrameworkTable(
+        kind: TomTableKind.system,
         name: 'thing_chunk',
         origin: 'thingChunkTable',
         columns: const [TomFrameworkColumn('seq', 'BIGINT')],
@@ -487,6 +494,110 @@ CREATE TABLE IF NOT EXISTS thing (
           'SELECT seq FROM thing_chunk JOIN thing ON thing.id = thing_chunk.seq';
       expect(unknownFrameworkColumns(sql, tables), ['seq', 'thing_chunk']);
       expect(unknownFrameworkColumns(sql, [...tables, other]), isEmpty);
+    });
+  });
+
+  group('a table is placed by its kind', () {
+    final base = TomDataSourceInfo('main', const {});
+    final acme = TomDataSourceInfo('main@acme', const {});
+    final retail = TomDataSourceInfo('main@type.retail', const {});
+    TomFrameworkTable table(TomTableKind kind) => TomFrameworkTable(
+      kind: kind,
+      name: 'thing',
+      origin: 'thingTable',
+      columns: const [TomFrameworkColumn('id', 'BIGINT')],
+    );
+
+    setUp(() {
+      for (final info in [base, acme, retail]) {
+        TomDataSourceInfo.datasources[info.name] = info;
+      }
+      // Routes `main` to acme's pool inside acme, as a tenancy would.
+      TomDataSourceInfo.router = (info) =>
+          TomTenantContext.currentId == 'acme' && info.name == 'main'
+          ? acme
+          : info;
+      addTearDown(() {
+        TomDataSourceInfo.router = null;
+        for (final info in [base, acme, retail]) {
+          TomDataSourceInfo.datasources.remove(info.name);
+        }
+      });
+    });
+
+    test(
+      "a tenant's pool and a type's pool answer their system data source",
+      () {
+        expect(TomFrameworkTable.systemInfoOf(acme), same(base));
+        expect(TomFrameworkTable.systemInfoOf(retail), same(base));
+        expect(TomFrameworkTable.systemInfoOf(base), same(base));
+      },
+    );
+
+    test('a pool whose base is not registered answers itself', () {
+      final orphan = TomDataSourceInfo('gone@acme', const {});
+      expect(TomFrameworkTable.systemInfoOf(orphan), same(orphan));
+    });
+
+    test('a system table is placed in the system data source, also inside a '
+        'tenant and whichever pool it holds', () {
+      final system = table(TomTableKind.system);
+      TomTenantContext.run('acme', () {
+        expect(system.placedInfo(base), same(base));
+        expect(system.placedInfo(acme), same(base));
+      });
+      expect(system.placedInfo(retail), same(base));
+    });
+
+    test(
+      "a tenant table is placed where the tenant in context's data lives",
+      () {
+        final tenant = table(TomTableKind.tenant);
+        expect(tenant.placedInfo(base), same(base));
+        TomTenantContext.run('acme', () {
+          expect(tenant.placedInfo(base), same(acme));
+          // A store holding acme's pool still routes from the system base.
+          expect(tenant.placedInfo(acme), same(acme));
+        });
+      },
+    );
+
+    test('a data source registered under no name is used as it is', () {
+      final unregistered = MariaDbDatasource();
+      for (final kind in TomTableKind.values) {
+        TomTenantContext.run('acme', () {
+          expect(table(kind).placed(unregistered), same(unregistered));
+        });
+      }
+      expect(TomFrameworkTable.systemOf(unregistered), same(unregistered));
+    });
+
+    test('every framework table declares its kind as the classification '
+        'expects', () {
+      const tenantTables = {
+        'tom_message_inbox',
+        'tom_idempotency_key',
+        'tom_saga',
+        'tom_encryption_key',
+        'tom_subject_key',
+        'tom_scim_resource',
+        'tom_sync_change',
+        'tom_sync_sequence',
+      };
+      for (final t in frameworkOwnedTables()) {
+        expect(
+          t.kind,
+          tenantTables.contains(t.name)
+              ? TomTableKind.tenant
+              : TomTableKind.system,
+          reason: t.name,
+        );
+      }
+      expect(frameworkTenantTables().map((t) => t.name).toSet(), tenantTables);
+      expect(
+        frameworkSystemTables().length + frameworkTenantTables().length,
+        frameworkOwnedTables().length,
+      );
     });
   });
 }

@@ -118,6 +118,7 @@ const String defaultDecisionTable = 'tom_transaction_decision';
 TomFrameworkTable decisionTable(String table) => TomFrameworkTable(
   name: table,
   origin: 'decisionTable',
+  kind: TomTableKind.system,
   columns: const [
     TomFrameworkColumn('transaction_id', 'VARCHAR(64)'),
     TomFrameworkColumn('branch_id', 'VARCHAR(200)'),
@@ -155,7 +156,7 @@ class TomSqlDecisionLog implements TomTransactionDecisionLog {
   final TomSchemaProvisioning _schema = TomSchemaProvisioning();
 
   Future<TomDataSource> _datasource() async {
-    final info = TomDataSourceInfo.getDataSourceInfo(datasourceName);
+    final info = TomDataSourceInfo.getBaseDataSourceInfo(datasourceName);
     if (info == null) {
       throw TomTransactionRecoveryException(
         'transactions.recovery.no_datasource',

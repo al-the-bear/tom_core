@@ -978,19 +978,21 @@ configuration names a data source (below). It keeps its records in
 `tom_idempotency_key` (`idempotencyTable`, `idempotencyTableDdl`,
 `defaultIdempotencyTable`), creating the table on first use unless
 `createSchema` is off; the reference migration is
-`example/endpoints/migrations/main/tomcore/[1]-create_tom_idempotency_key.sql`,
+`example/endpoints/migrations/tenant/default/main/[1]-create_tom_idempotency_key.sql`,
 with its PostgreSQL form under `migrations_postgresql`. The table is one of the
 `frameworkOwnedTables` the schema check covers (see
 [db_migration.md](db_migration.md#the-frameworks-own-tables)).
 
-The store resolves its data source **by name, on every call**, through the same
-routing a repository uses. Under tenancy, when that data source is one of
-`TomTenancy.datasources`, a tenant on its own schema or database keeps its keys
-there — see
-[tenancy.md](tenancy.md#what-stays-deployment-wide). Under shared tenancy one
-table serves every tenant, and the `tenant` column keeps their keys apart.
-`TomSqlIdempotencyStore.over(datasource)` binds one data source instead, for a
-deployment without per-tenant data sources and for tests. A name that resolves
+`tom_idempotency_key` is a tenant table: the store resolves its data source
+**by name, on every call**, and places it for the tenant in context, as a
+repository's tenant table is routed. Under tenancy, when that data source is one
+of `TomTenancy.datasources`, a tenant on its own schema or database keeps its
+keys there — see [tenancy.md](tenancy.md#framework-tables). Under shared
+tenancy its type's shared schema serves its tenants, and the `tenant` column
+keeps their keys apart. `TomSqlIdempotencyStore.over(datasource)` holds one data
+source object instead, placed the same way on every call — for a deployment
+that builds its stores from objects, and for tests, whose unregistered data
+source is used as it is. A name that resolves
 to no registered data source fails the request with
 `endpoint.idempotency.no_datasource`, raised by the store rather than answered
 as a refusal, so it reaches the server's error mapping as a `500`.

@@ -216,6 +216,11 @@ class TomAuditRecord {
   /// interactions rather than a flat list of events.
   final String? requestId;
 
+  /// The tenant the action happened in — the tenant in context when it was
+  /// recorded — or `null` for the deployment's own work. The trail is a system
+  /// table that serves every tenant, so a tenant's entries are found by it.
+  final String? tenant;
+
   /// The changed fields' prior values; empty for a create.
   final Map<String, Object?> before;
 
@@ -235,6 +240,7 @@ class TomAuditRecord {
     required this.outcome,
     this.targetKey,
     this.requestId,
+    this.tenant,
     Map<String, Object?> before = const {},
     Map<String, Object?> after = const {},
     this.detail,
@@ -303,6 +309,7 @@ class TomAuditRecord {
     if (targetKey != null) 'targetKey': targetKey,
     'outcome': outcome.name,
     if (requestId != null) 'requestId': requestId,
+    if (tenant != null) 'tenant': tenant,
     if (before.isNotEmpty) 'before': before,
     if (after.isNotEmpty) 'after': after,
     if (detail != null) 'detail': detail,
@@ -331,6 +338,7 @@ class TomAuditRecord {
       orElse: () => TomAuditOutcome.failed,
     ),
     requestId: json['requestId'] as String?,
+    tenant: json['tenant'] as String?,
     before: (json['before'] as Map?)?.cast<String, Object?>() ?? const {},
     after: (json['after'] as Map?)?.cast<String, Object?>() ?? const {},
     detail: json['detail'] as String?,

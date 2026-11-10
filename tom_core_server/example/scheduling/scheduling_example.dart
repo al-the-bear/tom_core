@@ -221,23 +221,23 @@ void run() {
   // The five shipped files below carry no @<env> tag, so they apply in every
   // environment — a scheduling schema is not a per-environment fixture.
   print(
-    '   example/scheduling/migrations/main/tomcore/'
+    '   example/scheduling/migrations/system/main/tomcore/'
     '[1]-create_tom_job_run.sql',
   );
   print(
-    '   example/scheduling/migrations/main/tomcore/'
+    '   example/scheduling/migrations/system/main/tomcore/'
     '[2]-create_tom_lease.sql',
   );
   print(
-    '   example/scheduling/migrations/main/tomcore/'
+    '   example/scheduling/migrations/system/main/tomcore/'
     '[3]-create_tom_scheduler_node.sql',
   );
   print(
-    '   example/scheduling/migrations/main/tomcore/'
+    '   example/scheduling/migrations/system/main/tomcore/'
     '[4]-create_tom_job_pause.sql',
   );
   print(
-    '   example/scheduling/migrations/main/tomcore/'
+    '   example/scheduling/migrations/system/main/tomcore/'
     '[5]-create_tom_job_run_archive.sql',
   );
   print(

@@ -139,14 +139,14 @@ class TomSqlJobStore implements TomJobStore {
   /// [purgeFinished] removes from the queue; with `null` a purge deletes them
   /// instead.
   TomSqlJobStore(
-    this.datasource, {
+    TomDataSource datasource, {
     this.table = defaultJobRunTable,
     this.pauseTable = defaultJobPauseTable,
     this.archiveTable = defaultJobRunArchiveTable,
     this.createSchema = true,
     this.candidateFactor = 8,
     this.nodes,
-  });
+  }) : datasource = TomFrameworkTable.systemOf(datasource);
 
   /// Creates a store over the registered data source named [datasourceName].
   ///
@@ -163,7 +163,7 @@ class TomSqlJobStore implements TomJobStore {
     int candidateFactor = 8,
     TomSqlSchedulerNodes? nodes,
   }) {
-    final info = TomDataSourceInfo.getDataSourceInfo(datasourceName);
+    final info = TomDataSourceInfo.getBaseDataSourceInfo(datasourceName);
     if (info == null) {
       throw TomServerException(
         'scheduling.store.unknown_datasource',

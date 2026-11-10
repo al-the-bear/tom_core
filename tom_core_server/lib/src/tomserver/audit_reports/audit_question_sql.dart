@@ -17,6 +17,7 @@ const String defaultAuditQuestionTable = 'tom_audit_question';
 TomFrameworkTable auditQuestionTable(String table) => TomFrameworkTable(
   name: table,
   origin: 'auditQuestionTable',
+  kind: TomTableKind.system,
   columns: const [
     TomFrameworkColumn('id', 'VARCHAR(64)'),
     TomFrameworkColumn('owner', 'VARCHAR(191)'),

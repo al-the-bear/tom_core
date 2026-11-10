@@ -42,6 +42,7 @@ import '../audit/sql_audit_sql.dart';
 import '../audit_reports/audit_question_sql.dart';
 import '../authentication/oauth_state_sql.dart';
 import '../authentication/scim_sql.dart';
+import '../authentication/sql_api_key_store.dart';
 import '../cache/invalidation_sql.dart';
 import '../datasources/datasource_initialization.dart';
 import '../datasources/framework_table.dart';
@@ -58,6 +59,7 @@ import '../object_persistence/annotation_analyzer.dart';
 import '../object_persistence/field_encryption_sql.dart';
 import '../object_persistence/persistence_annotations.dart';
 import '../privacy/subject_keys_sql.dart';
+import '../ratelimit/sql_rate_limiter.dart';
 import '../sync/sync_sql.dart';
 import '../tenancy/tenant_registry_sql.dart';
 import '../scheduling/sql_scheduling_sql.dart';
@@ -79,8 +81,11 @@ import 'schema_model.dart';
 /// The direction of the dependency is deliberate: this module reaches into
 /// `scheduling/`, `file_storage/`, `audit/`, `authentication/`, `messaging/`,
 /// `cache/`, `endpoints/`, `transactions/`, `object_persistence/`, `privacy/`,
-/// `export/`, `sync/` and `tenancy/` for their descriptors, and none of them
-/// reaches back.
+/// `export/`, `sync/`, `tenancy/` and `ratelimit/` for their descriptors, and
+/// none of them reaches back.
+///
+/// Each descriptor declares its [TomTableKind]: [frameworkSystemTables] and
+/// [frameworkTenantTables] split this list by it.
 /// A deployment can run the scheduler without ever loading a migration.
 List<TomFrameworkTable> frameworkOwnedTables({
   String jobRun = defaultJobRunTable,
@@ -109,6 +114,9 @@ List<TomFrameworkTable> frameworkOwnedTables({
   String syncChange = defaultSyncChangeTable,
   String syncSequence = defaultSyncSequenceTable,
   String tenant = defaultTenantTable,
+  String serviceAccount = defaultServiceAccountTable,
+  String apiKey = defaultApiKeyTable,
+  String rateLimit = defaultRateLimitTable,
 }) => [
   jobRunTable(jobRun),
   leaseTable(lease),
@@ -136,6 +144,23 @@ List<TomFrameworkTable> frameworkOwnedTables({
   syncChangeTable(syncChange),
   syncSequenceTable(syncSequence),
   tenantTable(tenant),
+  serviceAccountTable(serviceAccount),
+  apiKeyTable(apiKey),
+  rateLimitTable(rateLimit),
+];
+
+/// The framework's system tables ([TomTableKind.system]), at their default
+/// names: the deployment's, in the system schema.
+List<TomFrameworkTable> frameworkSystemTables() => [
+  for (final table in frameworkOwnedTables())
+    if (table.kind == TomTableKind.system) table,
+];
+
+/// The framework's tenant tables ([TomTableKind.tenant]), at their default
+/// names: where each tenant's data lives.
+List<TomFrameworkTable> frameworkTenantTables() => [
+  for (final table in frameworkOwnedTables())
+    if (table.kind == TomTableKind.tenant) table,
 ];
 
 /// Compares framework-owned table descriptors against everything else that
@@ -215,6 +240,65 @@ class TomFrameworkSchemaCheck {
       schema: schema,
       chain: [for (final artifact in chain) artifact.basename],
       divergences: divergences,
+    );
+  }
+
+  /// Checks one migration tree of [kind] — the `system/` tree or a tenant
+  /// type's `tenant/` tree: [chain] builds the [tables] of that kind exactly
+  /// ([verifyChain]) and creates no table of the other kind
+  /// ([TomSchemaDivergenceKind.misplacedTable]).
+  ///
+  /// [tables] are framework descriptors of both kinds, by default
+  /// [frameworkOwnedTables]; [entities] are entity types whose tables the tree
+  /// may create, classified by `@TomTenantTable` — the framework's own tenant
+  /// entities among them.
+  TomSchemaConvergenceReport verifyTree({
+    required TomTableKind kind,
+    required String datasource,
+    required String schema,
+    required List<TomMigrationArtifact> chain,
+    Iterable<TomFrameworkTable>? tables,
+    Iterable<Type> entities = const [],
+  }) {
+    final all = tables ?? frameworkOwnedTables();
+    final report = verifyChain(
+      datasource: datasource,
+      schema: schema,
+      tables: [
+        for (final table in all)
+          if (table.kind == kind) table,
+      ],
+      chain: chain,
+    );
+    final otherKind = {
+      for (final table in all)
+        if (table.kind != kind) table.name.toLowerCase(): table.origin,
+      for (final entity in entities)
+        if ((TomAnnotationAnalyzer.isTenantTable(entity)
+                ? TomTableKind.tenant
+                : TomTableKind.system) !=
+            kind)
+          if (TomAnnotationAnalyzer.findTable(entity) case final table?)
+            table.table.toLowerCase(): '$entity',
+    };
+    final built = TomSchemaDdlReader(dialect).replay(chain).schema.tables.keys;
+    return TomSchemaConvergenceReport(
+      datasource: datasource,
+      schema: schema,
+      chain: report.chain,
+      divergences: [
+        ...report.divergences,
+        for (final name in built)
+          if (otherKind[name.toLowerCase()] case final origin?)
+            TomSchemaDivergence(
+              kind: TomSchemaDivergenceKind.misplacedTable,
+              table: name,
+              origin: origin,
+              message:
+                  'the ${kind.name} tree creates $name, a '
+                  '${kind == TomTableKind.system ? 'tenant' : 'system'} table',
+            ),
+      ],
     );
   }
 

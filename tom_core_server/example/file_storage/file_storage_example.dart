@@ -205,7 +205,7 @@ archive:
   // 12. The database backend is the one that needs a schema, and a deployment
   //     whose credential may not run DDL has to apply that schema itself. For
   //     the default table names the two files in
-  //     `example/file_storage/migrations/main/tomcore/` are exactly it; for a
+  //     `example/file_storage/migrations/system/main/tomcore/` are exactly it; for a
   //     store constructed with `manifestTable:` / `chunkTable:` there is no
   //     shipped file, and these two functions are where its DDL comes from.
   //     Construct such a store with `createSchema: false` and apply what they

@@ -168,13 +168,13 @@ class TomSqlSchedulerNodes {
   /// published so peers judge it by its own cadence. Set it to the scheduler's
   /// tick interval.
   TomSqlSchedulerNodes(
-    this.datasource, {
+    TomDataSource datasource, {
     required this.nodeId,
     this.table = defaultSchedulerNodeTable,
     this.checkinInterval = const Duration(seconds: 30),
     this.createSchema = true,
     this.slack = defaultNodeFailureSlack,
-  });
+  }) : datasource = TomFrameworkTable.systemOf(datasource);
 
   /// Creates the roll call over the registered data source named
   /// [datasourceName].
@@ -191,7 +191,7 @@ class TomSqlSchedulerNodes {
     bool createSchema = true,
     Duration slack = defaultNodeFailureSlack,
   }) {
-    final info = TomDataSourceInfo.getDataSourceInfo(datasourceName);
+    final info = TomDataSourceInfo.getBaseDataSourceInfo(datasourceName);
     if (info == null) {
       throw TomServerException(
         'scheduling.nodes.unknown_datasource',

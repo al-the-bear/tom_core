@@ -69,11 +69,12 @@ class TomSqlLeaseLock extends TomLeaseLock {
   /// computed by the database, so the two nodes never have to agree about
   /// *whose* clock the database is using, only about the instant it was told.
   TomSqlLeaseLock(
-    this.datasource, {
+    TomDataSource datasource, {
     this.table = defaultLeaseTable,
     this.createSchema = true,
     DateTime Function()? clock,
-  }) : clock = clock ?? DateTime.now;
+  }) : datasource = TomFrameworkTable.systemOf(datasource),
+       clock = clock ?? DateTime.now;
 
   /// Creates a lock over the registered data source named [datasourceName].
   ///
@@ -87,7 +88,7 @@ class TomSqlLeaseLock extends TomLeaseLock {
     bool createSchema = true,
     DateTime Function()? clock,
   }) {
-    final info = TomDataSourceInfo.getDataSourceInfo(datasourceName);
+    final info = TomDataSourceInfo.getBaseDataSourceInfo(datasourceName);
     if (info == null) {
       throw TomServerException(
         'scheduling.lock.unknown_datasource',

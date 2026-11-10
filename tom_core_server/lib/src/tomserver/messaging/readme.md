@@ -236,7 +236,7 @@ Source: `inbox.dart`, `inbox_sql.dart`
 | ---- | ---------- |
 | `TomInbox` | The contract: `process(consumer, messageId, work, {acknowledge})` records the message and runs `work` in one transaction, then acknowledges — a duplicate too, so the broker stops redelivering it. A failing `work` rolls back, is not acknowledged and is rethrown. `recordAndRun` is the atomic step an implementation supplies; `hasProcessed` and `purgeProcessedBefore` read and prune the records. |
 | `TomInboxOutcome` | `processed` or `duplicate`. |
-| `TomSqlInbox` · `TomInboxRow` | The inbox in a table of the data source the consumer's work writes to, so the record and the work commit together; two simultaneous deliveries are serialised by the table's key. |
+| `TomSqlInbox` · `TomInboxRow` | The inbox in a table of the data source the consumer's work writes to, so the record and the work commit together — a tenant table, placed for the tenant in context on every call; two simultaneous deliveries are serialised by the table's key. |
 | `TomMemoryInbox` | The same contract in a map of the process — for tests; it forgets everything on restart. |
 | `inboxTable` · `inboxTableDdl` · `defaultInboxTable` | `tom_message_inbox`, declared once and listed by `frameworkOwnedTables`. |
 | `TomInboxException` | An empty or over-long consumer name or message id (`messaging.inbox.invalid_consumer`, `messaging.inbox.invalid_message_id`). |

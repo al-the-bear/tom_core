@@ -451,7 +451,7 @@ The primary key is `(tenant, subject_id)`. `TomSqlSubjectKeyStore('main')`
 resolves the data source by name on every call and creates the table on first
 use in each data source; with `createSchema: false` the deployment applies the
 reference migration
-`example/privacy/migrations/main/tomcore/[1]-create_tom_subject_key.sql` (or its
+`example/privacy/migrations/tenant/default/main/[1]-create_tom_subject_key.sql` (or its
 `migrations_postgresql` form). `TomSqlSubjectKeyStore.over(datasource)` binds
 one data source once; an unregistered name raises `privacy.no_datasource`.
 `TomMemorySubjectKeyStore` keeps them in memory, for tests. Two writers creating
@@ -585,13 +585,13 @@ table's policy in every tenant in turn and reports their sum, since retention is
 the deployment's rule rather than a request's. A system table's policy runs
 once.
 
-The subject keys follow the data: `TomSqlSubjectKeyStore` resolves its data
-source by name on every call, through the tenant routing, so under `schema` or
-`database` isolation each tenant's subject keys are kept in the tenant's own
+The subject keys follow the data: `tom_subject_key` is a tenant table, and
+`TomSqlSubjectKeyStore` places its data source on every call, so under `schema`
+or `database` isolation each tenant's subject keys are kept in the tenant's own
 schema or database — created there on first use or, with `createSchema: false`,
-by the migration in the per-tenant tree — and under `shared` isolation in the one
-table, told apart by its `tenant` column. See
-[tenancy.md](tenancy.md#what-stays-deployment-wide).
+by the migration in the tenant tree — and under `shared` isolation in its type's
+shared schema, told apart by its `tenant` column. See
+[tenancy.md](tenancy.md#framework-tables).
 
 ## Framework Entities That Declare Subjects
 

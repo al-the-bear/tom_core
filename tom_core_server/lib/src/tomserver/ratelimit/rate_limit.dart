@@ -425,7 +425,7 @@ class TomRateLimits {
         final name = raw['datasource'];
         final info = name == null
             ? null
-            : TomDataSourceInfo.getDataSourceInfo('$name');
+            : TomDataSourceInfo.getBaseDataSourceInfo('$name');
         if (info == null) {
           throw TomRateLimitException(
             'rate_limit.config.missing_datasource',

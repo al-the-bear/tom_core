@@ -23,14 +23,15 @@ import 'scim_sql.dart';
 
 /// A [TomScimStore] over the SCIM resource table in [datasource].
 ///
-/// Built over a data source **name** ([TomSqlScimStore.named]), the store is
-/// routed like a repository: every call reaches the table in the data source
-/// the tenant in context resolves to — its schema or its database under
-/// `schema` and `database` isolation — so two tenants' identity providers see
-/// only their own users and groups, and a tenant restored on its own brings
-/// back its own SCIM resources. A name tenancy does not route, or a deployment
-/// without tenancy, reaches the one table. Built over a [TomDataSource]
-/// directly, the store always uses that one.
+/// `tom_scim_resource` is a tenant table ([TomTableKind.tenant]): every call
+/// reaches it where the tenant in context's data lives
+/// ([TomFrameworkTable.placed]) — its schema or its database under `schema`
+/// and `database` isolation, its type's shared schema under `shared` — so two
+/// tenants' identity providers see only their own users and groups, and a
+/// tenant restored on its own brings back its own SCIM resources. That holds
+/// whether the store is built over a data source name
+/// ([TomSqlScimStore.named]) or a registered [TomDataSource]; one registered
+/// under no name is used as it is.
 ///
 /// Every row also names its tenant (`''` for none), and every statement reads
 /// and writes only the rows of the tenant in context — the row predicate
@@ -39,8 +40,8 @@ import 'scim_sql.dart';
 /// tenant in the one table, it is the wall, so the same `userName` in two
 /// tenants is two users and neither tenant's client sees the other's.
 class TomSqlScimStore implements TomScimStore {
-  /// Creates a store over [datasource], which every call uses whatever the
-  /// tenant.
+  /// Creates a store over [datasource], placed per call for the tenant in
+  /// context.
   ///
   /// With [createSchema] left `true` the table is created on first use; set it
   /// `false` when the schema is owned by the migration module.
@@ -75,8 +76,10 @@ class TomSqlScimStore implements TomScimStore {
 
   final TomDataSource Function() _resolve;
 
-  /// The data source the table lives in for the tenant in context.
-  TomDataSource get datasource => _resolve();
+  /// The data source the table lives in for the tenant in context: the
+  /// tenant table's place ([TomFrameworkTable.placed]) of the data source the
+  /// store was built over.
+  TomDataSource get datasource => _resources.placed(_resolve());
 
   /// The SCIM resource table.
   final String table;
@@ -93,9 +96,9 @@ class TomSqlScimStore implements TomScimStore {
   /// The tenant in context as the `tenant` column holds it — `''` for none.
   static String get _tenant => TomTenantContext.currentId ?? '';
 
-  /// The data source [name] resolves to for the tenant in context.
+  /// The registered data source [name], unrouted; [datasource] places it.
   static TomDataSource _routed(String name) {
-    final info = TomDataSourceInfo.getDataSourceInfo(name);
+    final info = TomDataSourceInfo.getBaseDataSourceInfo(name);
     if (info == null) {
       throw TomServerException(
         'scim.store.unknown_datasource',

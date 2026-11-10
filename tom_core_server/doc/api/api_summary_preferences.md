@@ -509,7 +509,7 @@ None — this module exposes no top-level functions or constants. The API id and
 endpoint id constants it binds to are the kernel's (see
 `tom_core_kernel/doc/api/api_summary_preferences.md`).
 
-The framework migrations `migrations/main/tomcore/[1]-create_tom_user_preference.sql`
+The framework migrations `migrations/tenant/default/main/[1]-create_tom_user_preference.sql`
 and `[2]-create_tom_preference_default.sql` reproduce
 `TomUserPreference.createTableSql` and `TomPreferenceDefault.createTableSql`
 verbatim — pinned by `test/reference_migrations_test.dart` — and are untagged so

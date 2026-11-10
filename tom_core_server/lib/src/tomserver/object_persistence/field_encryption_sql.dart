@@ -25,7 +25,9 @@ const String defaultEncryptionKeyTable = 'tom_encryption_key';
 TomFrameworkTable encryptionKeyTable(String table) => TomFrameworkTable(
   name: table,
   origin: 'encryptionKeyTable',
+  kind: TomTableKind.tenant,
   columns: const [
+    TomFrameworkColumn('tenant', 'VARCHAR(32)', defaultValue: "''"),
     TomFrameworkColumn('key_id', 'VARCHAR(64)'),
     TomFrameworkColumn('purpose', 'VARCHAR(16)'),
     TomFrameworkColumn('state', 'VARCHAR(16)'),
@@ -33,7 +35,7 @@ TomFrameworkTable encryptionKeyTable(String table) => TomFrameworkTable(
     TomFrameworkColumn('wrapped_key', 'VARCHAR(255)'),
     TomFrameworkColumn('created_at', 'DATETIME(6)'),
   ],
-  primaryKey: const ['key_id'],
+  primaryKey: const ['tenant', 'key_id'],
   keys: const [
     TomFrameworkKey('purpose_state', ['purpose', 'state']),
   ],

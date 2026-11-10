@@ -190,12 +190,12 @@ class TomSqlAuditSink implements TomAuditSink {
   /// made the write-once arrangement should set it `true`, because a silently
   /// mis-granted credential is precisely the failure it exists to catch.
   TomSqlAuditSink(
-    this.datasource, {
+    TomDataSource datasource, {
     required this.writer,
     this.table = defaultAuditTrailTable,
     this.createSchema = true,
     this.requireWriteOnce = false,
-  });
+  }) : datasource = TomFrameworkTable.systemOf(datasource);
 
   /// Creates a sink over the registered data source named [datasourceName].
   ///
@@ -211,7 +211,7 @@ class TomSqlAuditSink implements TomAuditSink {
     bool createSchema = true,
     bool requireWriteOnce = false,
   }) {
-    final info = TomDataSourceInfo.getDataSourceInfo(datasourceName);
+    final info = TomDataSourceInfo.getBaseDataSourceInfo(datasourceName);
     if (info == null) {
       throw TomServerException(
         'audit.sink.unknown_datasource',
@@ -281,6 +281,7 @@ class TomSqlAuditSink implements TomAuditSink {
     'target_key': ':targetKey',
     'outcome': ':outcome',
     'request_id': ':requestId',
+    'tenant': ':tenant',
     'previous_hash': ':previousHash',
     'hash': ':hash',
     'record': ':record',
@@ -487,6 +488,7 @@ class TomSqlAuditSink implements TomAuditSink {
     narrow('target', 'target', query.target);
     narrow('target_key', 'targetKey', query.targetKey);
     narrow('request_id', 'requestId', query.requestId);
+    narrow('tenant', 'tenant', query.tenant);
     // Enumerated, so the stored text is the name in full and no cut applies.
     narrow('action', 'action', query.action?.name);
     narrow('outcome', 'outcome', query.outcome?.name);
@@ -677,6 +679,7 @@ class TomSqlAuditSink implements TomAuditSink {
       'targetKey': _fit(record.targetKey, 'target_key'),
       'outcome': record.outcome.name,
       'requestId': _fit(record.requestId, 'request_id'),
+      'tenant': record.tenant,
       'previousHash': entry.previousHash,
       'hash': entry.hash,
       // Exactly the text that was hashed, so a row verifies against its own

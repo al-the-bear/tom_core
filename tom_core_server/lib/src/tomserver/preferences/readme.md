@@ -112,7 +112,7 @@ Future<void> main() async {
 > and nothing else.
 
 The tables the second step connects to are created by the framework migrations
-`example/preferences/migrations/main/tomcore/[1]-create_tom_user_preference.sql`
+`example/preferences/migrations/tenant/default/main/[1]-create_tom_user_preference.sql`
 and `[2]-create_tom_preference_default.sql` (PostgreSQL forms under
 `migrations_postgresql/`), which are untagged so they apply in every
 environment. A deployment with defaults also installs the defaults bean:

@@ -224,8 +224,9 @@ the declaration.
 | `last_delivered_at` | `DATETIME(6) NULL` | The last delivery |
 | `updated_at` | `DATETIME(6)` | When the question was last saved |
 
-The question table is the deployment's and is not routed per tenant; the trail
-it reads is the audit module's, which is deployment-wide too.
+The question table is a system table, kept in the system data source; the
+trail it reads is the audit module's, a system table too, whose entries record
+their tenant.
 
 ## Wiring a Server
 

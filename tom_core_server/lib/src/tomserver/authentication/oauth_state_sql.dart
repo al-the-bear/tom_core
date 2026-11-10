@@ -64,6 +64,7 @@ const String defaultOAuthStateTable = 'tom_oauth_state';
 TomFrameworkTable oauthStateTable(String table) => TomFrameworkTable(
   name: table,
   origin: 'oauthStateTable',
+  kind: TomTableKind.system,
   columns: const [
     TomFrameworkColumn('state', 'VARCHAR(191)'),
     TomFrameworkColumn('provider_id', 'VARCHAR(191)'),

@@ -3296,8 +3296,10 @@ TomMemoryInbox({DateTime Function()? clock})
 ### TomSqlInbox
 
 The inbox in a SQL data source, written in the same transaction as the
-consumer's work. The consumer's work must write through `datasource`, so both
-commit together; work on another data source joins the transaction only when
+consumer's work. A tenant table: every call reaches it where the tenant in
+context's data lives (`placedDatasource`), and every row names its `tenant`,
+which leads the primary key. The consumer's work must write through that data
+source, so both commit together; work on another data source joins the transaction only when
 both are XA data sources, and work that is not a database write is not covered.
 Two simultaneous deliveries of one message are serialised by the table's
 primary key: the second insert waits on the first transaction and finds the row
@@ -3327,7 +3329,8 @@ and passes `false`. `clock` supplies the processing time, defaulting to
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `datasource` | `final TomDataSource` | The data source the inbox and the consumer's work share. |
+| `datasource` | `final TomDataSource` | The data source the store was built over. |
+| `placedDatasource` | `TomDataSource` | *(getter)* Where the inbox and the consumer's work meet for the tenant in context: the inbox table's place (`TomFrameworkTable.placed`) of `datasource`. |
 | `table` | `final String` | The inbox table's name. |
 | `createSchema` | `final bool` | Whether the table is created on first use. |
 
@@ -3335,10 +3338,10 @@ and passes `false`. `clock` supplies the processing time, defaulting to
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `ensureSchema` | `Future<void> ensureSchema()` | Creates the inbox table if it does not exist. Idempotent, and called by every operation — outside the consumer's transaction, because MariaDB commits DDL implicitly; exposed so a start-up can provision the table before consuming. |
+| `ensureSchema` | `Future<void> ensureSchema()` | Creates the inbox table in the tenant in context's data source if it does not exist, once per data source. Idempotent, and called by every operation — outside the consumer's transaction, because MariaDB commits DDL implicitly; exposed so a start-up can provision the table before consuming. |
 | `recordAndRun` | `Future<TomInboxOutcome> recordAndRun(String consumer, String messageId, FutureOr<void> Function() work)` | *(override)* In `TomTransactionManager.runInTransaction`: inserts the row, ignoring a conflict, and answers `duplicate` when no row was inserted; otherwise runs `work`. A throwing `work` rolls back the insert with it. |
 | `hasProcessed` | `Future<bool> hasProcessed(String consumer, String messageId)` | *(override)* Whether the row exists. |
-| `purgeProcessedBefore` | `Future<int> purgeProcessedBefore(DateTime before)` | *(override)* Deletes the rows whose `processed_at` is before `before`; the column is indexed. |
+| `purgeProcessedBefore` | `Future<int> purgeProcessedBefore(DateTime before)` | *(override)* Deletes the rows whose `processed_at` is before `before` in the data source the tenant in context reaches — every tenant's rows kept there; a tenant with a schema or database of its own is purged inside that tenant. The column is indexed. |
 | `deleteAll` | `Future<void> deleteAll()` | Empties the inbox. Not part of `TomInbox` — no consumer should want it; it exists for provisioning and tests. |
 
 ### TomInboxRow

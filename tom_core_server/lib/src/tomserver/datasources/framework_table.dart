@@ -48,6 +48,7 @@
 library;
 
 import 'datasource_initialization.dart';
+import 'sql_datasource.dart';
 import 'sql_dialects.dart';
 import '../transactions/transaction_manager.dart';
 
@@ -157,6 +158,22 @@ class TomFrameworkKey {
       _canonical.keyDefinition(nameOn(table), columns, unique: unique);
 }
 
+/// Whether a framework table holds the deployment's rows or one tenant's.
+///
+/// The kind decides where the store reaches the table
+/// ([TomFrameworkTable.placed]) and which migration tree ships it: a
+/// **system** table lives in the system schema — the base data source's own —
+/// and is never routed; a **tenant** table lives where the current tenant's
+/// data lives, and its migration is part of every tenant type's tree.
+enum TomTableKind {
+  /// The deployment's: the system schema, never routed. A system table that
+  /// does work for tenants carries a `tenant` column.
+  system,
+
+  /// One tenant's: routed to the current tenant's schema or database.
+  tenant,
+}
+
 /// A table the framework owns, declared once.
 class TomFrameworkTable {
   /// Declares a table called [name].
@@ -168,6 +185,7 @@ class TomFrameworkTable {
     required this.name,
     required this.columns,
     required this.origin,
+    required this.kind,
     this.primaryKey = const [],
     this.keys = const [],
   }) : _byName = {
@@ -210,6 +228,9 @@ class TomFrameworkTable {
   /// The table's name, which is a per-instance argument of the owning store.
   final String name;
 
+  /// Whether the table is the deployment's or a tenant's.
+  final TomTableKind kind;
+
   /// The columns, in declaration order.
   final List<TomFrameworkColumn> columns;
 
@@ -223,6 +244,64 @@ class TomFrameworkTable {
   final String origin;
 
   final Map<String, TomFrameworkColumn> _byName;
+
+  /// Where a store of this table reaches it in the current zone — the one
+  /// placement rule every framework store follows, whatever it was built over:
+  /// a data source name, a [TomDataSourceInfo] or a data source handed in.
+  ///
+  /// [held] is the data source the store holds. Its **system** data source is
+  /// the registered base it belongs to: [held] itself, or for a pool tenancy
+  /// opened over a tenant's schema or database (`<name>@<tenant>`,
+  /// `<name>@type.<type>`) the data source `<name>`. A [TomTableKind.system]
+  /// table is reached there, never routed — also inside a tenant; a
+  /// [TomTableKind.tenant] table through [TomDataSourceInfo.route] of it — the
+  /// current tenant's schema or database, or the system data source with no
+  /// tenant in context.
+  TomDataSourceInfo placedInfo(TomDataSourceInfo held) {
+    final system = systemInfoOf(held);
+    return kind == TomTableKind.system
+        ? system
+        : TomDataSourceInfo.route(system);
+  }
+
+  /// [placedInfo] for a store holding the data source object [held]. A data
+  /// source registered under no name — a test's fake, a store's private pool —
+  /// is not placed and is used as it is.
+  TomDataSource placed(TomDataSource held) {
+    final info = _registeredInfoOf(held);
+    return info == null ? held : placedInfo(info).datasource;
+  }
+
+  /// The system data source of the data source object [held] — where every
+  /// [TomTableKind.system] table is reached, whatever the zone: [held] itself,
+  /// or the base `<name>` of a tenant pool `<name>@…`. A data source
+  /// registered under no name is returned as it is.
+  ///
+  /// A system store applies it once, when it is built, because a system
+  /// table's place does not depend on the tenant in context.
+  static TomDataSource systemOf(TomDataSource held) {
+    final info = _registeredInfoOf(held);
+    return info == null ? held : systemInfoOf(info).datasource;
+  }
+
+  static TomDataSourceInfo? _registeredInfoOf(TomDataSource held) {
+    final name = held is TomSqlDatasource ? held.registeredName : null;
+    final info = name == null
+        ? null
+        : TomDataSourceInfo.getBaseDataSourceInfo(name);
+    return info == null || !identical(info.datasource, held) ? null : info;
+  }
+
+  /// The registered system data source [info] belongs to: the base `<name>`
+  /// of a tenant pool `<name>@…`, else [info] itself.
+  static TomDataSourceInfo systemInfoOf(TomDataSourceInfo info) {
+    final at = info.name.indexOf('@');
+    if (at < 0) return info;
+    return TomDataSourceInfo.getBaseDataSourceInfo(
+          info.name.substring(0, at),
+        ) ??
+        info;
+  }
 
   /// The column names, in declaration order.
   List<String> get columnNames => [for (final c in columns) c.name];

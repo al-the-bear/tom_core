@@ -55,7 +55,7 @@ Directory _migrationDirectory() {
     '${root.path}/${TestDatabase.datasourceName}/$_migrationSchema',
   )..createSync(recursive: true);
   final source = Directory(
-    'example/scheduling/${TestDatabase.referenceMigrations}/main/tomcore',
+    'example/scheduling/${TestDatabase.referenceMigrations}/system/main/tomcore',
   );
   for (final file in source.listSync().whereType<File>()) {
     file.copySync('${target.path}/${file.uri.pathSegments.last}');

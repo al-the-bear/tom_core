@@ -22,10 +22,10 @@ class TomSqlSuppressionList extends TomSuppressionList {
   /// Creates a list over [datasource] in [table], creating the table on first
   /// use when [createSchema] is set.
   TomSqlSuppressionList(
-    this.datasource, {
+    TomDataSource datasource, {
     this.table = defaultSuppressionTable,
     this.createSchema = true,
-  });
+  }) : datasource = TomFrameworkTable.systemOf(datasource);
 
   /// A list over the registered data source [datasourceName].
   factory TomSqlSuppressionList.named(
@@ -33,7 +33,7 @@ class TomSqlSuppressionList extends TomSuppressionList {
     String table = defaultSuppressionTable,
     bool createSchema = true,
   }) {
-    final info = TomDataSourceInfo.getDataSourceInfo(datasourceName);
+    final info = TomDataSourceInfo.getBaseDataSourceInfo(datasourceName);
     if (info == null) {
       throw TomServerException(
         'messaging.suppression.unknown_datasource',

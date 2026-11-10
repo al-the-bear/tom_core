@@ -27,7 +27,7 @@ class TomAuditReportException extends TomServerException {
 /// this module; refuses (`audit_reports.<part>.unknown_datasource`) a name the
 /// registry does not hold.
 TomDataSource tomAuditReportsDatasource(String name, String part) {
-  final info = TomDataSourceInfo.getDataSourceInfo(name);
+  final info = TomDataSourceInfo.getBaseDataSourceInfo(name);
   if (info == null) {
     throw TomAuditReportException(
       'audit_reports.$part.unknown_datasource',

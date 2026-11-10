@@ -77,6 +77,7 @@ const String defaultJobRunArchiveTable = 'tom_job_run_archive';
 TomFrameworkTable jobRunTable(String table) => TomFrameworkTable(
   name: table,
   origin: 'jobRunTable',
+  kind: TomTableKind.system,
   columns: _jobRunColumns,
   primaryKey: const ['id'],
   keys: const [
@@ -119,6 +120,7 @@ const List<TomFrameworkColumn> _jobRunColumns = [
 TomFrameworkTable jobPauseTable(String table) => TomFrameworkTable(
   name: table,
   origin: 'jobPauseTable',
+  kind: TomTableKind.system,
   columns: const [
     TomFrameworkColumn('job_name', 'VARCHAR(150)'),
     TomFrameworkColumn('paused_at', 'DATETIME(6)'),
@@ -136,6 +138,7 @@ TomFrameworkTable jobPauseTable(String table) => TomFrameworkTable(
 TomFrameworkTable jobRunArchiveTable(String table) => TomFrameworkTable(
   name: table,
   origin: 'jobRunArchiveTable',
+  kind: TomTableKind.system,
   columns: [
     for (final column in _jobRunColumns)
       column.name == 'seq' ? const TomFrameworkColumn('seq', 'BIGINT') : column,
@@ -165,6 +168,7 @@ TomFrameworkTable jobRunArchiveTable(String table) => TomFrameworkTable(
 TomFrameworkTable leaseTable(String table) => TomFrameworkTable(
   name: table,
   origin: 'leaseTable',
+  kind: TomTableKind.system,
   columns: const [
     TomFrameworkColumn('resource', 'VARCHAR(191)'),
     TomFrameworkColumn('owner', 'VARCHAR(191)'),
@@ -192,6 +196,7 @@ TomFrameworkTable leaseTable(String table) => TomFrameworkTable(
 TomFrameworkTable schedulerNodeTable(String table) => TomFrameworkTable(
   name: table,
   origin: 'schedulerNodeTable',
+  kind: TomTableKind.system,
   columns: const [
     TomFrameworkColumn('node_id', 'VARCHAR(191)'),
     TomFrameworkColumn('checkin_at', 'DATETIME(6)'),

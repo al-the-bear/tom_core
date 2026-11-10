@@ -591,7 +591,7 @@ Two supported routes, and the choice is about who is allowed to run DDL:
   `CREATE TABLE IF NOT EXISTS` once, lazily, on first use. Right for tests and
   for a single-service deployment.
 - **`createSchema: false`** — the schema is owned by the migration module. Copy
-  the five files from `example/scheduling/migrations/main/tomcore/` into the
+  the five files from `example/scheduling/migrations/system/main/tomcore/` into the
   application's own migration tree and let `TomDbMigrations.migrateDatabases()`
   apply them. Right when the application's database user may not run DDL, which
   is the usual production posture.
@@ -678,8 +678,9 @@ This module stores it:
 - `findWindow(jobName, scheduledFor, tenant: …)` matches `tenant = :tenant`
   and `window_at = :scheduledFor`, so the window lookup that makes enqueueing idempotent is per tenant, and the
   unique key enforces the same thing in the database.
-- The queue itself is **deployment-wide**: one `tom_job_run` holds every
-  tenant's runs, and the store is not routed per tenant. Only the connection
+- The queue itself is a **system table**: one `tom_job_run`, in the system data
+  source, holds every tenant's runs — the store writes there whichever pool it
+  was built over. Only the connection
   changes: an `enqueue` inside a transaction of a tenant routed to a schema of
   the same server is written over the tenant's connection into the base table
   (see [Queueing in a Transaction](#queueing-in-a-transaction)). A node claims whatever
@@ -903,7 +904,7 @@ of wall clock, so it is run deliberately, not by `testkit :test`.
 | `lib/src/tomserver/scheduling/sql_scheduling_sql.dart` | The five table descriptors, their derived DDL, table-name defaults |
 | `lib/src/tomserver/datasources/sql_failure_mode.dart` | `classifySqlFailure` — definite or ambiguous |
 | `example/scheduling/scheduling_example.dart` | The connection-free surface, runnable |
-| `example/scheduling/migrations/main/tomcore/` | The shipped reference migrations |
+| `example/scheduling/migrations/system/main/tomcore/` | The shipped reference migrations |
 | `example/scheduling/cluster/` | The two-node demonstration: real processes, one database, four claims asserted by a third process |
 
 ## Dependencies

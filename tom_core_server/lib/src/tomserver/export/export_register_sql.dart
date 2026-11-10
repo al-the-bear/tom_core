@@ -23,6 +23,7 @@ const String defaultExportRegisterTable = 'tom_export';
 TomFrameworkTable exportRegisterTable(String table) => TomFrameworkTable(
   name: table,
   origin: 'exportRegisterTable',
+  kind: TomTableKind.system,
   columns: [
     TomFrameworkColumn('export_key', 'VARCHAR(${TomBlobStore.maxKeyLength})'),
     const TomFrameworkColumn('owner', 'VARCHAR(191)', defaultValue: "''"),
@@ -47,10 +48,10 @@ class TomSqlExportRegister extends TomExportRegister {
   /// Creates a register over [datasource]; with [createSchema] the table is
   /// created on first use, otherwise the migration module owns it.
   TomSqlExportRegister(
-    this.datasource, {
+    TomDataSource datasource, {
     this.table = defaultExportRegisterTable,
     this.createSchema = true,
-  });
+  }) : datasource = TomFrameworkTable.systemOf(datasource);
 
   /// The data source the table lives in.
   final TomDataSource datasource;

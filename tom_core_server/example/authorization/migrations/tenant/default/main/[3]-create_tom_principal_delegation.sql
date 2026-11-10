@@ -1,0 +1,39 @@
+-- Reference migration for role delegation (C-6).
+--
+-- Creates the `tom_principal_delegation` table that stores a delegator lending
+-- roles to a delegate in one of three modes ('share' / 'absence' /
+-- 'intentional'). For `share`, resource_key + role name the single shared
+-- resource and role; for `absence` / `intentional` they optionally narrow /
+-- override the delegator's inherited roles. The `[valid_from, valid_to]` window
+-- and the `revoked` kill-switch bound every mode. The delegate index backs the
+-- resolver's "delegations live for this delegate" lookup and covers `revoked`
+-- as well, because revocation is a flag rather than a delete: a delegate's dead
+-- rows accumulate for life, and the index is what keeps them off the read. The
+-- window columns are `DATETIME(6)` — the width the instant convention
+-- (`datasources/sql_instant.dart`) writes; a plain `DATETIME` rounds each bound
+-- to the second, moving the edge of a security window up to half a second from
+-- the one its owner set. This file is the canonical DDL and reproduces
+-- `TomPrincipalDelegation.createTableSql` verbatim;
+-- `test/reference_migrations_test.dart` fails if the two drift apart.
+-- The db_migration module applies it as version [3] of the tenant tree on
+-- every tenant's `main` data source, after the per-principal grant table [2].
+-- `tenant_id` is the row's tenant: the entity is a tenant table
+-- (`@TomTenantTable`), and the repository binds `tenant_id = <tenant>` into
+-- every statement, in every isolation model. It defaults to `default`, the
+-- implicit tenant of a deployment without tenancy, and is indexed for
+-- that predicate.
+CREATE TABLE IF NOT EXISTS tom_principal_delegation (
+  id BIGINT NOT NULL AUTO_INCREMENT,
+  tenant_id VARCHAR(32) NOT NULL DEFAULT 'default',
+  delegator_id VARCHAR(255) NOT NULL,
+  delegate_id VARCHAR(255) NOT NULL,
+  mode VARCHAR(32) NOT NULL,
+  resource_key VARCHAR(255) NULL,
+  role VARCHAR(255) NULL,
+  valid_from DATETIME(6) NULL,
+  valid_to DATETIME(6) NULL,
+  revoked TINYINT(1) NOT NULL DEFAULT 0,
+  PRIMARY KEY (id),
+  KEY idx_tom_principal_delegation_tenant (tenant_id),
+  KEY idx_tom_principal_delegation_delegate (delegate_id, revoked)
+);

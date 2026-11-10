@@ -3,7 +3,7 @@
 -- Untagged on purpose: schema, not demo content, so it reaches every
 -- environment. The DDL is copied verbatim from the framework's canonical
 -- reference migrations
--- (tom_core_server/example/file_storage/migrations/main/tomcore/[1] and [2]) and
+-- (tom_core_server/example/file_storage/migrations/system/main/tomcore/[1] and [2]) and
 -- is kept in sync with the blobManifestTable() / blobChunkTable() descriptors in
 -- lib/src/tomserver/file_storage/database_blob_sql.dart. The convergence test
 -- in test/auth_blob_schema_test.dart fails if this file and those descriptors
@@ -63,7 +63,9 @@ CREATE TABLE IF NOT EXISTS tom_blob (
   chunk_size  INT          NOT NULL,
   digest      CHAR(64)     NOT NULL,
   stored_at   DATETIME(6)  NOT NULL,
-  PRIMARY KEY (storage_key)
+  tenant      VARCHAR(32)  NOT NULL DEFAULT '',
+  PRIMARY KEY (storage_key),
+  KEY ix_tom_blob_tenant (tenant)
 );
 
 CREATE TABLE IF NOT EXISTS tom_blob_chunk (

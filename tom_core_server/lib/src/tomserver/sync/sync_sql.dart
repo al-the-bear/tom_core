@@ -28,6 +28,7 @@ const String defaultSyncSequenceTable = 'tom_sync_sequence';
 TomFrameworkTable syncChangeTable(String table) => TomFrameworkTable(
   name: table,
   origin: 'syncChangeTable',
+  kind: TomTableKind.tenant,
   columns: const [
     TomFrameworkColumn('id', 'BIGINT', autoIncrement: true),
     TomFrameworkColumn('tenant', 'VARCHAR(32)'),
@@ -52,6 +53,7 @@ TomFrameworkTable syncChangeTable(String table) => TomFrameworkTable(
 TomFrameworkTable syncSequenceTable(String table) => TomFrameworkTable(
   name: table,
   origin: 'syncSequenceTable',
+  kind: TomTableKind.tenant,
   columns: const [
     TomFrameworkColumn('tenant', 'VARCHAR(32)'),
     TomFrameworkColumn('collection', 'VARCHAR(64)'),

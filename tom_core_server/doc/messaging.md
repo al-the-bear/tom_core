@@ -1297,10 +1297,13 @@ only when both are two-phase data sources (`MariaDbXADatasource`,
 `PostgresXADatasource` — see [transactions.md](transactions.md)); over a
 one-phase second data source the two can come apart.
 
-With tenancy, that means the tenant's data source: a consumer whose work is
-routed to a tenant's database or schema builds its inbox over that routed data
-source, inside the tenant, and the inbox table lives there too — see
-[What Stays Deployment-Wide](tenancy.md#what-stays-deployment-wide).
+With tenancy, that means the tenant's data source. `tom_message_inbox` is a
+tenant table: the inbox places its data source on every call
+(`placedDatasource`), so an inbox built once over the base data source records a
+message in the data source of the tenant in context — its own schema or
+database, or its type's shared schema — where the consumer's routed work writes
+too, and the record names the tenant. A message is processed once per tenant and
+consumer — see [Framework Tables](tenancy.md#framework-tables).
 
 **Work that is not a database write is not covered.** A call to a payment
 provider, an e-mail sent directly, a message published to another broker — none
@@ -1347,6 +1350,7 @@ question atomically.
 
 | Column | Type | Carries |
 | ------ | ---- | ------- |
+| `tenant` | `VARCHAR(32)`, primary key, default `''` | the tenant in context when the message was processed; `''` for none |
 | `consumer` | `VARCHAR(150)`, primary key | the consumer name — short enough that the composite key stays within the index length a `utf8mb4` column allows |
 | `message_id` | `VARCHAR(191)`, primary key | the message id |
 | `processed_at` | `DATETIME(6)`, indexed, UTC | when the message was processed; the purge reads it |
@@ -1360,9 +1364,9 @@ DDL implicitly and would end that transaction half way.
 A deployment whose database user may not run DDL applies the reference migration
 instead and passes `createSchema: false`:
 
-- `example/messaging/migrations/main/tomcore/[2]-create_tom_message_inbox.sql`,
+- `example/messaging/migrations/tenant/default/main/[1]-create_tom_message_inbox.sql`,
   in the framework's canonical DDL;
-- `example/messaging/migrations_postgresql/main/tomcore/[2]-create_tom_message_inbox.sql`,
+- `example/messaging/migrations_postgresql/tenant/default/main/[1]-create_tom_message_inbox.sql`,
   its generated PostgreSQL form (see
   [db_migration.md](db_migration.md#reference-migrations-for-postgresql)).
 

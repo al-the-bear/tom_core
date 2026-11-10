@@ -40,6 +40,7 @@ void main() {
 
   group('a framework table', () {
     final table = TomFrameworkTable(
+      kind: TomTableKind.system,
       name: 'thing',
       origin: 'test',
       columns: const [

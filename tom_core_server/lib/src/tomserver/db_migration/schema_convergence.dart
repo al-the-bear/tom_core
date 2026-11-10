@@ -262,6 +262,11 @@ enum TomSchemaDivergenceKind {
   /// An entity declares no [TomDbTable.schema] in a datasource that has more
   /// than one schema directory, so which schema it belongs to is unknowable.
   ambiguousEntitySchema,
+
+  /// A migration tree of one kind — `system/` or `tenant/` — creates a table
+  /// of the other kind: a system table in a tenant type's tree would be built
+  /// in every tenant's schema, a tenant table in the system tree only once.
+  misplacedTable,
 }
 
 /// One disagreement between the entity model and the migration chain.

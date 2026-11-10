@@ -222,6 +222,8 @@ void run() {
   final leases = TomFrameworkTable(
     name: 'demo_lease',
     origin: 'datasources_example.run',
+    // The deployment's: reached in the system schema, never routed.
+    kind: TomTableKind.system,
     columns: const [
       TomFrameworkColumn('name', 'VARCHAR(191)'),
       TomFrameworkColumn('owner', 'VARCHAR(191)', nullable: true),

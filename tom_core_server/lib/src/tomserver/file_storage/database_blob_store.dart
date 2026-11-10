@@ -86,13 +86,14 @@ class TomDatabaseBlobStore extends TomBlobStore {
   /// observable against a *known* instant, and the defect it replaced was
   /// exactly a local reading written as though it were UTC.
   TomDatabaseBlobStore(
-    this.datasource, {
+    TomDataSource datasource, {
     this.manifestTable = defaultBlobManifestTable,
     this.chunkTable = defaultBlobChunkTable,
     this.chunkSize = defaultChunkSize,
     this.createSchema = true,
     DateTime Function()? clock,
-  }) : clock = clock ?? DateTime.now {
+  }) : datasource = TomFrameworkTable.systemOf(datasource),
+       clock = clock ?? DateTime.now {
     if (chunkSize <= 0) {
       throw TomStorageException(
         'storage.database.chunk_size_not_positive',
@@ -115,7 +116,7 @@ class TomDatabaseBlobStore extends TomBlobStore {
     bool createSchema = true,
     DateTime Function()? clock,
   }) {
-    final info = TomDataSourceInfo.getDataSourceInfo(datasourceName);
+    final info = TomDataSourceInfo.getBaseDataSourceInfo(datasourceName);
     if (info == null) {
       throw TomStorageException(
         'storage.database.unknown_datasource',
@@ -260,6 +261,7 @@ class TomDatabaseBlobStore extends TomBlobStore {
         'chunk_size': ':chunkSize',
         'digest': ':digest',
         'stored_at': ':storedAt',
+        'tenant': ':tenant',
       },
       {
         'key': key,
@@ -275,6 +277,7 @@ class TomDatabaseBlobStore extends TomBlobStore {
         // puts a UTC reading in the column; a local one formatted here read
         // back as though it were UTC and was wrong by the host's offset.
         'storedAt': storedAt,
+        'tenant': TomTenantContext.currentId ?? '',
       },
     );
 
@@ -524,6 +527,20 @@ class TomDatabaseBlobStore extends TomBlobStore {
       '(SELECT upload_id FROM $manifestTable)',
     );
     return removed.toInt();
+  }
+
+  /// The storage keys of the blobs written in [tenant] (`''` for those written
+  /// with no tenant), in key order: the manifest is a system table serving
+  /// every tenant, and this is how a tenant's blobs are listed for an export or
+  /// a purge.
+  Future<List<String>> keysOfTenant(String tenant) async {
+    await ensureSchema();
+    final rows = await datasource.executeQuery<TomBlobManifestRow>(
+      'SELECT ${_manifest.columnList} FROM $manifestTable '
+      'WHERE tenant = :tenant ORDER BY storage_key',
+      {'tenant': tenant},
+    );
+    return [for (final row in rows) row.storageKey];
   }
 
   Future<_BlobManifest?> _manifestOf(String key) async {

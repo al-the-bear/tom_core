@@ -29,6 +29,7 @@ const String defaultIdempotencyTable = 'tom_idempotency_key';
 TomFrameworkTable idempotencyTable(String table) => TomFrameworkTable(
   name: table,
   origin: 'idempotencyTable',
+  kind: TomTableKind.tenant,
   columns: const [
     TomFrameworkColumn('tenant', 'VARCHAR(32)'),
     TomFrameworkColumn('principal', 'VARCHAR(150)'),

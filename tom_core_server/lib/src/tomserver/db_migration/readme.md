@@ -63,7 +63,7 @@ optimisation: a check that needs a live server cannot gate code generation.
 | `TomSchemaConvergenceReport` | The outcome of one `<datasource>/<schema>` check. |
 | `TomSchemaDivergence` | One disagreement between the entity model and the migration chain. |
 | `TomSchemaDivergenceKind` | What kind of disagreement a `TomSchemaDivergence` reports — including `nullableVersionColumn`, a `@TomVersion` column the chain leaves nullable, which no versioned save could ever match. |
-| `TomFrameworkSchemaCheck` | The framework-table guard: compares framework-owned table descriptors against everything else that spells their columns. |
+| `TomFrameworkSchemaCheck` | The framework-table guard: compares framework-owned table descriptors against everything else that spells their columns; `verifyTree` checks one migration tree — system or tenant — and reports a table of the other kind built there (`misplacedTable`). `frameworkOwnedTables`, `frameworkSystemTables` and `frameworkTenantTables` list the descriptors. |
 | `TomInformationSchemaColumnRow` | One `information_schema.COLUMNS` row, as the live half of the framework check reads it. |
 
 ### The shared schema model and DDL replay

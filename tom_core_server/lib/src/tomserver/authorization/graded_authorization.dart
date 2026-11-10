@@ -90,7 +90,7 @@ class TomAuthStateCodec {
 /// state per key.
 ///
 /// The canonical DDL is published as [createTableSql] and shipped as the
-/// reference migration `example/authorization/migrations/main/tomcore/
+/// reference migration `example/authorization/migrations/tenant/default/main/
 /// [1]-create_tom_resource_grants.sql`, applied through the `db_migration`
 /// module.
 @tomReflector

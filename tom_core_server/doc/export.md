@@ -1022,9 +1022,9 @@ The table is keyed by `export_key`, at the blob store's key width
 nullable `title`. It is indexed on `(owner, stored_at)` — a quota sums an
 owner's rows, a listing reads them newest first — and on `stored_at`, which the
 purge reads oldest first. The reference migration is
-`example/export/migrations/main/tomcore/[1]-create_tom_export.sql`, with its
+`example/export/migrations/system/main/tomcore/[1]-create_tom_export.sql`, with its
 PostgreSQL form in
-`example/export/migrations_postgresql/main/tomcore/[1]-create_tom_export.sql`,
+`example/export/migrations_postgresql/system/main/tomcore/[1]-create_tom_export.sql`,
 and `frameworkOwnedTables()` lists the table under the `exportRegister` argument,
 so the framework schema check covers it (see
 [db_migration.md](db_migration.md#the-frameworks-own-tables)).

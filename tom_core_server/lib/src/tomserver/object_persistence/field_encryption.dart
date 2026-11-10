@@ -375,10 +375,17 @@ class TomSqlDataKeyStore implements TomDataKeyStore {
   late final TomFrameworkTable _table = encryptionKeyTable(table);
   final Expando<TomSchemaProvisioning> _schemas = Expando();
 
+  /// The data source the keys are kept in for the work in the zone: a system
+  /// table's in the system data source ([TomFieldEncryption.isSystemScope]),
+  /// a tenant table's where the tenant in context's data lives — the data-key
+  /// table is a tenant table, placed by [TomFrameworkTable.placedInfo].
   TomDataSource _resolve() {
+    final system = TomFieldEncryption.isSystemScope;
     final fixed = _fixed;
-    if (fixed != null) return fixed;
-    final info = TomDataSourceInfo.getDataSourceInfo(datasourceName!);
+    if (fixed != null) {
+      return system ? TomFrameworkTable.systemOf(fixed) : _table.placed(fixed);
+    }
+    final info = TomDataSourceInfo.getBaseDataSourceInfo(datasourceName!);
     if (info == null) {
       throw TomFieldEncryptionException(
         'field_encryption.no_datasource',
@@ -387,11 +394,21 @@ class TomSqlDataKeyStore implements TomDataKeyStore {
         parameters: {'datasource': datasourceName},
       );
     }
-    return info.datasource;
+    return system
+        ? TomFrameworkTable.systemInfoOf(info).datasource
+        : _table.placedInfo(info).datasource;
   }
 
+  /// The tenant the keys belong to, as the `tenant` column holds it: `''` for
+  /// a system table's keys and for work with no tenant.
+  static String get _tenant => TomFieldEncryption.isSystemScope
+      ? ''
+      : (TomTenantContext.currentId ?? '');
+
+  /// The data source and the tenant: each tenant has keys of its own, also
+  /// where tenants share one table.
   @override
-  Object get scope => _resolve();
+  Object get scope => (_resolve(), _tenant);
 
   @override
   Future<void> prepare() async {
@@ -403,6 +420,7 @@ class TomSqlDataKeyStore implements TomDataKeyStore {
   }
 
   static Map<String, Object?> _bind(TomDataKeyRecord r) => {
+    'tenant': _tenant,
     'id': r.id,
     'purpose': r.purpose.name,
     'state': r.state.name,
@@ -415,7 +433,8 @@ class TomSqlDataKeyStore implements TomDataKeyStore {
   Future<List<TomDataKeyRecord>> all() async {
     final rows = await _resolve().executeQuery<TomDataKeyRow>(
       'SELECT key_id, purpose, state, kek_id, wrapped_key, created_at '
-      'FROM $table',
+      'FROM $table WHERE tenant = :tenant',
+      {'tenant': _tenant},
     );
     return [for (final row in rows) row.toRecord()];
   }
@@ -425,6 +444,7 @@ class TomSqlDataKeyStore implements TomDataKeyStore {
     final ds = _resolve();
     final inserted = await ds.executeCommand(
       _table.insertRow(ds.sqlDialect, const {
+        'tenant': ':tenant',
         'key_id': ':id',
         'purpose': ':purpose',
         'state': ':state',
@@ -441,7 +461,7 @@ class TomSqlDataKeyStore implements TomDataKeyStore {
   Future<void> update(TomDataKeyRecord record) async {
     await _resolve().executeCommand(
       'UPDATE $table SET state = :state, kek_id = :kek, '
-      'wrapped_key = :wrapped WHERE key_id = :id',
+      'wrapped_key = :wrapped WHERE tenant = :tenant AND key_id = :id',
       _bind(record),
     );
   }
@@ -922,6 +942,22 @@ abstract final class TomFieldEncryption {
     );
   }
 
+  static final Object _systemScopeKey = Object();
+
+  /// Whether the work in the zone encrypts for a system table: its data keys
+  /// are the system's — kept in the system data source under tenant `''` —
+  /// whatever tenant is in context, so every tenant reads the row back.
+  static bool get isSystemScope => Zone.current[_systemScopeKey] == true;
+
+  /// Runs [body] with the data keys of [entity]'s classification: a system
+  /// table's ([isSystemScope]), or a tenant table's — the tenant in context's.
+  /// Every encryption entry point that knows its entity runs through it; the
+  /// repository need not.
+  static R forEntity<R>(Type entity, R Function() body) => runZoned(
+    body,
+    zoneValues: {_systemScopeKey: !TomAnnotationAnalyzer.isTenantTable(entity)},
+  );
+
   static TomFieldKeyring _require() =>
       _keyring ??
       (throw TomFieldEncryptionException(
@@ -963,6 +999,11 @@ abstract final class TomFieldEncryption {
   static Future<String?> encrypt(
     TomColumnInformation column,
     String? plaintext,
+  ) => forEntity(column.tableType, () => _encrypt(column, plaintext));
+
+  static Future<String?> _encrypt(
+    TomColumnInformation column,
+    String? plaintext,
   ) async {
     if (plaintext == null) return null;
     final keyring = _require();
@@ -977,17 +1018,26 @@ abstract final class TomFieldEncryption {
 
   /// Loads the data keys the ciphertexts among [stored] name, so [decrypt]
   /// finds them. Called by the data source before it maps a result.
-  static Future<void> prepareRead(Iterable<String?> stored) async {
+  ///
+  /// [entity] is the entity the values were read for: its classification
+  /// decides whose data keys are loaded ([forEntity]).
+  static Future<void> prepareRead(
+    Iterable<String?> stored, {
+    required Type entity,
+  }) async {
     final ids = {for (final value in stored) ?keyIdOf(value)};
     if (ids.isEmpty) return;
-    await _require().ensure(ids);
+    await forEntity(entity, () => _require().ensure(ids));
   }
 
   /// The plaintext of [stored], read from [column]; `null` stays `null`.
   ///
   /// The data key must be cached — [prepareRead] makes it so. A value that is
   /// not ciphertext reads as it is while [acceptPlaintext] is on.
-  static String? decrypt(TomColumnInformation column, String? stored) {
+  static String? decrypt(TomColumnInformation column, String? stored) =>
+      forEntity(column.tableType, () => _decrypt(column, stored));
+
+  static String? _decrypt(TomColumnInformation column, String? stored) {
     if (stored == null) return null;
     if (!isCiphertext(stored)) {
       if (acceptPlaintext) return stored;
@@ -1034,6 +1084,15 @@ abstract final class TomFieldEncryption {
   /// The blind index of [plaintext] for the index column [indexColumn], under
   /// the index key [keyId] — the active one unless given; `null` stays `null`.
   static Future<String?> blindIndex(
+    TomColumnInformation indexColumn,
+    String? plaintext, {
+    String? keyId,
+  }) => forEntity(
+    indexColumn.tableType,
+    () => _blindIndex(indexColumn, plaintext, keyId: keyId),
+  );
+
+  static Future<String?> _blindIndex(
     TomColumnInformation indexColumn,
     String? plaintext, {
     String? keyId,
@@ -1088,10 +1147,13 @@ abstract final class TomFieldEncryption {
     String plaintext,
   ) async {
     final column = _indexColumn(entity, field);
-    return [
-      for (final keyId in await _require().indexKeyIds())
-        (await blindIndex(column, plaintext, keyId: keyId))!,
-    ];
+    return forEntity(
+      entity,
+      () async => [
+        for (final keyId in await _require().indexKeyIds())
+          (await blindIndex(column, plaintext, keyId: keyId))!,
+      ],
+    );
   }
 
   /// A query-sentence condition finding the rows whose [field] is
@@ -1217,35 +1279,42 @@ class TomFieldReencryption {
         mirror.reflectedType,
   ];
 
-  /// Runs one pass over every entity, in the current context and — when a
-  /// [TomTenancy] is installed — in every tenant's.
+  /// Runs one pass over every entity, by its classification: a system table
+  /// once, in the system schema with the system's data keys; a tenant table in
+  /// every tenant when a [TomTenancy] is installed — each tenant's rows with
+  /// its own keys — and once otherwise.
   Future<TomReencryptionReport> run() async {
-    var report = await _runHere();
+    var report = const TomReencryptionReport();
     final tenancy = TomTenancy.current;
-    if (tenancy != null) {
+    for (final entity in entities) {
+      if (tenancy == null || !TomAnnotationAnalyzer.isTenantTable(entity)) {
+        report += await _entity(entity);
+        continue;
+      }
       for (final tenant in List.of(tenancy.tenants.keys)) {
-        if (tenant == TomTenantContext.currentId) continue;
-        report += await TomTenantContext.run(tenant, _runHere);
+        report += await TomTenantContext.run(tenant, () => _entity(entity));
       }
     }
     return report;
   }
 
-  Future<TomReencryptionReport> _runHere() async {
-    var report = const TomReencryptionReport();
-    for (final entity in entities) {
-      report += await _entity(entity);
-    }
-    return report;
-  }
+  Future<TomReencryptionReport> _entity(Type entity) =>
+      TomFieldEncryption.forEntity(entity, () => _pass(entity));
 
-  Future<TomReencryptionReport> _entity(Type entity) async {
+  /// One pass over [entity]'s rows where its classification places them: a
+  /// system table's in the system data source, a tenant table's in the tenant
+  /// in context's — only that tenant's rows, which its keys encrypt.
+  Future<TomReencryptionReport> _pass(Type entity) async {
     final encrypted = TomAnnotationAnalyzer.encryptedColumns(entity);
     final indexes = TomAnnotationAnalyzer.blindIndexColumns(entity);
     if (encrypted.isEmpty) return const TomReencryptionReport();
     final info = TomAnnotationAnalyzer.analysePersistentType(entity);
     final table = info.table;
-    final ds = TomDataSourceInfo.getDataSourceInfo(table.datasource);
+    final tenantTable = TomAnnotationAnalyzer.findTenantTable(entity);
+    final base = TomDataSourceInfo.getBaseDataSourceInfo(table.datasource);
+    final ds = base == null || tenantTable == null
+        ? base
+        : TomDataSourceInfo.route(base);
     if (ds == null) {
       throw TomFieldEncryptionException(
         'field_encryption.no_datasource',
@@ -1261,15 +1330,24 @@ class TomFieldReencryption {
     final active = await keyring.activeKeyId();
     final selected = [...keys, ...encrypted, ...indexes];
     final order = keys.map((k) => k.getQueryFieldName()).join(', ');
+    final tenantColumn = tenantTable == null
+        ? null
+        : TomAnnotationAnalyzer.determineColumn(tenantTable.field, [
+            info,
+          ]).getQueryFieldName();
+    final filter = tenantColumn == null ? '' : 'WHERE $tenantColumn = :tenant ';
+    final tenantParams = <String, Object?>{
+      if (tenantColumn != null) 'tenant': TomTenancy.tenantForWork('$entity'),
+    };
     var examined = 0, rewritten = 0, conflicts = 0;
     final failures = <String>[];
     for (var offset = 0; ; offset += batchSize) {
       final rows = await TomFieldEncryption.raw(
         () => ds.datasource.executeQuery<Object>(
           'SELECT ${selected.map((c) => c.getQueryFieldName()).join(', ')} '
-          'FROM ${table.table} ORDER BY $order '
+          'FROM ${table.table} ${filter}ORDER BY $order '
           'LIMIT $batchSize OFFSET $offset',
-          const {},
+          tenantParams,
           entity,
         ),
       );
@@ -1277,7 +1355,7 @@ class TomFieldReencryption {
       await TomFieldEncryption.prepareRead([
         for (final row in rows)
           for (final c in encrypted) c.getVariableValue(row) as String?,
-      ]);
+      ], entity: entity);
       for (final row in rows) {
         examined++;
         final writes = <TomColumnInformation, String?>{};

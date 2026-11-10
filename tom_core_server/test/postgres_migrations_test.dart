@@ -32,7 +32,7 @@ void main() {
       expect(
         postgres.readAsStringSync(),
         postgresMigration(
-          p.basename(canonical.path),
+          canonicalPathOf(canonical),
           canonical.readAsStringSync(),
         ),
         reason:

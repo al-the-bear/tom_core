@@ -141,6 +141,7 @@ TomAuditRecord(
   targetKey: '42',                 // primary key, when there is one
   outcome: TomAuditOutcome.succeeded,
   requestId: '...',                // stitches the entry to its request
+  tenant: 'acme',                  // the tenant in context, when there is one
   before: {'email': 'a@x.com'},    // changed fields only
   after: {'email': 'b@x.com'},
   detail: null,                    // free text, e.g. the denial reason
@@ -311,6 +312,9 @@ avoid:
 - The kernel's `TomRequestId` from the zone supplies `requestId`, which
   stitches every entry written during one request — or one job run, or one
   socket message read through `TomWebSocketConnection.serve` — together.
+- The kernel's `TomTenantContext` supplies `tenant`, the tenant the entry was
+  written in. It is left out of the record — and so out of the hashed text —
+  when no tenant is in context.
 
 A write outside a request — a background job, a migration — is attributed to
 `TomAuditActor.system` (username `SYSTEM`), never to a blank or null actor. An
@@ -463,7 +467,7 @@ TomAuditTrail.install(
 
 One row per entry in `tom_audit_trail` (`auditTrailTableDdl`), holding the
 projection columns an operator searches by — actor, action, target, outcome,
-`recorded_at` — plus the two chain columns and the canonical record JSON. The
+`tenant`, `recorded_at` — plus the two chain columns and the canonical record JSON. The
 **record text is authoritative**: it is exactly what was hashed, so a row
 verifies against its own hash without the reader reproducing the encoding. The
 projection columns are a lossy index, truncated to fit rather than allowed to
@@ -504,9 +508,9 @@ Four design points are worth stating outright:
   audited action closed. The row is addressed by `seq`; identity across writers
   is the actor and timestamp.
 
-Reference migrations live in `example/audit/migrations/main/tomcore/`, and their
+Reference migrations live in `example/audit/migrations/system/main/tomcore/`, and their
 PostgreSQL form, generated from them, in
-`example/audit/migrations_postgresql/main/tomcore/` (see
+`example/audit/migrations_postgresql/system/main/tomcore/` (see
 [db_migration.md](db_migration.md#reference-migrations-for-postgresql)). The
 table itself is declared **once**, as the `auditTrailTable(name)` descriptor in
 `sql_audit_sql.dart`: the `CREATE TABLE` the sink issues (`create`, in the
@@ -1192,6 +1196,7 @@ final result = await sink.query(
     action: TomAuditAction.delete,
     from: DateTime.utc(2026, 3, 1),
     to: DateTime.utc(2026, 4, 1),
+    tenant: 'acme',
     limit: 100,
   ),
 );
@@ -1229,6 +1234,11 @@ own cannot be read safely:
 | `hasMore` | the trail held further matches beyond this page |
 | `examined` | how many stored entries were read and judged |
 | `rejectedByProjection` | how many the index matched and the record did not |
+
+`tenant` asks for one tenant's entries. The trail is a system table — one
+`tom_audit_trail` in the system data source holds every tenant's entries, each
+naming its tenant — so a tenant's trail is listed and exported with a query,
+pushed into the database over the `(tenant, recorded_at)` index.
 
 A query is scoped to the sink's own `writer`, like `readAll()` and both purges: a
 sink is one chain's handle on a table several may share. A deployment with

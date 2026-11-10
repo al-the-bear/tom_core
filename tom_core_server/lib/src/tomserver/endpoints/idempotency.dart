@@ -319,9 +319,9 @@ class TomSqlIdempotencyStore implements TomIdempotencyStore {
     final TomDataSource ds;
     final fixed = _fixed;
     if (fixed != null) {
-      ds = fixed;
+      ds = _table.placed(fixed);
     } else {
-      final info = TomDataSourceInfo.getDataSourceInfo(datasourceName!);
+      final info = TomDataSourceInfo.getBaseDataSourceInfo(datasourceName!);
       if (info == null) {
         throw TomIdempotencyException(
           'endpoint.idempotency.no_datasource',
@@ -330,7 +330,7 @@ class TomSqlIdempotencyStore implements TomIdempotencyStore {
           parameters: {'datasource': datasourceName},
         );
       }
-      ds = info.datasource;
+      ds = _table.placedInfo(info).datasource;
     }
     if (createSchema) {
       await (_schemas[ds] ??= TomSchemaProvisioning()).ensure(

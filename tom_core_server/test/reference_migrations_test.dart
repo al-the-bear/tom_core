@@ -42,15 +42,18 @@ typedef _EntityPin = ({
   String ddl,
 });
 
-/// The directory every module's reference chain lives in, relative to a
-/// module directory under `example/`.
-const String _chainDirectory = 'migrations/main/tomcore';
+/// The system tree's directory, relative to a module's `migrations/`.
+const String _system = 'system/main/tomcore';
+
+/// The tenant tree's directory (type `default`), relative to a module's
+/// `migrations/`.
+const String _tenant = 'tenant/default/main';
 
 /// Builds the path of a reference migration from its parts, so the strings in
 /// the two lists below cannot disagree about the directory convention they are
 /// both asserting.
-String _migration(String module, String filename) =>
-    'example/$module/$_chainDirectory/$filename';
+String _migration(String module, String tree, String filename) =>
+    'example/$module/migrations/$tree/$filename';
 
 /// Every entity-owned reference migration, paired with the constant that owns
 /// it.
@@ -58,6 +61,7 @@ final List<_EntityPin> _entityPins = [
   (
     path: _migration(
       'authentication',
+      _tenant,
       '[1]-create_tom_user_two_factor_enrolment.sql',
     ),
     version: '1',
@@ -67,20 +71,29 @@ final List<_EntityPin> _entityPins = [
   (
     path: _migration(
       'authentication',
-      '[3]-create_tom_external_identity_token.sql',
+      _tenant,
+      '[2]-create_tom_external_identity_token.sql',
     ),
-    version: '3',
+    version: '2',
     description: 'create_tom_external_identity_token',
     ddl: TomExternalIdentityToken.createTableSql,
   ),
   (
-    path: _migration('authentication', '[4]-create_tom_external_identity.sql'),
-    version: '4',
+    path: _migration(
+      'authentication',
+      _tenant,
+      '[3]-create_tom_external_identity.sql',
+    ),
+    version: '3',
     description: 'create_tom_external_identity',
     ddl: TomExternalIdentityLink.createTableSql,
   ),
   (
-    path: _migration('authorization', '[1]-create_tom_resource_grants.sql'),
+    path: _migration(
+      'authorization',
+      _tenant,
+      '[1]-create_tom_resource_grants.sql',
+    ),
     version: '1',
     description: 'create_tom_resource_grants',
     ddl: TomResourceGrant.createTableSql,
@@ -88,6 +101,7 @@ final List<_EntityPin> _entityPins = [
   (
     path: _migration(
       'authorization',
+      _tenant,
       '[2]-create_tom_principal_resource_grant.sql',
     ),
     version: '2',
@@ -97,6 +111,7 @@ final List<_EntityPin> _entityPins = [
   (
     path: _migration(
       'authorization',
+      _tenant,
       '[3]-create_tom_principal_delegation.sql',
     ),
     version: '3',
@@ -104,13 +119,21 @@ final List<_EntityPin> _entityPins = [
     ddl: TomPrincipalDelegation.createTableSql,
   ),
   (
-    path: _migration('preferences', '[1]-create_tom_user_preference.sql'),
+    path: _migration(
+      'preferences',
+      _tenant,
+      '[1]-create_tom_user_preference.sql',
+    ),
     version: '1',
     description: 'create_tom_user_preference',
     ddl: TomUserPreference.createTableSql,
   ),
   (
-    path: _migration('preferences', '[2]-create_tom_preference_default.sql'),
+    path: _migration(
+      'preferences',
+      _tenant,
+      '[2]-create_tom_preference_default.sql',
+    ),
     version: '2',
     description: 'create_tom_preference_default',
     ddl: TomPreferenceDefault.createTableSql,
@@ -123,89 +146,110 @@ final List<_EntityPin> _entityPins = [
 /// "guarded somewhere else" from "guarded nowhere", and only a list can say
 /// which of the two an unpinned file is.
 final Map<String, String> _guardedElsewhere = {
-  _migration('authentication', '[2]-create_tom_oauth_state.sql'):
+  _migration('authentication', _system, '[1]-create_tom_oauth_state.sql'):
       'descriptor table — framework_schema_test.dart converges the chain, and '
       'oauth_state_store_test.dart compares the file to oauthStateTableDdl',
-  _migration('authentication', '[5]-create_tom_scim_resource.sql'):
+  _migration('authentication', _tenant, '[4]-create_tom_scim_resource.sql'):
       'descriptor table — framework_schema_test.dart converges the chain '
       'against scimResourceTable',
-  _migration('audit', '[1]-create_tom_audit_trail.sql'):
+  _migration('audit', _system, '[1]-create_tom_audit_trail.sql'):
       'descriptor table — framework_schema_test.dart converges the chain, and '
       'audit_sql_test.dart compares the file to auditTrailTableDdl',
-  _migration('audit', '[2]-guard_tom_audit_trail_no_update@hardened.sql'):
-      'trigger, not a table — audit_sql_test.dart compares the file to '
+  _migration(
+    'audit',
+    _system,
+    '[2]-guard_tom_audit_trail_no_update@hardened.sql',
+  ): 'trigger, not a table — audit_sql_test.dart compares the file to '
       'auditTrailNoUpdateTriggerDdl',
-  _migration('audit', '[3]-guard_tom_audit_trail_no_delete@immutable.sql'):
-      'trigger, not a table — audit_sql_test.dart compares the file to '
+  _migration(
+    'audit',
+    _system,
+    '[3]-guard_tom_audit_trail_no_delete@immutable.sql',
+  ): 'trigger, not a table — audit_sql_test.dart compares the file to '
       'auditTrailNoDeleteTriggerDdl',
-  _migration('audit_reports', '[1]-create_tom_audit_question.sql'):
+  _migration('audit_reports', _system, '[1]-create_tom_audit_question.sql'):
       'descriptor table — framework_schema_test.dart converges the chain '
       'against auditQuestionTable',
-  _migration('messaging', '[1]-create_tom_delivery_report.sql'):
+  _migration('messaging', _system, '[1]-create_tom_delivery_report.sql'):
       'descriptor table — framework_schema_test.dart converges the chain '
       'against deliveryReportTable',
-  _migration('messaging', '[2]-create_tom_message_inbox.sql'):
+  _migration('messaging', _tenant, '[1]-create_tom_message_inbox.sql'):
       'descriptor table — framework_schema_test.dart converges the chain '
       'against inboxTable',
-  _migration('messaging', '[3]-create_tom_message_suppression.sql'):
+  _migration('messaging', _system, '[2]-create_tom_message_suppression.sql'):
       'descriptor table — framework_schema_test.dart converges the chain '
       'against suppressionTable',
-  _migration('endpoints', '[1]-create_tom_idempotency_key.sql'):
+  _migration('endpoints', _tenant, '[1]-create_tom_idempotency_key.sql'):
       'descriptor table — framework_schema_test.dart converges the chain '
       'against idempotencyTable',
-  _migration('transactions', '[1]-create_tom_saga.sql'):
+  _migration('transactions', _tenant, '[1]-create_tom_saga.sql'):
       'descriptor table — framework_schema_test.dart converges the chain '
       'against sagaTable',
-  _migration('transactions', '[2]-create_tom_transaction_decision.sql'):
-      'descriptor table — framework_schema_test.dart converges the chain '
+  _migration(
+    'transactions',
+    _system,
+    '[1]-create_tom_transaction_decision.sql',
+  ): 'descriptor table — framework_schema_test.dart converges the chain '
       'against decisionTable',
-  _migration('object_persistence', '[1]-create_tom_encryption_key.sql'):
-      'descriptor table — framework_schema_test.dart converges the chain '
+  _migration(
+    'object_persistence',
+    _tenant,
+    '[1]-create_tom_encryption_key.sql',
+  ): 'descriptor table — framework_schema_test.dart converges the chain '
       'against encryptionKeyTable',
-  _migration('privacy', '[1]-create_tom_subject_key.sql'):
+  _migration('privacy', _tenant, '[1]-create_tom_subject_key.sql'):
       'descriptor table — framework_schema_test.dart converges the chain '
       'against subjectKeyTable',
-  _migration('sync', '[1]-create_tom_sync_change.sql'):
+  _migration('sync', _tenant, '[1]-create_tom_sync_change.sql'):
       'descriptor tables — framework_schema_test.dart converges the chain '
       'against syncChangeTable and syncSequenceTable',
-  _migration('tenancy', '[1]-create_tom_tenant.sql'):
+  _migration('tenancy', _system, '[1]-create_tom_tenant.sql'):
       'descriptor table — framework_schema_test.dart converges the chain '
       'against tenantTable',
-  _migration('cache', '[1]-create_tom_cache_invalidation.sql'):
+  _migration('cache', _system, '[1]-create_tom_cache_invalidation.sql'):
       'descriptor table — framework_schema_test.dart converges the chain '
       'against invalidationTable',
-  _migration('file_storage', '[1]-create_tom_blob.sql'):
+  _migration('file_storage', _system, '[1]-create_tom_blob.sql'):
       'descriptor table — framework_schema_test.dart converges the chain, and '
       'file_storage_schema_test.dart compares the file to '
       'blobManifestTableDdl',
-  _migration('file_storage', '[2]-create_tom_blob_chunk.sql'):
+  _migration('file_storage', _system, '[2]-create_tom_blob_chunk.sql'):
       'descriptor table — framework_schema_test.dart converges the chain, and '
       'file_storage_schema_test.dart compares the file to blobChunkTableDdl',
-  _migration('file_storage', '[3]-create_tom_blob_ledger.sql'):
+  _migration('file_storage', _system, '[3]-create_tom_blob_ledger.sql'):
       'descriptor table — framework_schema_test.dart converges the chain, and '
       'file_storage_schema_test.dart compares the file to blobLedgerTableDdl',
-  _migration('file_storage', '[4]-create_tom_blob_content.sql'):
+  _migration('file_storage', _system, '[4]-create_tom_blob_content.sql'):
       'descriptor table — framework_schema_test.dart converges the chain, and '
       'file_storage_schema_test.dart compares the file to '
       'blobContentTableDdl',
-  _migration('scheduling', '[1]-create_tom_job_run.sql'):
+  _migration('scheduling', _system, '[1]-create_tom_job_run.sql'):
       'descriptor table — framework_schema_test.dart converges the chain, and '
       'scheduling_schema_test.dart compares the file to jobRunTableDdl',
-  _migration('scheduling', '[2]-create_tom_lease.sql'):
+  _migration('scheduling', _system, '[2]-create_tom_lease.sql'):
       'descriptor table — framework_schema_test.dart converges the chain, and '
       'scheduling_schema_test.dart compares the file to leaseTableDdl',
-  _migration('scheduling', '[3]-create_tom_scheduler_node.sql'):
+  _migration('scheduling', _system, '[3]-create_tom_scheduler_node.sql'):
       'descriptor table — framework_schema_test.dart converges the chain, and '
       'scheduling_schema_test.dart compares the file to '
       'schedulerNodeTableDdl',
-  _migration('scheduling', '[4]-create_tom_job_pause.sql'):
+  _migration('scheduling', _system, '[4]-create_tom_job_pause.sql'):
       'descriptor table — framework_schema_test.dart converges the chain, and '
       'scheduling_schema_test.dart compares the file to jobPauseTableDdl',
-  _migration('scheduling', '[5]-create_tom_job_run_archive.sql'):
+  _migration('scheduling', _system, '[5]-create_tom_job_run_archive.sql'):
       'descriptor table — framework_schema_test.dart converges the chain, and '
       'scheduling_schema_test.dart compares the file to '
       'jobRunArchiveTableDdl',
-  _migration('export', '[1]-create_tom_export.sql'):
+  _migration('authentication', _system, '[2]-create_tom_service_account.sql'):
+      'descriptor table — framework_schema_test.dart converges the system '
+      'tree against serviceAccountTable',
+  _migration('authentication', _system, '[3]-create_tom_api_key.sql'):
+      'descriptor table — framework_schema_test.dart converges the system '
+      'tree against apiKeyTable',
+  _migration('ratelimit', _system, '[1]-create_tom_rate_limit.sql'):
+      'descriptor table — framework_schema_test.dart converges the system '
+      'tree against rateLimitTable',
+  _migration('export', _system, '[1]-create_tom_export.sql'):
       'descriptor table — framework_schema_test.dart converges the chain, and '
       'export_register_test.dart compares the file to exportRegisterTableDdl',
 };
@@ -217,7 +261,12 @@ final Map<String, String> _guardedElsewhere = {
 Set<String> _shippedMigrations() => Directory('example')
     .listSync()
     .whereType<Directory>()
-    .map((module) => Directory('${module.path}/$_chainDirectory'))
+    .expand(
+      (module) => [
+        Directory('${module.path}/migrations/$_system'),
+        Directory('${module.path}/migrations/$_tenant'),
+      ],
+    )
     .where((chain) => chain.existsSync())
     .expand((chain) => chain.listSync().whereType<File>())
     .map((file) => file.path)
@@ -312,6 +361,7 @@ void main() {
         File(
           _migration(
             'authorization',
+            _tenant,
             '[3]-create_tom_principal_delegation.sql',
           ),
         ).readAsStringSync(),

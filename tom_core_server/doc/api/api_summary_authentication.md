@@ -2946,7 +2946,7 @@ const TomPersistentOAuthTokenStore(
 `TomJwtConfiguration.defaultSignConfiguration` — the same at-rest primitive
 behind a 2FA enrolment secret. Requires the `tom_external_identity_token` table;
 the reference migration is
-`example/authentication/migrations/main/tomcore/[3]-create_tom_external_identity_token.sql`.
+`example/authentication/migrations/tenant/default/main/[2]-create_tom_external_identity_token.sql`.
 
 ### TomExternalIdentityLink
 
@@ -2969,7 +2969,7 @@ make which local account a sign-in reaches depend on row order, and the tenant
 lets one provider account be linked in two tenants — and indexes
 `local_username`, which turns "every identity linked to this account" into a
 lookup rather than a scan. The reference migration is
-`example/authentication/migrations/main/tomcore/[4]-create_tom_external_identity.sql`.
+`example/authentication/migrations/tenant/default/main/[3]-create_tom_external_identity.sql`.
 
 ### TomExternalIdentityLinkRepository
 
@@ -3006,7 +3006,7 @@ const TomPersistentExternalIdentityStore(
 `TomOAuthTokenStore` bean at *call* time, so a deployment that wires its token
 store after its identity store still gets the cascade. Requires the
 `tom_external_identity` table; the reference migration is
-`example/authentication/migrations/main/tomcore/[4]-create_tom_external_identity.sql`.
+`example/authentication/migrations/tenant/default/main/[3]-create_tom_external_identity.sql`.
 
 ### TomMemoryExternalIdentityStore
 

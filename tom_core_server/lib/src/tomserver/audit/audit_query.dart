@@ -48,6 +48,7 @@ class TomAuditQuery {
     this.targetKey,
     this.outcome,
     this.requestId,
+    this.tenant,
     this.limit = defaultLimit,
     this.newestFirst = true,
   });
@@ -89,6 +90,9 @@ class TomAuditQuery {
   /// The request the action belonged to.
   final String? requestId;
 
+  /// Only the entries recorded in this tenant.
+  final String? tenant;
+
   /// The most entries to return.
   ///
   /// Counts **matches**, not rows looked at. That is the distinction a limit
@@ -121,6 +125,7 @@ class TomAuditQuery {
     if (targetKey != null && record.targetKey != targetKey) return false;
     if (outcome != null && record.outcome != outcome) return false;
     if (requestId != null && record.requestId != requestId) return false;
+    if (tenant != null && record.tenant != tenant) return false;
     return true;
   }
 
@@ -135,6 +140,7 @@ class TomAuditQuery {
       if (targetKey != null) 'targetKey=$targetKey',
       if (outcome != null) 'outcome=${outcome!.name}',
       if (requestId != null) 'requestId=$requestId',
+      if (tenant != null) 'tenant=$tenant',
     ];
     return 'TomAuditQuery(${parts.isEmpty ? 'everything' : parts.join(', ')}, '
         'limit=$limit, ${newestFirst ? 'newest' : 'oldest'} first)';

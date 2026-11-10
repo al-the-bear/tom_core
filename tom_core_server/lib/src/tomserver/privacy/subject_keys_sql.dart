@@ -24,6 +24,7 @@ const String defaultSubjectKeyTable = 'tom_subject_key';
 TomFrameworkTable subjectKeyTable(String table) => TomFrameworkTable(
   name: table,
   origin: 'subjectKeyTable',
+  kind: TomTableKind.tenant,
   columns: const [
     TomFrameworkColumn('tenant', 'VARCHAR(32)'),
     TomFrameworkColumn('subject_id', 'VARCHAR(191)'),

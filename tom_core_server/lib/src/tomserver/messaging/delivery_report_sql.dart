@@ -43,6 +43,7 @@ const String defaultDeliveryReportTable = 'tom_delivery_report';
 TomFrameworkTable deliveryReportTable(String table) => TomFrameworkTable(
   name: table,
   origin: 'deliveryReportTable',
+  kind: TomTableKind.system,
   columns: const [
     TomFrameworkColumn('remote_id', 'VARCHAR(191)'),
     TomFrameworkColumn('message_id', 'VARCHAR(191)'),

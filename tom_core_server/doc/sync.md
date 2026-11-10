@@ -330,7 +330,7 @@ TomSync.log = TomSqlSyncLog(createSchema: false);
 ```
 
 The reference migration is
-`example/sync/migrations/main/tomcore/[1]-create_tom_sync_change.sql`, with
+`example/sync/migrations/tenant/default/main/[1]-create_tom_sync_change.sql`, with
 its PostgreSQL translation under `example/sync/migrations_postgresql/`.
 `test/framework_schema_test.dart` replays it and compares the schema it builds
 with the two declarations, so the file and the code cannot drift apart.

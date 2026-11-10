@@ -16,11 +16,15 @@ const String defaultInboxTable = 'tom_message_inbox';
 ///
 /// Notes on the shape:
 ///
-///  * the primary key is `(consumer, message_id)`, and it is the whole
+///  * a tenant table ([TomTableKind.tenant]): it lives where the tenant's data
+///    lives, beside the consumer's work, and every row names its `tenant`
+///    (`''` for none) — also where a tenant has a schema of its own, since any
+///    tenant may move.
+///  * the primary key is `(tenant, consumer, message_id)`, and it is the whole
 ///    mechanism: recording a message is an insert that the key refuses for a
-///    message the consumer already processed. Two consumers of one message —
-///    a projection and a notifier — each process it once, which is why the
-///    consumer is part of the key.
+///    message the consumer already processed in that tenant. Two consumers of
+///    one message — a projection and a notifier — each process it once, which
+///    is why the consumer is part of the key.
 ///  * `consumer` is `VARCHAR(150)` so the composite key stays within the index
 ///    length a `utf8mb4` column allows.
 ///  * `processed_at` carries the purge, so it is indexed: an inbox keeps a row
@@ -31,12 +35,14 @@ const String defaultInboxTable = 'tom_message_inbox';
 TomFrameworkTable inboxTable(String table) => TomFrameworkTable(
   name: table,
   origin: 'inboxTable',
+  kind: TomTableKind.tenant,
   columns: const [
+    TomFrameworkColumn('tenant', 'VARCHAR(32)', defaultValue: "''"),
     TomFrameworkColumn('consumer', 'VARCHAR(150)'),
     TomFrameworkColumn('message_id', 'VARCHAR(191)'),
     TomFrameworkColumn('processed_at', 'DATETIME(6)'),
   ],
-  primaryKey: const ['consumer', 'message_id'],
+  primaryKey: const ['tenant', 'consumer', 'message_id'],
   keys: const [
     TomFrameworkKey('processed', ['processed_at']),
   ],

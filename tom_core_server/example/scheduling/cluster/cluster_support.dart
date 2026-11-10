@@ -31,7 +31,7 @@ import 'cluster_reflection.dart';
 /// The registered data source name.
 ///
 /// It is `main` because the shipped reference migrations live under
-/// `example/scheduling/migrations/main/tomcore/` and the orchestrator walks
+/// `example/scheduling/migrations/system/main/tomcore/` and the orchestrator walks
 /// `<directory>/<datasourceName>/<schemaName>/`. Renaming the data source
 /// without renaming that folder would leave the demo running against a schema
 /// nothing had created.

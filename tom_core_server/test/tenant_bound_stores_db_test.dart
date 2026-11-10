@@ -8,6 +8,11 @@
 /// column is the wall. The state table is deployment-wide in every model, so a
 /// record is kept apart by its tenant column alone.
 ///
+/// Placement: a system store built over a tenant's pool writes to the system
+/// data source, a tenant store built once over the base is reached in each
+/// tenant's data source, and the audit trail and the blob manifest — system
+/// tables — record the tenant on every row.
+///
 /// The whole file is `@Tags(['db'])` and skips itself when no MariaDB is
 /// reachable; `tool/run_db_tests.sh` starts one.
 @Tags(['db'])
@@ -162,6 +167,116 @@ void main() async {
             rows.single.count,
             isolation == TomTenantIsolation.shared ? 3 : 1,
           );
+        });
+
+        test('a system store writes to the system data source, whichever '
+            "pool it holds; a tenant store follows the tenant", () async {
+          final main = TomDataSourceInfo.getBaseDataSourceInfo('main')!;
+          final acmePool = await tenancy.runFor(
+            'acme',
+            () async => TomDataSourceInfo.getDataSourceInfo('main')!.datasource,
+          );
+          expect(
+            identical(acmePool, main.datasource),
+            isolation == TomTenantIsolation.shared,
+            reason: 'only a shared tenant of type default works in the base',
+          );
+
+          // Built over acme's pool, each system store holds the base.
+          expect(TomSqlJobStore(acmePool).datasource, same(main.datasource));
+          expect(
+            TomSqlAuditSink(acmePool, writer: 'w').datasource,
+            same(main.datasource),
+          );
+          expect(
+            TomDatabaseBlobStore(acmePool).datasource,
+            same(main.datasource),
+          );
+          expect(
+            TomSqlOAuthStateStore(acmePool).datasource,
+            same(main.datasource),
+          );
+
+          // Built once over the base, the inbox is reached in each tenant's
+          // data source, and a message is processed once per tenant.
+          final inbox = TomSqlInbox(main.datasource);
+          expect(
+            await tenancy.runFor('acme', () async => inbox.placedDatasource),
+            same(acmePool),
+          );
+          await tenancy.forEachTenant((_) => inbox.deleteAll());
+          for (final tenant in ['acme', 'globex']) {
+            expect(
+              await tenancy.runFor(
+                tenant,
+                () => inbox.process('billing', 'm-1', () async {}),
+              ),
+              TomInboxOutcome.processed,
+              reason: tenant,
+            );
+          }
+          expect(
+            await tenancy.runFor(
+              'acme',
+              () => inbox.process('billing', 'm-1', () async {}),
+            ),
+            TomInboxOutcome.duplicate,
+          );
+          final inboxRows = await acmePool.executeQuery<TomCountResult>(
+            "SELECT COUNT(*) AS count FROM tom_message_inbox "
+            "WHERE consumer = 'billing'",
+          );
+          expect(
+            inboxRows.single.count,
+            isolation == TomTenantIsolation.shared ? 2 : 1,
+          );
+        });
+
+        test('the audit trail and the blob manifest record the tenant', () async {
+          final main = TomDataSourceInfo.getBaseDataSourceInfo('main')!;
+          // A chain of its own, so earlier runs' entries are not this one's.
+          final writer =
+              'tenant-${isolation.name}-${DateTime.now().microsecondsSinceEpoch}';
+          final sink = TomSqlAuditSink(main.datasource, writer: writer);
+          await sink.open();
+          TomAuditTrail.install(sink);
+          addTearDown(TomAuditTrail.uninstall);
+          for (final tenant in ['acme', 'globex', 'acme']) {
+            await tenancy.runFor(
+              tenant,
+              () => TomAuditTrail.recordAction(
+                action: TomAuditAction.execute,
+                target: 'report',
+                outcome: TomAuditOutcome.succeeded,
+              ),
+            );
+          }
+          final acme = await sink.query(const TomAuditQuery(tenant: 'acme'));
+          expect(acme.entries.map((e) => e.record.tenant), ['acme', 'acme']);
+          final rows = await main.datasource.executeQuery<TomCountResult>(
+            'SELECT COUNT(*) AS count FROM tom_audit_trail '
+            "WHERE writer = :w AND tenant = 'globex'",
+            {'w': writer},
+          );
+          expect(rows.single.count, 1, reason: 'in the system data source');
+
+          final blobs = TomDatabaseBlobStore(main.datasource);
+          await blobs.ensureSchema();
+          for (final tenant in ['acme', 'globex']) {
+            await tenancy.runFor(
+              tenant,
+              () => blobs.put(
+                key: 'tb-${isolation.name}-$tenant',
+                bytes: Stream.value([1, 2, 3]),
+              ),
+            );
+          }
+          final keys = await blobs.keysOfTenant('acme');
+          expect(keys, contains('tb-${isolation.name}-acme'));
+          expect(keys, isNot(contains('tb-${isolation.name}-globex')));
+          for (final tenant in ['acme', 'globex']) {
+            await blobs.delete('tb-${isolation.name}-$tenant');
+          }
         });
 
         test(

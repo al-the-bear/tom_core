@@ -223,10 +223,10 @@ this is guaranteed by the DDL alone: a table created some other way has to state
 it as well.
 
 The DDL ships as the framework migration
-`migrations/main/tomcore/[1]-create_tom_user_preference.sql`, reproduced verbatim
+`migrations/tenant/default/main/[1]-create_tom_user_preference.sql`, reproduced verbatim
 from `TomUserPreference.createTableSql` so the two cannot drift —
 `test/reference_migrations_test.dart` fails if they do. Its PostgreSQL form,
-generated from it, is `migrations_postgresql/main/tomcore/[1]-create_tom_user_preference.sql`
+generated from it, is `migrations_postgresql/tenant/default/main/[1]-create_tom_user_preference.sql`
 (see [db_migration.md](db_migration.md#reference-migrations-for-postgresql)). The filename is
 **untagged**, so it applies in every environment — a preference table that
 existed only in production would fail every test that touched it, and one that
@@ -324,7 +324,7 @@ table, like the preferences — and the conflict key it is replaced on. The name
 `tom_user_preference`'s are. The table has no owner column and the entity no
 row scope: a default is nobody's own row.
 
-The DDL ships as `migrations/main/tomcore/[2]-create_tom_preference_default.sql`
+The DDL ships as `migrations/tenant/default/main/[2]-create_tom_preference_default.sql`
 (PostgreSQL form under `migrations_postgresql/`), reproduced verbatim from
 `TomPreferenceDefault.createTableSql` — `test/reference_migrations_test.dart`
 fails if they drift — and untagged like `[1]`.

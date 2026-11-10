@@ -111,119 +111,108 @@ void main() {
   final check = TomFrameworkSchemaCheck();
 
   group('the descriptors and the shipped migrations build the same tables', () {
-    /// Asserts that [chain] builds exactly what [tables] declare.
-    void converges(String directory, List<TomFrameworkTable> tables) {
-      final report = check.verifyChain(
+    /// Every reference migration tree: `(module, kind, directory)`.
+    final trees = [
+      for (final module
+          in Directory('example').listSync().whereType<Directory>().toList()
+            ..sort((a, b) => a.path.compareTo(b.path)))
+        for (final kind in TomTableKind.values)
+          for (final directory in [
+            if (kind == TomTableKind.system)
+              Directory('${module.path}/migrations/system/main/tomcore')
+            else
+              Directory('${module.path}/migrations/tenant/default/main'),
+          ])
+            if (directory.existsSync())
+              (module: module.path, kind: kind, directory: directory.path),
+    ];
+
+    /// The framework's own tenant entities, whose tables a tenant tree builds.
+    const frameworkEntities = [
+      TomUserPreference,
+      TomPreferenceDefault,
+      TomResourceGrant,
+      TomPrincipalResourceGrant,
+      TomPrincipalDelegation,
+      TomUserTwoFactorEnrolment,
+      TomExternalIdentityLink,
+      TomExternalIdentityToken,
+    ];
+
+    test('every tree builds its descriptors and only tables of its kind', () {
+      expect(trees, hasLength(greaterThan(15)));
+      for (final tree in trees) {
+        final chain = _chain(tree.directory);
+        final built = TomSchemaDdlReader(
+          MariadbSqlDialect(),
+        ).replay(chain).schema.tables.keys.map((t) => t.toLowerCase()).toSet();
+        final report = check.verifyTree(
+          kind: tree.kind,
+          datasource: 'reference',
+          schema: 'tomcore',
+          tables: [
+            for (final table in frameworkOwnedTables())
+              if (built.contains(table.name.toLowerCase()) ||
+                  table.kind != tree.kind)
+                table,
+          ],
+          entities: frameworkEntities,
+          chain: chain,
+        );
+        expect(report.converged, isTrue, reason: report.describe());
+      }
+    });
+
+    test('every descriptor is built by a tree of its kind', () {
+      final builtBy = {
+        for (final kind in TomTableKind.values) kind: <String>{},
+      };
+      for (final tree in trees) {
+        builtBy[tree.kind]!.addAll(
+          TomSchemaDdlReader(MariadbSqlDialect())
+              .replay(_chain(tree.directory))
+              .schema
+              .tables
+              .keys
+              .map((t) => t.toLowerCase()),
+        );
+      }
+      for (final table in frameworkOwnedTables()) {
+        expect(
+          builtBy[table.kind],
+          contains(table.name.toLowerCase()),
+          reason:
+              '${table.name} (${table.kind.name}) is built by no '
+              '${table.kind.name} tree',
+        );
+      }
+      for (final entity in frameworkEntities) {
+        expect(
+          builtBy[TomTableKind.tenant],
+          contains(TomAnnotationAnalyzer.findTable(entity)!.table),
+          reason: '$entity is built by no tenant tree',
+        );
+      }
+    });
+
+    test('a tree building a table of the other kind is reported', () {
+      final report = check.verifyTree(
+        kind: TomTableKind.system,
         datasource: 'reference',
         schema: 'tomcore',
-        tables: tables,
-        chain: _chain(directory),
+        chain: [
+          TomMigrationArtifact(
+            '[1]-misplaced.sql',
+            inboxTableDdl(defaultInboxTable),
+          ),
+        ],
+        entities: frameworkEntities,
       );
-      expect(report.converged, isTrue, reason: report.describe());
-    }
-
-    test('the scheduling chain builds the scheduling descriptors', () {
-      converges('example/scheduling/migrations/main/tomcore', [
-        jobRunTable(defaultJobRunTable),
-        leaseTable(defaultLeaseTable),
-        schedulerNodeTable(defaultSchedulerNodeTable),
-        jobPauseTable(defaultJobPauseTable),
-        jobRunArchiveTable(defaultJobRunArchiveTable),
-      ]);
-    });
-
-    test('the file-storage chain builds the blob descriptors', () {
-      converges('example/file_storage/migrations/main/tomcore', [
-        blobManifestTable(defaultBlobManifestTable),
-        blobChunkTable(defaultBlobChunkTable),
-        blobLedgerTable(defaultBlobLedgerTable),
-        blobContentTable(defaultBlobContentTable),
-      ]);
-    });
-
-    test('the export chain builds the register descriptor', () {
-      converges('example/export/migrations/main/tomcore', [
-        exportRegisterTable(defaultExportRegisterTable),
-      ]);
-    });
-
-    test('the audit chain builds the trail descriptor', () {
-      // The chain's other two artifacts are the write-once triggers, which
-      // create no table and so contribute nothing to the replayed schema.
-      converges('example/audit/migrations/main/tomcore', [
-        auditTrailTable(defaultAuditTrailTable),
-      ]);
-    });
-
-    test('the audit_reports chain builds the saved-question descriptor', () {
-      converges('example/audit_reports/migrations/main/tomcore', [
-        auditQuestionTable(defaultAuditQuestionTable),
-      ]);
-    });
-
-    test('the authentication chain builds the OAuth state descriptor', () {
-      // Only `[2]` builds a descriptor table. The chain's `[1]`, `[3]` and `[4]`
-      // create the two-factor enrolment, retained-token and identity-link
-      // tables, which are *entities* and so are covered by the application
-      // convergence check rather than this one; restricting to the descriptors'
-      // tables drops them.
-      converges('example/authentication/migrations/main/tomcore', [
-        oauthStateTable(defaultOAuthStateTable),
-        scimResourceTable(defaultScimResourceTable),
-      ]);
-    });
-
-    test('the messaging chain builds the delivery-report, inbox and '
-        'suppression descriptors', () {
-      converges('example/messaging/migrations/main/tomcore', [
-        deliveryReportTable(defaultDeliveryReportTable),
-        inboxTable(defaultInboxTable),
-        suppressionTable(defaultSuppressionTable),
-      ]);
-    });
-
-    test('the endpoints chain builds the idempotency-key descriptor', () {
-      converges('example/endpoints/migrations/main/tomcore', [
-        idempotencyTable(defaultIdempotencyTable),
-      ]);
-    });
-
-    test('the transactions chain builds the saga and decision descriptors', () {
-      converges('example/transactions/migrations/main/tomcore', [
-        sagaTable(defaultSagaTable),
-        decisionTable(defaultDecisionTable),
-      ]);
-    });
-
-    test('the object_persistence chain builds the data-key descriptor', () {
-      converges('example/object_persistence/migrations/main/tomcore', [
-        encryptionKeyTable(defaultEncryptionKeyTable),
-      ]);
-    });
-
-    test('the privacy chain builds the subject-key descriptor', () {
-      converges('example/privacy/migrations/main/tomcore', [
-        subjectKeyTable(defaultSubjectKeyTable),
-      ]);
-    });
-
-    test('the sync chain builds the change-log descriptors', () {
-      converges('example/sync/migrations/main/tomcore', [
-        syncChangeTable(defaultSyncChangeTable),
-        syncSequenceTable(defaultSyncSequenceTable),
-      ]);
-    });
-
-    test('the tenancy chain builds the tenant-registry descriptor', () {
-      converges('example/tenancy/migrations/main/tomcore', [
-        tenantTable(defaultTenantTable),
-      ]);
-    });
-
-    test('the cache chain builds the invalidation-log descriptor', () {
-      converges('example/cache/migrations/main/tomcore', [
-        invalidationTable(defaultInvalidationTable),
-      ]);
+      expect(
+        report.divergences.map((d) => (d.kind, d.table)),
+        contains((TomSchemaDivergenceKind.misplacedTable, defaultInboxTable)),
+      );
+      expect(report.converged, isFalse);
     });
 
     test('a chain that omits a column is reported, not tolerated', () {
@@ -382,6 +371,7 @@ void main() {
       // `record`. Both halves still compile; the projection would simply return
       // nothing, on whichever path happened to read the trail.
       final renamed = TomFrameworkTable(
+        kind: TomTableKind.system,
         name: defaultAuditTrailTable,
         origin: 'a renamed auditTrailTable',
         columns: const [
@@ -401,6 +391,7 @@ void main() {
       // A `String` field is exempt — the driver decodes every value to text —
       // but an `int` field is a coercion claim, and a claim can be wrong.
       final retyped = TomFrameworkTable(
+        kind: TomTableKind.system,
         name: defaultSchedulerNodeTable,
         origin: 'a retyped schedulerNodeTable',
         columns: const [
