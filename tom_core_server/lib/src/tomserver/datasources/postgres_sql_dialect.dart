@@ -230,6 +230,17 @@ class PostgresSqlDialect extends TomStandardSqlDialect {
   SqlString createSchema(String name) =>
       'CREATE SCHEMA IF NOT EXISTS ${quoteIdentifier(name)}';
 
+  /// `DROP SCHEMA … CASCADE` — the schema and every table in it.
+  @override
+  SqlString dropSchema(String name) =>
+      'DROP SCHEMA IF EXISTS ${quoteIdentifier(name)} CASCADE';
+
+  /// `DROP DATABASE … WITH (FORCE)` — the database, ending the sessions
+  /// still connected to it.
+  @override
+  SqlString dropDatabase(String name) =>
+      'DROP DATABASE IF EXISTS ${quoteIdentifier(name)} WITH (FORCE)';
+
   /// The driver's `schema` setting, which sets the session's `search_path`.
   @override
   String get schemaSetting => 'schema';

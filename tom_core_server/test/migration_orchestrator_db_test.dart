@@ -46,10 +46,10 @@ void main() async {
       ..createSync(recursive: true)
       ..writeAsStringSync(sql);
 
-    Future<TomDataSourceInfo> routed(String tenant) => tenancy.runFor(
-      tenant,
-      () async => TomDataSourceInfo.getDataSourceInfo('main')!,
-    );
+    // The maintenance route: a tenant whose migration failed is not routed
+    // for ordinary work, and initech's tables are read while it is.
+    Future<TomDataSourceInfo> routed(String tenant) async =>
+        tenancy.routeForMaintenance(tenant, main);
 
     Future<bool> hasTable(TomDataSourceInfo info, String table) async =>
         (await info.datasource.executeQuery<TomCountResult>(

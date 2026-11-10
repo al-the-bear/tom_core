@@ -120,7 +120,7 @@ state of its own: it takes a data source and issues statements, and every claim,
 release and recovery is decided by the affected-row count of a conditional
 statement.
 
-- **Implements:** `TomJobStore`
+- **Implements:** `TomJobStore`, `TomTenantData`
 
 #### Constructors
 
@@ -194,6 +194,8 @@ tick.
 | `pausedJobs` | `Future<Map<String, DateTime>> pausedJobs()` | *(override)* The paused jobs and the instant each was paused. |
 | `deleteAll` | `Future<void> deleteAll()` | Empties the queue, pause and archive tables. Not part of `TomJobStore` — for provisioning and for tests that need a known-empty queue. |
 | `toString` | `String toString()` | *(override)* Renders `"TomSqlJobStore(<table>)"`. |
+| `cancelTenantRuns` | `Future<int> cancelTenantRuns(String tenant, DateTime now)` | *(override)* One `UPDATE`: the tenant's pending runs become `failed` with `TomJobStore.tenantRemovedError`. |
+| `purgeTenant` | `Future<int> purgeTenant(String tenant)` | *(override, TomTenantData)* Deletes every run of the tenant, archived runs included. |
 
 ### TomArchivedJobRun
 

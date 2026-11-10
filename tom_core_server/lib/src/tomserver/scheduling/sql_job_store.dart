@@ -114,9 +114,10 @@ import '../object_persistence/persistence_annotations.dart';
 import '../transactions/transaction_manager.dart';
 import 'sql_scheduler_nodes.dart';
 import 'sql_scheduling_sql.dart';
+import '../tenancy/tenant_data.dart';
 
 /// A [TomJobStore] whose queue is a table in a [TomDataSource].
-class TomSqlJobStore implements TomJobStore {
+class TomSqlJobStore implements TomJobStore, TomTenantData {
   /// Creates a store over [datasource].
   ///
   /// [table] names the queue table. With [createSchema] left `true` the table
@@ -883,6 +884,44 @@ class TomSqlJobStore implements TomJobStore {
       );
       return removed.toInt();
     });
+  }
+
+  /// Cancels the pending runs of [tenant]: each becomes `failed` with
+  /// [TomJobStore.tenantRemovedError], at [now]. A running one finishes.
+  @override
+  Future<int> cancelTenantRuns(String tenant, DateTime now) async {
+    await ensureSchema();
+    final cancelled = await datasource.executeCommand(
+      'UPDATE $table SET state = :failed, last_error = :error, '
+      'completed_at = :now WHERE tenant = :tenant AND state = :pending',
+      {
+        'failed': TomJobRunState.failed.name,
+        'pending': TomJobRunState.pending.name,
+        'error': TomJobStore.tenantRemovedError,
+        'now': sqlInstant(now),
+        'tenant': tenant,
+      },
+    );
+    return cancelled.toInt();
+  }
+
+  /// Deletes every run of [tenant] from the queue, and from [archiveTable]
+  /// when the store archives.
+  @override
+  Future<int> purgeTenant(String tenant) async {
+    await ensureSchema();
+    var removed = (await datasource.executeCommand(
+      'DELETE FROM $table WHERE tenant = :tenant',
+      {'tenant': tenant},
+    )).toInt();
+    final archive = archiveTable;
+    if (archive != null) {
+      removed += (await datasource.executeCommand(
+        'DELETE FROM $archive WHERE tenant = :tenant',
+        {'tenant': tenant},
+      )).toInt();
+    }
+    return removed;
   }
 
   /// The archived runs, most recently archived first — of [jobName] only when

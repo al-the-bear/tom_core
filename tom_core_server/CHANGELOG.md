@@ -2,6 +2,31 @@
 
 ### Added
 
+- **The tenant lifecycle** (`tenancy`, `db_migration`, `datasources`,
+  `scheduling`, `healthcheck`). `TomTenancy.addTenant` records a tenant as
+  `provisioning`, provisions it, migrates it by its type's tree
+  (`TomTenancy.migrateTenant` → `TomDbMigrations.migrateTenant`) and serves
+  it, answering the run; a failed migration leaves it `migration-failed` —
+  refused with 503 `tenancy.tenant.migration_failed`, not routed, listed by
+  readiness — and `migrateTenant` retries it (`routeForMaintenance` reaches it
+  for repair and rollback). A suspended tenant's queued runs are held
+  (`servesWork`, installed as `TomScheduler.tenantGate`). `removeTenant`
+  cancels the tenant's queued runs; `restoreTenant` serves a removed tenant
+  again; `purgeTenant` — after `purgeAfter` (`tenancy.purgeAfterDays`, 90 days
+  by default) or with `force` — drops a schema tenant's schema
+  (`dropSchema`: `DROP DATABASE` on MariaDB, `DROP SCHEMA … CASCADE` on
+  PostgreSQL), a database tenant's database it opened (`dropDatabase`), a
+  shared tenant's rows from every tenant table, its system-table records
+  through `TomTenantData` stores (`TomSqlJobStore`, `TomDatabaseBlobStore`,
+  `TomSqlDeliveryReportStore`, `TomSqlSuppressionList`,
+  `TomSqlOAuthStateStore`, `TomSqlApiKeyStore`) and its registry row
+  (`TomTenantRegistry.delete`), answering a `TomTenantPurgeReport`. Tenant
+  pools are small, opened by their first statement and closed when idle
+  (`TomTenantPoolSettings`, `tenancy.pool.perTenant` / `idleSeconds` /
+  `maxTotal`, refused past the cap with `tenancy.pool.cap_exceeded`), on the
+  data-source settings `connectLazily` and `poolSweepIdle`
+  (`TomConnectionPoolSettings.sweepIdle`).
+
 - **Schema version guard** (`db_migration`, `tenancy`, `server`,
   `healthcheck`): every node compares the highest migration version its trees
   carry with what each schema recorded (`TomSchemaVersionCheck`,

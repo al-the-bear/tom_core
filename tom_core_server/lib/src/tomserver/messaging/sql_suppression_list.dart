@@ -11,6 +11,7 @@ import '../object_persistence/persistence_annotations.dart';
 import 'message.dart';
 import 'suppression_list.dart';
 import 'suppression_sql.dart';
+import '../tenancy/tenant_data.dart';
 
 /// A [TomSuppressionList] over a SQL data source: the list a deployment keeps,
 /// since a list in memory is lost on restart and the next message goes to the
@@ -18,7 +19,8 @@ import 'suppression_sql.dart';
 ///
 /// Built over a data source that is not routed per tenant: the list is the
 /// deployment's ([TomSuppressionList]).
-class TomSqlSuppressionList extends TomSuppressionList {
+class TomSqlSuppressionList extends TomSuppressionList
+    implements TomTenantData {
   /// Creates a list over [datasource] in [table], creating the table on first
   /// use when [createSchema] is set.
   TomSqlSuppressionList(
@@ -168,6 +170,16 @@ class TomSqlSuppressionList extends TomSuppressionList {
       {if (channel != null) 'channel': channel.name},
     );
     return rows.map(_entryOf).toList(growable: false);
+  }
+
+  /// Deletes the suppressions recorded for [tenant].
+  @override
+  Future<int> purgeTenant(String tenant) async {
+    await ensureSchema();
+    return (await datasource.executeCommand(
+      'DELETE FROM $table WHERE tenant = :tenant',
+      {'tenant': tenant},
+    )).toInt();
   }
 
   /// Removes every entry. For tests.

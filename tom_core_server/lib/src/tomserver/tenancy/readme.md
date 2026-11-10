@@ -20,13 +20,14 @@ header.
 
 | Type | Responsibility |
 | ---- | -------------- |
-| `TomTenancy` | The deployment's tenants and their routing. `install` reads the tenant registry (seeding it with the configured tenants it lacks), provisions each tenant's schema or database and routes data-source lookups; `runFor` / `forEachTenant` run work inside a tenant; `resolveRequest` names a request's tenant or the rejection to answer it with; `addTenant` onboards without a restart, `suspendTenant` / `resumeTenant` stop and restart a tenant's traffic and `setStatus` records any status — the migration run moves a tenant through `migrating` to `active` or `migration-failed` with it — and `removeTenant` withdraws a tenant, closing the data sources opened for it — each recorded in the registry first; `refreshFromRegistry` brings a node level with what other nodes changed; `checkSchemaVersions` judges each tenant's schema against this node's code — behind, or ahead by a migration not marked expand, the tenant is refused (`tenancy.tenant.schema_behind` / `schema_ahead`, 503) while the others are served (`schemaCheckOf`). |
+| `TomTenancy` | The deployment's tenants and their routing. `install` reads the tenant registry (seeding it with the configured tenants it lacks), provisions each tenant's schema or database and routes data-source lookups; `runFor` / `forEachTenant` run work inside a tenant; `resolveRequest` names a request's tenant or the rejection to answer it with; `addTenant` onboards without a restart — provisioned, migrated by its type's tree and served in one call, `migrateTenant` retrying a failed migration — `suspendTenant` / `resumeTenant` stop and restart a tenant's traffic and hold its queued runs (`servesWork`), `setStatus` records any status — the migration run moves a tenant through `migrating` to `active` or `migration-failed` with it — `removeTenant` withdraws a tenant, closing the data sources opened for it and cancelling its queued runs, `restoreTenant` brings it back, and `purgeTenant` drops its schema or database and its system-table records once `purgeAfter` has passed (`TomTenantPurgeReport`) — each recorded in the registry first; tenant pools are sized by `TomTenantPoolSettings`; `refreshFromRegistry` brings a node level with what other nodes changed; `checkSchemaVersions` judges each tenant's schema against this node's code — behind, or ahead by a migration not marked expand, the tenant is refused (`tenancy.tenant.schema_behind` / `schema_ahead`, 503) while the others are served (`schemaCheckOf`). |
 | `TomTenantRegistry` · `TomMemoryTenantRegistry` · `TomSqlTenantRegistry` | The durable list of tenants — in memory, or the framework table `tom_tenant` in the system schema, declared once as `tenantTable` (default name `defaultTenantTable`) — with `TomTenantRecord` (one row), `TomTenantStatus`, `TomTenantRegistryConflict` and `TomTenantRegistryRefresh`. `withMigrationLock` keeps one migration of a target at a time — a database session lock in the SQL registry, so across every process. |
 | `TomTenant` · `TomTenantIsolation` | One tenant, of a type (`default` unless it names one), and where its data lives: `shared`, `schema` or `database`. |
 | `TomTenantType` | A kind of tenant (`tenancy.types`): its default model, the models it allows, the data sources it routes and its migration tree. Its shared tenants share one schema — the system schema for `default`, `<databaseName>_<type>` otherwise. Without declared types the deployment has the implicit type `default`. |
 | `TomTenantResolver` · `TomTenantHostResolver` · `TomTenantPathResolver` · `TomTenantHeaderResolver` | How a request without a token claim names its tenant: by subdomain or own host, by the path segment after a prefix (`/t/<segment>`, mapped to a tenant id when a lookup is given), or by the `X-Tenant-Id` header. |
 | `TomTenantResolution` | A tenant, none, or a rejection with its HTTP status and key. |
-| `TomTenancyException` | Every refusal the module raises — `tenancy.config.*`, `tenancy.tenant.*`, `tenancy.type.*` and `tenancy.registry.*`. |
+| `TomTenantData` | A store of a system table that records tenants — the job queue, the blob manifest, delivery reports, the suppression list, OAuth state, service accounts — and deletes a purged tenant's records. |
+| `TomTenancyException` | Every refusal the module raises — `tenancy.config.*`, `tenancy.tenant.*`, `tenancy.type.*`, `tenancy.registry.*`, `tenancy.purge.*` and `tenancy.pool.*`. |
 
 ## Quick start
 
@@ -71,7 +72,9 @@ and `test/tenant_type_test.dart` cover the module without a database; `test/tena
 runs it under all three isolation models against MariaDB or PostgreSQL, and
 `test/tenant_registry_db_test.dart` (tagged `db`) the SQL registry and two nodes
 over one registry table, and `test/tenant_type_db_test.dart` (tagged `db`) one
-shared schema per type. `test/examples_test.dart` runs the example.
+shared schema per type. `test/tenant_lifecycle_test.dart` covers the lifecycle
+without a database, `test/tenant_lifecycle_db_test.dart` (tagged `db`) against
+MariaDB and PostgreSQL. `test/examples_test.dart` runs the example.
 
 ---
 

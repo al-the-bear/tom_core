@@ -134,10 +134,11 @@ import '../object_persistence/persistence_annotations.dart';
 import 'oauth_flow.dart';
 import 'oauth_provider.dart';
 import 'oauth_state_sql.dart';
+import '../tenancy/tenant_data.dart';
 
 /// A [TomOAuthStateStore] whose pending authorizations are rows in a
 /// [TomDataSource].
-class TomSqlOAuthStateStore implements TomOAuthStateStore {
+class TomSqlOAuthStateStore implements TomOAuthStateStore, TomTenantData {
   /// Creates a store over [datasource].
   ///
   /// [table] names the pending-authorization table. With [createSchema] left
@@ -321,6 +322,16 @@ class TomSqlOAuthStateStore implements TomOAuthStateStore {
       {'now': sqlInstant(now ?? _now())},
     );
     return affected.toInt();
+  }
+
+  /// Deletes the pending sign-in flows begun in [tenant].
+  @override
+  Future<int> purgeTenant(String tenant) async {
+    await ensureSchema();
+    return (await datasource.executeCommand(
+      'DELETE FROM $table WHERE tenant = :tenant',
+      {'tenant': tenant},
+    )).toInt();
   }
 
   /// Empties the table.

@@ -306,6 +306,56 @@ Directory makeTempDir() {
 }
 
 void main() {
+  group('a tenant held by the gate', () {
+    tearDown(() => TomScheduler.tenantGate = null);
+
+    test('its runs stay pending while the gate holds it, and run once it '
+        'lets them through; a run of no tenant is never held', () async {
+      final clock = FakeClock(DateTime.utc(2026, 3, 1, 10));
+      final store = TomMemoryJobStore();
+      final events = makeEventSource();
+      final ran = <String>[];
+      final scheduler = schedulerFor(store, clock);
+      scheduler.register(
+        jobNamed(
+          'job',
+          TomEventSchedule(events.stream),
+          allowOverlap: true,
+          body: (run) {
+            ran.add(run.id);
+            return OkCommand();
+          },
+        ),
+      );
+      for (final (id, tenant) in [
+        ('acme-1', 'acme'),
+        ('globex-1', 'globex'),
+        ('none-1', null),
+      ]) {
+        await store.enqueue(
+          TomJobRun(
+            id: id,
+            jobName: 'job',
+            scheduledFor: clock.now.add(Duration(minutes: id.length)),
+            runAt: clock.now,
+            tenant: tenant,
+          ),
+        );
+      }
+      TomScheduler.tenantGate = (tenant) => tenant != 'acme';
+      await scheduler.tick();
+      await scheduler.drain();
+      expect(ran..sort(), ['globex-1', 'none-1']);
+      expect((await store.findRun('acme-1'))!.state, TomJobRunState.pending);
+
+      TomScheduler.tenantGate = (_) => true;
+      await scheduler.tick();
+      await scheduler.drain();
+      expect(ran, contains('acme-1'));
+      await scheduler.close();
+    });
+  });
+
   // ===========================================================================
   // CRON
   // ===========================================================================

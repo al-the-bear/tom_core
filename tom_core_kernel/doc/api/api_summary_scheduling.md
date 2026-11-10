@@ -806,6 +806,7 @@ re-reading the store.
 | `encodeCheckpoint` | `static String? encodeCheckpoint(TomJobRun run, Map<String, Object?>? checkpoint)` | The JSON text a store writes for a checkpoint; throws a `schedule.job.checkpoint` `TomScheduleException` for one that is not JSON-encodable. Every `saveCheckpoint` calls it before writing. |
 | `isRecoverable` | `static bool isRecoverable(TomJobRun run, bool Function(String jobName)? requestsRecovery)` | Whether an abandoned run may be re-queued: always, if it never started; otherwise only if its job opted in. |
 | `recoveryDeclinedError` | `static const String` | The operator-facing text recorded against a run that was interrupted and deliberately not re-queued — a constant so it reads identically whichever store wrote it. |
+| `tenantRemovedError` | `static const String` | What a run cancelled by `cancelTenantRuns` records as its `lastError`. |
 
 #### Methods
 
@@ -825,6 +826,8 @@ re-reading the store.
 | `recoverAbandoned` | `Future<List<TomJobRun>> recoverAbandoned(DateTime now, Duration leaseTimeout, {bool Function(String jobName)? requestsRecovery})` | Reclaims runs left `running` by a holder that vanished, without charging an attempt. Returns every run it changed, so the caller can alert on each. |
 | `all` | `Future<List<TomJobRun>> all()` | Every held run, in insertion order — diagnostics and tests. |
 | `purgeFinished` | `Future<int> purgeFinished(DateTime before)` | Deletes terminal runs completed before `before`; returns the count. |
+| `cancelTenantRuns` | `Future<int> cancelTenantRuns(String tenant, DateTime now)` | Cancels the pending runs of `tenant` — the tenant was removed: each becomes `failed` with `tenantRemovedError`, so it never runs and its record stays. A run already executing finishes. Answers how many were cancelled. |
+| `purgeTenant` | `Future<int> purgeTenant(String tenant)` | Deletes every run of `tenant`, finished or not — the tenant is purged. Answers how many were deleted. |
 | `pauseJob` | `Future<void> pauseJob(String jobName, DateTime now)` | Holds the job's runs out of `claimDue` on every node sharing the store, until `resumeJob`. A second pause keeps the first instant; a running run is untouched. |
 | `resumeJob` | `Future<void> resumeJob(String jobName)` | Ends the pause; a no-op for a job that is not paused. |
 | `pausedJobs` | `Future<Map<String, DateTime>> pausedJobs()` | The paused jobs and when each was paused. |
@@ -865,6 +868,8 @@ An in-process store — the default for tests and single-process use.
 | `replaceAll` | `void replaceAll(Iterable<TomJobRun> runs, [Map<String, DateTime> paused = const {}])` | Replaces the runs and the paused jobs wholesale (used when loading). |
 | `findRun` | `Future<TomJobRun?> findRun(String id)` | *(override)* The held run under `id`, or `null`. |
 | `backlog` | `Future<List<TomJobBacklog>> backlog(DateTime now)` | *(override)* One pass over the held runs, counting those `isDue(now)` per job — paused jobs left out — and keeping the earliest `runAt`. |
+| `cancelTenantRuns` | `Future<int> cancelTenantRuns(String tenant, DateTime now)` | *(override)* Fails the tenant's pending runs with `TomJobStore.tenantRemovedError`. |
+| `purgeTenant` | `Future<int> purgeTenant(String tenant)` | *(override)* Drops every held run of the tenant. |
 
 ### TomFileJobStore
 
@@ -882,7 +887,7 @@ process id in the staging name keeps two nodes on a shared mount from publishing
 each other's partial writes; strays are ignored on load.
 
 Several stores over one file — processes on one host or a shared mount, isolates
-in one process — share one queue. Every operation (all seventeen `TomJobStore`
+in one process — share one queue. Every operation (all twenty `TomJobStore`
 methods, `all()` and `backlog()` included) holds an exclusive mutex, a `TomFileLeaseLock` on
 the sibling directory `<path>.lock` with a 30-second lease, re-reads the file,
 applies itself and writes the file back if it changed anything. A claim is
@@ -921,6 +926,8 @@ effect on disk, and the price of a salvage that survives the next restart.
 | ------ | --------- | ----------- |
 | `findRun` | `Future<TomJobRun?> findRun(String id)` | *(override)* The in-memory answer, taken under the file mutex. |
 | `backlog` | `Future<List<TomJobBacklog>> backlog(DateTime now)` | *(override)* The in-memory answer, taken under the file mutex after re-reading the file, so it counts what every store on the file has enqueued and claimed. |
+| `cancelTenantRuns` | `Future<int> cancelTenantRuns(String tenant, DateTime now)` | *(override)* The in-memory cancellation, under the file mutex. |
+| `purgeTenant` | `Future<int> purgeTenant(String tenant)` | *(override)* The in-memory purge, under the file mutex. |
 
 ## The lease lock
 
@@ -1143,6 +1150,7 @@ the interval is defaulted from it.
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `maxCatchUpScan` | `int` | Hard ceiling (`100000`) on windows examined in one catch-up scan. |
+| `tenantGate` | `bool Function(String tenant)?` | Whether a tenant's runs may be claimed now, for every scheduler of the isolate; `null` (the default) claims every tenant's runs. `tom_core_server`'s tenancy installs it so a suspended tenant's runs stay pending until it is resumed. A run of no tenant is never held. |
 | `started` | `Set<TomScheduler>` | The schedulers of this isolate that were started and not yet closed, as an unmodifiable snapshot (getter). `start` adds a scheduler, `close` removes it; `stop` leaves it listed. A graceful shutdown walks it: `stop` every one, `drain` them within its deadline, then `close` them so their leases go back to the cluster at once — `TomServer.shutdown` in `tom_core_server` does exactly that. |
 
 #### Properties

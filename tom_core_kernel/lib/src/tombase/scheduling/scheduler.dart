@@ -482,6 +482,14 @@ class TomScheduler implements TomClosable {
 
   static final Set<TomScheduler> _started = {};
 
+  /// Whether the runs of a tenant may be claimed now, for every scheduler of
+  /// the isolate; `null` — the default — claims every tenant's runs.
+  ///
+  /// `tom_core_server`'s tenancy installs it so a suspended tenant's queued
+  /// runs are held: they stay pending, are not claimed, and run once the
+  /// tenant is resumed. A run of no tenant is never held.
+  static bool Function(String tenant)? tenantGate;
+
   /// The schedulers of this isolate that were started and not yet closed.
   ///
   /// A process shutting down gracefully walks it: [stop] every one so no new
@@ -967,6 +975,12 @@ class TomScheduler implements TomClosable {
       ownerId,
       limit: maxRunsPerTick,
       accept: (run) {
+        // A run of a tenant that is not served now — suspended — is held:
+        // left pending, claimed once the gate lets it through again.
+        final tenant = run.tenant;
+        if (tenant != null && !(tenantGate?.call(tenant) ?? true)) {
+          return false;
+        }
         final job = _jobs[run.jobName];
         // A run whose definition is not registered here belongs to some other
         // scheduler (or an older build); leave it for whoever owns it rather

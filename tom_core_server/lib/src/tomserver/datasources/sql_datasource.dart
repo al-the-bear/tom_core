@@ -472,6 +472,17 @@ abstract class TomSqlDatasource implements TomDataSource {
   /// milliseconds.
   int poolValidateAfterIdleMs = 30000;
 
+  /// Whether a timer closes the pool's idle connections past
+  /// [poolIdleTimeoutMs] while it sees no traffic — for the many, mostly quiet
+  /// pools of tenants ([TomConnectionPoolSettings.sweepIdle]).
+  bool poolSweepIdle = false;
+
+  /// Whether [connect] opens the pool without a connection: the first one is
+  /// opened by the first statement. A misconfigured data source then fails
+  /// there rather than at [connect] — what a tenant's own pool wants, so a
+  /// deployment of many tenants opens no connection for one nobody uses.
+  bool connectLazily = false;
+
   /// The read replicas of this data source: one settings map per replica,
   /// each overriding this data source's own settings — usually only `host`
   /// and `port`. See `read_replicas.dart` for which statements a replica
@@ -495,6 +506,7 @@ abstract class TomSqlDatasource implements TomDataSource {
     idleTimeout: Duration(milliseconds: poolIdleTimeoutMs),
     maxLifetime: Duration(milliseconds: poolMaxLifetimeMs),
     validateAfterIdle: Duration(milliseconds: poolValidateAfterIdleMs),
+    sweepIdle: poolSweepIdle,
   );
 
   TomConnectionPool<TomSqlLink>? _pool;
@@ -651,9 +663,12 @@ abstract class TomSqlDatasource implements TomDataSource {
       settings: poolSettings,
     );
     // The first connection is opened now so a misconfigured data source fails
-    // here, where it was opened, and not on its first request.
-    final first = await pool.acquire();
-    await pool.release(first);
+    // here, where it was opened, and not on its first request — unless the
+    // data source asked to be opened lazily.
+    if (!connectLazily) {
+      final first = await pool.acquire();
+      await pool.release(first);
+    }
     _pool = pool;
     _poolObservation = TomMetrics.registry.observe(
       tomDbPoolConnectionsMetric,

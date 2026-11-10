@@ -581,6 +581,8 @@ a conflicting write differently overrides the method that renders it.
 | `translateCanonical` | `List<SqlString> translateCanonical(String statement)` | `statement`, written in the canonical DDL, as the statements this database runs to the same effect. Returns `[statement]` here. A store that keeps a hand-written `CREATE TABLE`, and a test that builds a fixture table, pass it through here so one declaration serves every database. |
 | `translateCanonicalScript` | `String translateCanonicalScript(String script)` | A whole canonical `script` — a migration file — in this database's words: each statement (`TomSqlLexer.splitStatements`) through `translateCanonical`, comments kept, one `;`-terminated statement per paragraph. |
 | `createSchema` | `SqlString createSchema(String name)` | The statement creating schema `name` if it does not exist — `` CREATE DATABASE IF NOT EXISTS `name` `` here, where a schema is a database. `name` must be a plain identifier; the caller checks it. |
+| `dropSchema` | `SqlString dropSchema(String name)` | The statement dropping schema `name` and everything in it, if it exists — `` DROP DATABASE IF EXISTS `name` `` here. What a purged schema-isolated tenant's schema is removed with. `name` must be a plain identifier; the caller checks it. |
+| `dropDatabase` | `SqlString dropDatabase(String name)` | The statement dropping database `name`, if it exists — what a purged database-isolated tenant's database is removed with. `name` must be a plain identifier. |
 | `rejectingTrigger` | `List<SqlString> rejectingTrigger({required String name, required String table, required String event, required String message})` | The statements installing trigger `name`, which refuses every `event` (`UPDATE` or `DELETE`) on `table` with `message` — a guard a deployment installs, not something the framework issues itself. One `CREATE TRIGGER … SIGNAL SQLSTATE '45000'` here. |
 | `quoteIdentifier` | `SqlString quoteIdentifier(String identifier)` | `identifier` quoted, for a name that may be a reserved word or carry characters an unquoted identifier may not — backticks here, an embedded backtick doubled. |
 
@@ -663,6 +665,8 @@ PostgresSqlDialect()
 | `incrementCounter` | `SqlString incrementCounter(String table, Map<String, String> values, String counter, {required List<String> conflictKey})` | *(override)* `INSERT … VALUES (…, 1) ON CONFLICT (<conflictKey>) DO UPDATE SET counter = table.counter + 1 RETURNING counter`; the driver reports the returned count as the generated id. |
 | `returningKey` | `SqlString returningKey(String insert, String keyColumn)` | *(override)* `insert` with `RETURNING keyColumn` appended — PostgreSQL has no last-insert id, and its driver reads a single returned integer as the generated id. |
 | `createSchema` | `SqlString createSchema(String name)` | *(override)* `CREATE SCHEMA IF NOT EXISTS "name"` — a PostgreSQL schema lives inside the one database. |
+| `dropSchema` | `SqlString dropSchema(String name)` | *(override)* `DROP SCHEMA IF EXISTS "name" CASCADE` — the schema and every table in it. |
+| `dropDatabase` | `SqlString dropDatabase(String name)` | *(override)* `DROP DATABASE IF EXISTS "name" WITH (FORCE)` — the database, ending the sessions still connected to it. |
 | `rejectingTrigger` | `List<SqlString> rejectingTrigger({required String name, required String table, required String event, required String message})` | *(override)* Two statements: a PL/pgSQL trigger function `<name>_reject` raising `message`, and the `BEFORE <event>` row trigger calling it. The function body is an ordinary single-quoted literal rather than dollar-quoted, so the statement splitter sees one statement in it. |
 | `quoteIdentifier` | `SqlString quoteIdentifier(String identifier)` | *(override)* `identifier` in double quotes, an embedded double quote doubled. |
 | `translateCanonical` | `List<SqlString> translateCanonical(String statement)` | *(override)* The canonical `statement` in PostgreSQL's words — see below. Leading comment lines are kept on the first statement it becomes; a statement of no kind listed below runs as written. |
@@ -1208,6 +1212,7 @@ const TomConnectionPoolSettings({
   Duration idleTimeout = const Duration(minutes: 10),
   Duration maxLifetime = const Duration(minutes: 30),
   Duration validateAfterIdle = const Duration(seconds: 30),
+  bool sweepIdle = false,
 })
 ```
 
@@ -1219,6 +1224,7 @@ const TomConnectionPoolSettings({
 | `minIdle` | `int` | Idle connections exempt from the idle timeout, refilled in the background when a connection is discarded on its return. At most `maxSize`; `0` opens connections only when they are asked for. |
 | `acquireTimeout` | `Duration` | How long `acquire` waits when all `maxSize` connections are lent, before it fails. |
 | `idleTimeout` | `Duration` | How long a connection may sit idle before the pool closes it, while more than `minIdle` are idle. Checked whenever the pool is used, not by a timer. |
+| `sweepIdle` | `bool` | Whether a timer closes idle connections past `idleTimeout` while the pool sees no traffic — for the many, mostly quiet pools of tenants. Such a pool must be closed, or its timer keeps the process alive until its connections are retired. Default `false`: a pool with no traffic closes its idle connections when traffic resumes. |
 | `maxLifetime` | `Duration` | How long a connection is used at all before the pool replaces it. |
 | `validateAfterIdle` | `Duration` | A connection idle for longer than this is validated before it is lent, and replaced if the check fails. |
 
@@ -1339,10 +1345,12 @@ or calls, not part of the surface an application reaches for.
 | `poolIdleTimeoutMs` | `int` | How long a connection may sit idle before it is closed, in milliseconds. Default `600000`. |
 | `poolMaxLifetimeMs` | `int` | How long a connection is used at all before it is replaced, in milliseconds. Default `1800000`. |
 | `poolValidateAfterIdleMs` | `int` | How long a connection may sit idle and still be lent without a check, in milliseconds. Default `30000`. |
+| `poolSweepIdle` | `bool` | Whether a timer closes the pool's idle connections while it sees no traffic (`TomConnectionPoolSettings.sweepIdle`). Default `false`. |
+| `connectLazily` | `bool` | Whether `connect` opens the pool without a connection; the first statement opens one, and a misconfigured data source fails there. Default `false`. |
 | `replicas` | `List<Object?>` | The read replicas: one settings map per replica, each overriding this data source's own settings — usually only `host` and `port`. Empty — the default — routes everything to this data source. `initialize` refuses anything but a list of maps with `error.initialize.invalid_replicas` (parameter `replicas`). |
 | `replicaStickinessMs` | `int` | How long after a principal's write (per tenant) its reads stay on the primary rather than a replica — read-your-writes, remembered per process. Default `5000`. |
 | `replicaRetryMs` | `int` | How long a replica that failed to serve a connection is left out; its reads go to the primary meanwhile. Default `30000`. |
-| `poolSettings` | `TomConnectionPoolSettings` | *(getter)* The pool settings the six `pool…` fields describe; read when the data source is opened. |
+| `poolSettings` | `TomConnectionPoolSettings` | *(getter)* The pool settings the seven `pool…` fields describe; read when the data source is opened. |
 | `registeredName` | `String` | *(getter)* The name this data source is registered under — `app`, or `app@tenant` for a tenant's own pool — which is the `datasource` label of its metrics; `driverLabel` until `registerAs` names it. |
 | `driverLabel` | `String` | *(getter, protected, abstract)* How the driver names itself in messages — `MariadbDatasource`, `PostgresDatasource`. |
 | `preparedStatementLabel` | `String` | *(getter, protected, abstract)* How the driver's prepared statements name themselves in messages. |

@@ -13,7 +13,10 @@ one node when several are running.
 A run can belong to a **tenant** (`TomJobRun.tenant`): its body runs inside that
 tenant's `TomTenantContext` — in a worker isolate too — its window is its own,
 and `allowOverlap: false` serialises per job and tenant. An event-triggered job
-names the tenant through a `TomTenantEvent`.
+names the tenant through a `TomTenantEvent`. `TomScheduler.tenantGate` holds
+the runs of a tenant it refuses — a suspended one — pending;
+`TomJobStore.cancelTenantRuns` and `purgeTenant` cancel and delete a removed
+tenant's runs.
 
 ## Key types
 

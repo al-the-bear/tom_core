@@ -33,6 +33,7 @@ import '../db_migration/db_migration.dart';
 import '../db_migration/migration_run.dart';
 import '../db_migration/schema_versions.dart';
 import '../tenancy/tenancy.dart';
+import '../tenancy/tenant_registry.dart';
 import '../messaging/outbox.dart';
 import 'health_check.dart';
 
@@ -195,7 +196,8 @@ class TomFrameworkReadinessAnalyzer extends TomHealthAnalyzer {
     ];
   }
 
-  /// One check per schema that is not current: the system schema's last
+  /// One check per tenant whose migration failed, and one per schema that is
+  /// not current: the system schema's last
   /// guard ([TomDbMigrations.systemSchemaCheck]) — failing unless it is served
   /// — and each tenant's ([TomTenancy.schemaChecks]), passing with its skew as
   /// the detail, because that tenant is refused on its own while the others
@@ -208,6 +210,14 @@ class TomFrameworkReadinessAnalyzer extends TomHealthAnalyzer {
         passed: system.skew.isServed,
         detail: system.detail,
       ),
+    for (final tenant in TomTenancy.current?.tenants.keys ?? const <String>[])
+      if (TomTenancy.current!.statusOf(tenant) ==
+          TomTenantStatus.migrationFailed)
+        TomReadinessCheck(
+          'tenant $tenant',
+          passed: true,
+          detail: 'migration-failed: refused until migrated again',
+        ),
     for (final check
         in TomTenancy.current?.schemaChecks.values ??
             const <TomSchemaVersionCheck>[])

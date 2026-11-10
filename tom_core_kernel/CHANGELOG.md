@@ -2,6 +2,14 @@
 
 ### Added
 
+- **Holding, cancelling and purging a tenant's runs** (`scheduling` module).
+  `TomScheduler.tenantGate`, shared by every scheduler of the isolate, is asked
+  for each due run of a tenant as it is claimed; a run it refuses stays
+  `pending`. `TomJobStore.cancelTenantRuns(tenant, now)` fails a tenant's
+  pending runs with `TomJobStore.tenantRemovedError`;
+  `TomJobStore.purgeTenant(tenant)` deletes all its runs. Both are implemented
+  by `TomMemoryJobStore` and, under the file mutex, `TomFileJobStore`.
+
 - **The audit-report contract** (`security` module).
   `audit_reports_contract.dart` declares `tomAuditReportsApi` under
   `/audit-reports` — `GET writers`, `POST query`, `GET` and `PUT questions`,

@@ -88,7 +88,7 @@ them run against a live server.
 
 | Type | Kind | Purpose |
 | ---- | ---- | ------- |
-| `TomDbMigrations` | class | The orchestrator; `migrateAll(root)` migrates the system schema, then every tenant by its type |
+| `TomDbMigrations` | class | The orchestrator; `migrateAll(root)` migrates the system schema, then every tenant by its type; `migrateTenant(id)` migrates one tenant's target, as `TomTenancy.addTenant` does when it onboards |
 | `TomDbMigrator` | abstract class | The per-database migrator contract (`initializeMigration` / `applyMigration` / `reset`, and `withMigrationLock` / `repair` / `rollback`) |
 | `TomMigrationRepair` | enum | What `repair` does with a migration recorded as failed: `remove` it or `markResolved` |
 | `TomDbMigrationAdaptor` | class | Binds a migrator to its data-source types (`type` and `alsoServes`) for reflection discovery |
@@ -638,8 +638,9 @@ that is not `removed` after the system schema. A type's tree is applied:
   `tenant:<id>`.
 
 The data source of a target is the type's data source as one of its tenants
-reaches it (`TomDataSourceInfo.route` inside `TomTenancy.runFor`), so the
-scripts run in the tenant's place.
+reaches it whatever its status (`TomTenancy.routeForMaintenance`, which also
+reaches a tenant whose migration failed), so the scripts run in the tenant's
+place.
 
 Per target, its tenants are set `migrating` in the registry
 (`TomTenancy.setStatus`) — a request for one is refused as
@@ -648,7 +649,7 @@ Per target, its tenants are set `migrating` in the registry
 | Outcome | Status | Also recorded |
 | ------- | ------ | ------------- |
 | every migration applied | `active` — a `suspended` tenant stays `suspended` | the highest version applied per data source, `TomTenantRegistry.setMigrated(id, '<datasource>', version)` |
-| a migration failed | `migration-failed`, the error as its status detail | — |
+| a migration failed | `migration-failed`, the error as its status detail — refused with `tenancy.tenant.migration_failed` (503) and not routed | — |
 
 **A failing target does not stop the others**: its failure is its run's, and
 the result lists every target. Each target is migrated under its database's

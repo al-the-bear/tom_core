@@ -47,12 +47,16 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../configuration/base_server_configuration.dart';
 import '../datasources/datasource_initialization.dart';
+import '../datasources/sql_datasource.dart';
+import '../db_migration/framework_convergence.dart';
+import '../object_persistence/crud_repository.dart';
 import '../db_migration/db_migration.dart';
 import '../db_migration/migration_run.dart';
 import '../db_migration/schema_versions.dart';
 import '../little_things/server_exception.dart';
 import '../object_persistence/annotation_analyzer.dart';
 import '../object_persistence/persistence_annotations.dart';
+import 'tenant_data.dart';
 import 'tenant_registry.dart';
 import 'tenant_registry_sql.dart';
 import 'tenant_resolution.dart';
@@ -73,7 +77,13 @@ import 'tenant_type.dart';
 /// | `tenancy.config.invalid_registry` | A `registry.refreshSeconds` that is not a whole number of seconds, 0 or more. |
 /// | `tenancy.tenant.unknown` | Work for a tenant the deployment does not have. |
 /// | `tenancy.tenant.suspended` | A request for a suspended tenant (403). |
-/// | `tenancy.tenant.unavailable` | A request for a tenant that is provisioning, migrating or whose migration failed (503). |
+/// | `tenancy.tenant.unavailable` | A request for a tenant that is provisioning or migrating (503). |
+/// | `tenancy.tenant.migration_failed` | A request for, or work in, a tenant whose migration failed (503) — not routed; or the migration of `addTenant` / `migrateTenant` failed. |
+/// | `tenancy.tenant.not_removed` | `restoreTenant` of a tenant that is not removed. |
+/// | `tenancy.purge.not_removed` | `purgeTenant` of a tenant that is not removed. |
+/// | `tenancy.purge.retention` | `purgeTenant` before the tenant's retention period passed. |
+/// | `tenancy.pool.cap_exceeded` | A tenant pool that would pass `tenancy.pool.maxTotal`. |
+/// | `tenancy.config.invalid_number` | `purgeAfterDays` or a `pool` setting that is not a whole number in range. |
 /// | `tenancy.tenant.schema_behind` | A request for a tenant whose schema is behind this server's code (503). |
 /// | `tenancy.tenant.schema_ahead` | A request for a tenant whose schema is ahead of this server's code by a migration not marked expand (503). |
 /// | `tenancy.config.schema_collision` | A schema-isolated tenant whose schema is a tenant type's shared schema. |
@@ -220,6 +230,8 @@ class TomTenancy {
     this.createSchemas = false,
     TomTenantRegistry? registry,
     this.refreshInterval,
+    this.purgeAfter = defaultPurgeAfter,
+    this.pool = const TomTenantPoolSettings(),
     DateTime Function()? clock,
   }) : types = Map.unmodifiable({
          for (final type
@@ -247,6 +259,21 @@ class TomTenancy {
 
   /// How often the installed tenancy re-reads [registry], or `null` for never.
   final Duration? refreshInterval;
+
+  /// How long a removed tenant's data is kept before [purgeTenant] may drop
+  /// it — while it is, [restoreTenant] serves the tenant again.
+  final Duration purgeAfter;
+
+  /// The default of [purgeAfter]: ninety days.
+  static const Duration defaultPurgeAfter = Duration(days: 90);
+
+  /// How the pools this tenancy opens for tenants are sized
+  /// ([TomTenantPoolSettings]).
+  final TomTenantPoolSettings pool;
+
+  /// The `poolMaxSize` of each tenant pool this tenancy opened, by registry
+  /// name — what [TomTenantPoolSettings.maxTotal] caps.
+  final Map<String, int> _pooled = {};
 
   final DateTime Function() _clock;
 
@@ -317,6 +344,8 @@ class TomTenancy {
   ///   header: X-Tenant-Id
   ///   createSchemas: true
   ///   registry: {datasource: main, refreshSeconds: 30}  # or: memory
+  ///   purgeAfterDays: 90             # how long a removed tenant's data stays
+  ///   pool: {perTenant: 4, idleSeconds: 60, maxTotal: 200}  # tenant pools
   ///   migrations: migrations         # a type's tree: <root>/tenant/<type>
   ///   types:                         # none declared: the implicit type 'default'
   ///     standard: {isolation: shared, isolations: [shared, schema]}
@@ -390,7 +419,30 @@ class TomTenancy {
       createSchemas: '${raw['createSchemas']}' == 'true',
       registry: registry.$1,
       refreshInterval: registry.$2,
+      purgeAfter: raw['purgeAfterDays'] == null
+          ? defaultPurgeAfter
+          : Duration(days: _wholeNumber(raw, 'purgeAfterDays')),
+      pool: raw['pool'] == null
+          ? const TomTenantPoolSettings()
+          : TomTenantPoolSettings.fromMap(
+              raw['pool'] is Map
+                  ? raw['pool'] as Map<Object?, Object?>
+                  : throw _notAMap('$configurationKey.pool'),
+            ),
     );
+  }
+
+  static int _wholeNumber(Map<Object?, Object?> raw, String key) {
+    final value = raw[key];
+    final number = value is int ? value : int.tryParse('$value');
+    if (number == null || number < 0) {
+      throw TomTenancyException(
+        'tenancy.config.invalid_number',
+        "The tenancy setting '$key' must be a whole number, not '$value'.",
+        parameters: {'key': key, 'value': '$value'},
+      );
+    }
+    return number;
   }
 
   /// The registry the configuration [raw] names, and how often to refresh
@@ -491,6 +543,7 @@ class TomTenancy {
     await tenancy.checkSchemaVersions();
     _installed = tenancy;
     TomDataSourceInfo.router = tenancy.route;
+    TomScheduler.tenantGate = tenancy.servesWork;
     tenancy._startRefreshing();
   }
 
@@ -608,6 +661,7 @@ class TomTenancy {
     final previous = _installed;
     _installed = null;
     TomDataSourceInfo.router = null;
+    TomScheduler.tenantGate = null;
     if (previous == null) return;
     previous._refreshTimer?.cancel();
     previous._refreshTimer = null;
@@ -616,23 +670,31 @@ class TomTenancy {
       await info.datasource.close();
     }
     previous._opened.clear();
+    previous._pooled.clear();
     previous._routes.clear();
     previous._sharedPools.clear();
   }
 
-  /// Adds [tenant] to the running deployment — onboarding without a restart.
+  /// Adds [tenant] to the running deployment — onboarding without a restart —
+  /// and answers its migration run (`null` when its type has no tree).
   ///
-  /// In order: the tenant is recorded in the [registry] as provisioning, its
-  /// schema or database is provisioned, it is recorded as active, and it is
-  /// served. A provisioning that fails leaves it `provisioning` in the
-  /// registry, with the error as its status detail, and unserved. Every node
-  /// refreshing from the registry serves it from its next refresh.
+  /// In order: the tenant is recorded in the [registry] as `provisioning`, its
+  /// schema or database is provisioned, it is migrated by its type's tree
+  /// ([migrateTenant]: `migrating`, then `active`), and it is served. Every
+  /// node refreshing from the registry serves it from its next refresh.
+  ///
+  /// A provisioning that fails leaves it `provisioning` in the registry, with
+  /// the error as its status detail, unserved, and rethrows. A migration that
+  /// fails leaves it `migration-failed` — refused
+  /// (`tenancy.tenant.migration_failed`, 503) and not routed — and throws
+  /// `tenancy.tenant.migration_failed`; [migrateTenant] tries again.
   ///
   /// Refused before anything is recorded for a tenant of an unknown type, an
   /// isolation its type does not allow, and a tenant the registry holds — not
   /// removed — under another type (`tenancy.type.change`): a type is not
-  /// changed in place.
-  Future<void> addTenant(TomTenant tenant) async {
+  /// changed in place. A removed tenant whose data was not purged is added
+  /// back over its old schema or database ([restoreTenant]).
+  Future<TomMigrationRun?> addTenant(TomTenant tenant) async {
     validateTenant(tenant);
     final now = _clock().toUtc();
     final existing = await registry.find(tenant.id);
@@ -668,13 +730,66 @@ class TomTenancy {
       );
       rethrow;
     }
-    await registry.setStatus(
-      tenant.id,
-      TomTenantStatus.active,
-      at: _clock().toUtc(),
-    );
     tenants[tenant.id] = tenant;
-    _statuses[tenant.id] = TomTenantStatus.active;
+    _statuses[tenant.id] = TomTenantStatus.provisioning;
+    return migrateTenant(tenant.id);
+  }
+
+  /// Migrates the tenant [tenantId] by its type's tree
+  /// ([TomDbMigrations.migrateTenant]): `migrating`, then `active`, or
+  /// `migration-failed` with the error, which throws
+  /// `tenancy.tenant.migration_failed` (a tree refused before it ran throws
+  /// its own key, the tenant `migration-failed` as well). Answers the run, or
+  /// `null` when the type has no tree to apply — the tenant then `active`,
+  /// unless suspended. The retry of a tenant whose migration failed.
+  Future<TomMigrationRun?> migrateTenant(String tenantId) async {
+    if (!tenants.containsKey(tenantId)) throw unknownTenant(tenantId);
+    final TomMigrationRun? run;
+    try {
+      run = await TomDbMigrations.migrateTenant(tenantId, tenancy: this);
+    } catch (error) {
+      // Refused before the target ran — a tree that does not fit the type.
+      await setStatus(
+        tenantId,
+        TomTenantStatus.migrationFailed,
+        detail: '$error',
+      );
+      rethrow;
+    }
+    if (run == null) {
+      if (_statuses[tenantId] != TomTenantStatus.suspended) {
+        await setStatus(tenantId, TomTenantStatus.active);
+      }
+      await checkSchemaVersions([tenantId]);
+      return null;
+    }
+    if (run.state == TomMigrationRunState.failed) {
+      throw TomTenancyException(
+        'tenancy.tenant.migration_failed',
+        "The migration of tenant '$tenantId' failed: ${run.error}",
+        parameters: {'tenant': tenantId, 'error': run.error},
+      );
+    }
+    return run;
+  }
+
+  /// Serves the removed tenant [tenantId] again, over the schema or database
+  /// it left — as [addTenant] with its registry row, provisioned and migrated
+  /// again. Possible until [purgeTenant] dropped its data.
+  ///
+  /// Throws `tenancy.tenant.unknown` for a tenant the registry does not hold
+  /// and `tenancy.tenant.not_removed` for one that is not removed.
+  Future<TomMigrationRun?> restoreTenant(String tenantId) async {
+    final record = await registry.find(tenantId);
+    if (record == null) throw unknownTenant(tenantId);
+    if (record.status != TomTenantStatus.removed) {
+      throw TomTenancyException(
+        'tenancy.tenant.not_removed',
+        "Tenant '$tenantId' is ${record.status.wireName}, not removed.",
+        parameters: {'tenant': tenantId, 'status': record.status.wireName},
+      );
+    }
+    return addTenant(record.toTenant(configured: _configured[tenantId]));
   }
 
   /// Suspends the tenant [tenantId]: recorded in the [registry] first, then its
@@ -716,6 +831,14 @@ class TomTenancy {
   /// The registry status of the served tenant [tenantId], or `null` for a
   /// tenant the deployment does not have.
   TomTenantStatus? statusOf(String tenantId) => _statuses[tenantId];
+
+  /// Whether queued work of [tenantId] runs now on this node — the
+  /// scheduler's [TomScheduler.tenantGate] while this tenancy is installed: a
+  /// served, `active` tenant's runs do; a suspended one's are held, and so are
+  /// a tenant's this node does not serve (yet).
+  bool servesWork(String tenantId) =>
+      tenants.containsKey(tenantId) &&
+      (_statuses[tenantId] ?? TomTenantStatus.active) == TomTenantStatus.active;
 
   final Map<String, TomSchemaVersionCheck> _schemaChecks = {};
   final Map<String, Map<String, int>> _codeVersions = {};
@@ -787,34 +910,215 @@ class TomTenancy {
   }
 
   /// Removes the tenant [tenantId] from the running deployment — the
-  /// counterpart of [addTenant], for a tenant whose deletion is final.
+  /// counterpart of [addTenant].
   ///
-  /// In order: the tenant leaves [tenants], so a request naming it — by its
-  /// token's claim, its host, its path or a header — is refused as
-  /// `tenancy.tenant.unknown` (404) and [route] refuses it for work still in
-  /// context; its routes are dropped; and the data sources this tenancy opened
-  /// for it are unregistered and closed, which closes their connection pools.
-  /// A data source the tenant only named by reference is the deployment's and
-  /// stays open. Other tenants are untouched.
+  /// In order: the tenant is recorded as `removed`; it leaves [tenants], so a
+  /// request naming it — by its token's claim, its host, its path or a
+  /// header — is refused as `tenancy.tenant.unknown` (404) and [route]
+  /// refuses it for work still in context; its routes are dropped; the data
+  /// sources this tenancy opened for it are unregistered and closed, which
+  /// closes their connection pools; and its queued runs are cancelled in the
+  /// job stores of the started schedulers and [jobStores]
+  /// ([TomJobStore.cancelTenantRuns]). A data source the tenant only named by
+  /// reference is the deployment's and stays open. Other tenants are
+  /// untouched.
   ///
-  /// The tenant's data is left where it is: dropping the schema or the
-  /// database is the caller's, with the [TomTenant] this returns — under
-  /// `schema` isolation its schema is [TomTenant.schema], or
-  /// `<databaseName>_<id>` when it names none. Work that is still running in
-  /// the tenant when its pools close fails; a caller that needs it to finish
-  /// stops admitting the tenant's requests first and removes it afterwards.
+  /// The tenant's data is left where it is for [purgeAfter]: [restoreTenant]
+  /// serves it again meanwhile, and [purgeTenant] drops it afterwards. Work
+  /// that is still running in the tenant when its pools close fails; a
+  /// caller that needs it to finish suspends the tenant first and removes it
+  /// afterwards.
   ///
   /// Throws `tenancy.tenant.unknown` for a tenant the deployment does not have.
-  Future<TomTenant> removeTenant(String tenantId) async {
+  Future<TomTenant> removeTenant(
+    String tenantId, {
+    Iterable<TomJobStore> jobStores = const [],
+  }) async {
     final tenant = tenants[tenantId];
     if (tenant == null) throw unknownTenant(tenantId);
-    await registry.setStatus(
-      tenantId,
-      TomTenantStatus.removed,
-      at: _clock().toUtc(),
-    );
+    final now = _clock().toUtc();
+    await registry.setStatus(tenantId, TomTenantStatus.removed, at: now);
     await _unroute(tenantId);
+    for (final store in _jobStores(jobStores)) {
+      final cancelled = await store.cancelTenantRuns(tenantId, now);
+      if (cancelled > 0) {
+        tomLog.info(
+          "Tenancy: cancelled $cancelled queued run(s) of removed tenant "
+          "'$tenantId'.",
+        );
+      }
+    }
     return tenant;
+  }
+
+  /// The job stores of the started schedulers ([TomScheduler.started]) and
+  /// [extra], each once.
+  static Set<TomJobStore> _jobStores(Iterable<TomJobStore> extra) =>
+      Set.identity()..addAll([
+        for (final scheduler in TomScheduler.started) scheduler.store,
+        ...extra,
+      ]);
+
+  /// Deletes the data of the removed tenant [tenantId] for good, once
+  /// [purgeAfter] has passed since its removal (or at once with [force]),
+  /// and answers what was done:
+  ///
+  /// - a `schema` tenant's schema is dropped on each data source its type
+  ///   routes — `DROP DATABASE` on MariaDB, `DROP SCHEMA … CASCADE` on
+  ///   PostgreSQL ([TomStandardSqlDialect.dropSchema]);
+  /// - a `database` tenant's database is dropped when the tenancy opened it on
+  ///   the base data source's server ([TomStandardSqlDialect.dropDatabase]);
+  ///   a database named by reference, or on another server, is the
+  ///   deployment's and is kept, and reported;
+  /// - a `shared` tenant's rows are deleted from every tenant table of its
+  ///   type's shared schema — the application's (`@TomTenantTable`, by its
+  ///   tenant column) and the framework's ([frameworkTenantTables], by
+  ///   `tenant`);
+  /// - its records in system tables are deleted through [stores] and the job
+  ///   stores — the started schedulers' and [jobStores] — each
+  ///   [TomTenantData.purgeTenant];
+  /// - its registry row is deleted.
+  ///
+  /// The audit trail is kept: its hash chain is not rewritten. The personal
+  ///   values it sealed for the tenant's data subjects become unreadable,
+  ///   because their subject keys were in the tenant's own tables.
+  ///
+  /// Throws `tenancy.tenant.unknown` for a tenant the registry does not hold,
+  /// `tenancy.purge.not_removed` for one not removed, and
+  /// `tenancy.purge.retention` while its retention period runs.
+  Future<TomTenantPurgeReport> purgeTenant(
+    String tenantId, {
+    bool force = false,
+    Iterable<TomTenantData> stores = const [],
+    Iterable<TomJobStore> jobStores = const [],
+  }) async {
+    final record = await registry.find(tenantId);
+    if (record == null) throw unknownTenant(tenantId);
+    if (record.status != TomTenantStatus.removed) {
+      throw TomTenancyException(
+        'tenancy.purge.not_removed',
+        "Tenant '$tenantId' is ${record.status.wireName}; only a removed "
+            'tenant is purged.',
+        parameters: {'tenant': tenantId, 'status': record.status.wireName},
+      );
+    }
+    final now = _clock().toUtc();
+    final due = record.updatedAt.add(purgeAfter);
+    if (!force && now.isBefore(due)) {
+      throw TomTenancyException(
+        'tenancy.purge.retention',
+        "Tenant '$tenantId' was removed at ${record.updatedAt}; its data is "
+            'kept until $due.',
+        parameters: {'tenant': tenantId, 'until': due.toIso8601String()},
+      );
+    }
+    final tenant = record.toTenant(configured: _configured[tenantId]);
+    final type = types[tenant.type];
+    final isolation = tenant.isolation ?? type?.isolation ?? defaultIsolation;
+    final dropped = <String>[];
+    final kept = <String>[];
+    final deleted = <String, int>{};
+    for (final name in type == null ? datasources : datasourcesOf(type)) {
+      final reference = tenant.datasources[name] ?? tenant.datasources[''];
+      if (isolation == TomTenantIsolation.database && reference is String) {
+        kept.add("$name: data source '$reference', the deployment's");
+        continue;
+      }
+      final base = TomDataSourceInfo.getBaseDataSourceInfo(name);
+      if (base == null) {
+        kept.add('$name: not registered');
+        continue;
+      }
+      final datasource = base.datasource;
+      if (datasource is! TomSqlDatasource) {
+        kept.add('$name: not a SQL data source');
+        continue;
+      }
+      final dialect = datasource.sqlDialect;
+      switch (isolation) {
+        case TomTenantIsolation.schema:
+          final schema = schemaNameOf(base, tenant);
+          await datasource.executeCommand(dialect.dropSchema(schema));
+          dropped.add('$name: schema $schema');
+        case TomTenantIsolation.database:
+          final configured = reference;
+          final database = configured is Map
+              ? configured['databaseName']
+              : null;
+          final sameServer =
+              configured is Map &&
+              '${configured['host'] ?? ''}' == datasource.host &&
+              '${configured['port'] ?? datasource.port}' ==
+                  '${datasource.port}';
+          if (database == null || !sameServer) {
+            kept.add('$name: database ${database ?? '?'} on another server');
+            continue;
+          }
+          await datasource.executeCommand(dialect.dropDatabase('$database'));
+          dropped.add('$name: database $database');
+        case TomTenantIsolation.shared:
+          final pool = type == null || type.name == TomTenant.defaultType
+              ? base
+              : await _sharedOf(base, type);
+          deleted.addAll(await _deleteSharedRows(pool, name, tenantId));
+      }
+    }
+    for (final store in <Object>{...stores, ..._jobStores(jobStores)}) {
+      final count = store is TomTenantData
+          ? await store.purgeTenant(tenantId)
+          : await (store as TomJobStore).purgeTenant(tenantId);
+      deleted['${store.runtimeType}'] =
+          (deleted['${store.runtimeType}'] ?? 0) + count;
+    }
+    await registry.delete(tenantId);
+    final report = TomTenantPurgeReport(
+      tenantId,
+      dropped: dropped,
+      kept: kept,
+      deleted: deleted,
+    );
+    tomLog.info('Tenancy: purged $report');
+    return report;
+  }
+
+  /// Deletes [tenantId]'s rows from every tenant table of the shared schema
+  /// [pool] reaches for the data source [name]: the application's
+  /// (`@TomTenantTable`) and the framework's, where they exist.
+  Future<Map<String, int>> _deleteSharedRows(
+    TomDataSourceInfo pool,
+    String name,
+    String tenantId,
+  ) async {
+    final deleted = <String, int>{};
+    final datasource = pool.datasource;
+    final tables = <String, String>{
+      for (final MapEntry(key: entity, value: table) in tenantTables.entries)
+        if (table.datasource == name) table.table: _tenantColumnOf(entity),
+      for (final table in frameworkTenantTables()) table.name: 'tenant',
+    };
+    for (final MapEntry(key: table, value: column) in tables.entries) {
+      final exists = await datasource.executeQuery<TomCountResult>(
+        'SELECT COUNT(*) AS count FROM information_schema.tables '
+        'WHERE table_schema = ${datasource.sqlDialect.currentSchema} '
+        'AND LOWER(table_name) = :table',
+        {'table': table.toLowerCase()},
+      );
+      if (exists.single.count == 0) continue;
+      final rows = await datasource.executeCommand(
+        'DELETE FROM $table WHERE $column = :tenant',
+        {'tenant': tenantId},
+      );
+      if (rows > BigInt.zero) deleted[table] = rows.toInt();
+    }
+    return deleted;
+  }
+
+  /// The column of [entity]'s tenant field ([TomTenantTable.field]).
+  static String _tenantColumnOf(Type entity) {
+    final field = TomAnnotationAnalyzer.findTenantTable(entity)!.field;
+    return TomAnnotationAnalyzer.getPersistentColumns(
+      entity,
+    )!.firstWhere((c) => c.declaredName == field).field;
   }
 
   /// Stops serving [tenantId] on this node: it leaves [tenants], its routes are
@@ -830,6 +1134,7 @@ class TomTenancy {
     ];
     for (final info in owned) {
       _opened.remove(info);
+      _pooled.remove(info.name);
       TomDataSourceInfo.datasources.remove(info.name);
       await info.datasource.close();
     }
@@ -881,10 +1186,32 @@ class TomTenancy {
   TomDataSourceInfo route(TomDataSourceInfo base) {
     final tenant = TomTenantContext.currentId;
     if (tenant == null || !routedDatasources.contains(base.name)) return base;
+    if (_statuses[tenant] == TomTenantStatus.migrationFailed) {
+      throw TomTenancyException(
+        'tenancy.tenant.migration_failed',
+        "Tenant '$tenant' is not routed: its migration failed.",
+        parameters: {'tenant': tenant},
+      );
+    }
     final routed = _routes[(base.name, tenant)];
     if (routed != null) return routed;
     if (!tenants.containsKey(tenant)) throw unknownTenant(tenant);
     return base;
+  }
+
+  /// [base] as the tenant [tenantId] reaches it, whatever its status — the
+  /// route of maintenance: migrating, repairing or rolling back a tenant
+  /// whose migration failed, which [route] refuses to ordinary work.
+  ///
+  /// Throws `tenancy.tenant.unknown` for a tenant the deployment does not
+  /// have.
+  TomDataSourceInfo routeForMaintenance(
+    String tenantId,
+    TomDataSourceInfo base,
+  ) {
+    if (!tenants.containsKey(tenantId)) throw unknownTenant(tenantId);
+    if (!routedDatasources.contains(base.name)) return base;
+    return _routes[(base.name, tenantId)] ?? base;
   }
 
   /// Runs [body] for [tenantId], which must be a tenant of the deployment.
@@ -977,9 +1304,15 @@ class TomTenancy {
           'tenancy.tenant.suspended',
           'The tenant is suspended.',
         );
+      case TomTenantStatus.migrationFailed:
+        return const TomTenantResolution.rejected(
+          503,
+          'tenancy.tenant.migration_failed',
+          "The tenant's migration failed; it is not served until it is "
+              'migrated again.',
+        );
       case TomTenantStatus.provisioning ||
           TomTenantStatus.migrating ||
-          TomTenantStatus.migrationFailed ||
           TomTenantStatus.removed:
         return const TomTenantResolution.rejected(
           503,
@@ -1087,7 +1420,7 @@ class TomTenancy {
     TomTenant tenant,
   ) async {
     final database = _databaseNameOf(base);
-    final schema = tenant.schema ?? '${database}_${tenant.id}';
+    final schema = schemaNameOf(base, tenant);
     if (!_schemaPattern.hasMatch(schema)) {
       throw TomTenancyException(
         'tenancy.config.invalid_schema',
@@ -1140,13 +1473,22 @@ class TomTenancy {
     String schema,
     String name,
   ) async {
+    // Before anything touches the server: a schema it would create for a
+    // pool it may not open is left uncreated.
+    _checkCap(name, pool.perTenant);
     final dialect = base.datasource.sqlDialect;
     if (createSchemas) {
       // The schema pattern the callers check is what makes interpolating it
       // safe.
       await base.datasource.executeCommand(dialect.createSchema(schema));
     }
-    return _open(name, {...base.settings, dialect.schemaSetting: schema});
+    // The base data source's own pool sizing is not the tenant pool's: the
+    // tenancy's pool settings apply beneath nothing but the schema.
+    return _open(name, {
+      for (final MapEntry(:key, :value) in base.settings.entries)
+        if (!pool.settings.containsKey(key)) key: value,
+      dialect.schemaSetting: schema,
+    });
   }
 
   Future<TomDataSourceInfo> _databaseOf(
@@ -1184,15 +1526,44 @@ class TomTenancy {
     );
   }
 
+  /// Opens the tenant pool [name] with [settings] — [pool]'s defaults
+  /// applied beneath them — within [TomTenantPoolSettings.maxTotal].
   Future<TomDataSourceInfo> _open(
     String name,
     Map<String, dynamic> settings,
   ) async {
-    final info = TomDataSourceInfo(name, settings);
+    final merged = {...pool.settings, ...settings};
+    final size = merged['poolMaxSize'] is int
+        ? merged['poolMaxSize'] as int
+        : int.tryParse('${merged['poolMaxSize']}') ?? pool.perTenant;
+    _checkCap(name, size);
+    final info = TomDataSourceInfo(name, merged);
     await info.initialize();
     _opened.add(info);
+    _pooled[name] = size;
     return info;
   }
+
+  /// Throws `tenancy.pool.cap_exceeded` when opening the pool [name] of
+  /// [size] connections would take the tenant pools past
+  /// [TomTenantPoolSettings.maxTotal].
+  void _checkCap(String name, int size) {
+    final total = _pooled.values.fold(0, (a, b) => a + b) + size;
+    final cap = pool.maxTotal;
+    if (cap == null || total <= cap) return;
+    throw TomTenancyException(
+      'tenancy.pool.cap_exceeded',
+      "Opening the tenant pool '$name' of $size connections would take the "
+          'tenant pools to $total connections, above the cap of $cap '
+          '(tenancy.pool.maxTotal).',
+      parameters: {'pool': name, 'size': size, 'total': total, 'cap': cap},
+    );
+  }
+
+  /// The schema of the `schema`-isolated [tenant] on the data source [base]:
+  /// its own [TomTenant.schema], else `<databaseName>_<id>`.
+  String schemaNameOf(TomDataSourceInfo base, TomTenant tenant) =>
+      tenant.schema ?? '${_databaseNameOf(base)}_${tenant.id}';
 }
 
 /// What [TomTenancy.refreshFromRegistry] changed on this node.
@@ -1225,4 +1596,97 @@ class TomTenantRegistryRefresh {
   String toString() =>
       'TomTenantRegistryRefresh(added: $added, removed: $removed, '
       'changed: $changed, failed: ${failed.keys.toList()})';
+}
+
+/// How the pools a [TomTenancy] opens for tenants — a `schema` tenant's, a
+/// `database` tenant's configured by settings, a type's shared schema — are
+/// sized: small, opened by their first statement, their idle connections
+/// closed by a timer, all of them under one cap.
+///
+/// A deployment of many tenants of which few are busy at once holds few
+/// connections: a pool opens no connection until its tenant's first
+/// statement (`connectLazily`) and closes the ones idle for [idleTimeout]
+/// even while nobody uses it (`poolSweepIdle`). A `database` tenant's own
+/// settings override these.
+class TomTenantPoolSettings {
+  /// Settings of [perTenant] connections per pool, closed after [idleTimeout]
+  /// idle, under [maxTotal] (no cap when `null`).
+  const TomTenantPoolSettings({
+    this.perTenant = 4,
+    this.idleTimeout = const Duration(seconds: 60),
+    this.maxTotal,
+  });
+
+  /// Reads `tenancy.pool`: `perTenant`, `idleSeconds`, `maxTotal`.
+  factory TomTenantPoolSettings.fromMap(Map<Object?, Object?> map) {
+    int? read(String key) {
+      final value = map[key];
+      if (value == null) return null;
+      final number = value is int ? value : int.tryParse('$value');
+      if (number == null || number < 1) {
+        throw TomTenancyException(
+          'tenancy.config.invalid_number',
+          "The tenancy setting 'pool.$key' must be a positive whole number, "
+              "not '$value'.",
+          parameters: {'key': 'pool.$key', 'value': '$value'},
+        );
+      }
+      return number;
+    }
+
+    return TomTenantPoolSettings(
+      perTenant: read('perTenant') ?? 4,
+      idleTimeout: Duration(seconds: read('idleSeconds') ?? 60),
+      maxTotal: read('maxTotal'),
+    );
+  }
+
+  /// The most connections a tenant pool opens (`poolMaxSize`).
+  final int perTenant;
+
+  /// How long a tenant pool's connection may sit idle before it is closed.
+  final Duration idleTimeout;
+
+  /// The most connections all tenant pools together may open — refused with
+  /// `tenancy.pool.cap_exceeded` when a pool would pass it — or `null`.
+  final int? maxTotal;
+
+  /// The data-source settings these stand for, beneath a pool's own.
+  Map<String, Object> get settings => {
+    'poolMaxSize': perTenant,
+    'poolIdleTimeoutMs': idleTimeout.inMilliseconds,
+    'poolSweepIdle': true,
+    'connectLazily': true,
+  };
+}
+
+/// What [TomTenancy.purgeTenant] did for one tenant.
+class TomTenantPurgeReport {
+  /// The report of [tenant].
+  const TomTenantPurgeReport(
+    this.tenant, {
+    this.dropped = const [],
+    this.kept = const [],
+    this.deleted = const {},
+  });
+
+  /// The purged tenant.
+  final String tenant;
+
+  /// The schemas and databases dropped, as `<datasource>: schema <name>` or
+  /// `<datasource>: database <name>`.
+  final List<String> dropped;
+
+  /// What was left in place, and why — a database named by reference, or on
+  /// another server.
+  final List<String> kept;
+
+  /// The rows deleted, by table (shared isolation) or store.
+  final Map<String, int> deleted;
+
+  @override
+  String toString() =>
+      '$tenant: dropped ${dropped.isEmpty ? 'nothing' : dropped.join(', ')}'
+      '${kept.isEmpty ? '' : '; kept ${kept.join(', ')}'}'
+      '; deleted $deleted';
 }

@@ -1244,6 +1244,20 @@ events.add(TomTenantEvent.inCurrentTenant({'invoice': 42}));
 A plain event is a run of no tenant. A periodic job has no tenant of its own;
 one that does each tenant's work loops over the tenants in its body.
 
+**A tenant's runs can be held.** `TomScheduler.tenantGate`, a predicate over a
+tenant id shared by every scheduler of the isolate, is asked for each due run
+of a tenant as it is claimed; a run whose tenant it refuses is not claimed and
+stays `pending`, to run once the gate lets it through. `null` — the default —
+holds nothing, and a run of no tenant is never held. `tom_core_server`'s tenancy
+installs it, so a suspended tenant's queued work waits for the tenant to be
+resumed.
+
+**A tenant's runs can be cancelled and purged.** `TomJobStore.cancelTenantRuns`
+fails a tenant's pending runs with `TomJobStore.tenantRemovedError`, so they
+never run and their record stays — what removing a tenant does; a run already
+executing finishes. `TomJobStore.purgeTenant` deletes every run of a tenant,
+finished or not — what purging one does.
+
 ## Lease Locks
 
 A `TomLeaseLock` is a distributed lock with an expiry. The expiry is not

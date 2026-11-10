@@ -16,6 +16,7 @@ import '../datasources/framework_table.dart';
 import '../datasources/sql_instant.dart';
 import '../object_persistence/persistence_annotations.dart';
 import 'api_keys.dart';
+import '../tenancy/tenant_data.dart';
 
 /// The default name of the service-account table.
 const String defaultServiceAccountTable = 'tom_service_account';
@@ -62,7 +63,7 @@ TomFrameworkTable apiKeyTable(String table) => TomFrameworkTable(
 );
 
 /// A [TomApiKeyStore] over a data source.
-class TomSqlApiKeyStore implements TomApiKeyStore {
+class TomSqlApiKeyStore implements TomApiKeyStore, TomTenantData {
   /// A store over [datasource], in [accountTable] and [keyTable], creating
   /// them on first use unless [createSchema] is false (a deployment whose
   /// migrations create them).
@@ -198,6 +199,22 @@ class TomSqlApiKeyStore implements TomApiKeyStore {
       'UPDATE $keyTable SET last_used_at = :at WHERE id = :id',
       {'id': keyId, 'at': sqlInstant(at)},
     );
+  }
+
+  /// Deletes the service accounts of [tenant] and their API keys.
+  @override
+  Future<int> purgeTenant(String tenant) async {
+    await ensureSchema();
+    final keys = await datasource.executeCommand(
+      'DELETE FROM $keyTable WHERE account_id IN '
+      '(SELECT id FROM $accountTable WHERE tenant = :tenant)',
+      {'tenant': tenant},
+    );
+    final accounts = await datasource.executeCommand(
+      'DELETE FROM $accountTable WHERE tenant = :tenant',
+      {'tenant': tenant},
+    );
+    return (keys + accounts).toInt();
   }
 
   /// Deletes every account and key. Test-support.

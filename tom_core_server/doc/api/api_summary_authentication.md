@@ -2574,6 +2574,8 @@ single-node deployment; a cluster installs a shared store (see
 The shared store: pending authorizations as rows in `tom_oauth_state`, so an
 authorization begun on one node completes on any other.
 
+- **Implements:** `TomOAuthStateStore`, `TomTenantData`
+
 ```dart
 TomSqlOAuthStateStore(
   TomDataSource datasource, {
@@ -2612,6 +2614,7 @@ factory TomSqlOAuthStateStore.named(
 | `consume(String state)` | `Future<TomOAuthAuthorizationState?>` | Spends the record in **one** `DELETE … RETURNING`, so two racing callbacks cannot both be answered |
 | `purgeExpired([DateTime now])` | `Future<int>` | Deletes what has expired; affects size, never behaviour. The **only** place the expiry predicate is written — `store`'s throttled sweep comes through here, passing the instant it stamped its throttle with |
 | `deleteAll()` | `Future<void>` | Empties the table, for provisioning and tests |
+| `purgeTenant` | `Future<int> purgeTenant(String tenant)` | *(TomTenantData)* Deletes the tenant's pending authorizations — what `TomTenancy.purgeTenant` calls. Answers how many rows were deleted. |
 
 `named` throws `oauth.state_store.unknown_datasource` when no such data source
 is registered — a start-up failure rather than a first-login one. Expiry is a
@@ -4739,7 +4742,7 @@ A `TomApiKeyStore` whose accounts and keys are rows of two framework tables in a
 (`TomFrameworkTable.replaceRow`).
 In `authentication/sql_api_key_store.dart`.
 
-- **Implements:** `TomApiKeyStore`
+- **Implements:** `TomApiKeyStore`, `TomTenantData`
 
 #### Constructors
 
@@ -4774,6 +4777,7 @@ TomSqlApiKeyStore(
 | `keysOf` | `Future<List<TomApiKey>> keysOf(String accountId)` | *(override)* In issue order. |
 | `touch` | `Future<void> touch(String keyId, DateTime at)` | *(override)* An `UPDATE` of `last_used_at` alone. |
 | `deleteAll` | `Future<void> deleteAll()` | Deletes every account and key. Test-support. |
+| `purgeTenant` | `Future<int> purgeTenant(String tenant)` | *(TomTenantData)* Deletes the keys of the tenant's service accounts, then the accounts — what `TomTenancy.purgeTenant` calls. Answers how many rows were deleted. |
 
 ### TomServiceAccountRow
 

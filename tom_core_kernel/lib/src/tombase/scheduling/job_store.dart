@@ -707,6 +707,20 @@ abstract class TomJobStore {
   /// history to keep is a deployment decision, not the store's.
   Future<int> purgeFinished(DateTime before);
 
+  /// What a run cancelled by [cancelTenantRuns] records as its
+  /// [TomJobRun.lastError].
+  static const String tenantRemovedError = 'cancelled: its tenant was removed';
+
+  /// Cancels the pending runs of [tenant] as of [now] — the tenant was
+  /// removed: each becomes `failed`, with [tenantRemovedError], so it never
+  /// runs and the record of it stays. A run already executing finishes.
+  /// Answers how many were cancelled.
+  Future<int> cancelTenantRuns(String tenant, DateTime now);
+
+  /// Deletes every run of [tenant], finished or not — the tenant is purged.
+  /// Answers how many were deleted.
+  Future<int> purgeTenant(String tenant);
+
   /// Pauses [jobName] as of [now]: none of its runs is claimed until
   /// [resumeJob].
   ///
@@ -1028,6 +1042,33 @@ class TomMemoryJobStore implements TomJobStore {
   }
 
   @override
+  Future<int> cancelTenantRuns(String tenant, DateTime now) async {
+    var cancelled = 0;
+    for (final run in _runs.values) {
+      if (run.tenant != tenant || run.state != TomJobRunState.pending) {
+        continue;
+      }
+      run.state = TomJobRunState.failed;
+      run.lastError = TomJobStore.tenantRemovedError;
+      run.completedAt = now;
+      cancelled++;
+    }
+    if (cancelled > 0) onMutated();
+    return cancelled;
+  }
+
+  @override
+  Future<int> purgeTenant(String tenant) async {
+    final doomed = [
+      for (final run in _runs.values)
+        if (run.tenant == tenant) run.id,
+    ];
+    doomed.forEach(_runs.remove);
+    if (doomed.isNotEmpty) onMutated();
+    return doomed.length;
+  }
+
+  @override
   Future<void> pauseJob(String jobName, DateTime now) async {
     if (_paused.containsKey(jobName)) return;
     _paused[jobName] = now;
@@ -1264,6 +1305,14 @@ class TomFileJobStore extends TomMemoryJobStore {
   @override
   Future<List<TomJobBacklog>> backlog(DateTime now) =>
       _exclusively(() => super.backlog(now));
+
+  @override
+  Future<int> cancelTenantRuns(String tenant, DateTime now) =>
+      _exclusively(() => super.cancelTenantRuns(tenant, now));
+
+  @override
+  Future<int> purgeTenant(String tenant) =>
+      _exclusively(() => super.purgeTenant(tenant));
 
   @override
   Future<int> purgeFinished(DateTime before) =>

@@ -1735,3 +1735,4 @@ results the same way.
 | [datasources](datasources.md) | module | `blob_ledger_sql.dart`, `database_blob_sql.dart`, `database_blob_store.dart` | `TomDataSource` for the database backend and the SQL ledger; `TomFrameworkTable` and `sqlInstant` for their tables |
 | [little_things](little_things.md) | module | `blob_store.dart` | `TomServerException` |
 | [object_persistence](object_persistence.md) | module | `blob_ledger_sql.dart`, `database_blob_store.dart` | `TomColumnInformation` and `TomAnnotationAnalyzer` for resolving file columns; `TomSqlDatasourceRepository` for the entity API; `TomDbTable` and `TomDbColumn` on the SQL ledger's row types |
+| [tenancy](tenancy.md) | module | `database_blob_store.dart` | `TomTenantData`, so a purged tenant's blobs are deleted |

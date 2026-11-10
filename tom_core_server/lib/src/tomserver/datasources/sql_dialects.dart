@@ -726,6 +726,21 @@ class TomStandardSqlDialect {
   SqlString createSchema(String name) =>
       'CREATE DATABASE IF NOT EXISTS ${quoteIdentifier(name)}';
 
+  /// The statement dropping schema [name] and everything in it, if it exists
+  /// — `DROP DATABASE` in MariaDB. What a purged schema-isolated tenant's
+  /// schema is removed with.
+  ///
+  /// [name] must be a plain identifier; the caller checks it.
+  SqlString dropSchema(String name) =>
+      'DROP DATABASE IF EXISTS ${quoteIdentifier(name)}';
+
+  /// The statement dropping database [name], if it exists — what a purged
+  /// database-isolated tenant's database is removed with.
+  ///
+  /// [name] must be a plain identifier; the caller checks it.
+  SqlString dropDatabase(String name) =>
+      'DROP DATABASE IF EXISTS ${quoteIdentifier(name)}';
+
   /// The data-source setting that points a connection at a schema — the
   /// database name, in MariaDB. A schema-isolated tenant's data source is its
   /// base data source with this one setting changed.

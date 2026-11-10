@@ -24,9 +24,11 @@ import '../object_persistence/persistence_annotations.dart';
 import 'delivery_report.dart';
 import 'delivery_report_sql.dart';
 import 'message.dart';
+import '../tenancy/tenant_data.dart';
 
 /// A [TomDeliveryReportStore] over a relational table.
-class TomSqlDeliveryReportStore extends TomDeliveryReportStore {
+class TomSqlDeliveryReportStore extends TomDeliveryReportStore
+    implements TomTenantData {
   /// Creates a store over [datasource].
   ///
   /// [table] names the correlation table. With [createSchema] left `true` the
@@ -164,6 +166,16 @@ class TomSqlDeliveryReportStore extends TomDeliveryReportStore {
       {'before': sqlInstant(before)},
     );
     return affected.toInt();
+  }
+
+  /// Deletes the delivery reports attributed to [tenant].
+  @override
+  Future<int> purgeTenant(String tenant) async {
+    await ensureSchema();
+    return (await datasource.executeCommand(
+      'DELETE FROM $table WHERE tenant = :tenant',
+      {'tenant': tenant},
+    )).toInt();
   }
 
   /// Empties the table.

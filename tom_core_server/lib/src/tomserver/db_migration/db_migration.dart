@@ -913,6 +913,71 @@ class TomDbMigrations {
     ];
   }
 
+  /// Migrates the target of the installed tenancy's tenant [tenantId] by its
+  /// type's tree — its own schema or database, or its type's shared schema
+  /// for a shared tenant — and answers the run, or `null` when the type has
+  /// no tree (its [TomTenantType.migrations], else `<root>/tenant/<type>`
+  /// with [root]). As [migrateAll] does for one target: `migrating`, then
+  /// `active` or `migration-failed`, under the registry's lock, recorded in
+  /// [runs]; it does not throw for a failed migration — the run says so.
+  /// [tenancy] is the installed one unless given. What `TomTenancy.addTenant`
+  /// and `migrateTenant` call.
+  static Future<TomMigrationRun?> migrateTenant(
+    String tenantId, {
+    String? root,
+    TomTenancy? tenancy,
+    TomDbMigrator Function(TomDataSourceInfo dsInfo)? migrators,
+  }) async {
+    tenancy ??= TomTenancy.current;
+    final tenant = tenancy?.tenants[tenantId];
+    if (tenancy == null || tenant == null) {
+      throw TomTenancy.unknownTenant(tenantId);
+    }
+    final type = tenancy.typeOf(tenant);
+    final path = root == null
+        ? type.migrations
+        : tenantTreeOf(root, type, type.name);
+    if (path == null || !Directory(path).existsSync()) return null;
+    final tree = Directory(path);
+    if (_subdirectoriesOf(tree).isEmpty) return null;
+    final routed = tenancy.datasourcesOf(type);
+    for (final chain in _subdirectoriesOf(tree)) {
+      final datasource = p.basename(chain.path);
+      if (!routed.contains(datasource)) {
+        throw TomDbMigrationException(
+          'db_migration.tenant.unrouted_datasource',
+          "The tree of tenant type '${type.name}' migrates the data source "
+              "'$datasource', which the type does not route: its tenant "
+              'tables would land in the system schema.',
+          parameters: {'type': type.name, 'datasource': datasource},
+        );
+      }
+    }
+    if (migrators == null && _migrationAdaptorTypes.isEmpty) {
+      _initializeMigrationAdaptorTypes();
+    }
+    final shared = tenancy.isolationOf(tenant) == TomTenantIsolation.shared;
+    final target = _TomTenantTarget(
+      shared ? TomMigrationTargetKind.shared : TomMigrationTargetKind.tenant,
+      type.name,
+      tree,
+      shared
+          ? ([
+              for (final t in tenancy.tenants.values)
+                if (t.type == type.name &&
+                    tenancy.isolationOf(t) == TomTenantIsolation.shared)
+                  t.id,
+            ]..sort())
+          : [tenantId],
+    );
+    return _migrateTenantTarget(
+      target,
+      tenancy,
+      migrators ?? newMigratorFor,
+      resolveActiveEnvironment(),
+    );
+  }
+
   /// Migrates one tenant target, recording its tenants' statuses; never
   /// throws — a failure is the run's.
   static Future<TomMigrationRun> _migrateTenantTarget(
@@ -940,9 +1005,9 @@ class TomDbMigrations {
           final datasource = p.basename(chain.path);
           final dsInfo = target.tenants.isEmpty
               ? _baseInfoOf(datasource)
-              : await tenancy!.runFor(
+              : tenancy!.routeForMaintenance(
                   target.tenants.first,
-                  () => TomDataSourceInfo.route(_baseInfoOf(datasource)),
+                  _baseInfoOf(datasource),
                 );
           final applied = await migrateTree(
             migratorOf(dsInfo),
@@ -1080,10 +1145,7 @@ class TomDbMigrations {
   ) async {
     final tenancy = TomTenancy.current;
     if (tenancy == null) throw TomTenancy.unknownTenant(tenant);
-    final dsInfo = await tenancy.runFor(
-      tenant,
-      () => TomDataSourceInfo.route(_baseInfoOf(datasource)),
-    );
+    final dsInfo = tenancy.routeForMaintenance(tenant, _baseInfoOf(datasource));
     return (dsInfo, newMigratorFor(dsInfo));
   }
 

@@ -238,6 +238,7 @@ export 'src/tomserver/sync/sync.dart';
 export 'src/tomserver/sync/sync_endpoint.dart';
 export 'src/tomserver/sync/sync_sql.dart';
 export 'src/tomserver/tenancy/tenancy.dart';
+export 'src/tomserver/tenancy/tenant_data.dart';
 export 'src/tomserver/tenancy/tenant_registry.dart';
 export 'src/tomserver/tenancy/tenant_registry_sql.dart';
 export 'src/tomserver/tenancy/tenant_type.dart';

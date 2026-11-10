@@ -1189,6 +1189,8 @@ configured driver ([Every settings key has to bind](#every-settings-key-has-to-b
 | `databaseName` | both | `""` | The database. Empty selects no default database on MariaDB and the `postgres` database on PostgreSQL. |
 | `timeOut` | both | `10000` | The connect timeout, in milliseconds. |
 | `poolMaxSize` … `poolValidateAfterIdleMs` | both | see [Connections](#connections) | The six pool settings. |
+| `poolSweepIdle` | both | `false` | Whether a timer closes idle connections past `poolIdleTimeoutMs` while the pool sees no traffic. A schema-isolated tenant's pool sets it ([Tenancy](tenancy.md#operating-costs)). |
+| `connectLazily` | both | `false` | Whether `connect` opens the pool without a connection, so the first statement opens one. A tenant's own pool sets it. |
 | `replicas` | both | `[]` | The read replicas: one settings map per replica, each overriding the primary's settings — usually only `host`. Anything but a list of maps is refused with `error.initialize.invalid_replicas`. See [Read Replicas](#read-replicas). |
 | `replicaStickinessMs` | both | `5000` | How long after a principal's write its reads stay on the primary — read-your-writes, per node. |
 | `replicaRetryMs` | both | `30000` | How long a replica that failed to serve a connection is left out; the primary serves its reads meanwhile. |

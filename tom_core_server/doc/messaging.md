@@ -2644,4 +2644,5 @@ was processed before, and reads nothing out of a mailbox.
 | [object_persistence](object_persistence.md) | module | `inbox.dart`, `sql_delivery_report_store.dart`, `sql_suppression_list.dart` | `TomDbTable` / `TomDbColumn` on the reflected row types the driver maps |
 | [resources](resources.md) | module | `email_service.dart`, `push_service.dart`, `sms_service.dart` | `TomLocalizedTextResources` |
 | [resources](resources.md) | module | `email_service.dart`, `push_service.dart`, `sms_service.dart`, `templated_message_service.dart` | `TomLocalizedTextResources` and `TomTextLocale`, which `TomTemplatedMessageService` resolves every template through (see `doc/resources.md`) |
+| [tenancy](tenancy.md) | module | `sql_delivery_report_store.dart`, `sql_suppression_list.dart` | `TomTenantData`, so a purged tenant's delivery reports and suppressed addresses are deleted |
 | [transactions](transactions.md) | module | `inbox.dart` | `TomTransactionManager.runInTransaction`, which holds the inbox's record and the consumer's work in one transaction |

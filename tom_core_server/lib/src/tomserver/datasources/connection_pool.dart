@@ -57,10 +57,18 @@ class TomConnectionPoolSettings {
   /// How long a connection may sit idle before the pool closes it (while more
   /// than [minIdle] are idle).
   ///
-  /// Checked whenever the pool is used, not by a timer: a pool with no
-  /// traffic closes its idle connections when traffic resumes. A timer would
+  /// Checked whenever the pool is used — and, with [sweepIdle], by a timer
+  /// while idle connections are open: without it a pool with no traffic
+  /// closes its idle connections when traffic resumes, since a timer would
   /// keep a process that never closes its data source from exiting.
   final Duration idleTimeout;
+
+  /// Whether a timer closes idle connections past [idleTimeout] while the
+  /// pool sees no traffic. For pools that are many and mostly quiet — a
+  /// tenant's own — so a tenant nobody uses holds no connection; such a pool
+  /// must be closed, or its timer keeps the process alive until the
+  /// connections are retired.
+  final bool sweepIdle;
 
   /// How long a connection is used at all before the pool replaces it.
   ///
@@ -81,6 +89,7 @@ class TomConnectionPoolSettings {
     this.idleTimeout = const Duration(minutes: 10),
     this.maxLifetime = const Duration(minutes: 30),
     this.validateAfterIdle = const Duration(seconds: 30),
+    this.sweepIdle = false,
   });
 
   /// Throws `error.datasource.pool.invalid_settings` unless every value is
@@ -110,7 +119,8 @@ class TomConnectionPoolSettings {
   String toString() =>
       'TomConnectionPoolSettings(maxSize: $maxSize, minIdle: $minIdle, '
       'acquireTimeout: $acquireTimeout, idleTimeout: $idleTimeout, '
-      'maxLifetime: $maxLifetime, validateAfterIdle: $validateAfterIdle)';
+      'maxLifetime: $maxLifetime, validateAfterIdle: $validateAfterIdle, '
+      'sweepIdle: $sweepIdle)';
 }
 
 /// What a driver tells a [TomConnectionPool] about its connection type [C].
@@ -280,6 +290,26 @@ class TomConnectionPool<C extends Object> {
     }
     _idle.add(entry);
     _retireIdle();
+    _scheduleSweep();
+  }
+
+  Timer? _sweep;
+
+  /// With [TomConnectionPoolSettings.sweepIdle], retires idle connections
+  /// once the oldest of them has been idle for the idle timeout, and again
+  /// while any remain.
+  void _scheduleSweep() {
+    if (!settings.sweepIdle || _closed || _sweep != null) return;
+    if (_idle.length <= settings.minIdle) return;
+    final oldest = _idle
+        .map((e) => e.lastReleasedAt)
+        .reduce((a, b) => a.isBefore(b) ? a : b);
+    final due = settings.idleTimeout - _clock().difference(oldest);
+    _sweep = Timer(due.isNegative ? Duration.zero : due, () {
+      _sweep = null;
+      _retireIdle();
+      _scheduleSweep();
+    });
   }
 
   /// Closes the pool: idle connections are closed now, lent ones when they are
@@ -287,6 +317,8 @@ class TomConnectionPool<C extends Object> {
   Future<void> close() async {
     if (_closed) return;
     _closed = true;
+    _sweep?.cancel();
+    _sweep = null;
     while (_waiters.isNotEmpty) {
       _waiters.removeFirst().completeError(_closedException());
     }

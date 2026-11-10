@@ -2676,6 +2676,7 @@ the DDL this store issues, the columns its statements name and the model the
 convergence guard compares cannot come apart.
 
 - **Extends:** `TomDeliveryReportStore`
+- **Implements:** `TomTenantData`
 
 #### Constructors
 
@@ -2712,6 +2713,7 @@ first callback.
 | ------ | --------- | ----------- |
 | `ensureSchema` | `Future<void> ensureSchema()` | Creates the table if it does not exist. Idempotent and called by every operation; exposed so a start-up sequence can provision before serving. |
 | `deleteAll` | `Future<void> deleteAll()` | Empties the table, for provisioning and for tests. |
+| `purgeTenant` | `Future<int> purgeTenant(String tenant)` | *(TomTenantData)* Deletes the tenant's delivery reports — what `TomTenancy.purgeTenant` calls. Answers how many rows were deleted. |
 
 `remember` uses `REPLACE` rather than `INSERT`, unlike the OAuth state store: the
 outbox guarantees at-least-once, so re-sending a message already accepted can
@@ -3153,6 +3155,7 @@ address again. Every statement is derived from the single `suppressionTable`
 declaration. Build it over a data source that is not routed per tenant.
 
 - **Extends:** `TomSuppressionList`
+- **Implements:** `TomTenantData`
 
 #### Constructors
 
@@ -3188,6 +3191,7 @@ registered.
 | ------ | --------- | ----------- |
 | `ensureSchema` | `Future<void> ensureSchema()` | Creates the table if it does not exist. Idempotent and called by every operation. |
 | `deleteAll` | `Future<void> deleteAll()` | Empties the table, for tests. |
+| `purgeTenant` | `Future<int> purgeTenant(String tenant)` | *(TomTenantData)* Deletes the tenant's suppressed addresses — what `TomTenancy.purgeTenant` calls. Answers how many rows were deleted. |
 
 ### TomSuppressionRow
 

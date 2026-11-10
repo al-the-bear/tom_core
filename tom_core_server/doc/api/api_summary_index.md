@@ -1063,6 +1063,9 @@ Summary: [api_summary_audit_reports.md](api_summary_audit_reports.md)
 | `TomTenantRegistryConflict` | class | A configured tenant its registry row contradicts. |
 | `TomTenantRegistryRefresh` | class | What a refresh from the registry changed on a node. |
 | `TomTenantRow` | class | One row of `tom_tenant` as the driver hands it back. |
+| `TomTenantPoolSettings` | class | How the pools opened for tenants are sized: per tenant, idle timeout, a deployment-wide cap. |
+| `TomTenantPurgeReport` | class | What purging a tenant dropped, kept and deleted. |
+| `TomTenantData` | abstract interface class | A system-table store that deletes a purged tenant's records. |
 | `tenantTable` / `tenantTableDdl` | function | The registry table, declared once, and its `CREATE TABLE`. |
 | `defaultTenantTable` | constant | `tom_tenant`. |
 
@@ -2085,11 +2088,14 @@ Summary: [api_summary_audit_reports.md](api_summary_audit_reports.md)
 | `TomTenancy` | Tenancy |
 | `TomTenancyException` | Tenancy |
 | `TomTenant` | Tenancy |
+| `TomTenantData` | Tenancy |
 | `TomTenantHeaderResolver` | Tenancy |
 | `TomTenantHostResolver` | Tenancy |
 | `TomTenantIsolation` | Tenancy |
 | `TomTenantPathResolver` | Tenancy |
+| `TomTenantPoolSettings` | Tenancy |
 | `TomTenantProviderSets` | Authentication |
+| `TomTenantPurgeReport` | Tenancy |
 | `TomTenantRecord` | Tenancy |
 | `TomTenantRegistry` | Tenancy |
 | `TomTenantRegistryConflict` | Tenancy |

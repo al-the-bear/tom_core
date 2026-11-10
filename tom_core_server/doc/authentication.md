@@ -4386,6 +4386,7 @@ and `TomSessionCookieException` both refusals. See
 | [privacy](privacy.md) | module | `two_factor_enrolment.dart` | `TomDataSubject` and `TomPersonal`, which declare `TomUserTwoFactorEnrolment`'s principal and its hint to erasure, export and audit sealing |
 | [resources](resources.md) | module | `two_factor_delivered_code.dart` | no user-facing text originates in this module |
 | [server](server.md) | module | `scim_endpoints.dart` | `TomEndpointCredentials`, which `TomScimProvisioning.install` claims `/scim/v2/` in |
+| [tenancy](tenancy.md) | module | `sql_api_key_store.dart`, `sql_oauth_state_store.dart` | `TomTenantData`, so a purged tenant's API keys, service accounts and pending sign-ins are deleted |
 
 - **Server** (this package): `TomServerChannel` carries the default self-login
   transport, and `TomServer` calls `loginAndInstall` before binding its socket;

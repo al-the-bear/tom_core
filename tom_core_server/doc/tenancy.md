@@ -43,6 +43,7 @@ This guide is the server half.
 - [Onboarding a Tenant](#onboarding-a-tenant)
 - [Suspending a Tenant](#suspending-a-tenant)
 - [Removing a Tenant](#removing-a-tenant)
+- [Purging a Tenant](#purging-a-tenant)
 - [Operating Costs](#operating-costs)
 - [Failure Keys](#failure-keys)
 - [Not Yet Implemented](#not-yet-implemented)
@@ -76,9 +77,13 @@ This guide is the server half.
 | `TomTenantPathResolver` | class | Names the tenant by the path segment after a prefix, `/t/<segment>` by default, mapping the segment to a tenant id when a lookup is given |
 | `TomTenantHeaderResolver` | class | Names the tenant by a request header, `X-Tenant-Id` by default |
 | `TomTenantResolution` | class | The outcome of resolving a request: a tenant, none, or a rejection |
+| `TomTenantPoolSettings` | class | How the pools opened for tenants are sized: connections per tenant, the idle timeout, a deployment-wide cap |
+| `TomTenantPurgeReport` | class | What `purgeTenant` dropped, kept and deleted for one tenant |
+| `TomTenantData` | abstract interface class | A store of a system table that deletes a purged tenant's records |
 
-The module is five files: `tenancy.dart` holds the configuration, the
-provisioning and the routing; `tenant_type.dart` the tenant types;
+The module is six files: `tenancy.dart` holds the configuration, the
+provisioning, the routing and the lifecycle; `tenant_data.dart` the stores'
+purge contract; `tenant_type.dart` the tenant types;
 `tenant_registry.dart` and `tenant_registry_sql.dart` the registry and its
 table; `tenant_resolution.dart` the request-side resolvers.
 
@@ -181,6 +186,8 @@ tenancy:
     datasource: main             # its system schema: the base schema of this data source
     refreshSeconds: 30           # how often each node re-reads it; 0 for never
   migrations: migrations         # the migrations root: a type's tree is <root>/tenant/<type>
+  purgeAfterDays: 90             # how long a removed tenant's data is kept before purgeTenant
+  pool: {perTenant: 4, idleSeconds: 60, maxTotal: 200}  # the tenant pools (see Operating Costs)
   types:                         # the tenant types (see Tenant Types); none: the type default
     standard:
       isolation: shared          # the default model of its tenants
@@ -214,6 +221,10 @@ tenancy:
 | `createSchemas` | `false` | Whether provisioning a `schema` tenant creates its schema if it does not exist — `CREATE DATABASE IF NOT EXISTS` on MariaDB, `CREATE SCHEMA IF NOT EXISTS` on PostgreSQL. |
 | `registry` | a SQL registry on the first routed data source | `memory` keeps the tenants in the process; a map names the registry's `datasource`, `table` (`tom_tenant`), `createSchema` (`true`) and `refreshSeconds` (`30`; `0` for never). |
 | `migrations` | none | The migrations root; a declared type that names no `migrations` has its tree at `<root>/tenant/<type>`. |
+| `purgeAfterDays` | `90` | How many days a removed tenant's data is kept before `purgeTenant` may drop it; `restoreTenant` brings the tenant back meanwhile. |
+| `pool.perTenant` | `4` | The most connections a tenant pool opens. |
+| `pool.idleSeconds` | `60` | How long a tenant pool's connection may sit idle before a timer closes it. |
+| `pool.maxTotal` | none | The most connections all tenant pools together may open; a pool that would pass it is refused (`tenancy.pool.cap_exceeded`). |
 | `types` | none — the implicit type `default` | The tenant types, by name (a lower-case identifier of at most 32 characters). |
 | `types.<type>.isolation` | the deployment's `isolation` | The model of the type's tenants that name none. |
 | `types.<type>.isolations` | all three | The models the type's tenants may use; its own `isolation` must be one. |
@@ -236,8 +247,9 @@ letters, digits and underscores, at most 64.
 The same configuration can be built in code — `TomTenancy`'s constructor takes
 the tenants, the `types` (`TomTenantType`), the routed data sources, the
 resolvers, the default model,
-`createSchemas`, the `registry` (an in-memory one unless given) and the
-`refreshInterval`:
+`createSchemas`, the `registry` (an in-memory one unless given), the
+`refreshInterval`, `purgeAfter` and the tenant `pool` settings
+(`TomTenantPoolSettings`):
 
 ```dart
 final tenancy = TomTenancy(
@@ -389,7 +401,7 @@ which the row does hold.
 | `migrating` | no | `503`, `tenancy.tenant.unavailable` |
 | `active` | yes | — |
 | `suspended` | no | `403`, `tenancy.tenant.suspended` |
-| `migration-failed` | no | `503`, `tenancy.tenant.unavailable` |
+| `migration-failed` | no, and not routed | `503`, `tenancy.tenant.migration_failed` |
 | `removed` | not routed at all | `404`, `tenancy.tenant.unknown` |
 
 `addTenant`, `suspendTenant`, `resumeTenant` and `removeTenant` write the
@@ -464,9 +476,9 @@ Every target keeps its own versioning table, `tenant_<type>_versioning` for a
 type's tree, so a target is brought to the current version by the same call
 whenever it runs. Its tenants are `migrating` meanwhile, then `active`, or
 `migration-failed` with the error in their registry row; a failing tenant does
-not stop the others, and is refused (`tenancy.tenant.unavailable`, 503) until
-`migrateAll(root, tenant: id)` — or a start script's `--migrate-tenant=<id>` —
-migrates it again. Each target is migrated under its database's migration lock
+not stop the others, and is refused (`tenancy.tenant.migration_failed`, 503)
+and not routed until `migrateAll(root, tenant: id)`, `TomTenancy.migrateTenant(id)`
+or a start script's `--migrate-tenant=<id>` migrates it again. Each target is migrated under its database's migration lock
 and the registry's lock of the target, so two processes never migrate one
 tenant at once; `parallelism` bounds how many migrate at once. See
 [db_migration.md](db_migration.md#tenants-by-their-type).
@@ -525,7 +537,8 @@ body is a small JSON object carrying the key and a message:
 | `404` | `tenancy.tenant.unknown` | The request names a tenant the deployment does not have — a path segment the path resolver's lookup does not know included. |
 | `400` | `tenancy.id.invalid` | The request names something that is not a tenant id. |
 | `403` | `tenancy.tenant.suspended` | The tenant is suspended ([Suspending a Tenant](#suspending-a-tenant)). |
-| `503` | `tenancy.tenant.unavailable` | The tenant is provisioning, migrating, or its migration failed. |
+| `503` | `tenancy.tenant.unavailable` | The tenant is provisioning or migrating. |
+| `503` | `tenancy.tenant.migration_failed` | The tenant's migration failed. |
 | `503` | `tenancy.tenant.schema_behind` | The tenant's schema is behind this node's code. |
 | `503` | `tenancy.tenant.schema_ahead` | The tenant's schema is ahead of this node's code by a migration not marked expand. |
 
@@ -914,19 +927,29 @@ over them in its body with `forEachTenant`.
 
 ```dart
 final tenancy = TomTenancy.current!;
-await tenancy.addTenant(
+final run = await tenancy.addTenant(
   TomTenant('umbrella', isolation: TomTenantIsolation.schema),
 );
-await TomDbMigrations.migrateAll('migrations', tenant: 'umbrella');
 ```
 
-`addTenant` records the tenant in the registry as `provisioning`, provisions its
-schema or database, records it as `active`, and only then serves it, so a
-request naming the tenant cannot arrive before its data source exists. A
-provisioning that fails leaves the tenant `provisioning` in the registry, with
-the error as its status detail, and unserved. No restart is needed and no
-configuration change: the next start reads the tenant from the registry, and
-every node serves it from its next refresh.
+One call onboards a tenant. `addTenant` records it in the registry as
+`provisioning`, provisions its schema or database, migrates it by its type's
+tree (`migrateTenant`, through `TomDbMigrations.migrateTenant`: `migrating`,
+then `active`) and only then serves it, so a request naming the tenant cannot
+arrive before its tables exist. It answers the migration run, `null` when the
+type has no tree. No restart is needed and no configuration change: the next
+start reads the tenant from the registry, and every node serves it from its
+next refresh.
+
+| What fails | The tenant | `addTenant` |
+| ---------- | ---------- | ----------- |
+| provisioning | `provisioning` in the registry, the error as its status detail, unserved | rethrows |
+| the migration | `migration-failed`, the error as its status detail; refused (`503`, `tenancy.tenant.migration_failed`) and not routed — work in its context is refused by `route` | throws `tenancy.tenant.migration_failed` |
+
+`migrateTenant(id)` migrates the tenant again once the cause is fixed (after a
+`--repair-migration=tenant:<id>/…` on MariaDB, which records a failed script).
+A shared tenant's target is its type's shared schema, which every shared tenant
+of the type shares, so they go `migrating` together for the run.
 
 ## Suspending a Tenant
 
@@ -937,49 +960,99 @@ await TomTenancy.current!.resumeTenant('umbrella');
 ```
 
 `suspendTenant` records the tenant as `suspended`, after which its requests are
-refused as `tenancy.tenant.suspended` (`403`); its data and routes stay, so
-`resumeTenant` serves it again at once. Suspending first is how a deployment
-stops a tenant's traffic before it removes the tenant.
+refused as `tenancy.tenant.suspended` (`403`) and its **queued work is held**:
+the installed tenancy is the scheduler's tenant gate (`TomScheduler.tenantGate`,
+`servesWork`), so a run of the tenant — a job, an outbox message, a relayed
+publish — stays pending and unclaimed, on every node once it refreshed from the
+registry. Its data and routes stay, so `resumeTenant` serves it again at once,
+and its runs are claimed at the next tick. The gate holds the runs of every
+tenant this node does not serve as `active`, a tenant it does not know yet
+included.
 
 ## Removing a Tenant
 
 ```dart
 final tenancy = TomTenancy.current!;
-final removed = await tenancy.removeTenant('umbrella');
-// The data stays where it is: drop it once the retention period allows.
-final main = TomDataSourceInfo.getBaseDataSourceInfo('main')!;
-final schema =
-    removed.schema ?? '${main.settings['databaseName']}_${removed.id}';
-// MariaDB; on PostgreSQL: 'DROP SCHEMA IF EXISTS "$schema" CASCADE'.
-await main.datasource.executeCommand('DROP DATABASE IF EXISTS `$schema`');
+await tenancy.suspendTenant('umbrella');   // stop its traffic first
+await tenancy.removeTenant('umbrella');
 ```
 
 `removeTenant` is the counterpart of `addTenant`, for a tenant whose deletion is
 final. It records the tenant as `removed` in the registry, then takes it out of
-`tenants`, so from then on a request
-naming it — by its token's claim, its host, its path or a header — is refused
-as `tenancy.tenant.unknown` (`404`), and work still in its context is refused by
-`route` and `runFor`. It then drops the tenant's routes and closes the data
-sources the tenancy opened for it, which closes their connection pools. A data
-source the tenant only named by reference belongs to the deployment and stays
-open. Other tenants are untouched.
+`tenants`, so from then on a request naming it — by its token's claim, its
+host, its path or a header — is refused as `tenancy.tenant.unknown` (`404`),
+and work still in its context is refused by `route` and `runFor`. It drops the
+tenant's routes and closes the data sources the tenancy opened for it, which
+closes their connection pools; a data source the tenant only named by
+reference belongs to the deployment and stays open. Its **queued work is
+cancelled**: every pending run of the tenant in the started schedulers' job
+stores — and in `jobStores` — becomes `failed` with
+`TomJobStore.tenantRemovedError`, so it never runs and the record stays; a run
+already executing finishes. Other tenants are untouched.
 
-The tenant's data is not touched: dropping its schema or database is the
-caller's, with the `TomTenant` the call returns. Work that is still running in
-the tenant when its pools close fails, so a deployment that needs it to finish
-stops admitting the tenant's requests first — `suspendTenant` — and removes the
-tenant afterwards. The registry row stays, as `removed`, so the next start does
-not provision the tenant again even if the configuration still names it (that
-is reported as a conflict).
+Work that is still running in the tenant when its pools close fails, so a
+deployment that needs it to finish suspends the tenant first. The registry row
+stays, as `removed`, so the next start does not provision the tenant again even
+if the configuration still names it (that is reported as a conflict).
+
+The tenant's data is kept for the retention period, `purgeAfter` (90 days by
+default, `tenancy.purgeAfterDays`). Until it is purged, `restoreTenant(id)`
+serves the tenant again over the schema or database it left — provisioned and
+migrated as by `addTenant`.
+
+## Purging a Tenant
+
+```dart
+final report = await TomTenancy.current!.purgeTenant(
+  'umbrella',
+  stores: [blobStore, apiKeyStore, deliveryReports, suppressions, oauthState],
+);
+```
+
+`purgeTenant(id)` deletes a removed tenant's data for good, once its retention
+period has passed (`force: true` skips the wait). It refuses a tenant the
+registry does not hold (`tenancy.tenant.unknown`), one not removed
+(`tenancy.purge.not_removed`) and one still within its retention period
+(`tenancy.purge.retention`, naming the date). Then:
+
+| The tenant's | Is |
+| ------------ | -- |
+| own schema (`schema` isolation) | dropped on each data source its type routes, through the dialect — `DROP DATABASE` on MariaDB, `DROP SCHEMA … CASCADE` on PostgreSQL |
+| own database (`database` isolation) | dropped (`DROP DATABASE`, on PostgreSQL `WITH (FORCE)`) when the tenancy opened it on the base data source's server; a data source named by reference, or a database on another server, is the deployment's and is reported as kept |
+| rows in its type's shared schema (`shared` isolation) | deleted from every tenant table there — the application's `@TomTenantTable` entities, by their tenant column, and the framework's tenant tables, by `tenant` |
+| records in system tables | deleted by every store it is handed (`stores`, each a `TomTenantData`: the blob store, service accounts and API keys, delivery reports, the suppression list, OAuth sign-in state) and by the job stores — the started schedulers' and `jobStores` — its queued and finished runs |
+| audit trail | **kept**: its hash chain is not rewritten. The personal values it sealed for the tenant's data subjects become unreadable, because their subject keys were in the tenant's own tables, dropped or deleted above |
+| registry row | deleted |
+
+It answers a `TomTenantPurgeReport`: what was `dropped`, what was `kept` and
+why, and the rows `deleted` per table and store.
 
 ## Operating Costs
 
 - **Connection pools.** Every `schema` and `database` tenant has a data source
-  of its own, and so a pool of its own: a deployment of fifty schema tenants
-  holds fifty pools against one server — on PostgreSQL, against one database,
-  every pool counting toward its `max_connections`. Size each tenant's pool in its settings
-  (a schema tenant inherits the base data source's), and size the server's
-  connection limit for the sum. `shared` tenants add no pool.
+  of its own, and so a pool of its own — on PostgreSQL every pool counting
+  toward the one database's `max_connections`. The tenancy keeps them small and
+  quiet (`TomTenantPoolSettings`, `tenancy.pool`): each opens no connection until
+  its tenant's first statement (`connectLazily`), holds at most `perTenant`
+  connections (4 by default; `poolMaxSize`), and closes a connection idle for
+  `idleSeconds` (60) even while nobody uses it (`poolSweepIdle`), so an idle
+  tenant holds none. `maxTotal` caps the connections all tenant pools together
+  may open: a pool that would pass it is refused when it is provisioned
+  (`tenancy.pool.cap_exceeded`). A `database` tenant's own settings override
+  these; a type's shared schema has one pool; `shared` tenants of the type
+  `default` add none. Measured on MariaDB and PostgreSQL
+  (`tenant_lifecycle_db_test.dart`, LCD-6): 120 concurrent statements over
+  twelve tenant pools of two peaked at 24 connections and fell back to none once
+  idle — the connections a deployment holds follow its busy tenants, not its
+  tenant count, so tenants are not served from the base pool by switching the
+  schema per checkout.
+
+  ```yaml
+  tenancy:
+    pool: {perTenant: 4, idleSeconds: 60, maxTotal: 200}
+    purgeAfterDays: 90
+  ```
+
 - **Migrations.** A `shared` deployment migrates once. Every `schema` or
   `database` tenant is one more migration run per release, and a release is
   complete only when every tenant's run succeeded — run `migrateAll` as part of
@@ -1022,7 +1095,13 @@ is reported as a conflict).
 | `tenancy.type.change` | `addTenant` | A tenant the registry holds under another type; changing a type moves the tenant. |
 | `tenancy.tenant.unknown` | `route`, `runFor`, `resolveRequest`, `suspendTenant`, `resumeTenant`, `removeTenant` | Work or a request for a tenant the deployment does not have (`404` on a request; `clientThrow: true`). |
 | `tenancy.tenant.suspended` | `resolveRequest` | A request for a suspended tenant (`403`). |
-| `tenancy.tenant.unavailable` | `resolveRequest` | A request for a tenant that is provisioning, migrating or whose migration failed (`503`). |
+| `tenancy.tenant.unavailable` | `resolveRequest` | A request for a tenant that is provisioning or migrating (`503`). |
+| `tenancy.tenant.migration_failed` | `resolveRequest`, `route`, `addTenant`, `migrateTenant` | A request for, or work in, a tenant whose migration failed (`503`) — it is not routed; or the migration of `addTenant` / `migrateTenant` failed. |
+| `tenancy.tenant.not_removed` | `restoreTenant` | The tenant to restore is not removed. |
+| `tenancy.purge.not_removed` | `purgeTenant` | The tenant to purge is not removed. |
+| `tenancy.purge.retention` | `purgeTenant` | The tenant's retention period (`purgeAfter`) has not passed; the parameter `until` names its end. |
+| `tenancy.pool.cap_exceeded` | provisioning (`install`, `addTenant`, refresh) | Opening the tenant's pool would take the tenant pools past `tenancy.pool.maxTotal`. |
+| `tenancy.config.invalid_number` | `TomTenancy.fromConfiguration`, `TomTenantPoolSettings.fromMap` | `purgeAfterDays` or a `pool` setting is not a whole number in range. |
 | `tenancy.tenant.schema_behind` | `resolveRequest` | A request for a tenant whose schema is behind this node's code (`503`). |
 | `tenancy.tenant.schema_ahead` | `resolveRequest` | A request for a tenant whose schema is ahead of this node's code by a migration not marked expand (`503`). |
 | `tenancy.registry.unknown_tenant` | `TomTenantRegistry.setStatus`, `setMigrated` | A change to a tenant the registry does not hold. |

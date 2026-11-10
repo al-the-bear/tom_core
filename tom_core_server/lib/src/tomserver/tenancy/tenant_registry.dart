@@ -25,9 +25,10 @@ import 'tenant_registry_sql.dart';
 /// Where a tenant is in its lifecycle.
 ///
 /// Only an [active] tenant is served; [suspended] is refused as
-/// `tenancy.tenant.suspended` (403), [provisioning], [migrating] and
-/// [migrationFailed] as `tenancy.tenant.unavailable` (503), and a [removed]
-/// tenant is unknown.
+/// `tenancy.tenant.suspended` (403) and its queued work held, [provisioning]
+/// and [migrating] as `tenancy.tenant.unavailable` (503), [migrationFailed]
+/// as `tenancy.tenant.migration_failed` (503) and not routed, and a [removed]
+/// tenant is unknown, its queued work cancelled.
 enum TomTenantStatus {
   /// Its schema or database is being created.
   provisioning('provisioning'),
@@ -290,6 +291,10 @@ abstract class TomTenantRegistry {
   /// Writes [record], replacing the tenant's row.
   Future<void> put(TomTenantRecord record);
 
+  /// Deletes the tenant [id]'s row — what [TomTenancy.purgeTenant] does
+  /// last. A no-op for a tenant the registry does not hold.
+  Future<void> delete(String id);
+
   /// Sets the status of tenant [id] to [status], with [detail] (cleared when
   /// `null`), at [at]; answers the updated record.
   Future<TomTenantRecord> setStatus(
@@ -385,6 +390,9 @@ class TomMemoryTenantRegistry extends TomTenantRegistry {
   @override
   Future<void> put(TomTenantRecord record) async =>
       _records[record.id] = record;
+
+  @override
+  Future<void> delete(String id) async => _records.remove(id);
 }
 
 /// The registry in a SQL table of the system schema — the base data source's
@@ -522,6 +530,12 @@ class TomSqlTenantRegistry extends TomTenantRegistry {
         if (ds is! TomSqlDatasource) return body();
         return ds.withSessionLock(migrationLockName(target), body);
       });
+
+  @override
+  Future<void> delete(String id) async {
+    final ds = await _ready();
+    await ds.executeCommand('DELETE FROM $table WHERE id = :id', {'id': id});
+  }
 
   /// Removes every row. For tests.
   Future<void> deleteAll() async {

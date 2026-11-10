@@ -918,6 +918,7 @@ of wall clock, so it is run deliberately, not by `testkit :test`.
 | [datasources](datasources.md) | module | `sql_job_store.dart`, `sql_lease_lock.dart`, `sql_scheduler_nodes.dart`, `sql_scheduling_sql.dart` | `TomDataSource` / `TomDataSourceInfo` for connections and parameterised statements |
 | [little_things](little_things.md) | module | `sql_job_store.dart`, `sql_lease_lock.dart`, `sql_scheduler_nodes.dart` | `TomServerException` |
 | [object_persistence](object_persistence.md) | module | `sql_job_store.dart`, `sql_lease_lock.dart`, `sql_scheduler_nodes.dart` | `TomDbColumn`, `TomDbTable` |
+| [tenancy](tenancy.md) | module | `sql_job_store.dart` | `TomTenantData`, so a purged tenant's runs are deleted |
 | [transactions](transactions.md) | module | `sql_job_store.dart` | `TomTransactionManager.runInTransaction`, so a purge moves runs into the archive in one transaction |
 
 - **`db_migration`** — optional; the route by which a deployment creates the

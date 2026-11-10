@@ -111,6 +111,45 @@ void runTomJobStoreContract(String variant, TomJobStoreFactory create) {
       expect(await store.findRun('a'), isNull);
     });
 
+    TomJobRun tenantRun(String id, String tenant) => TomJobRun(
+      id: id,
+      jobName: 'job',
+      scheduledFor: at.add(Duration(minutes: id.length)),
+      runAt: at,
+      tenant: tenant,
+    );
+
+    test('a removed tenant\'s pending runs are cancelled, a running one '
+        'finishes, another tenant\'s stay', () async {
+      await store.enqueue(tenantRun('a1', 'acme'));
+      await store.enqueue(tenantRun('a22', 'acme'));
+      await store.enqueue(tenantRun('g1', 'globex'));
+      final running = (await store.claimDue(
+        at,
+        'node',
+        limit: 1,
+        accept: (run) => run.id == 'a22',
+      )).single;
+
+      expect(await store.cancelTenantRuns('acme', at), 1);
+      final a1 = await reload('a1');
+      expect(a1.state, TomJobRunState.failed);
+      expect(a1.lastError, TomJobStore.tenantRemovedError);
+      expect((await reload('a22')).state, TomJobRunState.running);
+      expect((await reload('g1')).state, TomJobRunState.pending);
+      await store.complete(running, at);
+      expect((await reload('a22')).state, TomJobRunState.succeeded);
+    });
+
+    test('a purged tenant\'s runs are deleted, in every state', () async {
+      await store.enqueue(tenantRun('a1', 'acme'));
+      await store.enqueue(tenantRun('a22', 'acme'));
+      await store.enqueue(tenantRun('g1', 'globex'));
+      await store.cancelTenantRuns('acme', at);
+      expect(await store.purgeTenant('acme'), 2);
+      expect((await store.all()).map((r) => r.id), ['g1']);
+    });
+
     test(
       'a tenant\'s run keeps its tenant, and its window is its own',
       () async {

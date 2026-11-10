@@ -44,9 +44,10 @@ import '../object_persistence/persistence_annotations.dart';
 import 'blob_key_like.dart';
 import 'blob_store.dart';
 import 'database_blob_sql.dart';
+import '../tenancy/tenant_data.dart';
 
 /// A blob store that keeps its content in two tables of a [TomDataSource].
-class TomDatabaseBlobStore extends TomBlobStore {
+class TomDatabaseBlobStore extends TomBlobStore implements TomTenantData {
   /// The default number of *raw* bytes per chunk row, 256 KiB.
   ///
   /// Large enough that a megabyte-scale file is a handful of round trips rather
@@ -541,6 +542,17 @@ class TomDatabaseBlobStore extends TomBlobStore {
       {'tenant': tenant},
     );
     return [for (final row in rows) row.storageKey];
+  }
+
+  /// Deletes the blobs written for [tenant] ([keysOfTenant]), their chunks
+  /// with them.
+  @override
+  Future<int> purgeTenant(String tenant) async {
+    var deleted = 0;
+    for (final key in await keysOfTenant(tenant)) {
+      if (await delete(key)) deleted++;
+    }
+    return deleted;
   }
 
   Future<_BlobManifest?> _manifestOf(String key) async {

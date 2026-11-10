@@ -537,6 +537,7 @@ upload id and the one-row manifest is then replaced in a single statement, so a
 reader sees the previous blob or the complete new one.
 
 - **Extends:** `TomBlobStore`
+- **Implements:** `TomTenantData`
 
 #### Constructors
 
@@ -608,6 +609,7 @@ error far better caught at start-up than on the first upload.
 | `purgeOrphanedChunks` | `Future<int> purgeOrphanedChunks()` | Deletes chunk rows no manifest refers to, returning how many were removed. Housekeeping for the residue of a replace or delete whose chunk cleanup failed; belongs on a schedule rather than in the request path. |
 | `keysOfTenant` | `Future<List<String>> keysOfTenant(String tenant)` | The keys of the blobs written for `tenant`, in key order. The manifest is a system table, kept in the system data source for every tenant; each row records the tenant in context when it was written (`''` outside a tenant), so a tenant's blobs can be listed, exported and erased. |
 | `toString` | `String toString()` | *(override)* Renders `TomDatabaseBlobStore(<manifestTable>)`. |
+| `purgeTenant` | `Future<int> purgeTenant(String tenant)` | *(TomTenantData)* Deletes every blob stored under the tenant's key prefix (`keysOfTenant`) — what `TomTenancy.purgeTenant` calls. Answers how many blobs were deleted. |
 
 ### TomBlobManifestRow
 
