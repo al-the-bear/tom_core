@@ -1143,6 +1143,95 @@ class AuthApi {
     );
   }
 
+  /// `POST /audit-reports/query`
+  ///
+  /// Answers a question once, across the writers it names.
+  Future<Map<String, Object?>> auditReportQuery() async {
+    final response = await _send(
+      'POST',
+      '/audit-reports/query',
+      authenticated: true,
+    );
+    final Object? decoded = jsonDecode(utf8.decode(response.bodyBytes));
+    return (decoded as Map).cast<String, Object?>();
+  }
+
+  /// `GET /audit-reports/questions`
+  ///
+  /// The questions the caller saved, by name.
+  Future<Map<String, Object?>> auditReportQuestions() async {
+    final response = await _send(
+      'GET',
+      '/audit-reports/questions',
+      authenticated: true,
+    );
+    final Object? decoded = jsonDecode(utf8.decode(response.bodyBytes));
+    return (decoded as Map).cast<String, Object?>();
+  }
+
+  /// `PUT /audit-reports/questions`
+  ///
+  /// Saves a question of the caller — a new one when its id is empty — and answers it as stored, with its next delivery.
+  Future<Map<String, Object?>> auditReportSaveQuestion() async {
+    final response = await _send(
+      'PUT',
+      '/audit-reports/questions',
+      authenticated: true,
+    );
+    final Object? decoded = jsonDecode(utf8.decode(response.bodyBytes));
+    return (decoded as Map).cast<String, Object?>();
+  }
+
+  /// `DELETE /audit-reports/questions/{id}`
+  ///
+  /// Removes one of the caller's questions.
+  Future<void> auditReportDeleteQuestion({required String id}) async {
+    await _send(
+      'DELETE',
+      '/audit-reports/questions/${Uri.encodeComponent(id)}',
+      authenticated: true,
+    );
+  }
+
+  /// `GET /audit-reports/questions/{id}/answer`
+  ///
+  /// Answers one of the caller's questions now.
+  Future<Map<String, Object?>> auditReportAnswer({required String id}) async {
+    final response = await _send(
+      'GET',
+      '/audit-reports/questions/${Uri.encodeComponent(id)}/answer',
+      authenticated: true,
+    );
+    final Object? decoded = jsonDecode(utf8.decode(response.bodyBytes));
+    return (decoded as Map).cast<String, Object?>();
+  }
+
+  /// `POST /audit-reports/questions/{id}/deliver`
+  ///
+  /// Has one of the caller's questions delivered at the next delivery pass rather than at its scheduled time; answers the question with that delivery as its next one.
+  Future<Map<String, Object?>> auditReportDeliver({required String id}) async {
+    final response = await _send(
+      'POST',
+      '/audit-reports/questions/${Uri.encodeComponent(id)}/deliver',
+      authenticated: true,
+    );
+    final Object? decoded = jsonDecode(utf8.decode(response.bodyBytes));
+    return (decoded as Map).cast<String, Object?>();
+  }
+
+  /// `GET /audit-reports/writers`
+  ///
+  /// The writers (chains) the trail holds records of.
+  Future<Map<String, Object?>> auditReportWriters() async {
+    final response = await _send(
+      'GET',
+      '/audit-reports/writers',
+      authenticated: true,
+    );
+    final Object? decoded = jsonDecode(utf8.decode(response.bodyBytes));
+    return (decoded as Map).cast<String, Object?>();
+  }
+
   /// `POST /auth/enrol/begin`
   Future<LoginResult> authBeginEnrolment({
     required TwoFactorEnrolmentRequest body,
@@ -1340,8 +1429,18 @@ class AuthApi {
     return response;
   }
 
+  /// `GET /messaging/delivery-report`
+  Future<http.Response> tomDeliveryReportServiceDeliveryReportGet() async {
+    final response = await _send(
+      'GET',
+      '/messaging/delivery-report',
+      authenticated: false,
+    );
+    return response;
+  }
+
   /// `POST /messaging/delivery-report`
-  Future<http.Response> tomDeliveryReportServiceDeliveryReport({
+  Future<http.Response> tomDeliveryReportServiceDeliveryReportPost({
     Object? body,
   }) async {
     final response = await _send(
@@ -1724,6 +1823,24 @@ class AuthApi {
       authenticated: false,
     );
     return response;
+  }
+
+  /// `POST /sync/pull`
+  ///
+  /// The changes of a collection after a sequence number that the caller may read, in sequence order.
+  Future<Map<String, Object?>> pull() async {
+    final response = await _send('POST', '/sync/pull', authenticated: true);
+    final Object? decoded = jsonDecode(utf8.decode(response.bodyBytes));
+    return (decoded as Map).cast<String, Object?>();
+  }
+
+  /// `POST /sync/push`
+  ///
+  /// Applies each change under optimistic locking on its base version and answers applied, conflict or rejected per change.
+  Future<Map<String, Object?>> push() async {
+    final response = await _send('POST', '/sync/push', authenticated: true);
+    final Object? decoded = jsonDecode(utf8.decode(response.bodyBytes));
+    return (decoded as Map).cast<String, Object?>();
   }
 
   /// Sends one request and throws [AuthApiException] for any

@@ -22,7 +22,8 @@ both are verified against the kernel's own parameterised contract suite (see
 observes *nodes* rather than leases, and nodes exist only where there is a
 cluster.
 
-x
+## Quick start
+
 Two things have to be in place before the queue will answer, and the *third*
 thing you might expect is not one of them — the tables create themselves.
 

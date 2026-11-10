@@ -1189,10 +1189,9 @@ and an application that needs one builds it today rather than waiting:
 
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
-| `dart:async` | dart | `graceful_shutdown.dart`, `mutual_tls.dart`, `server.dart` | `Future`, `FutureOr`, `unawaited`, `StreamSubscription` (the certified request), and the `Completer` and `TimeoutException` the shutdown waits with |
+| `dart:async` | dart | `graceful_shutdown.dart`, `mutual_tls.dart`, `server.dart` | `Future`, `FutureOr`, `unawaited`, `runZonedGuarded` (the mutual-TLS listener's asynchronous errors), and the `Completer` and `TimeoutException` the shutdown waits with |
 | `dart:convert` | dart | `mutual_tls.dart`, `server.dart` | `json`, `jsonEncode`, `utf8`, `base64` (a PEM certificate's body) |
 | `dart:io` | dart | `graceful_shutdown.dart`, `mutual_tls.dart`, `request_ids.dart`, `server.dart` | `HttpServer` (and `HttpServer.bindSecure`, asking for a client certificate), `HttpRequest`, `InternetAddress` (also a trusted proxy's address), `SecurityContext`, `X509Certificate`, `HttpClient`, `ProcessSignal` (SIGTERM, SIGINT), `HttpHeaders`, `HttpConnectionInfo` (the peer a request-id header came from, and the connection `TomTlsConnectionInfo` stands in for) |
-| `dart:typed_data` | dart | `mutual_tls.dart` | `Uint8List`, the body stream of a certified request |
 | `crypto` | package | `mutual_tls.dart` | `sha256`, a client certificate's fingerprint |
 | `http` | package | `mutual_tls.dart` | `http.Client` and `IOClient`, the outgoing client presenting this service's certificate |
 | `shelf` | package | every file | the HTTP pipeline, `Request`/`Response`/`Handler`/ `Middleware`/`Router`/`Cascade`, and `serve` / `serveRequests` |

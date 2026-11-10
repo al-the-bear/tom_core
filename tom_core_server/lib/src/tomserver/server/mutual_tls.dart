@@ -24,7 +24,6 @@ library;
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
@@ -299,10 +298,32 @@ final class TomMutualTls {
       requestClientCertificate: true,
       shared: shared,
     );
-    serveRequests(
-      server.map(_TomCertifiedHttpRequest.new),
-      handler,
-      poweredByHeader: poweredByHeader,
+    // The certificate is put on the request here, from the `HttpRequest` it
+    // came with: shelf's adapter puts its own connection information on a
+    // request (read lazily, of a type of its own) and nothing of the TLS
+    // session, so a wrapper around the `HttpRequest` would not reach the
+    // handler.
+    runZonedGuarded(
+      () => server.listen(
+        (httpRequest) => handleRequest(
+          httpRequest,
+          (request) => handler(
+            request.change(
+              context: {
+                TomClientAddress.connectionInfoKey: TomTlsConnectionInfo(
+                  request.context[TomClientAddress.connectionInfoKey]!
+                      as HttpConnectionInfo,
+                  httpRequest.certificate,
+                ),
+              },
+            ),
+          ),
+          poweredByHeader: poweredByHeader,
+        ),
+      ),
+      (error, stack) => tomLog.error(
+        'Asynchronous error in a mutual-TLS handler: $error\n$stack',
+      ),
     );
     return server;
   }
@@ -340,68 +361,4 @@ class TomMutualTlsClientFactory implements TomHttpClientAbstractFactory {
   @override
   http.Client getClient() =>
       TomResilientClient(IOClient(HttpClient(context: context)));
-}
-
-/// An [HttpRequest] whose [connectionInfo] carries its client certificate.
-///
-/// shelf's adapter copies `connectionInfo` into the request context and
-/// nothing else of the TLS session, so this is the one place the certificate
-/// can ride along.
-class _TomCertifiedHttpRequest extends Stream<Uint8List>
-    implements HttpRequest {
-  _TomCertifiedHttpRequest(this._inner);
-
-  final HttpRequest _inner;
-
-  @override
-  StreamSubscription<Uint8List> listen(
-    void Function(Uint8List event)? onData, {
-    Function? onError,
-    void Function()? onDone,
-    bool? cancelOnError,
-  }) => _inner.listen(
-    onData,
-    onError: onError,
-    onDone: onDone,
-    cancelOnError: cancelOnError,
-  );
-
-  @override
-  HttpConnectionInfo? get connectionInfo {
-    final info = _inner.connectionInfo;
-    return info == null ? null : TomTlsConnectionInfo(info, _inner.certificate);
-  }
-
-  @override
-  X509Certificate? get certificate => _inner.certificate;
-
-  @override
-  int get contentLength => _inner.contentLength;
-
-  @override
-  List<Cookie> get cookies => _inner.cookies;
-
-  @override
-  HttpHeaders get headers => _inner.headers;
-
-  @override
-  String get method => _inner.method;
-
-  @override
-  bool get persistentConnection => _inner.persistentConnection;
-
-  @override
-  String get protocolVersion => _inner.protocolVersion;
-
-  @override
-  Uri get requestedUri => _inner.requestedUri;
-
-  @override
-  HttpResponse get response => _inner.response;
-
-  @override
-  HttpSession get session => _inner.session;
-
-  @override
-  Uri get uri => _inner.uri;
 }

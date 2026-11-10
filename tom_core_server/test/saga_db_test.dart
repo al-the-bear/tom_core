@@ -259,5 +259,5 @@ void main() async {
       expect(await hasEntry('x'), isTrue);
       expect(await hasEntry('y'), isFalse);
     }, skip: skip);
-  });
+  }, skip: skip);
 }

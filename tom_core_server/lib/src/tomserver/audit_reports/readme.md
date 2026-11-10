@@ -83,7 +83,11 @@ dart run example/audit_reports/audit_reports_example.dart
 ```
 
 See [`doc/audit_reports.md`](../../../../doc/audit_reports.md) for the filter's
-keys, the API, deliveries and their failures.
+keys, the API, deliveries and their failures. The connection-free surface runs
+in `example/audit_reports/audit_reports_example.dart`;
+`test/audit_reports_test.dart` covers it without a server, and
+`test/audit_reports_db_test.dart` covers the relational trail and the question
+table against a live MariaDB or PostgreSQL.
 
 ---
 

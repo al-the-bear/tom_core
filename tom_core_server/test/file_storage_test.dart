@@ -4318,6 +4318,12 @@ fileStores:
     // prefixes, since `_` is a word character. Comment lines are skipped: prose
     // naming the default is documentation, not a second declaration.
     const declaringFile = 'database_blob_sql.dart';
+    // The request cache names every framework table, these two included, in a
+    // set of its own: `little_things` sits below every other module and imports
+    // none, so it cannot take the constants. RQC-6 (`request_cache_test.dart`)
+    // holds that set to `frameworkOwnedTables()`, which is built from the
+    // constants, so a rename here fails there.
+    const requestCacheFile = 'little_things/request_cache.dart';
 
     List<String> literalsIn(Iterable<String> names) {
       final patterns = {for (final name in names) name: RegExp('\\b$name\\b')};
@@ -4326,6 +4332,7 @@ fileStores:
         for (final entry in Directory(root).listSync(recursive: true)) {
           if (entry is! File || !entry.path.endsWith('.dart')) continue;
           if (entry.path.endsWith(declaringFile)) continue;
+          if (entry.path.endsWith(requestCacheFile)) continue;
           final lines = entry.readAsLinesSync();
           for (var i = 0; i < lines.length; i++) {
             if (lines[i].trimLeft().startsWith('//')) continue;

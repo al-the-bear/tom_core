@@ -12,3 +12,4 @@ pubspec.lock
 test/ai_citation_test.dart
 test/formatting_test.dart
 test/scheduling_db_test.dart
+test/sync_db_test.dart

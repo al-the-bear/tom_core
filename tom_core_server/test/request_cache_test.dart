@@ -69,10 +69,10 @@ void main() {
       await TomRequestCache.run(() async {
         await lookup();
         TomRequestCache.invalidateAfter(
-          'INSERT INTO tom_blob_chunk (upload_id) VALUES (:id)',
+          'INSERT INTO $defaultBlobChunkTable (upload_id) VALUES (:id)',
         );
         TomRequestCache.invalidateAfter(
-          'REPLACE INTO `tom_blob` (k) VALUES (1)',
+          'REPLACE INTO `$defaultBlobManifestTable` (k) VALUES (1)',
         );
         TomRequestCache.invalidateAfter(
           'UPDATE app.tom_job_run SET state = :s WHERE id = :id',

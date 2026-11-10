@@ -41,6 +41,10 @@
       "description": "Credential login and token lifecycle."
     },
     {
+      "name": "tomAuditReports",
+      "description": "Questions asked of the audit trail across its writers, saved questions and their scheduled deliveries."
+    },
+    {
       "name": "tomFeatureFlags",
       "description": "The client-visible feature flags, evaluated for the caller."
     },
@@ -51,6 +55,10 @@
     {
       "name": "tomOAuth",
       "description": "OAuth 2.0 / OpenID Connect authorization-code login."
+    },
+    {
+      "name": "tomSync",
+      "description": "The offline sync protocol: devices push their pending changes and pull the changes after a sequence number."
     },
     {
       "name": "tomUserPreferences",
@@ -1760,6 +1768,713 @@
         }
       }
     },
+    "/audit-reports/query": {
+      "post": {
+        "tags": [
+          "tomAuditReports"
+        ],
+        "operationId": "auditReportQuery",
+        "description": "Answers a question once, across the writers it names.",
+        "responses": {
+          "200": {
+            "description": "The result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TomAuditReportResultDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TomProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope, or the same fields as an RFC 9457 problem document when the request accepts application/problem+json, unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TomProblem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "x-tom-access": {
+          "rule": "roles",
+          "roles": [
+            "auditor"
+          ]
+        }
+      }
+    },
+    "/audit-reports/questions": {
+      "get": {
+        "tags": [
+          "tomAuditReports"
+        ],
+        "operationId": "auditReportQuestions",
+        "description": "The questions the caller saved, by name.",
+        "responses": {
+          "200": {
+            "description": "The result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TomAuditQuestionsDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TomProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope, or the same fields as an RFC 9457 problem document when the request accepts application/problem+json, unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TomProblem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "x-tom-access": {
+          "rule": "roles",
+          "roles": [
+            "auditor"
+          ]
+        }
+      },
+      "put": {
+        "tags": [
+          "tomAuditReports"
+        ],
+        "operationId": "auditReportSaveQuestion",
+        "description": "Saves a question of the caller — a new one when its id is empty — and answers it as stored, with its next delivery.",
+        "responses": {
+          "200": {
+            "description": "The result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TomAuditQuestionDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TomProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope, or the same fields as an RFC 9457 problem document when the request accepts application/problem+json, unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TomProblem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "x-tom-access": {
+          "rule": "roles",
+          "roles": [
+            "auditor"
+          ]
+        }
+      }
+    },
+    "/audit-reports/questions/{id}": {
+      "delete": {
+        "tags": [
+          "tomAuditReports"
+        ],
+        "operationId": "auditReportDeleteQuestion",
+        "description": "Removes one of the caller's questions.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Done; the response carries no body."
+          },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TomProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope, or the same fields as an RFC 9457 problem document when the request accepts application/problem+json, unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TomProblem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "x-tom-access": {
+          "rule": "roles",
+          "roles": [
+            "auditor"
+          ]
+        }
+      }
+    },
+    "/audit-reports/questions/{id}/answer": {
+      "get": {
+        "tags": [
+          "tomAuditReports"
+        ],
+        "operationId": "auditReportAnswer",
+        "description": "Answers one of the caller's questions now.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TomAuditReportResultDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TomProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope, or the same fields as an RFC 9457 problem document when the request accepts application/problem+json, unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TomProblem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "x-tom-access": {
+          "rule": "roles",
+          "roles": [
+            "auditor"
+          ]
+        }
+      }
+    },
+    "/audit-reports/questions/{id}/deliver": {
+      "post": {
+        "tags": [
+          "tomAuditReports"
+        ],
+        "operationId": "auditReportDeliver",
+        "description": "Has one of the caller's questions delivered at the next delivery pass rather than at its scheduled time; answers the question with that delivery as its next one.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TomAuditQuestionDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TomProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope, or the same fields as an RFC 9457 problem document when the request accepts application/problem+json, unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TomProblem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "x-tom-access": {
+          "rule": "roles",
+          "roles": [
+            "auditor"
+          ]
+        }
+      }
+    },
+    "/audit-reports/writers": {
+      "get": {
+        "tags": [
+          "tomAuditReports"
+        ],
+        "operationId": "auditReportWriters",
+        "description": "The writers (chains) the trail holds records of.",
+        "responses": {
+          "200": {
+            "description": "The result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TomAuditReportWritersDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TomProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope, or the same fields as an RFC 9457 problem document when the request accepts application/problem+json, unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TomProblem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "x-tom-access": {
+          "rule": "roles",
+          "roles": [
+            "auditor"
+          ]
+        }
+      }
+    },
     "/auth/enrol/begin": {
       "post": {
         "tags": [
@@ -3322,11 +4037,89 @@
       }
     },
     "/messaging/delivery-report": {
+      "get": {
+        "tags": [
+          "TomDeliveryReportService"
+        ],
+        "operationId": "tomDeliveryReportServiceDeliveryReportGet",
+        "responses": {
+          "200": {
+            "description": "The response the handler builds itself.",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TomProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope, or the same fields as an RFC 9457 problem document when the request accepts application/problem+json, unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TomProblem"
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      },
       "post": {
         "tags": [
           "TomDeliveryReportService"
         ],
-        "operationId": "tomDeliveryReportServiceDeliveryReport",
+        "operationId": "tomDeliveryReportServiceDeliveryReportPost",
         "requestBody": {
           "required": false,
           "content": {
@@ -6184,6 +6977,190 @@
         },
         "security": []
       }
+    },
+    "/sync/pull": {
+      "post": {
+        "tags": [
+          "tomSync"
+        ],
+        "operationId": "pull",
+        "description": "The changes of a collection after a sequence number that the caller may read, in sequence order.",
+        "responses": {
+          "200": {
+            "description": "The result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TomSyncPullResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TomProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope, or the same fields as an RFC 9457 problem document when the request accepts application/problem+json, unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TomProblem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "apiKeyAuth": []
+          }
+        ]
+      }
+    },
+    "/sync/push": {
+      "post": {
+        "tags": [
+          "tomSync"
+        ],
+        "operationId": "push",
+        "description": "Applies each change under optimistic locking on its base version and answers applied, conflict or rejected per change.",
+        "responses": {
+          "200": {
+            "description": "The result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TomSyncPushResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests: a rate limit the deployment configured refused this one. Retry after the number of seconds Retry-After names.",
+            "headers": {
+              "Retry-After": {
+                "description": "Seconds to wait before the next request.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TomProblem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found — also the answer to a caller the endpoint refuses, which is deliberately indistinguishable from a missing route.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "A failure. The body is the framework error envelope, or the same fields as an RFC 9457 problem document when the request accepts application/problem+json, unless the server's error handler writes its own.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/TomError"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TomProblem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "apiKeyAuth": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -6410,6 +7387,36 @@
           "iconKey"
         ]
       },
+      "TomAuditQuestionDto": {
+        "type": "object",
+        "description": "TomAuditQuestionDto renders itself; its members are not declared.",
+        "x-tom-opaque": true
+      },
+      "TomAuditQuestionIdRequest": {
+        "type": "object",
+        "description": "TomAuditQuestionIdRequest renders itself; its members are not declared.",
+        "x-tom-opaque": true
+      },
+      "TomAuditQuestionsDto": {
+        "type": "object",
+        "description": "TomAuditQuestionsDto renders itself; its members are not declared.",
+        "x-tom-opaque": true
+      },
+      "TomAuditReportQueryRequest": {
+        "type": "object",
+        "description": "TomAuditReportQueryRequest renders itself; its members are not declared.",
+        "x-tom-opaque": true
+      },
+      "TomAuditReportResultDto": {
+        "type": "object",
+        "description": "TomAuditReportResultDto renders itself; its members are not declared.",
+        "x-tom-opaque": true
+      },
+      "TomAuditReportWritersDto": {
+        "type": "object",
+        "description": "TomAuditReportWritersDto renders itself; its members are not declared.",
+        "x-tom-opaque": true
+      },
       "TomAuthenticationResult": {
         "type": "object",
         "properties": {
@@ -6616,6 +7623,26 @@
             ]
           }
         ]
+      },
+      "TomSyncPullRequest": {
+        "type": "object",
+        "description": "TomSyncPullRequest renders itself; its members are not declared.",
+        "x-tom-opaque": true
+      },
+      "TomSyncPullResponse": {
+        "type": "object",
+        "description": "TomSyncPullResponse renders itself; its members are not declared.",
+        "x-tom-opaque": true
+      },
+      "TomSyncPushRequest": {
+        "type": "object",
+        "description": "TomSyncPushRequest renders itself; its members are not declared.",
+        "x-tom-opaque": true
+      },
+      "TomSyncPushResponse": {
+        "type": "object",
+        "description": "TomSyncPushResponse renders itself; its members are not declared.",
+        "x-tom-opaque": true
       },
       "TomUserPreferenceBulkWriteRequest": {
         "type": "object",

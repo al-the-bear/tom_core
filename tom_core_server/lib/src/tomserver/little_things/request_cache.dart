@@ -66,9 +66,10 @@ abstract final class TomRequestCache {
   static void invalidate() => _current?.clear();
 
   /// The framework's bookkeeping tables, at their default names: the job
-  /// queue and its locks, the blob store, the audit trail, the outbox's inbox
-  /// and delivery reports, idempotency keys, sagas, keys, the export register
-  /// and the sync change log. No lookup the cache keeps reads them, so a write
+  /// queue and its locks, the blob store, the audit trail and its saved
+  /// questions, the outbox's inbox, delivery reports and suppression list,
+  /// idempotency keys, sagas, keys, the export register and the sync change
+  /// log. No lookup the cache keeps reads them, so a write
   /// to one leaves it as it is — an upload's blob rows would otherwise empty it
   /// in the middle of a request. `test/request_cache_test.dart` holds the set
   /// to the tables `frameworkOwnedTables` lists.
@@ -83,8 +84,10 @@ abstract final class TomRequestCache {
     'tom_blob_ledger',
     'tom_blob_content',
     'tom_audit_trail',
+    'tom_audit_question',
     'tom_oauth_state',
     'tom_delivery_report',
+    'tom_message_suppression',
     'tom_cache_invalidation',
     'tom_scim_resource',
     'tom_message_inbox',

@@ -82,6 +82,11 @@ Future<void> exposeNotes() => TomSync.expose(
 );
 ```
 
+> **A fragment, not a program.** The `main` data source and the device's
+> `store` are the deployment's. `example/sync/sync_example.dart` shows the
+> routes, the change log's tables and the answers given before an entity is
+> reached, without a database; a push and a pull run in `test/sync_db_test.dart`.
+
 The server's pipeline mounts `POST /sync/push` and `POST /sync/pull` itself. A
 device syncs with the kernel's `TomSyncEngine` over `TomHttpSyncTransport`:
 
