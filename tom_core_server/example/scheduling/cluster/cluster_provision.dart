@@ -3,7 +3,7 @@
 /// Run once by `run_cluster_demo.sh` before any node starts.
 ///
 /// The three framework tables are created by
-/// [TomDbMigrations.migrateDatabases] from the **shipped** reference migrations
+/// [TomDbMigrations.migrateAll] from the **shipped** reference migrations
 /// in `example/scheduling/migrations/system/`, not by the stores' `createSchema` path.
 /// That is deliberate and is itself part of what the demo proves: the files a
 /// deployment actually applies build a schema the stores can run on. Every store
@@ -42,11 +42,9 @@ Future<void> main() async {
   }
 
   // 2. Apply the shipped migrations. The orchestrator walks
-  //    <directory>/<datasourceName>/<schemaName>/, which is why the data source
-  //    is named `main` and the folder is `migrations/system/main/tomcore`.
-  await TomDbMigrations.migrateDatabases(
-    'example/scheduling/migrations/system',
-  );
+  //    <root>/system/<datasourceName>/<schemaName>/, which is why the data
+  //    source is named `main` and the folder is `migrations/system/main/tomcore`.
+  await TomDbMigrations.migrateAll('example/scheduling/migrations');
 
   // 3. The one table that belongs to the demo rather than the framework, seeded
   //    at fence 0 so the first token any node holds can write.

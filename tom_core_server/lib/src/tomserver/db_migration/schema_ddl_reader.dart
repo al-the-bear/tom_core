@@ -68,7 +68,7 @@ class TomDdlReplayResult {
 /// This is the *actual* side of the CE-DB ↔ CE-MG convergence check: it applies
 /// each artifact's DDL to an in-memory [TomSchemaBuilder] in the order the
 /// migration engine would, so the result is the shape a fresh database would
-/// have after `TomDbMigrations.migrateDatabases`. It reads the same artifacts
+/// have after `TomDbMigrations.migrateAll`. It reads the same artifacts
 /// the engine reads and changes nothing about how the engine behaves.
 ///
 /// **What it understands.** `CREATE TABLE <name> (<column list>)` — the one

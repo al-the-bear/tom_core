@@ -187,7 +187,7 @@ void main() {
     test('datasourceLoaderFunction reads both databases', () {
       // Ties the required-asset rule to a real boot step: this is the loader
       // handed to `TomDataSourceInfo.initializeDatasourceInfo`, and each key
-      // must equal the migration folder name under database_migrations/ for
+      // must equal the migration folder name under database_migrations/system/ for
       // migrations to resolve. The ops server is the one artifact that reads
       // *both* databases — `app_db` for the work it does, `auth_db` read-only
       // for the recipients the digest resolves through `userRepository` — so a

@@ -247,13 +247,13 @@ Future<void> main(List<String> args) async {
   tomLog.setLogLevelByName(configuration.logLevel);
 
   // An operator's repair of a failed migration
-  // (`--repair-migration=<datasource>/<schema>/<version>
+  // (`--repair-migration=system/<datasource>/<schema>/<version>
   // --repair-action=remove|resolve`) runs instead of the start, and exits.
   if (await TomDbMigrations.repairFromArgs(args)) {
     tomLog.info('Migration repaired, exiting.');
     exit(0);
   }
-  // Likewise a rollback (`--rollback-migrations=<datasource>/<schema>/
+  // Likewise a rollback (`--rollback-migrations=system/<datasource>/<schema>/
   // <version>`), with the down scripts beside the migrations.
   if (await TomDbMigrations.rollbackFromArgs(
     args,
@@ -263,9 +263,18 @@ Future<void> main(List<String> args) async {
     exit(0);
   }
 
-  await TomDbMigrations.migrateDatabases(
+  // A deployment step: `--migrate` migrates the system schema and exits, as
+  // the release job of a rollout runs it before the new servers start.
+  final migration = await TomDbMigrations.migrateFromArgs(
+    args,
     configuration.databaseMigrationsDirectory,
   );
+  if (migration != null) {
+    tomLog.info('Migrated, exiting.');
+    exit(migration.succeeded ? 0 : 1);
+  }
+
+  await TomDbMigrations.migrateAll(configuration.databaseMigrationsDirectory);
 
   await startServer(configuration);
 

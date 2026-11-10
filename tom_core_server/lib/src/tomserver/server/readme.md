@@ -135,6 +135,14 @@ keyring's key-encryption keys. Without the key no subject keys are installed and
 personal values are recorded as they are — see
 [`doc/configuration.md`](../../../../doc/configuration.md#privacy).
 
+**Migrations at start.** Then `start` awaits the `migrations` key
+(`TomServer.migrateOnStart`, `TomDbMigrations.configurationKey`): with
+`onStart: true` it runs `TomDbMigrations.migrateAll` — the system schema, then
+every tenant by its type — before anything else reads a table. A failing system
+schema stops the start; a failing tenant is marked `migration-failed` and the
+start goes on — see
+[`doc/configuration.md`](../../../../doc/configuration.md#migrations-at-start).
+
 **Transaction recovery.** Then `start` awaits the `transactions` key
 (`TomServer.recoverTransactions`, `TomTransactionRecovery.configurationKey`):
 the one-phase data source two-phase commit decisions are recorded in, and with

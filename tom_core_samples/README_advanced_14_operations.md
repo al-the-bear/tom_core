@@ -444,7 +444,7 @@ authorization lines with their enforcement anchors.
 - `advanced_ops_server/lib/src/jobs/` — `ops_jobs.dart` (the declarations),
   `retention_service.dart`, `digest_service.dart`, `report_service.dart`
 - `advanced_ops_server/bin/ops_server_start.dart` (the boot sequence and `--migrate-only`),
-  `database_migrations/app_db/app_schema/[100]-ops_framework_tables.sql`
+  `database_migrations/system/app_db/app_schema/[100]-ops_framework_tables.sql`
 - `tom_core_server/doc/` — `scheduling.md`, `audit.md`, `messaging.md` (both the
   delivery contract and application email), `resources.md`, `export.md`
 - `advanced_ops_server/test/ops_live_test.dart`, `test/ops_privacy_live_test.dart`,

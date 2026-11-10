@@ -151,7 +151,7 @@ Each server wires its connections in `assets/datasources_default.yaml`, with
 `${VAR:default}` environment substitution. Two rules are load-bearing:
 
 - **The map key must equal the migration folder name.** The app server's key is
-  `app_db`, matching `database_migrations/app_db/` — that is how `TomDbMigrations`
+  `app_db`, matching `database_migrations/system/app_db/` — that is how `TomDbMigrations`
   matches a schema tree to its datasource.
 - **`port` is a literal int, not a substitution.** `${...}` always yields a
   string, and the MariaDB datasource binds `port` to an `int` field, so a
@@ -274,8 +274,8 @@ block without touching application code.
 ## Migrations: schema-creation vs sample-data
 
 Each database's schema and demo data live as SQL migrations under
-`database_migrations/<datasource>/<schema>/`, named
-`[<version>]-<desc>[@<env>[,<env>…]].sql`. `TomDbMigrations.migrateDatabases(dir)`
+`database_migrations/system/<datasource>/<schema>/`, named
+`[<version>]-<desc>[@<env>[,<env>…]].sql`. `TomDbMigrations.migrateAll(dir)`
 (called at server boot) walks the tree and applies files in **ascending numeric
 version order**, **skipping any migration tagged for an environment other than
 the active one** (the `@<env>` tag, G-MIG-3 — untagged migrations apply
@@ -379,7 +379,7 @@ format (part [06](README_advanced_06_authentication.md)).
 - [`advanced_app_server/README.md`](advanced_app_server/README.md), [`advanced_auth_server/README.md`](advanced_auth_server/README.md)
 - `advanced_app_server/lib/src/persistence/app_persistence_model.dart`, `advanced_auth_server/lib/src/persistence/auth_persistence_model.dart`, and the `*_mapping.dart` converters
 - `advanced_ops_server/lib/src/ops_privacy.dart` (the privacy registration over both databases' records)
-- `*/assets/datasources_default.yaml`, `*/assets/blobstores_default.yaml`, `*/database_migrations/<datasource>/<schema>/`
+- `*/assets/datasources_default.yaml`, `*/assets/blobstores_default.yaml`, `*/database_migrations/system/<datasource>/<schema>/`
 
 ---
 

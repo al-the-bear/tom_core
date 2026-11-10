@@ -26,7 +26,8 @@ with a down script beside it can be [rolled back](#rolling-migrations-back).
   - [The Tree Root Has to Be There](#the-tree-root-has-to-be-there)
 - [Running Migrations](#running-migrations)
   - [One run per database at a time: the migration lock](#one-run-per-database-at-a-time-the-migration-lock)
-  - [Per-tenant migrations](#per-tenant-migrations)
+  - [Tenants, by their type](#tenants-by-their-type)
+  - [When migrations run](#when-migrations-run)
   - [Where the last run stands](#where-the-last-run-stands)
 - [Adaptor Discovery](#adaptor-discovery)
 - [The SQL Adaptors](#the-sql-adaptors)
@@ -83,7 +84,7 @@ them run against a live server.
 
 | Type | Kind | Purpose |
 | ---- | ---- | ------- |
-| `TomDbMigrations` | class | The orchestrator; `migrateDatabases(directory)` drives a whole tree |
+| `TomDbMigrations` | class | The orchestrator; `migrateAll(root)` migrates the system schema, then every tenant by its type |
 | `TomDbMigrator` | abstract class | The per-database migrator contract (`initializeMigration` / `applyMigration` / `reset`, and `withMigrationLock` / `repair` / `rollback`) |
 | `TomMigrationRepair` | enum | What `repair` does with a migration recorded as failed: `remove` it or `markResolved` |
 | `TomDbMigrationAdaptor` | class | Binds a migrator to its data-source types (`type` and `alsoServes`) for reflection discovery |
@@ -93,8 +94,11 @@ them run against a live server.
 | `MariadbMigrationAdaptor` | class | The MariaDB migrator, for `mariadb` and `mariadb_xa` |
 | `PostgresMigrationAdaptor` | class | The PostgreSQL migrator, for `postgresql` and `postgresql_xa` — a script and its version row in one transaction |
 | `TomDbVersion` | class | One row of a `<schema>_versioning` table |
-| `TomMigrationRun` | class | The process's most recent `migrateDatabases` call: its state, start, end and error (`TomDbMigrations.lastRun`) |
+| `TomMigrationRun` | class | One target of a `migrateAll` call — `system`, `shared:<type>` or `tenant:<id>` — with its state, tenants, start, end and error (`TomDbMigrations.runs`) |
 | `TomMigrationRunState` | enum | `notRun`, `running`, `succeeded` or `failed` — what the framework readiness check reads |
+| `TomMigrationTargetKind` | enum | What a target is: the `system` schema, a type's `shared` schema, or one `tenant`'s own |
+| `TomMigrationResult` | class | Every target's run of one `migrateAll` call, with `succeeded`, `failed` and `runOf` |
+| `TomMemoryDbMigrator` | class | A migrator that records what it applies instead of running SQL — for tests and examples of the orchestration |
 | `TomDbMigrationException` | class | Orchestration / discovery / parsing failures |
 | `TomSqlMigrationException` | class | SQL migration failures, whichever adaptor raised them |
 | `MariadbMigrationException` / `PostgresMigrationException` | class | Its MariaDB and PostgreSQL subtypes |
@@ -132,25 +136,52 @@ real disagreement rather than two spellings of the same thing.
 
 ## The Directory Layout
 
-Migrations live in a directory tree keyed by **data-source name** then
-**schema name**, with one file per migration:
+One **migration root** holds two trees: `system/` for the system schema, keyed
+by **data-source name** then **schema name**, and `tenant/` for the tenants'
+tables, keyed by **tenant type** then **data-source name**:
 
 ```text
 migrations/
-  main/                     # a registered TomDataSourceInfo name
-    app/                    # a schema in that data source
-      [1]-create_users.sql
-      [2]-add_orders.sql
-    audit/                  # a second schema in the *same* data source
-      [1]-create_audit_log.sql
-  reporting/
-    analytics/
-      [1]-create_facts.sql
+  system/
+    main/                   # a registered TomDataSourceInfo name
+      app/                  # a history of that data source's own schema
+        [1]-create_users.sql
+        [2]-add_orders.sql
+      audit/                # a second history in the *same* schema
+        [1]-create_audit_log.sql
+    reporting/
+      analytics/
+        [1]-create_facts.sql
+  tenant/
+    standard/               # a tenant type
+      main/                 # a data source the type routes
+        [1]-create_invoice.sql
+    enterprise/
+      main/
+        [1]-create_invoice.sql
+        [2]-create_contract.sql
 ```
 
-A data source may hold **any number of schemas**, as `main` does above. Each
-keeps its own independent version history, so the `[1]` under `audit` and the
-`[1]` under `app` are unrelated migrations that both apply.
+`system/` is applied to the **system schema** — each registered data source
+itself, never routed. A data source may hold **any number of histories**, as
+`main` does above: each `<schema>` folder keeps its own versioning table,
+`<schema>_versioning`, so the `[1]` under `audit` and the `[1]` under `app` are
+unrelated migrations that both apply.
+
+A type's tree has no schema level. It is applied to every **target** of the
+type — the type's shared schema once, for its shared-isolation tenants, and the
+schema or database of each tenant with one of its own — under the history
+`tenant_<type>` (`TomDbMigrations.tenantHistoryLabel`), so each target keeps
+its own `tenant_<type>_versioning` table, apart from the system tree's even
+where the type's shared schema is the system schema (the type `default`). A
+type that names its own tree (`TomTenantType.migrations`) is read from there
+instead of `<root>/tenant/<type>`.
+
+A non-tenant application has `system/` only — and `tenant/default/` when it has
+tenant tables, applied to the registered data sources as the implicit tenant's
+shared schema. The root holds nothing else: a folder at the root other than
+`system/` and `tenant/` — a data-source folder of a flat tree among them — is
+refused with `db_migration.layout.unknown_entry` before anything runs.
 
 Each file name must match
 
@@ -412,7 +443,7 @@ without one runs forward and cannot be rolled back.
 ### The Tree Root Has to Be There
 
 A migrations directory a tool is *told* to walk is an **input**, not content.
-Handed a path that does not exist, both `TomDbMigrations.migrateDatabases` and
+Handed a path that does not exist, both `TomDbMigrations.migrateAll` and
 `TomSchemaConvergenceCheck.checkAll` / `checkSchema` abort with
 `db_migration.migration.migrations_directory_not_found`:
 
@@ -451,6 +482,7 @@ Three things are deliberately **not** errors:
 | Case | Behaviour | Why |
 | ---- | --------- | --- |
 | The root exists but is empty | No migrations run; no reports | "Nothing to migrate yet" is a legitimate state for a project whose migrations have not been written. |
+| The root has no `system/` or no `tenant/` | That tree is not applied | A deployment without tenants has no `tenant/`; one whose system schema a DBA provisions may have no `system/`. |
 | A datasource directory holds no schema sub-directories | Nothing runs | Same reason; the walk simply has no schemas to visit. |
 | A `<datasource>/<schema>` pair is absent below an existing root | `readChain` yields an empty chain | This is content below a root already proven to exist, and an empty chain lets `verify` report every entity as *missing from the migrations* — a precise finding, which is what the check exists to produce. An exception here would replace that finding with a crash. |
 
@@ -471,44 +503,67 @@ surfacing later as an unhandled rejection nothing is watching.
 ## Running Migrations
 
 ```dart
-// Data sources must already be registered (see the datasources module):
+// Data sources must already be registered (see the datasources module), and
+// the tenancy installed when the deployment has one:
 await TomDataSourceInfo.initializeDatasourceInfo(config);
 
-// Apply every pending migration under the tree:
-await TomDbMigrations.migrateDatabases('migrations');
+// The system schema, then every tenant by its type:
+final result = await TomDbMigrations.migrateAll('migrations');
+if (!result.succeeded) tomLog.warn('Not every tenant migrated: $result');
 ```
 
-For each `<datasourceName>` the orchestrator:
+`TomDbMigrations.migrateAll(root, {parallelism, tenant, migrators})` checks the
+whole tree first — the root exists, holds only `system/` and `tenant/`, every
+type folder names a declared type (`db_migration.tenant.undeclared_type`) and
+every data-source folder of a type tree is one the type routes
+(`db_migration.tenant.unrouted_datasource`, because its tenant tables would
+otherwise land in the system schema) — and then, in order:
 
-1. resolves the `TomDataSourceInfo` by name (missing →
-   `db_migration.migration.no_datasource_info_found`);
-2. resolves the migrator for the data source's `type` (missing →
-   `db_migration.migration.no_migrator_found_for_datasource_type`);
-3. hands both to `TomDbMigrations.migrateDataSource`, which takes the data
-   source's [migration lock](#one-run-per-database-at-a-time-the-migration-lock)
-   and walks the schemas while holding it.
+1. **The system schema.** For each `<datasourceName>` under `system/` it
+   resolves the registered data source itself, unrouted (missing →
+   `db_migration.migration.no_datasource_info_found`), and a migrator for its
+   `type` (missing →
+   `db_migration.migration.no_migrator_found_for_datasource_type`), and hands
+   both to `TomDbMigrations.migrateDataSource`, which takes the data source's
+   [migration lock](#one-run-per-database-at-a-time-the-migration-lock) and
+   walks the schemas while holding it. **A failure here is fatal**: it is
+   recorded and rethrown, and nothing else runs.
+2. **Each type's shared schema**, once, for the type's shared-isolation
+   tenants.
+3. **Each tenant with a schema or database of its own**, by its type's tree.
 
-Then, **for each `<schemaName>` under that data source**, `migrateDataSource`:
+Steps 2 and 3 are described in [Tenants, by their type](#tenants-by-their-type).
+Each target gets a migrator of its own (`TomDbMigrations.newMigratorFor`), so
+targets migrated at once share no binding; `migrators` replaces that factory —
+a test passes a `TomMemoryDbMigrator`, which records the versions it applies
+per `<datasource>/<history>` in a map its instances share and runs no SQL. It
+fails a migration named in its `failing` set with
+`db_migration.memory.apply_failed`, a migration applied to a pair it is not
+bound to with `db_migration.memory.not_initialized`, and a rollback of a version
+without a down script with `db_migration.memory.no_down_script`.
 
-1. calls `reset()`, releasing whatever `(data source, schema)` pair the migrator
-   was serving before;
+Then, **for each history under a data source**, the walk:
+
+1. calls `reset()`, releasing whatever `(data source, history)` pair the
+   migrator was serving before;
 2. calls `initializeMigration(dsi, schemaName)`, binding it to this pair and
-   loading *this schema's* applied-version history;
+   loading *this history's* applied versions;
 3. parses each file's version/description and calls
    `applyMigration(dsi, schemaName, version, description, sql)` in ascending
    version order.
 
-The reset/initialise pair runs **once per schema, not once per data source**.
-A migrator's applied-version state belongs to a `(data source, schema)` pair:
-one data source routinely holds several schemas, and each keeps its own
-`<schema>_versioning` history, so two schemas may legitimately both be at
-version 1. A migrator that carried the first schema's history into the second
-would read the second's version 1 as already applied and skip it silently. The
-SQL adaptors enforce the same invariant from their own side — see below.
+The reset/initialise pair runs **once per history, not once per data source**.
+A migrator's applied-version state belongs to a `(data source, history)` pair:
+one data source routinely holds several, each with its own `<schema>_versioning`
+table, so two may legitimately both be at version 1. A migrator that carried
+the first's history into the second would read the second's version 1 as
+already applied and skip it silently. The SQL adaptors enforce the same
+invariant from their own side — see below. `TomDbMigrations.migrateTree` applies
+one chain of a type tree the same way, under its `tenant_<type>` history.
 
 ### One run per database at a time: the migration lock
 
-Several replicas of one server starting together each run `migrateDatabases`
+Several replicas of one server starting together each run `migrateAll`
 against the same database. Without arbitration each reads an applied-version
 history that predates the others, and each applies the same scripts: a
 `CREATE TABLE` meets a table another process created a moment earlier, and the
@@ -561,72 +616,114 @@ under, and the SQL adaptors refuse it with
 `postgres_migration_adapter.lock.not_a_sql_datasource`).
 
 `TomDbMigrations.withMigrationLock(datasourceName, body)` takes the lock of a
-registered data source by name, for a run wider than one `migrateDatabases`
-call — the per-tenant walk below.
+registered data source by name, for a caller's own work that must not overlap a
+migration of that database.
 
-### Per-tenant migrations
+### Tenants, by their type
 
-`migrateDatabases` looks each data source up through
-`TomDataSourceInfo.getDataSourceInfo`, which in a multi-tenant deployment
-routes to the current tenant's schema or database (see
-[tenancy.md](tenancy.md)). The same tree applied inside each tenant therefore
-lands in each tenant's place, and each keeps its own versioning table:
+With a `TomTenancy` installed, `migrateAll` migrates every registered tenant
+that is not `removed` after the system schema. A type's tree is applied:
+
+- **once to the type's shared schema**, for every shared-isolation tenant of
+  the type — the target `shared:<type>`, whose run lists those tenants; the
+  shared schema of the type `default` is the system schema;
+- **once to each tenant's own schema or database** — the target
+  `tenant:<id>`.
+
+The data source of a target is the type's data source as one of its tenants
+reaches it (`TomDataSourceInfo.route` inside `TomTenancy.runFor`), so the
+scripts run in the tenant's place.
+
+Per target, its tenants are set `migrating` in the registry
+(`TomTenancy.setStatus`) — a request for one is refused as
+`tenancy.tenant.unavailable` (503) meanwhile — and then:
+
+| Outcome | Status | Also recorded |
+| ------- | ------ | ------------- |
+| every migration applied | `active` — a `suspended` tenant stays `suspended` | the highest version applied per data source, `TomTenantRegistry.setMigrated(id, '<datasource>', version)` |
+| a migration failed | `migration-failed`, the error as its status detail | — |
+
+**A failing target does not stop the others**: its failure is its run's, and
+the result lists every target. Each target is migrated under its database's
+migration lock and the registry's lock of the target,
+`TomTenantRegistry.withMigrationLock('tenant:<id>' | 'shared:<type>')`, so two
+processes never migrate one tenant at once; the SQL registry holds it as a
+database session lock (`tom_tenant_migration:<target>`), which the database
+releases when the holder dies. `parallelism` (default 1) bounds how many
+shared schemas, then how many tenants, migrate at once; below one it is refused
+with `db_migration.migration.invalid_parallelism`.
+
+`migrateAll(root, tenant: id)` migrates one tenant's target alone — its own, or
+its type's shared schema for a shared tenant — and not the system schema: the
+retry of a `migration-failed` tenant, or the migration of a tenant onboarded
+later. An unknown or removed tenant is refused with `tenancy.tenant.unknown`.
 
 ```dart
-// The framework's own tables, once, outside any tenant.
-await TomDbMigrations.migrateDatabases('migrations/deployment');
-
-// The application's tenant tables, once per tenant — every tenant under one
-// hold of the migration lock, so no other process migrates between two of them.
-await TomDbMigrations.withMigrationLock(
-  'main',
-  () => TomTenancy.current!.forEachTenant(
-    (_) => TomDbMigrations.migrateDatabases('migrations/tenant'),
-  ),
-);
+await TomTenancy.install(tenancy);
+final result = await TomDbMigrations.migrateAll('migrations', parallelism: 4);
+for (final run in result.failed) {
+  tomLog.warn('${run.target} (${run.tenants.join(', ')}): ${run.error}');
+}
+// Once the cause is fixed:
+await TomDbMigrations.migrateAll('migrations', tenant: 'initech');
 ```
 
-Each tenant's run takes its own data source's lock as well; the outer hold makes
-the walk one unit. A second replica starting during it waits for the whole walk
-rather than slipping in between two tenants, and the runs inside take the lock
-of their database without waiting for themselves, because it is re-entrant. The
-lock is named by database, so it covers the tenants that share the outer data
-source's database — every `shared` and, on PostgreSQL, every `schema` tenant. A
-tenant with a database of its own is serialised by its own run's lock.
+### When migrations run
 
-Keep the two trees apart. The framework's tables (below) are deployment-wide —
-their stores are built over a data source once and never routed — so their
-migrations run once, outside every tenant; run inside each tenant they would
-create unused copies in every tenant's schema. A shared tenant's per-tenant run
-reaches the shared database, where the versioning table makes every run after
-the first a no-op. A tenant onboarded later is brought to the current version by
-the same call inside `TomTenancy.runFor`.
+Migration is a deployment step, started in one of three ways:
+
+| How | What runs |
+| --- | --------- |
+| `--migrate` on a start script (`TomDbMigrations.migrateFromArgs`) | `migrateAll` of the configured root; the script exits, non-zero when a target failed |
+| `--migrate-tenant=<id>` | that tenant's target alone |
+| `migrations.onStart: true` in the server configuration | `migrateAll` in `TomServer.start`, before the transaction recovery — a failing system schema fails the start, a failing tenant is recorded and the start goes on |
+
+`--migrate-parallelism=<n>` and the configuration's `parallelism` bound the
+tenants migrated at once; the configuration's `root` replaces
+`databaseMigrationsDirectory`:
+
+```yaml
+migrations:
+  onStart: true
+  parallelism: 2
+```
+
+```dart
+// In a start script, once the data sources and the tenancy are installed:
+final migration = await TomDbMigrations.migrateFromArgs(
+  args,
+  configuration.databaseMigrationsDirectory,
+);
+if (migration != null) exit(migration.succeeded ? 0 : 1);
+```
+
+A malformed option is refused with `db_migration.migration.invalid_arguments`,
+a malformed configuration with `db_migration.config.invalid`.
 
 ### Where the last run stands
 
-Every `migrateDatabases` call records how it stands in
-`TomDbMigrations.lastRun`, a `TomMigrationRun`:
+Every `migrateAll` call records each target's run in `TomDbMigrations.runs`, a
+`TomMigrationRun` per target in the order they started — the system schema
+first:
 
 | `state` | When | Also set |
 | ------- | ---- | -------- |
-| `notRun` | `migrateDatabases` has not been called in this process | — |
-| `running` | a call has started and not returned | `startedAt` |
-| `succeeded` | the last call applied every migration | `startedAt`, `finishedAt` |
-| `failed` | the last call threw | `startedAt`, `finishedAt`, `error` (the thrown error as text) |
+| `running` | the target's migration has started and not ended | `startedAt` |
+| `succeeded` | it applied every migration | `startedAt`, `finishedAt` |
+| `failed` | it failed | `startedAt`, `finishedAt`, `error` (the error as text) |
 
-A failed call still throws as it always does; the record is what lets something
-other than the caller see it. The framework readiness check on `GET /ready`
-reads it: a server whose migration is running or failed answers not ready, with
-the error in the body, and a process that never migrates — its schema applied
-by a DBA or a job — passes (see
+A check of the tree that fails — a missing root, an entry it does not hold —
+is the system schema's failure. A failed system schema still throws; the record
+is what lets something other than the caller see it. The framework readiness
+check on `GET /ready` reads it per target: a system schema that is running or
+failed answers not ready, with the error in the body; a shared schema or a
+tenant is listed with its state and does not hold the server back, because its
+own requests are refused while it is not active. A process that never migrates
+— its schema applied by a DBA or a job — passes (see
 [healthcheck.md](healthcheck.md#the-framework-readiness-checks)).
 
-The record is the process's, not a data source's: in a per-tenant loop it
-describes the most recent tenant's call, and a later call replaces an earlier
-failure. A boot step that migrates per tenant and wants a failure to stay
-visible stops at the first one, which is what letting the exception propagate
-does. `TomDbMigrations.resetLastRun()` returns the record to `notRun`, as a
-fresh process starts — for tests.
+A call replaces the record of the one before. `TomDbMigrations.resetRuns()`
+forgets it, as a fresh process starts — for tests.
 
 ## Adaptor Discovery
 
@@ -827,7 +924,7 @@ regenerating fails the suite rather than a PostgreSQL deployment.
 
 ## Idempotency and Stability
 
-Recording every applied version makes re-running `migrateDatabases` safe: only
+Recording every applied version makes re-running `migrateAll` safe: only
 genuinely new versions execute. Recording the **checksum** enforces that
 historical migrations stay immutable — editing an already-applied script is a
 hard error rather than a silent divergence between environments.
@@ -956,7 +1053,7 @@ await TomDbMigrations.repair(
 ```
 
 `TomDbMigrations.repair(datasourceName, schemaName, version, action)` resolves
-the registered data source and its migrator as `migrateDatabases` does and
+the registered data source and its migrator as `migrateAll` does and
 calls `TomDbMigrator.repair(dsi, schemaName, version, action)`. Repair changes
 the history only — **it never runs a script** — and it runs under the
 [migration lock](#one-run-per-database-at-a-time-the-migration-lock), so it
@@ -997,7 +1094,7 @@ A repair is an operator's one-off command, not a step of every start, so a
 server's start script offers it as two options and exits once it ran:
 
 ```dart
-// After the data sources are registered, before migrateDatabases:
+// After the data sources are registered, before migrateAll:
 if (await TomDbMigrations.repairFromArgs(args)) {
   tomLog.info('Migration repaired, exiting.');
   exit(0);
@@ -1006,19 +1103,22 @@ if (await TomDbMigrations.repairFromArgs(args)) {
 
 ```sh
 dart run bin/server_start.dart \
-  --repair-migration=app_db/app_schema/7 --repair-action=remove
+  --repair-migration=system/app_db/app_schema/7 --repair-action=remove
 dart run bin/server_start.dart \
-  --repair-migration=app_db/app_schema/7 --repair-action=resolve
+  --repair-migration=tenant:initech/main/2 --repair-action=resolve
 ```
 
-`TomDbMigrations.repairFromArgs(args)` reads
-`--repair-migration=<datasource>/<schema>/<version>`
-(`TomDbMigrations.repairMigrationOption`) and `--repair-action=remove|resolve`
+`TomDbMigrations.repairFromArgs(args)` reads `--repair-migration`
+(`TomDbMigrations.repairMigrationOption`) — a system history,
+`system/<datasource>/<schema>/<version>`, or a tenant's,
+`tenant:<id>/<datasource>/<version>`, which repairs the `tenant_<type>` history
+in the tenant's target (its type's shared schema for a shared tenant,
+`TomDbMigrations.repairTenant`) — and `--repair-action=remove|resolve`
 (`TomDbMigrations.repairActionOption`), runs the repair and answers `true`.
 Without `--repair-migration` it does nothing and answers `false`, so the start
-goes on. A request it cannot read — a target that is not three `/`-separated
-parts with a whole-number version, or an action other than `remove` or
-`resolve`, including a missing one — throws
+goes on. A request it cannot read — a target of neither form with a
+whole-number version, or an action other than `remove` or `resolve`, including
+a missing one — throws
 `db_migration.repair.invalid_arguments`, naming the two options and what was
 given; nothing is repaired. The four servers in `tom_core_samples` wire it this
 way.
@@ -1051,7 +1151,7 @@ final undone = await TomDbMigrations.rollback(
 ```
 
 `TomDbMigrations.rollback(directory, datasource:, schema:, toVersion:)`
-resolves the registered data source and its migrator as `migrateDatabases`
+resolves the registered data source and its migrator as `migrateAll`
 does, reads the schema directory `<directory>/<datasource>/<schema>/` and
 calls `rollbackDataSource(migrator, dsInfo, dataSourceDirectory, schema,
 toVersion:)`, which takes the migrator as a parameter as `migrateDataSource`
@@ -1118,7 +1218,7 @@ A rollback is an operator's one-off command, like a repair, so the start
 scripts offer it beside the repair and exit once it ran:
 
 ```dart
-// After the data sources are registered, before migrateDatabases:
+// After the data sources are registered, before migrateAll:
 if (await TomDbMigrations.rollbackFromArgs(
   args,
   configuration.databaseMigrationsDirectory,
@@ -1129,17 +1229,19 @@ if (await TomDbMigrations.rollbackFromArgs(
 ```
 
 ```sh
-dart run bin/server_start.dart --rollback-migrations=app_db/app_schema/4
-dart run bin/server_start.dart --rollback-migrations=app_db/app_schema/-1
+dart run bin/server_start.dart --rollback-migrations=system/app_db/app_schema/4
+dart run bin/server_start.dart --rollback-migrations=tenant:acme/main/-1
 ```
 
-`TomDbMigrations.rollbackFromArgs(args, directory)` reads
-`--rollback-migrations=<datasource>/<schema>/<version>`
-(`TomDbMigrations.rollbackMigrationsOption`), runs the rollback against the
-migration tree `directory`, logs the versions it undid and answers `true`.
-Without the option it does nothing and answers `false`, so the start goes on. A
-target that is not three `/`-separated parts with a non-empty data source and
-schema and a whole-number version throws
+`TomDbMigrations.rollbackFromArgs(args, root)` reads `--rollback-migrations`
+(`TomDbMigrations.rollbackMigrationsOption`) — `system/<datasource>/<schema>/<version>`
+for a system history (`TomDbMigrations.rollback`), or
+`tenant:<id>/<datasource>/<version>` for the tenant's target with the down
+scripts of its type's tree, under the registry's lock of the target
+(`TomDbMigrations.rollbackTenant`) — runs the rollback against the migration
+root, logs the versions it undid and answers `true`. Without the option it does
+nothing and answers `false`, so the start goes on. A target of neither form,
+with an empty part or a version that is not a whole number, throws
 `db_migration.rollback.invalid_arguments`, naming the option and what was
 given; nothing is rolled back. The four servers in `tom_core_samples` wire it
 this way.
@@ -1441,7 +1543,7 @@ else does:
 
 | Synchronous | Asynchronous |
 | ----------- | ------------ |
-| `TomSchemaConvergenceCheck.checkAll` / `checkSchema` / `readChain` / `verify` | `TomDbMigrations.migrateDatabases` / `migrateDataSource` |
+| `TomSchemaConvergenceCheck.checkAll` / `checkSchema` / `readChain` / `verify` | `TomDbMigrations.migrateAll` / `migrateDataSource` / `migrateTree` |
 | `TomFrameworkSchemaCheck.verifyChain` / `verifyRowTypes` | `TomDbMigrator.applyMigration` / `initializeMigration` |
 | `TomSchemaDdlReader.replay`, `TomDbMigrations.collectMigrationFiles` / `collectDownMigrationFiles` / `isDownMigration` | `TomFrameworkSchemaCheck.verifyLive` |
 | `TomSqlMigrationAdaptor.migrationLockName` | `TomDbMigrations.withMigrationLock` / `repair` / `repairFromArgs` / `rollback` / `rollbackDataSource` / `rollbackFromArgs`, `TomDbMigrator.withMigrationLock` / `repair` / `rollback` |
@@ -1581,9 +1683,25 @@ migrations; both are described under [Schema
 Convergence](#schema-convergence).
 
 `test/structured_logs_readiness_test.dart`, in the group
-`framework readiness`, pins `TomDbMigrations.lastRun`: a call against a missing
-directory throws and leaves the record `failed`, and the readiness check then
-answers not ready — see [Where the last run stands](#where-the-last-run-stands).
+`framework readiness`, pins `TomDbMigrations.runs`: a call against a missing
+directory throws and leaves the system schema's run `failed`, and the readiness
+check then answers not ready — see [Where the last run stands](#where-the-last-run-stands).
+
+`test/migration_orchestrator_test.dart` drives `migrateAll` with the
+in-memory migrator: the system tree and the implicit type `default` without a
+tenancy; a fatal system failure; the flat layout, an undeclared type's tree and
+a type tree over a data source the type does not route, each refused before
+anything runs; two types and three tenants with one failing — marked
+`migration-failed` with its error while the others are `active` with their
+versions recorded — then retried alone; bounded parallelism; a suspended tenant
+staying suspended and a removed one left out; a type `default` whose shared
+tenants share the system schema's target; the registry lock; and the readiness
+check per target. `test/migration_orchestrator_db_test.dart` runs the same on
+MariaDB and PostgreSQL: the system tree in the system schema only, `standard`'s
+tree in a tenant's own schema and the type's shared schema with a versioning
+table each, `enterprise`'s failing in a tenant's own database, the tenant
+repaired (MariaDB) and migrated alone to `active`, and a tenant rollback
+undoing its own target only.
 
 `test/db_migration_lock_db_test.dart` covers the [migration
 lock](#one-run-per-database-at-a-time-the-migration-lock) and
@@ -1616,7 +1734,7 @@ migrations to the generator's output for their canonical sources — see
 
 `test/db_migration_db_test.dart` is what only a real server can substantiate, on
 whichever database the DB suites run against:
-`migrateDatabases` walking the committed tree under `test/fixtures/migrations/`,
+`migrateAll` walking the committed tree under `test/fixtures/migrations/system/`,
 the adaptor creating the `<schema>_versioning` table, running the script and
 recording the row — then skipping it idempotently on a second run. It carries
 the cases a stub cannot reach honestly: the recorded execution time on both the
@@ -1644,6 +1762,11 @@ lock's name, a command line without a repair answered `false`, malformed repair
 requests refused before anything is touched, down scripts collected beside
 their migrations and skipped by the forward collection, a command line without
 a rollback answered `false`, and malformed rollback requests refused.
+`example/db_migration/migrate_all_example.dart` runs `migrateAll` on the
+in-memory migrator: a root with a system tree and two types' trees, a tenancy
+of three tenants on databases of their own, one failing and marked
+`migration-failed` while the others become active, the failed one migrated
+alone once fixed, and the readiness check's lines per target.
 
 One guard is worth naming separately, because it is the reason this page can be
 trusted on the subject it is most likely to be wrong about. The file-name
@@ -1659,9 +1782,13 @@ here it cannot drift silently.
 ## Core Components
 
 - **`TomDbMigrations`** — the orchestrator and reflection-based adaptor
-  discovery; `migrateDatabases`, and `lastRun` (a `TomMigrationRun` with its
-  `TomMigrationRunState`), the record of the most recent call that readiness
-  reads.
+  discovery; `migrateAll` (the system schema, then every tenant by its type,
+  answering a **`TomMigrationResult`**), `migrateFromArgs` (`--migrate`,
+  `--migrate-tenant`) and `migrateOnStart` (`migrations.onStart`), and `runs`
+  (a **`TomMigrationRun`** per target with its `TomMigrationTargetKind` and
+  `TomMigrationRunState`), the record readiness reads.
+- **`TomMemoryDbMigrator`** — a migrator in memory, for tests and examples of
+  the orchestration.
 - **`TomDbMigrator`** (+ the `TomDbMigrationAdaptor` annotation) — the migrator
   contract, including `withMigrationLock` (one run per database at a time),
   `repair` with its **`TomMigrationRepair`** action, and `rollback` with the
@@ -1744,6 +1871,7 @@ here it cannot drift silently.
 | `dart:async` | dart | `sql_migration_adaptor.dart` | `Future` |
 | `dart:convert` | dart | `sql_migration_adaptor.dart` | `utf8` |
 | `dart:io` | dart | `db_migration.dart`, `schema_convergence.dart` | walking the migration directory tree |
+| `dart:math` | dart | `db_migration.dart` | `min` and `max`: the workers of a bounded run, a tree's highest version |
 | `crypto` | package | `sql_migration_adaptor.dart` | `sha256`, for the checksum that pins a migration's SQL to the row recording it |
 | `meta` | package | `sql_migration_adaptor.dart` | `@protected` on the members an adaptor supplies or calls |
 | `path` | package | `db_migration.dart`, `schema_convergence.dart` | migration-file name parsing |
@@ -1753,7 +1881,7 @@ here it cannot drift silently.
 | [authentication](authentication.md) | module | `framework_convergence.dart` | `defaultApiKeyTable`, `defaultOAuthStateTable`, `defaultScimResourceTable`, `defaultServiceAccountTable`, `apiKeyTable`, `oauthStateTable`, `scimResourceTable`, `serviceAccountTable` |
 | [cache](cache.md) | module | `framework_convergence.dart` | `defaultInvalidationTable`, `invalidationTable` |
 | [cmdline](cmdline.md) | module | `db_migration.dart` | `TomArgs.parseArgsToMap`, reading `--repair-migration`, `--repair-action` and `--rollback-migrations` |
-| [datasources](datasources.md) | module | 8 of 8 files | `TomDataSourceInfo` (named data sources) and its `executeCommand` / `executeQuery`; `TomSqlLexer`, the statement splitter and quote scanner; the connected data source's dialect, which `verifyLive` classifies and queries the catalogue with; `TomSqlDatasource.withSessionLock`, which holds the migration lock |
+| [datasources](datasources.md) | module | 9 of 10 files | `TomDataSourceInfo` (named data sources) and its `executeCommand` / `executeQuery`; `TomSqlLexer`, the statement splitter and quote scanner; the connected data source's dialect, which `verifyLive` classifies and queries the catalogue with; `TomSqlDatasource.withSessionLock`, which holds the migration lock |
 | [endpoints](endpoints.md) | module | `framework_convergence.dart` | `defaultIdempotencyTable`, `idempotencyTable` |
 | [export](export.md) | module | `framework_convergence.dart` | `defaultExportRegisterTable`, `exportRegisterTable` |
 | [file_storage](file_storage.md) | module | `framework_convergence.dart` | `blobChunkTable`, `blobContentTable`, `blobLedgerTable`, `blobManifestTable`, `defaultBlobChunkTable`, `defaultBlobContentTable`, `defaultBlobLedgerTable`, `defaultBlobManifestTable` |
@@ -1764,5 +1892,5 @@ here it cannot drift silently.
 | [ratelimit](ratelimit.md) | module | `framework_convergence.dart` | `defaultRateLimitTable`, `rateLimitTable` |
 | [scheduling](scheduling.md) | module | `framework_convergence.dart` | `defaultJobRunTable`, `defaultLeaseTable`, `defaultSchedulerNodeTable`, `defaultJobPauseTable`, `defaultJobRunArchiveTable`, `jobRunTable`, `leaseTable`, `schedulerNodeTable`, `jobPauseTable`, `jobRunArchiveTable` |
 | [sync](sync.md) | module | `framework_convergence.dart` | `defaultSyncChangeTable`, `defaultSyncSequenceTable`, `syncChangeTable`, `syncSequenceTable` |
-| [tenancy](tenancy.md) | module | `framework_convergence.dart` | `defaultTenantTable`, `tenantTable` |
+| [tenancy](tenancy.md) | module | `db_migration.dart`, `framework_convergence.dart` | `TomTenancy` (the installed tenancy whose tenants `migrateAll` migrates: `tenants`, `types`, `isolationOf`, `datasourcesOf`, `runFor`, `setStatus`, `statusOf`, `unknownTenant`), `TomTenant`, `TomTenantIsolation`, `TomTenantType` (`migrations`, `treeUnder`), `TomTenantStatus`, `TomTenantRegistry` (`withMigrationLock`, `setMigrated`); `defaultTenantTable`, `tenantTable` |
 | [transactions](transactions.md) | module | `framework_convergence.dart`, `postgres_migration_adapter.dart` | `defaultSagaTable` and `sagaTable`, `defaultDecisionTable` and `decisionTable`; `TomTransactionManager.runInTransaction`, which runs a PostgreSQL script and its version row — or a down script and the deletion of its record — as one transaction |

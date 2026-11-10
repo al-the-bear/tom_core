@@ -988,18 +988,18 @@ utj3flRQDLaDAl91lySpAjUp9aM8
   /// Environment name: `EXIT_ON_SHUTDOWN_SIGNAL`.
   bool exitOnShutdownSignal = true;
 
-  /// The directory `TomDbMigrations.migrateDatabases` reads, relative to the
+  /// The migration root `TomDbMigrations.migrateAll` reads, relative to the
   /// working directory unless absolute.
   ///
   /// Defaults to `./database_migrations`, which is where every sample keeps
   /// them — and since the path is relative, a server started from anywhere but
   /// its package root finds no migrations rather than failing to find the
-  /// directory. Migration is the application's boot step, so nothing in the
-  /// framework reads this; it is declared here so the path is configurable per
-  /// deployment through the same merge as the rest.
+  /// directory. It is the root `TomServer.start` migrates when the
+  /// `migrations` configuration sets `onStart`, and the one a start script
+  /// hands `migrateFromArgs`, `repairFromArgs` and `rollbackFromArgs`.
   ///
-  /// The directory holds one subdirectory per datasource name, which is what
-  /// ties a migration set to the datasource key it belongs to.
+  /// The root holds `system/<datasource>/<schema>/` for the system schema and
+  /// `tenant/<type>/<datasource>/` for each tenant type's tables.
   String databaseMigrationsDirectory = "./database_migrations";
 
   /// The generated OpenAPI document this server publishes at

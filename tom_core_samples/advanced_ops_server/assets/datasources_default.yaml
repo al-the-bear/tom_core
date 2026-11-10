@@ -8,8 +8,8 @@
 # a human one, by the same repository, into the same trail — could not be made at
 # all.
 #
-# The map key MUST equal the migration folder name under database_migrations/,
-# so `app_db` here matches database_migrations/app_db/. This server contributes
+# The map key MUST equal the migration folder name under database_migrations/system/,
+# so `app_db` here matches database_migrations/system/app_db/. This server contributes
 # one migration to that chain ([100]) creating the framework tables the scheduler
 # and the audit sink need; the app server's [000]–[099] band is untouched. The
 # gap is deliberate: the two packages number into one chain and cannot see each

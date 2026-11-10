@@ -24,7 +24,7 @@ import 'package:tom_core_server/tom_core_server.dart';
 
 /// The migration that creates `tom_resource_grant` and seeds the demo grants.
 const grantsMigration =
-    'database_migrations/todo_db/todo_schema/[001]-todo_authz_grants.sql';
+    'database_migrations/system/todo_db/todo_schema/[001]-todo_authz_grants.sql';
 
 /// The number of `(role, key, grade)` rows [grantsMigration] seeds — three demo
 /// roles across the four gradable item fields.

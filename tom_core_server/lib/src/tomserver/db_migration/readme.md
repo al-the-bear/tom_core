@@ -8,7 +8,7 @@ prove a migration chain builds the shape the rest of the code expects.
 
 The two halves answer different questions and are used at different times.
 The **engine** answers *bring this database up to date*: `TomDbMigrations` walks
-a directory tree of scripts laid out per data source and schema, a
+a migration root of scripts — the system tree per data source and schema, a tree per tenant type — a
 `TomDbMigrator` applies the pending ones, and each is recorded as a
 `TomDbVersion` row (version, description, checksum, who/when, duration, success)
 so re-runs are idempotent and edited scripts are caught by checksum.
@@ -39,7 +39,7 @@ optimisation: a check that needs a live server cannot gate code generation.
 
 | Type | What it is |
 | ---- | ---------- |
-| `TomDbMigrations` | The orchestrator. A static entry point that holds no scripts: it discovers migrators by reflection and drives a directory tree of them, each data source under its migration lock. `withMigrationLock` holds the lock around a wider run (a per-tenant walk); `repair` and `repairFromArgs` resolve a failed migration; `rollback`, `rollbackDataSource` and `rollbackFromArgs` undo applied ones with their down scripts, which `collectDownMigrationFiles` collects and `collectMigrationFiles` skips. |
+| `TomDbMigrations` | The orchestrator. A static entry point that holds no scripts: it discovers migrators by reflection and drives a migration root of them — `migrateAll` applies `system/<datasource>/<schema>/` to the system schema (fatal on failure), then each tenant type's `tenant/<type>/<datasource>/` to the type's shared schema and to each tenant with a schema or database of its own, every target under its database's migration lock and the registry's lock of the target, with bounded parallelism; a failing tenant is `migration-failed` while the others go on. `migrateFromArgs` (`--migrate`, `--migrate-tenant=<id>`) and `migrateOnStart` (`migrations.onStart`) start it. `withMigrationLock` holds a database's lock; `repair`, `repairTenant` and `repairFromArgs` resolve a failed migration; `rollback`, `rollbackTenant`, `rollbackDataSource` and `rollbackFromArgs` undo applied ones with their down scripts, which `collectDownMigrationFiles` collects and `collectMigrationFiles` skips. Repair and rollback targets are `system/<datasource>/<schema>/<version>` or `tenant:<id>/<datasource>/<version>`. |
 | `TomDbMigrator` | The contract a database-specific migrator implements. One instance serves one `(data source, schema)` pair at a time. `withMigrationLock` runs one migration run per database at a time; `repair` resolves a failed record without running a script; `rollback` undoes the migrations applied above a version with their down scripts. |
 | `TomMigrationRepair` | What `repair` does with a failed record: `remove` it, so the next run applies the migration again, or `markResolved`, so the next run skips it. |
 | `TomDbMigrationAdaptor` | A `const` annotation binding a migrator class to a data-source **type** string (e.g. `"mariadb"`), and to the further types in `alsoServes` (e.g. `"mariadb_xa"`), so reflection can find it. It adapts nothing itself. |
@@ -49,7 +49,8 @@ optimisation: a check that needs a live server cannot gate code generation.
 | `MariadbMigrationAdaptor` | The MariaDB/MySQL migrator, registered for the `"mariadb"` and `"mariadb_xa"` types. Records a failed script with `success = 0`; a failed down script leaves what it ran done and the migration recorded. |
 | `PostgresMigrationAdaptor` | The PostgreSQL migrator, registered for the `"postgresql"` and `"postgresql_xa"` types. Runs a script and its version row — or a down script and the deletion of its record — in one transaction, so a failure leaves nothing behind. |
 | `TomDbVersion` | One row of a `<schema>_versioning` table — the record of a single applied (or attempted) migration. |
-| `TomMigrationRun` · `TomMigrationRunState` | `TomDbMigrations.lastRun`: where the process's most recent `migrateDatabases` call stands — `notRun`, `running`, `succeeded` or `failed` with its error. The framework readiness check on `GET /ready` answers not ready while it is `running` or `failed`. |
+| `TomMigrationRun` · `TomMigrationRunState` · `TomMigrationTargetKind` · `TomMigrationResult` | One target of a `TomDbMigrations.migrateAll` call — the system schema, a type's shared schema or one tenant's own — with its state, tenants and error; the result lists every target. `TomDbMigrations.runs` keeps the last call's: the framework readiness check on `GET /ready` answers not ready while the system schema's is `running` or `failed`, and lists the others. |
+| `TomMemoryDbMigrator` | A migrator that records what it applies instead of running SQL — for tests and examples of the orchestration. |
 | `TomDbMigrationException` | Thrown when a migration cannot be discovered, parsed or applied. |
 | `TomSqlMigrationException` | The SQL migrators' failure type, including a changed description or checksum on an already-applied version. |
 | `MariadbMigrationException` · `PostgresMigrationException` | Its two subtypes; their keys are prefixed `mariadb_migration…` and `postgres_migration…`. |

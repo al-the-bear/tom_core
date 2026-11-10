@@ -213,7 +213,7 @@ void run() {
   // 8. In a deployment the schema is created by the migration orchestrator, not
   //    by the stores. The shipped reference migrations live next to this file
   //    and are byte-checked against the DDL above by the schema test.
-  print('\n8. migration layout walked by TomDbMigrations.migrateDatabases():');
+  print('\n8. migration layout walked by TomDbMigrations.migrateAll():');
   print(
     '   <directory>/<datasourceName>/<schemaName>/'
     '[<version>]-<description>[@<env>[,<env>...]].<anyfileextension>',

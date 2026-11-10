@@ -108,6 +108,11 @@ const List<TourStop> tour = [
         'rolling migrations back from the command line, and down scripts',
   ),
   TourStop(
+    'example/db_migration/migrate_all_example.dart',
+    'One migration entry point: the system schema, then every tenant by its '
+        'type, a failing tenant marked while the others go on',
+  ),
+  TourStop(
     'example/ratelimit/rate_limit_example.dart',
     'Service accounts with scoped API keys, rotation, revocation, rate limits',
   ),

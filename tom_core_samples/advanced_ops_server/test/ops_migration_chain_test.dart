@@ -34,11 +34,11 @@ import 'dart:io';
 import 'package:test/test.dart';
 
 /// This package's contribution to the chain.
-const String _opsSchemaDir = 'database_migrations/app_db/app_schema/';
+const String _opsSchemaDir = 'database_migrations/system/app_db/app_schema/';
 
 /// The app server's part of the same chain.
 const String _appSchemaDir =
-    '../advanced_app_server/database_migrations/app_db/app_schema/';
+    '../advanced_app_server/database_migrations/system/app_db/app_schema/';
 
 /// The first version this package may use.
 ///
@@ -153,7 +153,7 @@ void main() {
     test('this package adds no second chain', () {
       // The sample's promise: no new database. A folder for another datasource
       // here would be this server quietly acquiring a store of its own.
-      final datasources = Directory('database_migrations')
+      final datasources = Directory('database_migrations/system')
           .listSync()
           .whereType<Directory>()
           .map((dir) => dir.uri.pathSegments[dir.uri.pathSegments.length - 2])

@@ -247,6 +247,7 @@ Throws `tenancy.config.not_a_map`, `tenancy.config.unknown_isolation`,
 | `unknownTenant` | `static TomTenancyException unknownTenant(String tenantId)` | The `tenancy.tenant.unknown` exception for work in a tenant the deployment does not have (`clientThrow: true`). |
 | `tenantForWork` | `static String tenantForWork(String what)` | The tenant work on a tenant table (`what` names it) runs as: the tenant in context; with none, `implicitTenant` when no tenancy is installed, and `tenancy.context.missing` when one is. |
 | `addTenant` | `Future<void> addTenant(TomTenant tenant)` | Refuses, before anything is recorded, a tenant of an unknown type or a model its type does not allow, and one the registry holds — not removed — under another type (`tenancy.type.change`). Records `tenant` as `provisioning` in the registry, provisions its schema or database, records it as `active`, then serves it — onboarding without a restart. A failed provisioning leaves it `provisioning`, with the error as its status detail, and unserved. |
+| `setStatus` | `Future<void> setStatus(String tenantId, TomTenantStatus status, {String? detail})` | Records the tenant's `status` with `detail` (cleared when `null`) in the registry, then serves it accordingly on this node — how `TomDbMigrations.migrateAll` moves a tenant through `migrating` to `active` or `migration-failed`, and what `suspendTenant` / `resumeTenant` call. Throws `tenancy.tenant.unknown` for an unknown id. |
 | `suspendTenant` | `Future<void> suspendTenant(String tenantId)` | Records the tenant as `suspended`, then refuses its requests (`tenancy.tenant.suspended`, 403); data and routes stay. Throws `tenancy.tenant.unknown` for an unknown id. |
 | `resumeTenant` | `Future<void> resumeTenant(String tenantId)` | Records the tenant as `active` and serves it again. Throws `tenancy.tenant.unknown` for an unknown id. |
 | `statusOf` | `TomTenantStatus? statusOf(String tenantId)` | The registry status of a served tenant, or `null` for one the deployment does not have. |
@@ -471,7 +472,8 @@ The durable list of the deployment's tenants.
 | `find` | `Future<TomTenantRecord?> find(String id)` | The tenant `id`, or `null`. |
 | `put` | `Future<void> put(TomTenantRecord record)` | Writes `record`, replacing the tenant's row. |
 | `setStatus` | `Future<TomTenantRecord> setStatus(String id, TomTenantStatus status, {String? detail, required DateTime at})` | Sets the tenant's status with `detail` (cleared when `null`) at `at`; answers the updated record. Throws `tenancy.registry.unknown_tenant`. |
-| `setMigrated` | `Future<TomTenantRecord> setMigrated(String id, String target, int version, {required DateTime at})` | Records migration `version` of `target` (`<datasource>/<schema>`) as applied to the tenant. Throws `tenancy.registry.unknown_tenant`. |
+| `setMigrated` | `Future<TomTenantRecord> setMigrated(String id, String target, int version, {required DateTime at})` | Records `version` as the highest migration of the tenant's type tree applied to the data source `target` — what `TomDbMigrations.migrateAll` writes after a tenant's target succeeded. Throws `tenancy.registry.unknown_tenant`. |
+| `withMigrationLock` | `Future<R> withMigrationLock<R>(String target, Future<R> Function() body)` | Runs `body` holding the registry's migration lock of `target` (`shared:<type>` or `tenant:<id>`), so two migrations of one target never run at once. This one serialises within the process. |
 | `unknownTenant` | `static TomTenancyException unknownTenant(String id)` | The `tenancy.registry.unknown_tenant` exception. |
 
 ### TomMemoryTenantRegistry
@@ -526,7 +528,14 @@ it can be built before the data sources are registered.
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
+| `withMigrationLock` | `Future<R> withMigrationLock<R>(String target, Future<R> Function() body)` | *(override)* The process's lock, and around it the database session lock `migrationLockName(target)` on the registry's data source, so no other process sharing the registry migrates `target` meanwhile; the database releases it when the holder dies. |
 | `deleteAll` | `Future<void> deleteAll()` | Removes every row. For tests. |
+
+#### Static Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `migrationLockName` | `static String migrationLockName(String target)` | `tom_tenant_migration:<target>`, at most 64 characters as MariaDB allows — the target hashed when it would not fit. |
 
 ### TomTenantRecord
 

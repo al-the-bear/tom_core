@@ -1,10 +1,16 @@
 import 'dart:io';
+import 'dart:math';
+
 import 'package:path/path.dart' as p;
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../cmdline/args.dart';
 import '../datasources/datasource_initialization.dart';
 import '../little_things/server_exception.dart';
+import '../tenancy/tenancy.dart';
+import '../tenancy/tenant_registry.dart';
+import '../tenancy/tenant_type.dart';
+import 'migration_run.dart';
 
 /// Thrown when a database migration cannot be discovered, parsed, or applied
 /// (missing adaptor or data source, a malformed migration filename, a failed
@@ -205,57 +211,23 @@ class TomMigrationFileName {
       environments.isEmpty || environments.contains(environmentName);
 }
 
-/// Where a process's database migration stands — see
-/// [TomDbMigrations.lastRun].
-enum TomMigrationRunState {
-  /// [TomDbMigrations.migrateDatabases] has not been called in this process.
-  notRun,
-
-  /// A migration is being applied now.
-  running,
-
-  /// The last call applied every migration.
-  succeeded,
-
-  /// The last call threw; [TomMigrationRun.error] says why.
-  failed,
-}
-
-/// One call of [TomDbMigrations.migrateDatabases]: its state, when it started
-/// and finished, and the error it failed with.
-class TomMigrationRun {
-  const TomMigrationRun._(
-    this.state,
-    this.startedAt, {
-    this.finishedAt,
-    this.error,
-  });
-
-  /// Where the run stands.
-  final TomMigrationRunState state;
-
-  /// When it started; `null` when no run has been made.
-  final DateTime? startedAt;
-
-  /// When it ended, for a run that has.
-  final DateTime? finishedAt;
-
-  /// The error a failed run threw, as text.
-  final String? error;
-}
-
 /// The migration orchestrator: discovers migrator adaptors by reflection and
 /// drives migrations from a directory tree.
 ///
-/// The directory layout mirrors the configured data sources and their schemas:
+/// One root holds two trees ([migrateAll]):
 ///
 /// ```text
-/// <directory>/
-///   <datasourceName>/        # matches a registered TomDataSourceInfo name
-///     <schemaName>/          # one schema within that data source
-///       [1]-create_users.sql
-///       [2]-add_index.sql
-///       [3]-demo_seed@dev.sql    # only under the `dev` environment
+/// <root>/
+///   system/                  # the system schema
+///     <datasourceName>/      # a registered TomDataSourceInfo name
+///       <schemaName>/        # one history (versioning table) of it
+///         [1]-create_users.sql
+///         [2]-add_index.sql
+///         [3]-demo_seed@dev.sql    # only under the `dev` environment
+///   tenant/                  # the tenants' tables
+///     <type>/                # one tree per tenant type
+///       <datasourceName>/    # a data source the type routes
+///         [1]-create_invoice.sql
 /// ```
 ///
 /// Each migration file name must match
@@ -272,7 +244,8 @@ class TomMigrationRun {
 /// [TomMigrationFileName.appliesInEnvironment] and
 /// [resolveActiveEnvironment].
 class TomDbMigrations {
-  static final Map<String, TomDbMigrator> _migrationAdaptorTypes = {};
+  static final Map<String, TomDbMigrator Function()> _migrationAdaptorTypes =
+      {};
 
   static void _initializeMigrationAdaptorTypes() {
     for (var candidate in tomReflector.annotatedClasses) {
@@ -290,12 +263,13 @@ class TomDbMigrations {
             );
           }
         }
-        final migrator = instantiateMigrator(
-          candidate,
-          () => candidate.newInstance("", []),
-        );
+        TomDbMigrator create() =>
+            instantiateMigrator(candidate, () => candidate.newInstance("", []));
+        // Built once here, so a candidate that cannot be built fails the
+        // scan rather than the first migration.
+        create();
         for (final type in types) {
-          _migrationAdaptorTypes[type] = migrator;
+          _migrationAdaptorTypes[type] = create;
         }
       }
     }
@@ -643,84 +617,453 @@ class TomDbMigrations {
       if (entry.parsed.appliesInEnvironment(environmentName)) entry,
   ];
 
-  /// Runs all pending migrations under [directory].
+  /// The configuration path of the migration settings:
   ///
-  /// Walks `<directory>/<datasourceName>/<schemaName>/` and, for each schema,
-  /// initialises the data source's migrator and applies every
-  /// `[<version>]-<description>[@<env>[,<env>…]].<ext>` file in ascending
-  /// numeric version order.
-  /// Migrations tagged for an environment other than the active one
-  /// ([resolveActiveEnvironment]) are skipped (C-16); untagged migrations always
-  /// apply. Throws a [TomDbMigrationException] if [directory] does not exist, a
-  /// data source or migrator is missing, a file name is malformed, or a script
-  /// fails.
-  static Future<void> migrateDatabases(String directory) async {
-    _lastRun = TomMigrationRun._(TomMigrationRunState.running, DateTime.now());
+  /// ```yaml
+  /// migrations:
+  ///   onStart: true         # TomServer.start runs migrateAll
+  ///   root: ./database_migrations   # default: databaseMigrationsDirectory
+  ///   parallelism: 2        # tenants migrated at once; default 1
+  /// ```
+  static const String configurationKey = 'migrations';
+
+  /// The history label of tenant type [type]'s tree: its versioning table is
+  /// `tenant_<type>_versioning` in every target the tree is applied to, apart
+  /// from the system tree's labels even where a type's shared schema is the
+  /// system schema.
+  static String tenantHistoryLabel(String type) => 'tenant_$type';
+
+  /// The directory of tenant type [type]'s tree: its own
+  /// [TomTenantType.migrations] when it names one, else
+  /// `<root>/tenant/<type>`.
+  static String tenantTreeOf(String root, TomTenantType? type, String name) =>
+      type?.migrations ?? TomTenantType.treeUnder(root, name);
+
+  /// Migrates the system schema, then every tenant by its type.
+  ///
+  /// The tree under [root]:
+  ///
+  /// ```text
+  /// <root>/
+  ///   system/<datasource>/<schema>/   # a chain of migration files
+  ///   tenant/<type>/<datasource>/     # a chain of migration files
+  /// ```
+  ///
+  /// In order:
+  ///
+  /// 1. `system/` — every `<datasource>/<schema>/` chain applied to the
+  ///    registered (unrouted) data source, under its migration lock. **A
+  ///    failure is fatal**: it is recorded, rethrown, and nothing else runs.
+  /// 2. Each tenant type's **shared schema**, once, for the type's
+  ///    shared-isolation tenants: the type's tree applied to the schema they
+  ///    share (the system schema for the type `default`).
+  /// 3. Each tenant with a schema or database of its own, by its type's tree.
+  ///
+  /// Steps 2 and 3 run at most [parallelism] targets at once. Each target is
+  /// migrated under its database's migration lock and the registry's lock of
+  /// the target ([TomTenantRegistry.withMigrationLock]), so two processes
+  /// never migrate one tenant at once. Its tenants go `migrating`, then
+  /// `active` — a `suspended` tenant stays suspended — with the highest
+  /// applied version per data source recorded ([TomTenantRegistry.setMigrated]),
+  /// or `migration-failed` with the error as the status detail; **a failing
+  /// target does not stop the others**. The result lists every target's run.
+  ///
+  /// A type's tree is applied with the history label [tenantHistoryLabel], so
+  /// each target keeps its own versioning table. Its `<datasource>` folders
+  /// must be data sources the type routes
+  /// (`db_migration.tenant.unrouted_datasource`), and every folder under
+  /// `tenant/` must be a declared type (`db_migration.tenant.undeclared_type`);
+  /// any entry at the root other than `system/` and `tenant/` is refused
+  /// (`db_migration.layout.unknown_entry`). All of it is checked before
+  /// anything runs.
+  ///
+  /// Without an installed [TomTenancy] only `system/` and the implicit type
+  /// `default`'s tree are applied — the latter to the registered data sources
+  /// themselves, as the shared schema of the implicit tenant.
+  ///
+  /// [tenant] migrates that one tenant's target alone — its own, or its
+  /// type's shared schema for a shared tenant — and not the system schema.
+  /// [migrators] supplies the migrator of each target, a fresh one per
+  /// target by default ([newMigratorFor]).
+  static Future<TomMigrationResult> migrateAll(
+    String root, {
+    int parallelism = 1,
+    String? tenant,
+    TomDbMigrator Function(TomDataSourceInfo dsInfo)? migrators,
+  }) async {
+    if (parallelism < 1) {
+      throw TomDbMigrationException(
+        'db_migration.migration.invalid_parallelism',
+        'Migrations run at least one target at a time; got $parallelism.',
+        parameters: {'parallelism': parallelism},
+      );
+    }
+    final migratorOf = migrators ?? newMigratorFor;
+    final environmentName = resolveActiveEnvironment();
+    final tenancy = TomTenancy.current;
+    final runs = <TomMigrationRun>[];
+    _currentRuns.clear();
+    // The system schema's run covers the checks of the whole tree as well: a
+    // root that is missing or malformed fails the system schema, so readiness
+    // reports it.
+    final systemRun = tenant == null
+        ? _start(
+            TomMigrationRun.systemTarget,
+            TomMigrationTargetKind.system,
+            const [],
+          )
+        : null;
+    final List<_TomTenantTarget> plan;
     try {
-      await _migrateDatabases(directory);
-      _lastRun = TomMigrationRun._(
-        TomMigrationRunState.succeeded,
-        _lastRun.startedAt,
-        finishedAt: DateTime.now(),
-      );
+      // Validated before the adaptor scan: the path is the argument this call
+      // was handed, and answering a wrong one with "reflection has not been
+      // initialized" names the wrong problem entirely.
+      requireMigrationsDirectory(Directory(root), 'Migrations directory');
+      if (migrators == null && _migrationAdaptorTypes.isEmpty) {
+        _initializeMigrationAdaptorTypes();
+      }
+      plan = _planTenantTargets(root, tenancy, tenant);
+      final system = Directory(p.join(root, systemTreeName));
+      if (systemRun != null && system.existsSync()) {
+        for (final database in _subdirectoriesOf(system)) {
+          final dsInfo = _baseInfoOf(p.basename(database.path));
+          await migrateDataSource(
+            migratorOf(dsInfo),
+            dsInfo,
+            database,
+            environmentName,
+          );
+        }
+      }
     } catch (error) {
-      _lastRun = TomMigrationRun._(
-        TomMigrationRunState.failed,
-        _lastRun.startedAt,
-        finishedAt: DateTime.now(),
-        error: '$error',
-      );
+      if (systemRun != null) runs.add(_finish(systemRun, error));
       rethrow;
+    }
+    if (systemRun != null) runs.add(_finish(systemRun, null));
+
+    final shared = [
+      for (final target in plan)
+        if (target.kind == TomMigrationTargetKind.shared) target,
+    ];
+    final own = [
+      for (final target in plan)
+        if (target.kind == TomMigrationTargetKind.tenant) target,
+    ];
+    for (final phase in [shared, own]) {
+      final results = List<TomMigrationRun?>.filled(phase.length, null);
+      var next = 0;
+      Future<void> worker() async {
+        while (next < phase.length) {
+          final index = next++;
+          results[index] = await _migrateTenantTarget(
+            phase[index],
+            tenancy,
+            migratorOf,
+            environmentName,
+          );
+        }
+      }
+
+      await Future.wait([
+        for (var i = 0; i < min(parallelism, phase.length); i++) worker(),
+      ]);
+      runs.addAll(results.whereType<TomMigrationRun>());
+    }
+    final result = TomMigrationResult(runs);
+    for (final run in result.failed) {
+      tomLog.warn('Migration of ${run.target} failed: ${run.error}');
+    }
+    return result;
+  }
+
+  /// The folder of the system tree under a migration root.
+  static const String systemTreeName = 'system';
+
+  /// The folder of the tenant types' trees under a migration root.
+  static const String tenantTreesName = 'tenant';
+
+  /// The registered data source [name] itself, unrouted: the system schema.
+  static TomDataSourceInfo _baseInfoOf(String name) {
+    final info = TomDataSourceInfo.getBaseDataSourceInfo(name);
+    if (info == null) {
+      throw TomDbMigrationException(
+        "db_migration.migration.no_datasource_info_found",
+        "Database migration failed: No Datasource info found for datasource $name",
+        autoLog: true,
+      );
+    }
+    return info;
+  }
+
+  /// The tenant targets of [root], checked before anything runs.
+  static List<_TomTenantTarget> _planTenantTargets(
+    String root,
+    TomTenancy? tenancy,
+    String? only,
+  ) {
+    for (final entry in Directory(root).listSync()) {
+      final name = p.basename(entry.path);
+      if (isNotAMigrationFile(name)) continue;
+      if (entry is Directory &&
+          (name == systemTreeName || name == tenantTreesName)) {
+        continue;
+      }
+      throw TomDbMigrationException(
+        'db_migration.layout.unknown_entry',
+        "The migration root $root holds '$name'; it holds only "
+            "'$systemTreeName/' (<datasource>/<schema>/ chains for the system "
+            "schema) and '$tenantTreesName/' (<type>/<datasource>/ chains for "
+            'the tenants of each type).',
+        parameters: {'root': root, 'entry': name},
+      );
+    }
+    final Map<String, TomTenantType?> declared =
+        tenancy?.types ?? {TomTenant.defaultType: null};
+    final trees = Directory(p.join(root, tenantTreesName));
+    if (trees.existsSync()) {
+      for (final entry in trees.listSync()) {
+        if (entry is! Directory) continue;
+        final type = p.basename(entry.path);
+        if (!declared.containsKey(type)) {
+          throw TomDbMigrationException(
+            'db_migration.tenant.undeclared_type',
+            "The migration tree of tenant type '$type' belongs to no declared "
+                'type.',
+            parameters: {'type': type},
+          );
+        }
+      }
+    }
+    final routedOf = <String, Set<String>>{
+      for (final name in declared.keys)
+        name: tenancy == null
+            ? TomDataSourceInfo.datasources.keys.toSet()
+            : tenancy.datasourcesOf(tenancy.types[name]!),
+    };
+    final treeOf = <String, Directory>{};
+    for (final name in declared.keys) {
+      final tree = Directory(tenantTreeOf(root, declared[name], name));
+      if (!tree.existsSync()) continue;
+      for (final entry in tree.listSync()) {
+        if (entry is! Directory) continue;
+        final datasource = p.basename(entry.path);
+        if (!routedOf[name]!.contains(datasource)) {
+          throw TomDbMigrationException(
+            'db_migration.tenant.unrouted_datasource',
+            "The tree of tenant type '$name' migrates the data source "
+                "'$datasource', which the type does not route: its tenant "
+                'tables would land in the system schema.',
+            parameters: {'type': name, 'datasource': datasource},
+          );
+        }
+      }
+      treeOf[name] = tree;
+    }
+
+    if (tenancy == null) {
+      if (only != null) throw TomTenancy.unknownTenant(only);
+      final tree = treeOf[TomTenant.defaultType];
+      return [
+        if (tree != null)
+          _TomTenantTarget(
+            TomMigrationTargetKind.shared,
+            TomTenant.defaultType,
+            tree,
+            const [],
+          ),
+      ];
+    }
+    if (only != null && !tenancy.tenants.containsKey(only)) {
+      throw TomTenancy.unknownTenant(only);
+    }
+    final sharedOf = <String, List<String>>{};
+    final targets = <_TomTenantTarget>[];
+    for (final t in tenancy.tenants.values) {
+      final tree = treeOf[t.type];
+      if (tree == null) continue;
+      if (tenancy.isolationOf(t) == TomTenantIsolation.shared) {
+        (sharedOf[t.type] ??= []).add(t.id);
+      } else if (only == null || only == t.id) {
+        targets.add(
+          _TomTenantTarget(TomMigrationTargetKind.tenant, t.type, tree, [t.id]),
+        );
+      }
+    }
+    final onlyType = only == null ? null : tenancy.tenants[only]!.type;
+    return [
+      for (final MapEntry(key: type, value: ids) in sharedOf.entries)
+        if (only == null || (ids.contains(only) && onlyType == type))
+          _TomTenantTarget(
+            TomMigrationTargetKind.shared,
+            type,
+            treeOf[type]!,
+            ids..sort(),
+          ),
+      ...targets,
+    ];
+  }
+
+  /// Migrates one tenant target, recording its tenants' statuses; never
+  /// throws — a failure is the run's.
+  static Future<TomMigrationRun> _migrateTenantTarget(
+    _TomTenantTarget target,
+    TomTenancy? tenancy,
+    TomDbMigrator Function(TomDataSourceInfo) migratorOf,
+    String environmentName,
+  ) async {
+    final name = target.kind == TomMigrationTargetKind.shared
+        ? TomMigrationRun.sharedTarget(target.type)
+        : TomMigrationRun.tenantTarget(target.tenants.single);
+    final run = _start(name, target.kind, target.tenants);
+    Future<void> body() async {
+      final previous = {
+        for (final id in target.tenants) id: tenancy?.statusOf(id),
+      };
+      for (final id in target.tenants) {
+        await tenancy!.setStatus(id, TomTenantStatus.migrating);
+      }
+      final label = tenantHistoryLabel(target.type);
+      final migrated = <String, int>{};
+      Object? failure;
+      try {
+        for (final chain in _subdirectoriesOf(target.tree)) {
+          final datasource = p.basename(chain.path);
+          final dsInfo = target.tenants.isEmpty
+              ? _baseInfoOf(datasource)
+              : await tenancy!.runFor(
+                  target.tenants.first,
+                  () => TomDataSourceInfo.route(_baseInfoOf(datasource)),
+                );
+          final applied = await migrateTree(
+            migratorOf(dsInfo),
+            dsInfo,
+            chain,
+            label,
+            environmentName,
+          );
+          if (applied != null) migrated[datasource] = applied;
+        }
+      } catch (error) {
+        failure = error;
+      }
+      final at = DateTime.now().toUtc();
+      for (final id in target.tenants) {
+        if (failure != null) {
+          await tenancy!.setStatus(
+            id,
+            TomTenantStatus.migrationFailed,
+            detail: '$failure',
+          );
+          continue;
+        }
+        for (final MapEntry(:key, :value) in migrated.entries) {
+          await tenancy!.registry.setMigrated(id, key, value, at: at);
+        }
+        await tenancy!.setStatus(
+          id,
+          previous[id] == TomTenantStatus.suspended
+              ? TomTenantStatus.suspended
+              : TomTenantStatus.active,
+        );
+      }
+      if (failure != null) throw failure;
+    }
+
+    try {
+      final registry = tenancy?.registry;
+      if (registry == null) {
+        await body();
+      } else {
+        await registry.withMigrationLock(name, body);
+      }
+      return _finish(run, null);
+    } catch (error) {
+      return _finish(run, error);
     }
   }
 
-  static TomMigrationRun _lastRun = const TomMigrationRun._(
-    TomMigrationRunState.notRun,
-    null,
+  static List<Directory> _subdirectoriesOf(Directory directory) =>
+      directory.listSync().whereType<Directory>().toList()
+        ..sort((a, b) => a.path.compareTo(b.path));
+
+  static final Map<String, TomMigrationRun> _currentRuns = {};
+
+  static TomMigrationRun _start(
+    String target,
+    TomMigrationTargetKind kind,
+    List<String> tenants,
+  ) => _currentRuns[target] = TomMigrationRun(
+    target,
+    kind,
+    TomMigrationRunState.running,
+    tenants: tenants,
+    startedAt: DateTime.now(),
   );
 
-  /// The state of this process's most recent [migrateDatabases] call — the
-  /// fact the framework readiness check reads: a server whose migrations are
-  /// still running, or failed, is not ready for traffic.
-  static TomMigrationRun get lastRun => _lastRun;
+  static TomMigrationRun _finish(TomMigrationRun run, Object? error) =>
+      _currentRuns[run.target] = run.finished(
+        error == null
+            ? TomMigrationRunState.succeeded
+            : TomMigrationRunState.failed,
+        at: DateTime.now(),
+        error: error == null ? null : '$error',
+      );
 
-  /// Forgets [lastRun], as a fresh process starts. For tests.
-  static void resetLastRun() =>
-      _lastRun = const TomMigrationRun._(TomMigrationRunState.notRun, null);
+  /// Every target's run in this process's most recent [migrateAll] call, as it
+  /// stands now — running ones included, in the order they started. Empty
+  /// before the first call. The fact the framework readiness check reads: a
+  /// running or failed system schema keeps the server from traffic; a failed
+  /// tenant is reported while the others are served.
+  static List<TomMigrationRun> get runs =>
+      List.unmodifiable(_currentRuns.values);
 
-  /// The registered data source [datasourceName] and the migrator for its
-  /// type.
-  static (TomDataSourceInfo, TomDbMigrator) _migratorFor(
-    String datasourceName,
-  ) {
+  /// Forgets [runs], as a fresh process starts. For tests.
+  static void resetRuns() => _currentRuns.clear();
+
+  /// A fresh migrator for [dsInfo]'s type, from the adaptors the reflection
+  /// scan found ([TomDbMigrationAdaptor]) — one per target, so targets
+  /// migrated at once do not share a binding.
+  static TomDbMigrator newMigratorFor(TomDataSourceInfo dsInfo) {
     if (_migrationAdaptorTypes.isEmpty) {
       _initializeMigrationAdaptorTypes();
     }
-    final dsInfo = TomDataSourceInfo.getDataSourceInfo(datasourceName);
-    if (dsInfo == null) {
-      throw TomDbMigrationException(
-        "db_migration.migration.no_datasource_info_found",
-        "Database migration failed: No Datasource info found for datasource $datasourceName",
-        autoLog: true,
-      );
-    }
-    final migrator = _migrationAdaptorTypes[dsInfo.type];
-    if (migrator == null) {
+    final factory = _migrationAdaptorTypes[dsInfo.type];
+    if (factory == null) {
       throw TomDbMigrationException(
         "db_migration.migration.no_migrator_found_for_datasource_type",
-        "Database migration for datasource $datasourceName failed. No Migrator found for type ${dsInfo.type}",
+        "Database migration for datasource ${dsInfo.name} failed. No Migrator found for type ${dsInfo.type}",
         autoLog: true,
       );
     }
-    return (dsInfo, migrator);
+    return factory();
   }
 
-  /// Runs [body] holding the migration lock of the data source
+  /// The registered data source [datasourceName] itself — unrouted, the
+  /// system schema — and a migrator for its type.
+  static (TomDataSourceInfo, TomDbMigrator) _migratorFor(
+    String datasourceName,
+  ) {
+    final dsInfo = _baseInfoOf(datasourceName);
+    return (dsInfo, newMigratorFor(dsInfo));
+  }
+
+  /// The data source [datasource] as tenant [tenant] reaches it — its own
+  /// schema or database, or its type's shared schema — and a migrator for it.
+  static Future<(TomDataSourceInfo, TomDbMigrator)> _tenantMigratorFor(
+    String tenant,
+    String datasource,
+  ) async {
+    final tenancy = TomTenancy.current;
+    if (tenancy == null) throw TomTenancy.unknownTenant(tenant);
+    final dsInfo = await tenancy.runFor(
+      tenant,
+      () => TomDataSourceInfo.route(_baseInfoOf(datasource)),
+    );
+    return (dsInfo, newMigratorFor(dsInfo));
+  }
+
+  /// Runs [body] holding the migration lock of the registered data source
   /// [datasourceName] — see [TomDbMigrator.withMigrationLock].
-  ///
-  /// For a run wider than one [migrateDatabases] call: a deployment that
-  /// migrates every tenant in turn holds the lock around the whole
-  /// `forEachTenant` walk, so no other process migrates between two tenants.
   static Future<R> withMigrationLock<R>(
     String datasourceName,
     Future<R> Function() body,
@@ -730,7 +1073,7 @@ class TomDbMigrations {
   }
 
   /// Resolves the failed record of migration [version] in schema [schemaName]
-  /// of data source [datasourceName] by [action] — see
+  /// of the system tree's data source [datasourceName] by [action] — see
   /// [TomDbMigrator.repair].
   static Future<void> repair(
     String datasourceName,
@@ -742,58 +1085,196 @@ class TomDbMigrations {
     return migrator.repair(dsInfo, schemaName, version, action);
   }
 
+  /// Resolves the failed record of migration [version] of data source
+  /// [datasource] in tenant [tenant]'s target — its own schema or database,
+  /// or its type's shared schema — by [action].
+  static Future<void> repairTenant(
+    String tenant,
+    String datasource,
+    int version,
+    TomMigrationRepair action,
+  ) async {
+    final (dsInfo, migrator) = await _tenantMigratorFor(tenant, datasource);
+    final type = TomTenancy.current!.tenants[tenant]!.type;
+    await migrator.repair(dsInfo, tenantHistoryLabel(type), version, action);
+  }
+
+  /// The command-line option asking for [migrateAll]: `--migrate`.
+  static const String migrateOption = 'migrate';
+
+  /// The command-line option asking for one tenant's migration:
+  /// `--migrate-tenant=<id>`.
+  static const String migrateTenantOption = 'migrate-tenant';
+
+  /// The command-line option bounding how many tenants migrate at once:
+  /// `--migrate-parallelism=<n>`.
+  static const String migrateParallelismOption = 'migrate-parallelism';
+
+  /// Runs the migration [args] ask for against the migration [root] and
+  /// answers its result, or `null` when they ask for none — a start script
+  /// calls it once its data sources and tenancy are installed, and exits when
+  /// it answers a result (non-zero when it did not succeed).
+  ///
+  /// `--migrate` runs [migrateAll]; `--migrate-tenant=<id>` migrates that
+  /// tenant alone; `--migrate-parallelism=<n>` bounds the tenants migrated at
+  /// once. A failure of the system schema throws.
+  static Future<TomMigrationResult?> migrateFromArgs(
+    List<String> args,
+    String root,
+  ) async {
+    final options = TomArgs.parseArgsToMap(args);
+    final all = options[migrateOption];
+    final tenant = options[migrateTenantOption];
+    if ((all == null || all == false) && tenant == null) return null;
+    final rawParallelism = options[migrateParallelismOption];
+    final parallelism = rawParallelism == null
+        ? 1
+        : int.tryParse('$rawParallelism');
+    if (parallelism == null || (tenant != null && '$tenant'.isEmpty)) {
+      throw TomDbMigrationException(
+        'db_migration.migration.invalid_arguments',
+        'A migration is --$migrateOption or --$migrateTenantOption=<id>, '
+            'with --$migrateParallelismOption=<n> optional; got '
+            '--$migrateTenantOption=$tenant '
+            '--$migrateParallelismOption=$rawParallelism.',
+        autoLog: true,
+      );
+    }
+    final result = await migrateAll(
+      root,
+      parallelism: parallelism,
+      tenant: tenant == null ? null : '$tenant',
+    );
+    tomLog.info('Migrations: $result');
+    return result;
+  }
+
+  /// Runs [migrateAll] when the [configurationKey] settings [config] ask for
+  /// it with `onStart: true`, against their `root` or [defaultRoot], with
+  /// their `parallelism`; answers the result, or `null` when not asked.
+  /// Called by `TomServer.start`.
+  static Future<TomMigrationResult?> migrateOnStart(
+    Object? config,
+    String defaultRoot,
+  ) async {
+    if (config == null) return null;
+    if (config is! Map) {
+      throw TomDbMigrationException(
+        'db_migration.config.invalid',
+        'The migrations settings must be a map, not a ${config.runtimeType}.',
+      );
+    }
+    if (config['onStart'] != true) return null;
+    final rawParallelism = config['parallelism'] ?? 1;
+    final parallelism = rawParallelism is int
+        ? rawParallelism
+        : int.tryParse('$rawParallelism');
+    if (parallelism == null) {
+      throw TomDbMigrationException(
+        'db_migration.config.invalid',
+        "The migrations setting 'parallelism' must be a whole number, not "
+            "'$rawParallelism'.",
+      );
+    }
+    final result = await migrateAll(
+      '${config['root'] ?? defaultRoot}',
+      parallelism: parallelism,
+    );
+    tomLog.info('Migrations at start: $result');
+    return result;
+  }
+
   /// The command-line option naming the record to repair:
-  /// `--repair-migration=<datasource>/<schema>/<version>`.
+  /// `--repair-migration=system/<datasource>/<schema>/<version>` or
+  /// `--repair-migration=tenant:<id>/<datasource>/<version>`.
   static const String repairMigrationOption = 'repair-migration';
 
   /// The command-line option choosing the repair: `--repair-action=remove`
   /// or `--repair-action=resolve`.
   static const String repairActionOption = 'repair-action';
 
+  /// A repair or rollback target: `system/<datasource>/<schema>/<version>`
+  /// or `tenant:<id>/<datasource>/<version>`; `null` when malformed.
+  static ({String? tenant, String datasource, String? schema, int version})?
+  _parseTarget(String raw) {
+    final parts = raw.split('/');
+    if (parts.any((part) => part.isEmpty)) return null;
+    if (parts.length == 4 && parts[0] == systemTreeName) {
+      final version = int.tryParse(parts[3]);
+      return version == null
+          ? null
+          : (
+              tenant: null,
+              datasource: parts[1],
+              schema: parts[2],
+              version: version,
+            );
+    }
+    if (parts.length == 3 && parts[0].startsWith('tenant:')) {
+      final tenant = parts[0].substring('tenant:'.length);
+      final version = int.tryParse(parts[2]);
+      return version == null || tenant.isEmpty
+          ? null
+          : (
+              tenant: tenant,
+              datasource: parts[1],
+              schema: null,
+              version: version,
+            );
+    }
+    return null;
+  }
+
   /// Runs the repair [args] ask for, and answers whether they asked for one.
   ///
-  /// A server's start script calls it once its data sources are registered
-  /// and exits when it answers `true`: a repair is an operator's one-off
-  /// command, not a step of every start. Without [repairMigrationOption] it
-  /// does nothing and answers `false`. A malformed request throws
-  /// `db_migration.repair.invalid_arguments`.
+  /// A server's start script calls it once its data sources (and tenancy) are
+  /// installed and exits when it answers `true`: a repair is an operator's
+  /// one-off command, not a step of every start. Without
+  /// [repairMigrationOption] it does nothing and answers `false`. A malformed
+  /// request throws `db_migration.repair.invalid_arguments`.
   static Future<bool> repairFromArgs(List<String> args) async {
     final options = TomArgs.parseArgsToMap(args);
-    final target = options[repairMigrationOption];
-    if (target == null) return false;
-    final parts = '$target'.split('/');
+    final raw = options[repairMigrationOption];
+    if (raw == null) return false;
+    final target = _parseTarget('$raw');
     final action = switch ('${options[repairActionOption]}') {
       'remove' => TomMigrationRepair.remove,
       'resolve' => TomMigrationRepair.markResolved,
       _ => null,
     };
-    final version = parts.length == 3 ? int.tryParse(parts[2]) : null;
-    if (version == null || action == null) {
+    if (target == null || action == null) {
       throw TomDbMigrationException(
         "db_migration.repair.invalid_arguments",
-        "A migration repair is --$repairMigrationOption=<datasource>/<schema>/"
-            "<version> with --$repairActionOption=remove (apply it again on "
-            "the next run) or --$repairActionOption=resolve (count it as "
-            "applied); got --$repairMigrationOption=$target "
+        "A migration repair is --$repairMigrationOption=system/<datasource>/"
+            "<schema>/<version> or --$repairMigrationOption=tenant:<id>/"
+            "<datasource>/<version>, with --$repairActionOption=remove (apply "
+            "it again on the next run) or --$repairActionOption=resolve "
+            "(count it as applied); got --$repairMigrationOption=$raw "
             "--$repairActionOption=${options[repairActionOption]}.",
         autoLog: true,
       );
     }
-    await repair(parts[0], parts[1], version, action);
+    final tenant = target.tenant;
+    if (tenant == null) {
+      await repair(target.datasource, target.schema!, target.version, action);
+    } else {
+      await repairTenant(tenant, target.datasource, target.version, action);
+    }
     return true;
   }
 
-  /// Undoes the migrations of schema [schema] of data source [datasource]
-  /// applied above [toVersion] — every one for `-1` — newest first, with the
-  /// down scripts beside them in the migration tree [directory]
-  /// (`<directory>/<datasource>/<schema>/[<v>]-<name>.down.<ext>`), under the
-  /// migration lock. Answers the versions undone, in the order they were.
+  /// Undoes the migrations of schema [schema] of the system tree's data
+  /// source [datasource] applied above [toVersion] — every one for `-1` —
+  /// newest first, with the down scripts beside them under the migration
+  /// [root] (`<root>/system/<datasource>/<schema>/[<v>]-<name>.down.<ext>`),
+  /// under the migration lock. Answers the versions undone, in the order they
+  /// were.
   ///
   /// Refused before anything runs when a migration to undo has no down
   /// script, or when the tree's up script is not the one recorded — see
   /// [TomDbMigrator.rollback].
   static Future<List<int>> rollback(
-    String directory, {
+    String root, {
     required String datasource,
     required String schema,
     required int toVersion,
@@ -802,9 +1283,41 @@ class TomDbMigrations {
     return rollbackDataSource(
       migrator,
       dsInfo,
-      Directory(p.join(directory, datasource)),
+      Directory(p.join(root, systemTreeName, datasource)),
       schema,
       toVersion: toVersion,
+    );
+  }
+
+  /// [rollback] for tenant [tenant]'s target — its own schema or database, or
+  /// its type's shared schema — with the down scripts of its type's tree
+  /// (`<root>/tenant/<type>/<datasource>/`), under the migration lock and the
+  /// registry's lock of the target.
+  static Future<List<int>> rollbackTenant(
+    String root, {
+    required String tenant,
+    required String datasource,
+    required int toVersion,
+  }) async {
+    final (dsInfo, migrator) = await _tenantMigratorFor(tenant, datasource);
+    final tenancy = TomTenancy.current!;
+    final served = tenancy.tenants[tenant]!;
+    final type = served.type;
+    final chain = Directory(
+      p.join(tenantTreeOf(root, tenancy.types[type], type), datasource),
+    );
+    final target = tenancy.isolationOf(served) == TomTenantIsolation.shared
+        ? TomMigrationRun.sharedTarget(type)
+        : TomMigrationRun.tenantTarget(tenant);
+    return tenancy.registry.withMigrationLock(
+      target,
+      () => _rollbackChain(
+        migrator,
+        dsInfo,
+        chain,
+        tenantHistoryLabel(type),
+        toVersion: toVersion,
+      ),
     );
   }
 
@@ -816,6 +1329,20 @@ class TomDbMigrations {
     Directory dataSourceDirectory,
     String schema, {
     required int toVersion,
+  }) => _rollbackChain(
+    migrator,
+    dsInfo,
+    Directory(p.join(dataSourceDirectory.path, schema)),
+    schema,
+    toVersion: toVersion,
+  );
+
+  static Future<List<int>> _rollbackChain(
+    TomDbMigrator migrator,
+    TomDataSourceInfo dsInfo,
+    Directory chain,
+    String label, {
+    required int toVersion,
   }) async {
     if (toVersion < -1) {
       throw TomDbMigrationException(
@@ -824,12 +1351,11 @@ class TomDbMigrations {
             "got $toVersion.",
       );
     }
-    final schemaDirectory = Directory(p.join(dataSourceDirectory.path, schema));
     requireMigrationsDirectory(
-      schemaDirectory,
-      'Migrations directory for schema $schema of data source ${dsInfo.name}',
+      chain,
+      'Migrations directory for $label of data source ${dsInfo.name}',
     );
-    final entries = await schemaDirectory.list().toList();
+    final entries = await chain.list().toList();
     final ups = collectMigrationFiles(entries);
     final downs = collectDownMigrationFiles(entries);
     // Every version in the tree, whatever its environment tag: a rollback
@@ -845,66 +1371,53 @@ class TomDbMigrations {
     };
     return migrator.withMigrationLock(dsInfo, () {
       migrator.reset();
-      return migrator.rollback(dsInfo, schema, toVersion, scripts);
+      return migrator.rollback(dsInfo, label, toVersion, scripts);
     });
   }
 
   /// The command-line option asking for a rollback:
-  /// `--rollback-migrations=<datasource>/<schema>/<version>`, keeping the
+  /// `--rollback-migrations=system/<datasource>/<schema>/<version>` or
+  /// `--rollback-migrations=tenant:<id>/<datasource>/<version>`, keeping the
   /// migrations up to `<version>` (`-1` for none).
   static const String rollbackMigrationsOption = 'rollback-migrations';
 
-  /// Runs the rollback [args] ask for against the migration tree
-  /// [directory], and answers whether they asked for one — the counterpart of
+  /// Runs the rollback [args] ask for against the migration [root], and
+  /// answers whether they asked for one — the counterpart of
   /// [repairFromArgs], called by a start script that exits on `true`. A
   /// malformed request throws `db_migration.rollback.invalid_arguments`.
-  static Future<bool> rollbackFromArgs(
-    List<String> args,
-    String directory,
-  ) async {
-    final target = TomArgs.parseArgsToMap(args)[rollbackMigrationsOption];
-    if (target == null) return false;
-    final parts = '$target'.split('/');
-    final version = parts.length == 3 ? int.tryParse(parts[2]) : null;
-    if (version == null || parts[0].isEmpty || parts[1].isEmpty) {
+  static Future<bool> rollbackFromArgs(List<String> args, String root) async {
+    final raw = TomArgs.parseArgsToMap(args)[rollbackMigrationsOption];
+    if (raw == null) return false;
+    final target = _parseTarget('$raw');
+    if (target == null) {
       throw TomDbMigrationException(
         "db_migration.rollback.invalid_arguments",
-        "A rollback is --$rollbackMigrationsOption=<datasource>/<schema>/"
-            "<version>, keeping the migrations up to <version> (-1 for none); "
-            "got --$rollbackMigrationsOption=$target.",
+        "A rollback is --$rollbackMigrationsOption=system/<datasource>/"
+            "<schema>/<version> or --$rollbackMigrationsOption=tenant:<id>/"
+            "<datasource>/<version>, keeping the migrations up to <version> "
+            "(-1 for none); got --$rollbackMigrationsOption=$raw.",
         autoLog: true,
       );
     }
-    final undone = await rollback(
-      directory,
-      datasource: parts[0],
-      schema: parts[1],
-      toVersion: version,
-    );
+    final tenant = target.tenant;
+    final undone = tenant == null
+        ? await rollback(
+            root,
+            datasource: target.datasource,
+            schema: target.schema!,
+            toVersion: target.version,
+          )
+        : await rollbackTenant(
+            root,
+            tenant: tenant,
+            datasource: target.datasource,
+            toVersion: target.version,
+          );
     tomLog.info(
-      "Rolled back ${parts[0]}/${parts[1]} to version $version: "
+      "Rolled back $raw to version ${target.version}: "
       "${undone.isEmpty ? 'nothing to undo' : 'undid ${undone.join(', ')}'}.",
     );
     return true;
-  }
-
-  static Future<void> _migrateDatabases(String directory) async {
-    Directory dir = Directory(directory);
-    // Validated before the adaptor scan: the path is the argument this call was
-    // handed, and answering a wrong one with "reflection has not been
-    // initialized" names the wrong problem entirely.
-    requireMigrationsDirectory(dir, 'Migrations directory');
-    if (_migrationAdaptorTypes.isEmpty) {
-      _initializeMigrationAdaptorTypes();
-    }
-    final environmentName = resolveActiveEnvironment();
-    await for (var database in dir.list()) {
-      if (database is Directory) {
-        String datasourceName = p.basename(database.path);
-        final (dsInfo, migrator) = _migratorFor(datasourceName);
-        await migrateDataSource(migrator, dsInfo, database, environmentName);
-      }
-    }
   }
 
   /// Applies every schema under [dataSourceDirectory] to data source [dsInfo]
@@ -918,10 +1431,8 @@ class TomDbMigrations {
   /// already applied. Within a schema, files are applied in ascending numeric
   /// version order, skipping any tagged for another environment (C-16).
   ///
-  /// Split out of [migrateDatabases] so the walk can be driven with a
-  /// caller-supplied [migrator] — the reflection-scanned registry
-  /// [migrateDatabases] resolves from is not injectable, which left this
-  /// per-schema lifecycle testable only against a live server.
+  /// Split out of [migrateAll] so the walk can be driven with a
+  /// caller-supplied [migrator].
   static Future<void> migrateDataSource(
     TomDbMigrator migrator,
     TomDataSourceInfo dsInfo,
@@ -934,53 +1445,86 @@ class TomDbMigrations {
     );
     // One run per database at a time: a second process waits here, then finds
     // the first's migrations applied.
-    await migrator.withMigrationLock(
+    await migrator.withMigrationLock(dsInfo, () async {
+      for (final schema in _subdirectoriesOf(dataSourceDirectory)) {
+        await _applyChain(
+          migrator,
+          dsInfo,
+          schema,
+          p.basename(schema.path),
+          environmentName,
+        );
+      }
+    });
+  }
+
+  /// Applies the one chain in [chain] — a tenant type's `<datasource>/`
+  /// folder — to [dsInfo] under the history [label], through [migrator] and
+  /// under [dsInfo]'s migration lock; answers the highest version it holds
+  /// for [environmentName], or `null` when it holds none.
+  static Future<int?> migrateTree(
+    TomDbMigrator migrator,
+    TomDataSourceInfo dsInfo,
+    Directory chain,
+    String label,
+    String environmentName,
+  ) {
+    requireMigrationsDirectory(
+      chain,
+      'Migrations directory for $label of data source ${dsInfo.name}',
+    );
+    return migrator.withMigrationLock(
       dsInfo,
-      () => _migrateSchemas(
-        migrator,
-        dsInfo,
-        dataSourceDirectory,
-        environmentName,
-      ),
+      () => _applyChain(migrator, dsInfo, chain, label, environmentName),
     );
   }
 
-  static Future<void> _migrateSchemas(
+  static Future<int?> _applyChain(
     TomDbMigrator migrator,
     TomDataSourceInfo dsInfo,
-    Directory dataSourceDirectory,
+    Directory chain,
+    String label,
     String environmentName,
   ) async {
-    await for (var schema in dataSourceDirectory.list()) {
-      if (schema is Directory) {
-        String schemaName = p.basename(schema.path);
-        migrator.reset();
-        await migrator.initializeMigration(dsInfo, schemaName);
-        // Both collision checks run before anything is applied, so an
-        // ambiguous schema aborts whole rather than applying whichever file the
-        // directory listing happened to favour and leaving the rest for a
-        // second run to trip over.
-        //
-        // They catch different ambiguities. Two files that strip to one
-        // basename cannot be told apart as *files*; two that claim one version
-        // cannot be told apart once *applied*, because the versioning table
-        // records the version and nothing else identifying.
-        final migrations = collectMigrationFiles(await schema.list().toList());
-        // Parse + validate the names, reject a duplicate version, apply in
-        // ascending version order (numeric, so [2] precedes [10]) and skip any
-        // migration tagged for a non-active environment (C-16); a malformed
-        // name throws.
-        final ordered = orderMigrationNames(migrations.keys);
-        for (final entry in selectForEnvironment(ordered, environmentName)) {
-          await migrator.applyMigration(
-            dsInfo,
-            schemaName,
-            entry.parsed.version,
-            entry.parsed.description,
-            migrations[entry.basename]!.readAsStringSync(),
-          );
-        }
-      }
+    migrator.reset();
+    await migrator.initializeMigration(dsInfo, label);
+    // Both collision checks run before anything is applied, so an ambiguous
+    // chain aborts whole rather than applying whichever file the directory
+    // listing happened to favour and leaving the rest for a second run to trip
+    // over.
+    //
+    // They catch different ambiguities. Two files that strip to one basename
+    // cannot be told apart as *files*; two that claim one version cannot be
+    // told apart once *applied*, because the versioning table records the
+    // version and nothing else identifying.
+    final migrations = collectMigrationFiles(await chain.list().toList());
+    // Parse + validate the names, reject a duplicate version, apply in
+    // ascending version order (numeric, so [2] precedes [10]) and skip any
+    // migration tagged for a non-active environment (C-16); a malformed name
+    // throws.
+    final ordered = orderMigrationNames(migrations.keys);
+    int? highest;
+    for (final entry in selectForEnvironment(ordered, environmentName)) {
+      await migrator.applyMigration(
+        dsInfo,
+        label,
+        entry.parsed.version,
+        entry.parsed.description,
+        migrations[entry.basename]!.readAsStringSync(),
+      );
+      highest = max(highest ?? entry.parsed.version, entry.parsed.version);
     }
+    return highest;
   }
+}
+
+/// A tenant target of [TomDbMigrations.migrateAll]: a [type]'s [tree] applied
+/// to a shared schema or to one tenant's own.
+class _TomTenantTarget {
+  const _TomTenantTarget(this.kind, this.type, this.tree, this.tenants);
+
+  final TomMigrationTargetKind kind;
+  final String type;
+  final Directory tree;
+  final List<String> tenants;
 }

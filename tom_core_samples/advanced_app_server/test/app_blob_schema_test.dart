@@ -30,7 +30,7 @@ import 'package:test/test.dart';
 
 /// The app schema migration directory, relative to the package root (the working
 /// directory under `dart test`, matching the boot-time loader).
-const String _appSchemaDir = 'database_migrations/app_db/app_schema/';
+const String _appSchemaDir = 'database_migrations/system/app_db/app_schema/';
 
 /// The shipped migration chain under [directory], in file order.
 ///

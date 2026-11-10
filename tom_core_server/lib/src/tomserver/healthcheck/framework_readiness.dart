@@ -30,6 +30,7 @@ import 'dart:async';
 import '../datasources/datasource_initialization.dart';
 import '../datasources/sql_datasource.dart';
 import '../db_migration/db_migration.dart';
+import '../db_migration/migration_run.dart';
 import '../messaging/outbox.dart';
 import 'health_check.dart';
 
@@ -58,14 +59,14 @@ class TomReadinessCheck {
 /// | Check | Ready when |
 /// | ----- | ---------- |
 /// | every registered data source | it reports operational, and an SQL data source answers `SELECT 1` within [dataSourceTimeout] |
-/// | migrations | no [TomDbMigrations.migrateDatabases] call is running or has failed in this process |
+/// | migrations, per target | the system schema of the last [TomDbMigrations.migrateAll] call in this process is not running and has not failed; each shared schema and tenant is listed with its state and does not hold the server back |
 /// | every started [TomMessageOutbox] | its scheduler is running, and — when [maxOutboxWait] is set — no message has waited longer |
 ///
 /// The body lists every check, one per line, after `ready` or `not ready`, so
 /// the reason is on the wire next to the status code.
 ///
 /// A migration that was never run in this process passes: a deployment whose
-/// schema is applied by a DBA or a job never calls `migrateDatabases`, and a
+/// schema is applied by a DBA or a job never calls `migrateAll`, and a
 /// readiness check that waited for it would never pass.
 ///
 /// [maxOutboxWait] is off by default, and deliberately. Every node of a
@@ -112,7 +113,7 @@ class TomFrameworkReadinessAnalyzer extends TomHealthAnalyzer {
     final outboxes = await Future.wait(
       TomMessageOutbox.started.map(_checkOutbox),
     );
-    return [...dataSources, migrations, ...outboxes];
+    return [...dataSources, ...migrations, ...outboxes];
   }
 
   /// The registered data sources, each once: a `delegateTo` alias shares its
@@ -156,30 +157,40 @@ class TomFrameworkReadinessAnalyzer extends TomHealthAnalyzer {
     }
   }
 
-  static TomReadinessCheck _checkMigrations() {
-    final run = TomDbMigrations.lastRun;
-    return switch (run.state) {
-      TomMigrationRunState.notRun => const TomReadinessCheck(
-        'migrations',
-        passed: true,
-        detail: 'not run in this process',
-      ),
-      TomMigrationRunState.succeeded => const TomReadinessCheck(
-        'migrations',
-        passed: true,
-        detail: 'ok',
-      ),
-      TomMigrationRunState.running => const TomReadinessCheck(
-        'migrations',
-        passed: false,
-        detail: 'running',
-      ),
-      TomMigrationRunState.failed => TomReadinessCheck(
-        'migrations',
-        passed: false,
-        detail: 'failed: ${run.error}',
-      ),
-    };
+  /// One check per migration target of the last [TomDbMigrations.migrateAll]
+  /// call, or a passing `migrations` check when none was made.
+  ///
+  /// The system schema's check passes only once it succeeded: without its
+  /// tables nothing is served. A shared schema's or a tenant's check passes
+  /// whatever its state, with the state as its detail — a tenant still
+  /// migrating, or whose migration failed, is refused on its own
+  /// (`tenancy.tenant.unavailable`) while the others are served.
+  static List<TomReadinessCheck> _checkMigrations() {
+    final runs = TomDbMigrations.runs;
+    if (runs.isEmpty) {
+      return const [
+        TomReadinessCheck(
+          'migrations',
+          passed: true,
+          detail: 'not run in this process',
+        ),
+      ];
+    }
+    return [
+      for (final run in runs)
+        TomReadinessCheck(
+          'migrations ${run.target}',
+          passed:
+              run.kind != TomMigrationTargetKind.system ||
+              run.state == TomMigrationRunState.succeeded,
+          detail: switch (run.state) {
+            TomMigrationRunState.succeeded => 'ok',
+            TomMigrationRunState.running => 'running',
+            TomMigrationRunState.notRun => 'not run',
+            TomMigrationRunState.failed => 'failed: ${run.error}',
+          },
+        ),
+    ];
   }
 
   Future<TomReadinessCheck> _checkOutbox(TomMessageOutbox outbox) async {

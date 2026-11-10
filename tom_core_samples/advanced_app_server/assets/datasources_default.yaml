@@ -1,6 +1,6 @@
 # Datasource configuration with environment-variable substitution
 # (${VAR:default}). The map key MUST equal the migration folder name under
-# database_migrations/ — here `app_db` — so TomDbMigrations matches schema to
+# database_migrations/system/ — here `app_db` — so TomDbMigrations matches schema to
 # datasource. The `mariadb` driver is auto-discovered by tom_core_server.
 #
 # `port` is expressed as a `${...}` substitution like every other field. The

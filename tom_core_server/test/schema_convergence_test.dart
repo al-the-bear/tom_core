@@ -1382,7 +1382,7 @@ CREATE TABLE fixture_task (
         }
         Object? fromEngine;
         try {
-          await TomDbMigrations.migrateDatabases(absent());
+          await TomDbMigrations.migrateAll(absent());
         } catch (error) {
           fromEngine = error;
         }
@@ -1454,7 +1454,7 @@ CREATE TABLE fixture_task (
       // an unattributed entity would leave the report trivially converged and
       // the test would prove nothing.
       Directory(
-        p.join(root.path, fixtureDatasource),
+        p.join(root.path, 'system', fixtureDatasource),
       ).createSync(recursive: true);
       final report = check.checkSchema(
         root.path,

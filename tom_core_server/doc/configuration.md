@@ -41,6 +41,7 @@ and serves to clients.
 - [Idempotency Keys](#idempotency-keys)
 - [Field-Level Encryption](#field-level-encryption)
 - [Privacy](#privacy)
+- [Migrations at Start](#migrations-at-start)
 - [Transaction Recovery](#transaction-recovery)
 - [Source Precedence](#source-precedence)
   - [A `SCREAMING_SNAKE_CASE` variable names a `lowerCamelCase` field](#a-screaming_snake_case-variable-names-a-lowercamelcase-field)
@@ -1193,6 +1194,39 @@ retention job, are registered in code (`TomPrivacy.register`,
 `TomPrivacy.retentionJob`), not configured. `privacy` is not a field of the
 configuration base, so the startup warning about
 [unknown keys](#unknown-keys-in-the-configuration-resources) names it.
+
+## Migrations at Start
+
+The `migrations` key of the configuration resources
+(`TomDbMigrations.configurationKey`) makes `start()` migrate before it serves:
+`TomServer.migrateOnStart` hands it to `TomDbMigrations.migrateOnStart`, which
+runs `TomDbMigrations.migrateAll` — the system schema, then every tenant by its
+type (see [db_migration.md](db_migration.md#when-migrations-run)). Without the
+key, or without `onStart`, nothing is migrated at start; a deployment migrates
+in a release step with a start script's `--migrate` instead.
+
+| Key | Type | Default | What it decides |
+| --- | ---- | ------- | --------------- |
+| `onStart` | `bool` | `false` | Whether `start()` runs `migrateAll`. |
+| `root` | `String` | `databaseMigrationsDirectory` | The migration root. |
+| `parallelism` | `int` | `1` | How many shared schemas, then tenants, migrate at once. |
+
+```yaml
+# assets/config-resources_default.yaml
+migrations:
+  onStart: true
+  parallelism: 2
+```
+
+**When it applies.** `start()` migrates right after `privacy` and before the
+transaction recovery, whose decision log lives in the system schema; the data
+sources — and the tenancy, when the deployment has one — are installed first. A
+failing system schema stops the start; a failing tenant is marked
+`migration-failed` in the registry and the start goes on, the tenant refused
+until it is migrated again. A value of the wrong shape — not a map, or a
+`parallelism` that is not a whole number — throws `db_migration.config.invalid`.
+`migrations` is not a field of the configuration base, so the startup warning
+about [unknown keys](#unknown-keys-in-the-configuration-resources) names it.
 
 ## Transaction Recovery
 

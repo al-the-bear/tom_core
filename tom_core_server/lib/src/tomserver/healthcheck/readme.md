@@ -27,7 +27,8 @@ against `cancelled`, stops its work.
 `TomServer.start` answers `/ready` with `TomFrameworkReadinessAnalyzer` unless
 the application installed a readiness analyzer of its own (configuration key
 `frameworkReadiness`, on by default): every registered data source operational
-and answering `SELECT 1`, no database migration running or failed, every started
+and answering `SELECT 1`, the system schema of the last migration run neither
+running nor failed (each shared schema and tenant listed with its state), every started
 message outbox delivering. The body is `ready` or `not ready` followed by one
 line per check. Liveness is left alone.
 

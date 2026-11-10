@@ -3,7 +3,7 @@
 /// The connection-free surface (filename parsing, ascending-version ordering,
 /// environment selection, statement splitting) is covered by
 /// `db_migration_test.dart`. This file exercises what only a real server can:
-/// [TomDbMigrations.migrateDatabases] walking the committed migration tree and
+/// [TomDbMigrations.migrateAll] walking the committed migration tree and
 /// [MariadbMigrationAdaptor] creating the `<schema>_versioning` table, running
 /// the script, recording the applied version — and skipping it (idempotently)
 /// on a second run.
@@ -25,7 +25,7 @@ import 'package:test/test.dart';
 import 'fixtures/reflection_fixture.reflection.dart';
 import 'fixtures/test_database.dart';
 
-/// The committed migration tree root. `migrateDatabases` walks
+/// The committed migration tree root. `migrateAll` walks
 /// `<root>/<datasourceName>/<schemaName>/[<version>]-<desc>.sql`; the
 /// `tom_core_server_test` sub-directory matches the registered data source.
 const String _migrationsDir = 'test/fixtures/migrations';
@@ -52,7 +52,7 @@ void main() async {
       : 'No ${TestDatabase.engine} server reachable on ${TestDatabase.host}:${TestDatabase.port} — '
             'start one with tool/run_db_tests.sh or tool/run_db_tests_postgres.sh';
 
-  group('TomDbMigrations.migrateDatabases (DB-backed)', () {
+  group('TomDbMigrations.migrateAll (DB-backed)', () {
     late TomDataSourceInfo dsi;
 
     setUpAll(() async {
@@ -109,7 +109,7 @@ void main() async {
     }
 
     test('applies the pending migration and records it as succeeded', () async {
-      await TomDbMigrations.migrateDatabases(p.normalize(_migrationsDir));
+      await TomDbMigrations.migrateAll(p.normalize(_migrationsDir));
 
       final versions = await appliedVersions();
       expect(versions, hasLength(1));
@@ -122,8 +122,8 @@ void main() async {
     });
 
     test('a second run is idempotent — no duplicate version rows', () async {
-      await TomDbMigrations.migrateDatabases(p.normalize(_migrationsDir));
-      await TomDbMigrations.migrateDatabases(p.normalize(_migrationsDir));
+      await TomDbMigrations.migrateAll(p.normalize(_migrationsDir));
+      await TomDbMigrations.migrateAll(p.normalize(_migrationsDir));
 
       final versions = await appliedVersions();
       // The already-applied version is verified and skipped, not re-inserted.
@@ -140,7 +140,7 @@ void main() async {
     // selected, and then silently dropped by the mapper.
     group('the recorded execution time', () {
       test('a stored duration is readable through the row type', () async {
-        await TomDbMigrations.migrateDatabases(p.normalize(_migrationsDir));
+        await TomDbMigrations.migrateAll(p.normalize(_migrationsDir));
 
         // A distinctive value, deliberately not the column's `DEFAULT 0`: a
         // row type with no `executionTimeMs` field leaves the property at its
@@ -158,7 +158,7 @@ void main() async {
       });
 
       test('the adaptor records the duration it actually measured', () async {
-        await TomDbMigrations.migrateDatabases(p.normalize(_migrationsDir));
+        await TomDbMigrations.migrateAll(p.normalize(_migrationsDir));
 
         final recorded = (await appliedVersions()).single;
         // The fixture migration is a `CREATE TABLE` sent over a socket to a
@@ -174,7 +174,7 @@ void main() async {
       test(
         'a failed script records the time spent before it failed',
         () async {
-          await TomDbMigrations.migrateDatabases(p.normalize(_migrationsDir));
+          await TomDbMigrations.migrateAll(p.normalize(_migrationsDir));
           final adaptor = TestDatabase.migrationAdaptor();
           await adaptor.initializeMigration(dsi, _schemaName);
 
@@ -222,7 +222,7 @@ void main() async {
           // script and its version row in one: a script that fails part-way
           // leaves neither its first statement's table nor a history row behind,
           // so the next run applies it again from the start.
-          await TomDbMigrations.migrateDatabases(p.normalize(_migrationsDir));
+          await TomDbMigrations.migrateAll(p.normalize(_migrationsDir));
           final adaptor = TestDatabase.migrationAdaptor();
           await adaptor.initializeMigration(dsi, _schemaName);
           await expectLater(
@@ -271,7 +271,7 @@ void main() async {
       /// holds one `success = 0` row — through the real path, so the row is
       /// exactly the one a failure leaves.
       Future<void> leaveAFailedRow() async {
-        await TomDbMigrations.migrateDatabases(p.normalize(_migrationsDir));
+        await TomDbMigrations.migrateAll(p.normalize(_migrationsDir));
         if (TestDatabase.isPostgres) {
           // PostgreSQL's adaptor never records a failure — it rolls the
           // script back — so the row is the one a history carried over from
@@ -335,7 +335,7 @@ void main() async {
         // orchestrator stops rather than continuing over it.
         await leaveAFailedRow();
         await expectLater(
-          TomDbMigrations.migrateDatabases(p.normalize(_migrationsDir)),
+          TomDbMigrations.migrateAll(p.normalize(_migrationsDir)),
           throwsA(isA<TomSqlMigrationException>()),
         );
       });
@@ -410,7 +410,7 @@ void main() async {
 
     group('the recorded checksum', () {
       test('is the digest of the script it was recorded with', () async {
-        await TomDbMigrations.migrateDatabases(p.normalize(_migrationsDir));
+        await TomDbMigrations.migrateAll(p.normalize(_migrationsDir));
 
         final recorded = (await appliedVersions()).single;
         // Paired against the row's own `script` column, so this holds whatever
@@ -427,7 +427,7 @@ void main() async {
       });
 
       test('accepts the unchanged script on a later run', () async {
-        await TomDbMigrations.migrateDatabases(p.normalize(_migrationsDir));
+        await TomDbMigrations.migrateAll(p.normalize(_migrationsDir));
         final recorded = (await appliedVersions()).single;
 
         final adaptor = TestDatabase.migrationAdaptor();
@@ -447,7 +447,7 @@ void main() async {
       });
 
       test('rejects an edited script with checksum_mismatch', () async {
-        await TomDbMigrations.migrateDatabases(p.normalize(_migrationsDir));
+        await TomDbMigrations.migrateAll(p.normalize(_migrationsDir));
         final recorded = (await appliedVersions()).single;
 
         final adaptor = TestDatabase.migrationAdaptor();
@@ -483,7 +483,7 @@ void main() async {
       /// with [checksum] and re-presents the *unchanged* script to a freshly
       /// bound adaptor — so the only thing that can fail is readability.
       Future<void> expectRejectedWithKey(String checksum, String key) async {
-        await TomDbMigrations.migrateDatabases(p.normalize(_migrationsDir));
+        await TomDbMigrations.migrateAll(p.normalize(_migrationsDir));
         await dsi.datasource.executeCommand(
           'UPDATE ${_schemaName}_versioning SET checksum = :checksum',
           {'checksum': checksum},
@@ -539,7 +539,7 @@ void main() async {
       });
 
       test('the message names the schema and the version', () async {
-        await TomDbMigrations.migrateDatabases(p.normalize(_migrationsDir));
+        await TomDbMigrations.migrateAll(p.normalize(_migrationsDir));
         await dsi.datasource.executeCommand(
           'UPDATE ${_schemaName}_versioning SET checksum = :checksum',
           {'checksum': ''},
@@ -584,7 +584,7 @@ void main() async {
     // applied.
     group('a data source with two schemas', () {
       test('applies both schemas in one run', () async {
-        await TomDbMigrations.migrateDatabases(p.normalize(_migrationsDir));
+        await TomDbMigrations.migrateAll(p.normalize(_migrationsDir));
 
         // Each schema got its own versioning table and its own single row —
         // and each row is the migration belonging to *that* schema, which is
@@ -610,8 +610,8 @@ void main() async {
       });
 
       test('re-running leaves each schema at its own single version', () async {
-        await TomDbMigrations.migrateDatabases(p.normalize(_migrationsDir));
-        await TomDbMigrations.migrateDatabases(p.normalize(_migrationsDir));
+        await TomDbMigrations.migrateAll(p.normalize(_migrationsDir));
+        await TomDbMigrations.migrateAll(p.normalize(_migrationsDir));
 
         expect(await appliedVersions(), hasLength(1));
         expect(await appliedVersionsOf(_secondSchemaName), hasLength(1));
@@ -621,7 +621,7 @@ void main() async {
           'history', () async {
         // Give both schemas a recorded version 0, so a list that accumulated
         // would hold two rows after the second initialisation rather than one.
-        await TomDbMigrations.migrateDatabases(p.normalize(_migrationsDir));
+        await TomDbMigrations.migrateAll(p.normalize(_migrationsDir));
 
         final adaptor = TestDatabase.migrationAdaptor();
         await adaptor.initializeMigration(dsi, _schemaName);
@@ -678,7 +678,7 @@ void main() async {
       /// [versions] in that order, letting the `installedRank` identity assign
       /// install order.
       ///
-      /// Written directly rather than driven through `migrateDatabases`,
+      /// Written directly rather than driven through `migrateAll`,
       /// because the orchestrator applies files in ascending version order by
       /// construction — the very case that cannot distinguish install order
       /// from version order is the only one it can produce.

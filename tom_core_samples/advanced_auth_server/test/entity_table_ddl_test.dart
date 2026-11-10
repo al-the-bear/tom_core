@@ -27,7 +27,7 @@ import 'package:test/test.dart';
 import 'package:tom_core_server/tom_core_server.dart';
 
 /// The auth schema migration directory, relative to the package root.
-const String _authSchemaDir = 'database_migrations/auth_db/auth_schema/';
+const String _authSchemaDir = 'database_migrations/system/auth_db/auth_schema/';
 
 /// A framework table this server creates from a copy of its entity's DDL.
 typedef _EntityPin = ({String migration, String table, String ddl});

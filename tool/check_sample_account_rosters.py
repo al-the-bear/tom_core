@@ -76,7 +76,9 @@ from gate_report import report_faults
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SAMPLES = REPO_ROOT / "tom_core_samples"
 
-AUTH_MIGRATIONS = SAMPLES / "advanced_auth_server" / "database_migrations" / "auth_db"
+AUTH_MIGRATIONS = (
+    SAMPLES / "advanced_auth_server" / "database_migrations" / "system" / "auth_db"
+)
 AUTH_PASSWORDS = SAMPLES / "advanced_auth_server" / "bin" / "auth_server_start.dart"
 APP_BACKEND = (
     SAMPLES / "advanced_app_client" / "lib" / "backend" / "in_memory_app_backend.dart"

@@ -286,7 +286,7 @@ undone. See
 
 ## The migration this package owns
 
-`database_migrations/app_db/app_schema/[100]-ops_framework_tables.sql` creates
+`database_migrations/system/app_db/app_schema/[100]-ops_framework_tables.sql` creates
 `tom_job_run`, `tom_job_pause`, `tom_job_run_archive`, `tom_lease`,
 `tom_scheduler_node` and `tom_audit_trail`; `[101]-ops_audit_reports.sql` creates
 `tom_audit_question`, the saved audit questions the app server's

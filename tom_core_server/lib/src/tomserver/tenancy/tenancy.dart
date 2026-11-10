@@ -675,18 +675,33 @@ class TomTenancy {
   ///
   /// Throws `tenancy.tenant.unknown` for a tenant the deployment does not have.
   Future<void> suspendTenant(String tenantId) =>
-      _setStatus(tenantId, TomTenantStatus.suspended);
+      setStatus(tenantId, TomTenantStatus.suspended);
 
   /// Serves the suspended tenant [tenantId] again, recorded in the [registry]
   /// first.
   ///
   /// Throws `tenancy.tenant.unknown` for a tenant the deployment does not have.
   Future<void> resumeTenant(String tenantId) =>
-      _setStatus(tenantId, TomTenantStatus.active);
+      setStatus(tenantId, TomTenantStatus.active);
 
-  Future<void> _setStatus(String tenantId, TomTenantStatus status) async {
+  /// Sets the served tenant [tenantId]'s status to [status], with [detail]
+  /// (cleared when `null`): recorded in the [registry] first, then served
+  /// accordingly on this node. The migration run moves a tenant through
+  /// `migrating` to `active` or `migration-failed` this way.
+  ///
+  /// Throws `tenancy.tenant.unknown` for a tenant the deployment does not have.
+  Future<void> setStatus(
+    String tenantId,
+    TomTenantStatus status, {
+    String? detail,
+  }) async {
     if (!tenants.containsKey(tenantId)) throw unknownTenant(tenantId);
-    await registry.setStatus(tenantId, status, at: _clock().toUtc());
+    await registry.setStatus(
+      tenantId,
+      status,
+      detail: detail,
+      at: _clock().toUtc(),
+    );
     _statuses[tenantId] = status;
   }
 

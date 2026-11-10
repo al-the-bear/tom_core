@@ -380,7 +380,7 @@ class TomSchemaConvergenceReport {
 /// No database is opened and none needs to exist; the only I/O is reading a
 /// handful of migration files, which this module does synchronously throughout.
 /// So these methods block, and their signatures admit it — across the module a
-/// `Future` means a database is involved ([TomDbMigrations.migrateDatabases],
+/// `Future` means a database is involved ([TomDbMigrations.migrateAll],
 /// [TomDbMigrator.applyMigration], [TomFrameworkSchemaCheck.verifyLive]) and
 /// nothing else does.
 ///
@@ -427,12 +427,17 @@ class TomSchemaConvergenceCheck {
   }) : dialect = dialect ?? MariadbSqlDialect(),
        environment = environment ?? TomDbMigrations.resolveActiveEnvironment();
 
-  /// Checks every `<datasource>/<schema>` pair under [migrationsDirectory].
+  /// Checks every chain under the migration root [migrationsDirectory]:
+  /// each `system/<datasource>/<schema>` pair against the system tables
+  /// among [entityTypes], and each `tenant/<type>/<datasource>` chain against
+  /// the tenant tables (`@TomTenantTable`), reported under the schema name
+  /// [TomDbMigrations.tenantHistoryLabel] of the type.
   ///
   /// [entityTypes] defaults to every `@TomDbTable` type known to `tomReflector`.
-  /// A datasource directory with several schemas whose entities declare no
-  /// [TomDbTable.schema] yields an [TomSchemaDivergenceKind.ambiguousEntitySchema]
-  /// error rather than an arbitrary attribution.
+  /// A system data-source directory with several schemas whose entities
+  /// declare no [TomDbTable.schema] yields an
+  /// [TomSchemaDivergenceKind.ambiguousEntitySchema] error rather than an
+  /// arbitrary attribution.
   ///
   /// A [migrationsDirectory] that does not exist throws
   /// [TomDbMigrationException] via
@@ -448,28 +453,59 @@ class TomSchemaConvergenceCheck {
     final root = Directory(migrationsDirectory);
     TomDbMigrations.requireMigrationsDirectory(root, 'Migrations directory');
     final types = entityTypes ?? TomEntitySchemaReader.discoverEntityTypes();
+    final systemTypes = [
+      for (final type in types)
+        if (!TomAnnotationAnalyzer.isTenantTable(type)) type,
+    ];
+    final tenantTypes = [
+      for (final type in types)
+        if (TomAnnotationAnalyzer.isTenantTable(type)) type,
+    ];
     final reports = <TomSchemaConvergenceReport>[];
-    for (final datasourceDirectory in _subdirectories(root)) {
-      final datasource = p.basename(datasourceDirectory.path);
-      final schemaDirectories = _subdirectories(datasourceDirectory);
-      final ambiguous = schemaDirectories.length > 1;
-      for (final schemaDirectory in schemaDirectories) {
-        final schema = p.basename(schemaDirectory.path);
-        reports.add(
-          verify(
-            datasource: datasource,
-            schema: schema,
-            chain: readChain(schemaDirectory.path),
-            entityTypes: types,
-            reportUnschemedEntitiesAsAmbiguous: ambiguous,
-          ),
+    final system = Directory(p.join(root.path, TomDbMigrations.systemTreeName));
+    if (system.existsSync()) {
+      for (final datasourceDirectory in _subdirectories(system)) {
+        final datasource = p.basename(datasourceDirectory.path);
+        final schemaDirectories = _subdirectories(datasourceDirectory);
+        final ambiguous = schemaDirectories.length > 1;
+        for (final schemaDirectory in schemaDirectories) {
+          reports.add(
+            verify(
+              datasource: datasource,
+              schema: p.basename(schemaDirectory.path),
+              chain: readChain(schemaDirectory.path),
+              entityTypes: systemTypes,
+              reportUnschemedEntitiesAsAmbiguous: ambiguous,
+            ),
+          );
+        }
+      }
+    }
+    final tenant = Directory(
+      p.join(root.path, TomDbMigrations.tenantTreesName),
+    );
+    if (tenant.existsSync()) {
+      for (final typeDirectory in _subdirectories(tenant)) {
+        final label = TomDbMigrations.tenantHistoryLabel(
+          p.basename(typeDirectory.path),
         );
+        for (final chain in _subdirectories(typeDirectory)) {
+          reports.add(
+            verify(
+              datasource: p.basename(chain.path),
+              schema: label,
+              chain: readChain(chain.path),
+              entityTypes: tenantTypes,
+            ),
+          );
+        }
       }
     }
     return reports;
   }
 
-  /// Checks the single pair [datasource] / [schema] under [migrationsDirectory].
+  /// Checks the single system pair [datasource] / [schema] under the
+  /// migration root [migrationsDirectory] (`system/<datasource>/<schema>`).
   ///
   /// [migrationsDirectory] is the tree root and must exist, exactly as it must
   /// for [checkAll] — the two take the same argument and cannot hold different
@@ -490,7 +526,14 @@ class TomSchemaConvergenceCheck {
     return verify(
       datasource: datasource,
       schema: schema,
-      chain: readChain(p.join(migrationsDirectory, datasource, schema)),
+      chain: readChain(
+        p.join(
+          migrationsDirectory,
+          TomDbMigrations.systemTreeName,
+          datasource,
+          schema,
+        ),
+      ),
       entityTypes: entityTypes ?? TomEntitySchemaReader.discoverEntityTypes(),
     );
   }
@@ -509,7 +552,7 @@ class TomSchemaConvergenceCheck {
   /// already proven to exist, and an empty chain is the honest reading of it:
   /// [verify] then reports every entity as missing from the migrations, which
   /// localises the problem far better than an exception would. Contrast
-  /// [checkAll] and [TomDbMigrations.migrateDatabases], where the absent
+  /// [checkAll] and [TomDbMigrations.migrateAll], where the absent
   /// directory is the *root* — an input, not content.
   List<TomMigrationArtifact> readChain(String schemaDirectory) {
     final directory = Directory(schemaDirectory);

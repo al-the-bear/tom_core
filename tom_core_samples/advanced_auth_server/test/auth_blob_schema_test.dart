@@ -30,7 +30,7 @@ import 'package:test/test.dart';
 
 /// The auth schema migration directory, relative to the package root (the
 /// working directory under `dart test`, matching the boot-time loader).
-const String _authSchemaDir = 'database_migrations/auth_db/auth_schema/';
+const String _authSchemaDir = 'database_migrations/system/auth_db/auth_schema/';
 
 /// The shipped migration chain under [directory], in file order.
 ///

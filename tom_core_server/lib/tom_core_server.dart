@@ -113,6 +113,8 @@ export 'src/tomserver/datasources/types_operator.dart';
 export 'src/tomserver/db_migration/db_migration.dart';
 export 'src/tomserver/db_migration/framework_convergence.dart';
 export 'src/tomserver/db_migration/mariadb_migration_adapter.dart';
+export 'src/tomserver/db_migration/memory_migrator.dart';
+export 'src/tomserver/db_migration/migration_run.dart';
 export 'src/tomserver/db_migration/postgres_migration_adapter.dart';
 export 'src/tomserver/db_migration/sql_migration_adaptor.dart';
 export 'src/tomserver/db_migration/schema_convergence.dart';

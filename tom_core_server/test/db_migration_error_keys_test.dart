@@ -134,7 +134,7 @@ void main() {
       installReflectedClasses([adaptor('FirstAdaptor'), adaptor('Second')]);
 
       await expectLater(
-        TomDbMigrations.migrateDatabases(root.path),
+        TomDbMigrations.migrateAll(root.path),
         _throwsKey(
           'db_migration.initialization.found_more_than_one_migration_adapter',
         ),
@@ -151,12 +151,14 @@ void main() {
     });
   });
 
-  group('TomDbMigrations.migrateDatabases', () {
+  group('TomDbMigrations.migrateAll', () {
     test('a directory naming no registered data source', () async {
-      Directory(p.join(root.path, 'unregistered')).createSync();
+      Directory(
+        p.join(root.path, 'system', 'unregistered'),
+      ).createSync(recursive: true);
 
       await expectLater(
-        TomDbMigrations.migrateDatabases(root.path),
+        TomDbMigrations.migrateAll(root.path),
         _throwsKey('db_migration.migration.no_datasource_info_found'),
       );
     });
@@ -166,10 +168,12 @@ void main() {
         'orphan',
         const {},
       )..type = 'no_adaptor_for_this_type';
-      Directory(p.join(root.path, 'orphan')).createSync();
+      Directory(
+        p.join(root.path, 'system', 'orphan'),
+      ).createSync(recursive: true);
 
       await expectLater(
-        TomDbMigrations.migrateDatabases(root.path),
+        TomDbMigrations.migrateAll(root.path),
         _throwsKey(
           'db_migration.migration.no_migrator_found_for_datasource_type',
         ),

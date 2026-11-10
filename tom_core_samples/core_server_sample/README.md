@@ -164,7 +164,7 @@ Three things are worth calling out:
 
 - **`@TomDbTable.datasource` is `'todo_db'`** — that string must match both the
   datasource key in `assets/datasources_default.yaml` *and* the migration folder
-  name under `database_migrations/`. That is how `TomDbMigrations` matches a
+  name under `database_migrations/system/`. That is how `TomDbMigrations` matches a
   schema tree to a datasource.
 - **The primary key is `int?`**, nullable. A `null` id means "not yet
   persisted", which the repository reads as INSERT; a non-null id means UPDATE.
@@ -313,7 +313,7 @@ core_server_sample/
 │   └── todo_endpoints_integration_test.dart # live endpoints (skips if down)
 ├── tool/
 │   └── run_integration.sh                 # brings the stack up, verifies it
-├── database_migrations/todo_db/todo_schema/
+├── database_migrations/system/todo_db/todo_schema/
 │   ├── [000]-todo_core_schema.sql       # tables + seed rows
 │   └── [001]-todo_authz_grants.sql      # tom_resource_grant + seed grants
 ├── assets/
@@ -364,13 +364,13 @@ and skips the live one. Both are green and
 
 ## 8. The database and migrations
 
-The schema lives under `database_migrations/todo_db/todo_schema/` and is
+The schema lives under `database_migrations/system/todo_db/todo_schema/` and is
 consumed **twice**:
 
 1. **First-boot bootstrap** — `docker-compose.yaml` mounts the tree into
    MariaDB's `docker-entrypoint-initdb.d`, so a fresh container runs it on
    creation.
-2. **Runtime migration** — `TomDbMigrations.migrateDatabases()` reads the same
+2. **Runtime migration** — `TomDbMigrations.migrateAll()` reads the same
    tree at server start and applies incremental migrations.
 
 One SQL tree, two consumers — the `tom_uam_server` pattern. The folder name
@@ -413,7 +413,7 @@ endpoints need. In order, `main()`:
 6. Runs an operator's migration repair instead, when the command line asks for
    one — `TomDbMigrations.repairFromArgs(args)` — and exits; see
    [Running it](#running-it).
-7. Runs migrations: `TomDbMigrations.migrateDatabases(...)`, under the
+7. Runs migrations: `TomDbMigrations.migrateAll(...)`, under the
    database's migration lock.
 8. Starts HTTP: `TomServer(config).start()`, then logs the port **and the
    resolved environment** — which overlay won is decided by a `.env` that is not

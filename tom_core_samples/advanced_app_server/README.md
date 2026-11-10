@@ -122,7 +122,7 @@ Two datasources are wired (`assets/datasources_default.yaml`): `app_db` (port
 3308) holds the app's own tables; `main` points at the auth server's `auth_db`
 (port 3307) so the field-grade resolver reads the `tom_resource_grant` matrix.
 **The app server only reads grants; it never writes them.** On first boot it
-applies the `database_migrations/app_db` tree (the app schema and demo seed).
+applies the `database_migrations/system/app_db` tree (the app schema and demo seed).
 
 A migration that failed is repaired with the same script, which then exits
 instead of starting —

@@ -432,45 +432,40 @@ resolves no tenant, and every key is spelled as it always was.
 
 ### Per-tenant migrations
 
-A tenant's tables live where the tenant's data source points, so the migrations
-that create them run once per tenant. The migration orchestrator looks its data
-sources up through `TomDataSourceInfo.getDataSourceInfo`, which routes, so the
-same tree applied inside each tenant lands in each tenant's schema or database:
+One call migrates the deployment: `TomDbMigrations.migrateAll(root)`, once the
+tenancy is installed. The migration root holds two trees:
 
-```dart
-// Deployment-wide tables — the framework's queue, leases and logs — once,
-// outside any tenant.
-await TomDbMigrations.migrateDatabases('migrations/deployment');
-
-// Tenant tables, once per tenant: each run reaches that tenant's schema or
-// database, or its type's shared schema, and a shared tenant's run is a no-op
-// after the first of its type. The whole
-// walk holds the migration lock, so no other process migrates between two
-// tenants.
-await TomDbMigrations.withMigrationLock(
-  'main',
-  () => TomTenancy.current!.forEachTenant(
-    (_) => TomDbMigrations.migrateDatabases('migrations/tenant'),
-  ),
-);
+```text
+migrations/
+  system/<datasource>/<schema>/   # the system schema: framework and system tables
+  tenant/<type>/<datasource>/     # each tenant type's tenant tables
 ```
 
-Each tenant's schema or database, and each type's shared schema, keeps its own
-versioning table, so a tenant added later is brought to the current version by
-the same loop.
+It applies, in order:
 
-Every migration run takes its database's migration lock, so several replicas
-starting together apply each script once (see
-[db_migration.md](db_migration.md#one-run-per-database-at-a-time-the-migration-lock)).
-Holding the lock of the base data source around the whole walk makes the walk
-one unit: a replica starting during it waits for every tenant rather than
-slipping in between two, and the tenants' own runs take their lock without
-waiting for themselves, because it is re-entrant. The lock is named by
-database, so the outer hold covers the tenants sharing the base data source's
-database — the `shared` tenants and, on PostgreSQL, the `schema` tenants; a
-tenant with a database of its own is serialised by its own run's lock. Keeping the two
-trees apart is what keeps the framework's tables out of every tenant's schema —
-see [Framework Tables](#framework-tables).
+1. `system/` to the system schema — fatal on failure, nothing else runs;
+2. each type's tree **once to the type's shared schema**, for its
+   shared-isolation tenants (the system schema for the type `default`);
+3. each type's tree to **each tenant with a schema or database of its own**.
+
+```dart
+await TomTenancy.install(TomTenancy.fromConfiguration());
+final result = await TomDbMigrations.migrateAll('migrations');
+```
+
+Every target keeps its own versioning table, `tenant_<type>_versioning` for a
+type's tree, so a target is brought to the current version by the same call
+whenever it runs. Its tenants are `migrating` meanwhile, then `active`, or
+`migration-failed` with the error in their registry row; a failing tenant does
+not stop the others, and is refused (`tenancy.tenant.unavailable`, 503) until
+`migrateAll(root, tenant: id)` — or a start script's `--migrate-tenant=<id>` —
+migrates it again. Each target is migrated under its database's migration lock
+and the registry's lock of the target, so two processes never migrate one
+tenant at once; `parallelism` bounds how many migrate at once. See
+[db_migration.md](db_migration.md#tenants-by-their-type).
+
+Keeping the two trees apart is what keeps the framework's system tables out of
+every tenant's schema — see [Framework Tables](#framework-tables).
 
 ## Resolving a Request's Tenant
 
@@ -889,7 +884,7 @@ Work that does not arrive as a request states its tenant explicitly:
 | Call | Effect |
 | ---- | ------ |
 | `tenancy.runFor('acme', body)` | Runs `body` inside `acme`; refuses a tenant the deployment does not have (`tenancy.tenant.unknown`). |
-| `tenancy.forEachTenant(body)` | Runs `body` once per tenant, in turn, inside each — per-tenant migrations, a nightly job doing each tenant's work, a cache warm-up. |
+| `tenancy.forEachTenant(body)` | Runs `body` once per tenant, in turn, inside each — a nightly job doing each tenant's work, a cache warm-up. |
 | `TomTenantContext.run(null, body)` | Runs `body` explicitly outside every tenant. |
 
 A job raised by an event names its tenant through `TomTenantEvent`, because a
@@ -913,10 +908,7 @@ final tenancy = TomTenancy.current!;
 await tenancy.addTenant(
   TomTenant('umbrella', isolation: TomTenantIsolation.schema),
 );
-await tenancy.runFor(
-  'umbrella',
-  () => TomDbMigrations.migrateDatabases('migrations/tenant'),
-);
+await TomDbMigrations.migrateAll('migrations', tenant: 'umbrella');
 ```
 
 `addTenant` records the tenant in the registry as `provisioning`, provisions its
@@ -981,8 +973,8 @@ is reported as a conflict).
   connection limit for the sum. `shared` tenants add no pool.
 - **Migrations.** A `shared` deployment migrates once. Every `schema` or
   `database` tenant is one more migration run per release, and a release is
-  complete only when every tenant's run succeeded — run the per-tenant loop as
-  part of the deployment, not on first request, under the migration lock
+  complete only when every tenant's run succeeded — run `migrateAll` as part of
+  the deployment (`--migrate`, or `migrations.onStart`), not on first request
   ([Per-tenant migrations](#per-tenant-migrations)).
 - **Moving a tenant between models** is a copy of its rows into the new place
   and a configuration change: the rows already carry their tenant, so no schema
@@ -1162,9 +1154,10 @@ result, and `test/examples_test.dart` runs it.
 
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
-| `dart:async` | dart | `tenancy.dart` | `FutureOr`, the body type of `runFor` and `forEachTenant`; `Timer`, the registry refresh |
+| `dart:async` | dart | `tenancy.dart`, `tenant_registry.dart` | `FutureOr`, the body type of `runFor` and `forEachTenant`; `Timer`, the registry refresh; `Completer` and `unawaited`, the registry's migration lock within the process |
 | `dart:convert` | dart | `tenant_registry.dart` | `jsonEncode` / `jsonDecode`, the registry's `datasources` and `migrated` columns |
 | `dart:io` | dart | `tenant_type.dart` | `Directory`, whether a type's migration tree exists |
+| `crypto` | package | `tenant_registry.dart` | `sha256`, a migration lock name too long for MariaDB hashed to fit |
 | `shelf` | package | `tenancy.dart`, `tenant_resolution.dart` | `Request`, which a resolver reads and `resolveRequest` resolves |
 | `tom_core_kernel` | package | `tenancy.dart`, `tenant_registry.dart` | `TomTenantContext` — the zone-carried tenant, the id rule and `qualify`; `TomDataSource`, `tomLog` and `tomReflector` |
 | [configuration](configuration.md) | module | `tenancy.dart` | `TomServerConfigResourceProvider`, which `fromConfiguration` reads the `tenancy` key from |

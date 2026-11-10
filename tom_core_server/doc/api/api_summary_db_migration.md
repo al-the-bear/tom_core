@@ -16,6 +16,8 @@ with a down script beside it can be rolled back.
 - [Class Hierarchy](#class-hierarchy)
 - [Classes](#classes)
   - [TomMigrationRun](#tommigrationrun)
+  - [TomMigrationResult](#tommigrationresult)
+  - [TomMemoryDbMigrator](#tommemorydbmigrator)
   - [TomDbMigrations](#tomdbmigrations)
   - [TomDbMigrator](#tomdbmigrator)
   - [TomDbMigrationAdaptor](#tomdbmigrationadaptor)
@@ -46,6 +48,7 @@ with a down script beside it can be rolled back.
     - [PostgresMigrationException](#postgresmigrationexception)
 - [Enums](#enums)
   - [TomMigrationRunState](#tommigrationrunstate)
+  - [TomMigrationTargetKind](#tommigrationtargetkind)
   - [TomMigrationRepair](#tommigrationrepair)
   - [TomSchemaDivergenceKind](#tomschemadivergencekind)
 - [Extensions](#extensions)
@@ -57,6 +60,8 @@ with a down script beside it can be rolled back.
 Sources: `lib/src/tomserver/db_migration/db_migration.dart`,
 `lib/src/tomserver/db_migration/framework_convergence.dart`,
 `lib/src/tomserver/db_migration/mariadb_migration_adapter.dart`,
+`lib/src/tomserver/db_migration/memory_migrator.dart`,
+`lib/src/tomserver/db_migration/migration_run.dart`,
 `lib/src/tomserver/db_migration/postgres_migration_adapter.dart`,
 `lib/src/tomserver/db_migration/schema_convergence.dart`,
 `lib/src/tomserver/db_migration/schema_ddl_reader.dart`,
@@ -65,25 +70,30 @@ Sources: `lib/src/tomserver/db_migration/db_migration.dart`,
 applier and the reader are written on, `TomSqlLexer`, is documented with the
 [datasources](api_summary_datasources.md#tomsqllexer) module, where it lives.
 
-`TomDbMigrations` is the orchestrator: `migrateDatabases(directory)` walks
-`<directory>/<datasourceName>/<schemaName>/` and applies every
-`[<version>]-<description>[@<env>…].<ext>` file in ascending version order
-through the data source's migrator, resolved from its `type` via the
-`@TomDbMigrationAdaptor` annotation; `migrateDataSource(migrator, dsi, dir, env)`
-is the per-data-source half of that walk, taking the migrator as a parameter.
+`TomDbMigrations` is the orchestrator: `migrateAll(root)` applies
+`<root>/system/<datasourceName>/<schemaName>/` to the system schema — fatal on
+failure — then each tenant type's `<root>/tenant/<type>/<datasourceName>/` to
+the type's shared schema and to each tenant with a schema or database of its
+own, every `[<version>]-<description>[@<env>…].<ext>` file in ascending version
+order through a migrator for the data source's `type`, found via the
+`@TomDbMigrationAdaptor` annotation. A failing tenant is marked
+`migration-failed` while the others go on; the `TomMigrationResult` lists every
+target's `TomMigrationRun`. `migrateDataSource(migrator, dsi, dir, env)` is the
+per-data-source half of the system walk and `migrateTree` the one chain of a
+type tree, both taking the migrator as a parameter.
 It runs every schema of the data source under the migrator's **migration lock**
 (`TomDbMigrator.withMigrationLock`): one run per database at a time across every
 process, released by the database when the holding process dies — the SQL
 adaptors take it as a session lock (`TomSqlDatasource.withSessionLock`).
-`TomDbMigrations.withMigrationLock` holds it around a wider run, such as a
-per-tenant walk. A migration recorded as failed is resolved with
+`TomDbMigrations.withMigrationLock` holds it for a caller's own work. A migration recorded as failed is resolved with
 `TomDbMigrations.repair` and a `TomMigrationRepair` — removed, so the next run
 applies it again, or marked resolved, so the next run skips it — or from a start
 script's command line with `repairFromArgs`. A migration with a **down script**
 beside it — `[3]-add_column.down.sql` for `[3]-add_column.sql` — can be undone:
 `TomDbMigrations.rollback` undoes the migrations applied above a version, newest
 first, under the same lock, and `rollbackFromArgs` does it from a start
-script's command line (`--rollback-migrations=<datasource>/<schema>/<version>`).
+script's command line (`--rollback-migrations=system/<datasource>/<schema>/<version>`
+or `tenant:<id>/<datasource>/<version>`).
 `collectMigrationFiles` never yields a down script, so the forward run and the
 convergence check do not see them; `collectDownMigrationFiles` collects them.
 `TomDbMigrator` is the per-database migrator contract (`initializeMigration` /
@@ -131,10 +141,11 @@ itself owns, and adds the one variant that needs a connection —
 **A `Future` in this module means a database is involved.** Reading migration
 files is synchronous throughout: `checkAll`, `checkSchema`, `readChain`,
 `verify`, `replay`, `verifyChain` and `verifyRowTypes` all return their result
-directly, and refuse directly. Only `migrateDatabases`, `migrateDataSource`,
-`applyMigration`, `initializeMigration`, `verifyLive`, `withMigrationLock`,
-`repair`, `repairFromArgs`, `rollback`, `rollbackDataSource` and
-`rollbackFromArgs` are asynchronous.
+directly, and refuse directly. Only `migrateAll`, `migrateDataSource`,
+`migrateTree`, `migrateFromArgs`, `migrateOnStart`, `applyMigration`,
+`initializeMigration`, `verifyLive`, `withMigrationLock`, `repair`,
+`repairTenant`, `repairFromArgs`, `rollback`, `rollbackTenant`,
+`rollbackDataSource` and `rollbackFromArgs` are asynchronous.
 
 ## Class Hierarchy
 
@@ -144,8 +155,13 @@ TomDbMigrator  (abstract)
             ├── MariadbMigrationAdaptor
             └── PostgresMigrationAdaptor
 
+TomDbMigrator  (abstract)
+    └── TomMemoryDbMigrator  (implements; in memory, for tests)
+
 TomDbMigrations
-    └── lastRun: TomMigrationRun  (state: TomMigrationRunState enum)
+    ├── migrateAll → TomMigrationResult
+    └── runs: List<TomMigrationRun>  (kind: TomMigrationTargetKind enum,
+                                      state: TomMigrationRunState enum)
 TomMigrationRepair  (enum — the action of TomDbMigrator.repair)
 TomDbMigrationAdaptor  (annotation)
 TomMigrationScript     (one migration's up and down scripts, for a rollback)
@@ -182,38 +198,145 @@ TomServerException  (little_things)
 
 ### TomMigrationRun
 
-One call of `TomDbMigrations.migrateDatabases`: its state, when it started and
-finished, and the error it failed with. Read through `TomDbMigrations.lastRun`;
-the framework readiness check (`TomFrameworkReadinessAnalyzer`) answers not
-ready while the state is `running` or `failed`. Created only by the module — no
-public constructor.
+One target of a `TomDbMigrations.migrateAll` call — the system schema, a
+tenant type's shared schema or one tenant's own schema or database — with where
+its run stands, the tenants it serves, when it started and finished, and the
+error it failed with. Read through `TomDbMigrations.runs` and
+`TomMigrationResult.runs`; the framework readiness check
+(`TomFrameworkReadinessAnalyzer`) reports one check per target, and answers not
+ready while the system schema's is `running` or `failed`.
 
 - **Extends:** none
 
-#### Properties
+#### Constructors
 
-| Property | Type | Description |
-| -------- | ---- | ----------- |
-| `state` | `TomMigrationRunState` | Where the run stands (final). |
-| `startedAt` | `DateTime?` | When it started; `null` when no run has been made (final). |
-| `finishedAt` | `DateTime?` | When it ended, for a run that has (final). |
-| `error` | `String?` | The error a failed run threw, as text (final). |
-
-### TomDbMigrations
-
-The migration orchestrator: discovers migrator adaptors by reflection and drives
-migrations from a directory tree matching the configured data sources and their
-schemas.
+| Constructor | Signature | Description |
+| ----------- | --------- | ----------- |
+| `TomMigrationRun` | `const TomMigrationRun(String target, TomMigrationTargetKind kind, TomMigrationRunState state, {List<String> tenants = const [], DateTime? startedAt, DateTime? finishedAt, String? error})` | A run of `target`. |
 
 #### Static Properties
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `repairMigrationOption` | `static const String` | `repair-migration`: the command-line option naming the record to repair, `--repair-migration=<datasource>/<schema>/<version>`. |
+| `systemTarget` | `static const String` | `system`: the name of the system schema's target. |
+
+#### Static Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `sharedTarget` | `static String sharedTarget(String type)` | `shared:<type>`: the name of tenant type `type`'s shared-schema target. |
+| `tenantTarget` | `static String tenantTarget(String tenant)` | `tenant:<id>`: the name of tenant `tenant`'s target. |
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `target` | `String` | The target: `system`, `shared:<type>` or `tenant:<id>` (final). |
+| `kind` | `TomMigrationTargetKind` | What the target is (final). |
+| `state` | `TomMigrationRunState` | Where the run stands (final). |
+| `tenants` | `List<String>` | The tenants the target serves: none for the system schema, every shared tenant of the type for a shared schema, the one tenant for its own (final). |
+| `startedAt` | `DateTime?` | When it started; `null` when it has not (final). |
+| `finishedAt` | `DateTime?` | When it ended, for a run that has (final). |
+| `error` | `String?` | The error a failed run threw, as text (final). |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `finished` | `TomMigrationRun finished(TomMigrationRunState state, {required DateTime at, String? error})` | This run with `state`, `finishedAt` and `error` replaced. |
+| `toString` | `String toString()` | *(override)* `<target>: <state>` with the error in parentheses. |
+
+### TomMigrationResult
+
+The outcome of one `TomDbMigrations.migrateAll` call: every target's run, in
+the order they started — the system schema first, then the shared schemas,
+then the tenants.
+
+- **Extends:** none
+
+#### Constructors
+
+| Constructor | Signature | Description |
+| ----------- | --------- | ----------- |
+| `TomMigrationResult` | `TomMigrationResult(Iterable<TomMigrationRun> runs)` | A result of `runs`, kept unmodifiable. |
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `runs` | `List<TomMigrationRun>` | Every target's run (final). |
+| `succeeded` | `bool` | *(getter)* Whether every target succeeded. |
+| `failed` | `List<TomMigrationRun>` | *(getter)* The targets that failed. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `runOf` | `TomMigrationRun? runOf(String target)` | The run of `target`, or `null` when the call did not reach it. |
+| `toString` | `String toString()` | *(override)* The runs, separated by `; `. |
+
+### TomMemoryDbMigrator
+
+A `TomDbMigrator` that records what it applies instead of running SQL — for
+tests and examples of the orchestration, passed as `migrateAll`'s `migrators`.
+Its history is kept per data source and history label (the `<schema>` of the
+system tree, `tenant_<type>` of a type's tree) in `history`, which several
+instances share as one database is shared by every migrator over it.
+
+- **Implements:** `TomDbMigrator`
+
+#### Constructors
+
+| Constructor | Signature | Description |
+| ----------- | --------- | ----------- |
+| `TomMemoryDbMigrator` | `TomMemoryDbMigrator({Map<String, List<int>>? history, Set<String> failing = const {}})` | A migrator over `history` that fails the migrations named in `failing` as `<datasource>/<label>/<version>`. |
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `history` | `Map<String, List<int>>` | The applied versions by `<datasource>/<label>`, in the order applied (final). |
+| `failing` | `Set<String>` | The migrations that fail, as `<datasource>/<label>/<version>`; a failing one throws `db_migration.memory.apply_failed` and is not recorded (final). |
+
+#### Static Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `keyOf` | `static String keyOf(TomDataSourceInfo dsi, String label)` | The key of `dsi` and `label` in `history`. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `applied` | `List<int> applied(TomDataSourceInfo dsi, String label)` | The versions applied to `label` of `dsi`. |
+| `initializeMigration` | `Future<void> initializeMigration(TomDataSourceInfo dsi, String schemaName)` | *(override)* Binds to `dsi` and `schemaName`. |
+| `applyMigration` | `Future<void> applyMigration(TomDataSourceInfo dsi, String schemaName, int version, String description, String sql)` | *(override)* Records `version` unless applied; a version named in `failing` throws `db_migration.memory.apply_failed`; an unbound pair throws `db_migration.memory.not_initialized`. |
+| `reset` | `void reset()` | *(override)* Releases the binding. |
+| `withMigrationLock` | `Future<R> withMigrationLock<R>(TomDataSourceInfo dsi, Future<R> Function() body)` | *(override)* Runs `body`. |
+| `repair` | `Future<void> repair(TomDataSourceInfo dsi, String schemaName, int version, TomMigrationRepair action)` | *(override)* Stops failing `version`, and records it for `markResolved`. |
+| `rollback` | `Future<List<int>> rollback(TomDataSourceInfo dsi, String schemaName, int toVersion, Map<int, TomMigrationScript> scripts)` | *(override)* Forgets the versions above `toVersion`, newest first; one without a down script in `scripts` throws `db_migration.memory.no_down_script`. |
+
+### TomDbMigrations
+
+The migration orchestrator: discovers migrator adaptors by reflection and drives
+migrations from a migration root — `system/<datasource>/<schema>/` for the
+system schema, `tenant/<type>/<datasource>/` for each tenant type's targets.
+
+#### Static Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `configurationKey` | `static const String` | `migrations`: the configuration path of the migration settings — `onStart`, `root`, `parallelism` (`migrateOnStart`). |
+| `systemTreeName` | `static const String` | `system`: the folder of the system tree under a migration root. |
+| `tenantTreesName` | `static const String` | `tenant`: the folder of the tenant types' trees under a migration root. |
+| `migrateOption` | `static const String` | `migrate`: the command-line option asking for `migrateAll`, `--migrate`. |
+| `migrateTenantOption` | `static const String` | `migrate-tenant`: the command-line option migrating one tenant, `--migrate-tenant=<id>`. |
+| `migrateParallelismOption` | `static const String` | `migrate-parallelism`: the command-line option bounding the tenants migrated at once, `--migrate-parallelism=<n>`. |
+| `repairMigrationOption` | `static const String` | `repair-migration`: the command-line option naming the record to repair, `--repair-migration=system/<datasource>/<schema>/<version>` or `--repair-migration=tenant:<id>/<datasource>/<version>`. |
 | `repairActionOption` | `static const String` | `repair-action`: the command-line option choosing the repair, `--repair-action=remove` or `--repair-action=resolve`. |
-| `rollbackMigrationsOption` | `static const String` | `rollback-migrations`: the command-line option asking for a rollback, `--rollback-migrations=<datasource>/<schema>/<version>`, keeping the migrations up to `<version>` (`-1` for none). |
+| `rollbackMigrationsOption` | `static const String` | `rollback-migrations`: the command-line option asking for a rollback, `--rollback-migrations=system/<datasource>/<schema>/<version>` or `--rollback-migrations=tenant:<id>/<datasource>/<version>`, keeping the migrations up to `<version>` (`-1` for none). |
 | `downSuffix` | `static const String` | `.down`: the suffix that marks a down script — `[3]-add_column.down.sql` undoes `[3]-add_column.sql`, `[3]-x@dev.down.sql` undoes `[3]-x@dev.sql`. |
-| `lastRun` | `static TomMigrationRun get` | The state of this process's most recent `migrateDatabases` call — `notRun` until one is made. The fact the framework readiness check reads: a server whose migrations are still running, or failed, is not ready for traffic. Process-wide: in a per-tenant loop it describes the most recent tenant's call. |
+| `runs` | `static List<TomMigrationRun> get` | Every target's run in this process's most recent `migrateAll` call, as it stands now — running ones included, in the order they started; empty before the first call. The fact the framework readiness check reads: a running or failed system schema keeps the server from traffic; a failed tenant is reported while the others are served. |
 
 #### Static Methods
 
@@ -228,15 +351,23 @@ schemas.
 | `orderMigrationNames` | `static List<({String basename, TomMigrationFileName parsed})> orderMigrationNames(Iterable<String> basenames)` | Parses `basenames` and returns them ordered by ascending numeric version, each paired with its parsed name. Two names claiming the **same version** throw `db_migration.migration.duplicate_migration_version`, naming both in a stable order. The version is the whole of a migration's recorded identity, so a pair sharing one applies twice on the first run — a migrator's applied-version list is an initialisation snapshot, so the second call cannot see the first — in an order the sort does not define, and leaves the versioning table holding two rows for one version; the next run matches the first of them against the other's script and reports a description/checksum mismatch, blaming an edit that never happened. Compared on the parsed integer, so `[1]` and `[001]` collide, and checked **before** environment selection, so a tagged and an untagged file cannot share a version either — a tag decides which of the pair runs *here*, not which row the shared history keeps, and a tree may not be valid on one box and broken on the next. Shared with `TomSchemaConvergenceCheck.readChain`, which has no environment to filter by at all. |
 | `resolveActiveEnvironment` | `static String resolveActiveEnvironment()` | The environment name migrations are filtered against, via `TomRuntime` (falling back to the production-safe default). |
 | `selectForEnvironment` | `static List<({String basename, TomMigrationFileName parsed})> selectForEnvironment(Iterable<({String basename, TomMigrationFileName parsed})> ordered, String environmentName)` | Filters an ordered migration list to those applying in `environmentName`, preserving order. |
-| `migrateDatabases` | `static Future<void> migrateDatabases(String directory)` | Runs all pending migrations under `directory`; throws `TomDbMigrationException` on a missing data source/migrator, malformed name, or failed script. Records the call in `lastRun` — `running` while it runs, then `succeeded`, or `failed` with the error before the exception is rethrown. |
-| `resetLastRun` | `static void resetLastRun()` | Forgets `lastRun`, as a fresh process starts (`notRun`). For tests. |
-| `migrateDataSource` | `static Future<void> migrateDataSource(TomDbMigrator migrator, TomDataSourceInfo dsInfo, Directory dataSourceDirectory, String environmentName)` | Applies every schema under `dataSourceDirectory` through `migrator`, resetting and re-initialising it **once per schema**, all under `migrator.withMigrationLock(dsInfo, …)` — a second process migrating the same database waits, then finds the migrations applied. Split out of `migrateDatabases` so the walk can be driven with a caller-supplied migrator — the reflection-scanned registry is not injectable. |
-| `withMigrationLock` | `static Future<R> withMigrationLock<R>(String datasourceName, Future<R> Function() body)` | Runs `body` holding the migration lock of the registered data source `datasourceName` — see `TomDbMigrator.withMigrationLock`. For a run wider than one `migrateDatabases` call: a deployment migrating every tenant in turn holds it around the whole `forEachTenant` walk, so no other process migrates between two tenants. An unknown name or type throws `db_migration.migration.no_datasource_info_found` / `db_migration.migration.no_migrator_found_for_datasource_type`. |
-| `repair` | `static Future<void> repair(String datasourceName, String schemaName, int version, TomMigrationRepair action)` | Resolves the failed record of migration `version` in schema `schemaName` of the registered data source `datasourceName` by `action` — see `TomDbMigrator.repair`. Resolves the data source and its migrator as `migrateDatabases` does, with the same keys. |
-| `repairFromArgs` | `static Future<bool> repairFromArgs(List<String> args)` | Runs the repair `args` ask for — `--repair-migration=<datasource>/<schema>/<version>` with `--repair-action=remove` (`TomMigrationRepair.remove`) or `--repair-action=resolve` (`TomMigrationRepair.markResolved`) — and answers whether they asked for one. A start script calls it once its data sources are registered and exits on `true`. Without `repairMigrationOption` it does nothing and answers `false`. A target that is not three `/`-separated parts with a whole-number version, or a missing or unknown action, throws `db_migration.repair.invalid_arguments` before anything is looked up. |
-| `rollback` | `static Future<List<int>> rollback(String directory, {required String datasource, required String schema, required int toVersion})` | Undoes the migrations of `schema` of the registered data source `datasource` applied above `toVersion` — every one for `-1` — newest first by installation order, with the down scripts beside them in `<directory>/<datasource>/<schema>/`, under the migration lock, and answers the versions undone in the order they were. Resolves the data source and its migrator as `migrateDatabases` does, with the same keys; see `rollbackDataSource` for the rest. |
+| `migrateAll` | `static Future<TomMigrationResult> migrateAll(String root, {int parallelism = 1, String? tenant, TomDbMigrator Function(TomDataSourceInfo dsInfo)? migrators})` | Migrates the system schema, then every tenant by its type. Checks the whole tree first — the root exists (`db_migration.migration.migrations_directory_not_found`), holds only `system/` and `tenant/` (`db_migration.layout.unknown_entry`), every type folder is a declared type (`db_migration.tenant.undeclared_type`) and every data-source folder of a type tree is routed by the type (`db_migration.tenant.unrouted_datasource`). Then applies `system/` to the registered data sources, unrouted — **fatal**: a failure is recorded and rethrown; then each type's tree once to its shared schema (target `shared:<type>`) and to each tenant with a schema or database of its own (`tenant:<id>`), at most `parallelism` at once (below one: `db_migration.migration.invalid_parallelism`), each under its database's migration lock and `TomTenantRegistry.withMigrationLock` of the target, under the history `tenantHistoryLabel(type)`. A target's tenants go `migrating`, then `active` (a `suspended` one stays `suspended`) with `setMigrated(id, '<datasource>', highest version)`, or `migration-failed` with the error as status detail; a failing target does not stop the others. Without a tenancy it applies `system/` and the type `default`'s tree to the registered data sources. `tenant` migrates that tenant's target alone, not the system schema (`tenancy.tenant.unknown` for one the deployment does not have). `migrators` replaces `newMigratorFor`. Records every target in `runs`. |
+| `resetRuns` | `static void resetRuns()` | Forgets `runs`, as a fresh process starts. For tests. |
+| `migrateTree` | `static Future<int?> migrateTree(TomDbMigrator migrator, TomDataSourceInfo dsInfo, Directory chain, String label, String environmentName)` | Applies the one chain in `chain` — a type tree's `<datasource>/` folder — to `dsInfo` under the history `label`, through `migrator` and under `dsInfo`'s migration lock; answers the highest version it holds for `environmentName`, or `null` when it holds none. |
+| `newMigratorFor` | `static TomDbMigrator newMigratorFor(TomDataSourceInfo dsInfo)` | A fresh migrator for `dsInfo`'s type from the scanned adaptors — one per target, so targets migrated at once share no binding. An unknown type throws `db_migration.migration.no_migrator_found_for_datasource_type`. |
+| `tenantHistoryLabel` | `static String tenantHistoryLabel(String type)` | `tenant_<type>`: the history label of tenant type `type`'s tree — its versioning table is `tenant_<type>_versioning` in every target. |
+| `tenantTreeOf` | `static String tenantTreeOf(String root, TomTenantType? type, String name)` | The directory of tenant type `name`'s tree: `type`'s own `TomTenantType.migrations`, else `<root>/tenant/<name>`. |
+| `migrateFromArgs` | `static Future<TomMigrationResult?> migrateFromArgs(List<String> args, String root)` | Runs the migration `args` ask for against `root` — `--migrate` (`migrateAll`), `--migrate-tenant=<id>` (that tenant alone), `--migrate-parallelism=<n>` — and answers its result, or `null` when they ask for none. A start script exits on a result, non-zero when it did not succeed. A malformed request throws `db_migration.migration.invalid_arguments`. |
+| `migrateOnStart` | `static Future<TomMigrationResult?> migrateOnStart(Object? config, String defaultRoot)` | Runs `migrateAll` when the `configurationKey` settings `config` say `onStart: true`, against their `root` or `defaultRoot` with their `parallelism`; answers the result, or `null` when not asked. A non-map or a parallelism that is not a whole number throws `db_migration.config.invalid`. Called by `TomServer.start`. |
+| `migrateDataSource` | `static Future<void> migrateDataSource(TomDbMigrator migrator, TomDataSourceInfo dsInfo, Directory dataSourceDirectory, String environmentName)` | Applies every schema under `dataSourceDirectory` through `migrator`, resetting and re-initialising it **once per schema**, all under `migrator.withMigrationLock(dsInfo, …)` — a second process migrating the same database waits, then finds the migrations applied. Split out of `migrateAll` so the walk can be driven with a caller-supplied migrator. |
+| `withMigrationLock` | `static Future<R> withMigrationLock<R>(String datasourceName, Future<R> Function() body)` | Runs `body` holding the migration lock of the registered data source `datasourceName`, unrouted — see `TomDbMigrator.withMigrationLock` — for a caller's own work that must not overlap a migration of that database. An unknown name or type throws `db_migration.migration.no_datasource_info_found` / `db_migration.migration.no_migrator_found_for_datasource_type`. |
+| `repair` | `static Future<void> repair(String datasourceName, String schemaName, int version, TomMigrationRepair action)` | Resolves the failed record of migration `version` in the system history `schemaName` of the registered data source `datasourceName` by `action` — see `TomDbMigrator.repair`. Resolves the data source, unrouted, and its migrator as `migrateAll` does, with the same keys. |
+| `repairTenant` | `static Future<void> repairTenant(String tenant, String datasource, int version, TomMigrationRepair action)` | Resolves the failed record of migration `version` of data source `datasource` in tenant `tenant`'s target — its own schema or database, or its type's shared schema — in the history `tenantHistoryLabel(type)`. `tenancy.tenant.unknown` for a tenant the installed tenancy does not have. |
+| `repairFromArgs` | `static Future<bool> repairFromArgs(List<String> args)` | Runs the repair `args` ask for — `--repair-migration=system/<datasource>/<schema>/<version>` (`repair`) or `--repair-migration=tenant:<id>/<datasource>/<version>` (`repairTenant`) with `--repair-action=remove` (`TomMigrationRepair.remove`) or `--repair-action=resolve` (`TomMigrationRepair.markResolved`) — and answers whether they asked for one. A start script calls it once its data sources are registered and exits on `true`. Without `repairMigrationOption` it does nothing and answers `false`. A target of neither form — an empty part, a version that is not a whole number — or a missing or unknown action throws `db_migration.repair.invalid_arguments` before anything is looked up. |
+| `rollback` | `static Future<List<int>> rollback(String root, {required String datasource, required String schema, required int toVersion})` | Undoes the migrations of the system history `schema` of the registered data source `datasource` applied above `toVersion` — every one for `-1` — newest first by installation order, with the down scripts beside them in `<root>/system/<datasource>/<schema>/`, under the migration lock, and answers the versions undone in the order they were. Resolves the data source and its migrator as `migrateAll` does, with the same keys; see `rollbackDataSource` for the rest. |
+| `rollbackTenant` | `static Future<List<int>> rollbackTenant(String root, {required String tenant, required String datasource, required int toVersion})` | `rollback` for tenant `tenant`'s target — its own schema or database, or its type's shared schema — with the down scripts of its type's tree (`tenantTreeOf(root, …)/<datasource>/`), in the history `tenantHistoryLabel(type)`, under the migration lock and the registry's lock of the target. |
 | `rollbackDataSource` | `static Future<List<int>> rollbackDataSource(TomDbMigrator migrator, TomDataSourceInfo dsInfo, Directory dataSourceDirectory, String schema, {required int toVersion})` | `rollback` with a caller-supplied `migrator`, for the schema directory `schema` under `dataSourceDirectory`. A `toVersion` below `-1` throws `db_migration.rollback.invalid_target`; a missing schema directory `db_migration.migration.migrations_directory_not_found`. Reads every migration of the tree with its down script — whatever its environment tag, since a rollback undoes what the history records — into `TomMigrationScript`s keyed by version, then calls `migrator.rollback` under `migrator.withMigrationLock`, after a `reset()`. |
-| `rollbackFromArgs` | `static Future<bool> rollbackFromArgs(List<String> args, String directory)` | Runs the rollback `args` ask for — `--rollback-migrations=<datasource>/<schema>/<version>` — against the migration tree `directory`, logs the versions undone and answers whether they asked for one; the counterpart of `repairFromArgs`, called by a start script that exits on `true`. Without `rollbackMigrationsOption` it does nothing and answers `false`. A target that is not three `/`-separated parts with a non-empty data source and schema and a whole-number version throws `db_migration.rollback.invalid_arguments` before anything is looked up. |
+| `rollbackFromArgs` | `static Future<bool> rollbackFromArgs(List<String> args, String root)` | Runs the rollback `args` ask for — `--rollback-migrations=system/<datasource>/<schema>/<version>` (`rollback`) or `--rollback-migrations=tenant:<id>/<datasource>/<version>` (`rollbackTenant`) — against the migration root `root`, logs the versions undone and answers whether they asked for one; the counterpart of `repairFromArgs`, called by a start script that exits on `true`. Without `rollbackMigrationsOption` it does nothing and answers `false`. A target of neither form — an empty part, a version that is not a whole number — throws `db_migration.rollback.invalid_arguments` before anything is looked up. |
 | `instantiateMigrator` | `static TomDbMigrator instantiateMigrator(Object? candidate, Object? Function() construct)` | Builds one scanned adaptor candidate, turning a throwing constructor or a class that does not implement `TomDbMigrator` into a `TomDbMigrationException` naming `candidate`. A constructor error and its trace are forwarded as the raised exception's **root cause**. Parameterised by `construct` rather than the reflected class, because the scan's registry is a global no test can populate. |
 
 ### TomDbMigrator
@@ -724,7 +855,7 @@ Builds the schema a migration chain cumulatively produces, **without touching a
 database**. This is the *actual* side of the convergence check: it applies each
 artifact's DDL to an in-memory `TomSchemaBuilder` in the order the migration
 engine would, so the result is the shape a fresh database would have after
-`TomDbMigrations.migrateDatabases`. It reads the same artifacts the engine reads
+`TomDbMigrations.migrateAll`. It reads the same artifacts the engine reads
 and changes nothing about how the engine behaves.
 
 **What it understands.** `CREATE TABLE <name> (<column list>)` — the one
@@ -908,8 +1039,8 @@ TomSchemaConvergenceCheck({
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `checkAll` | `List<TomSchemaConvergenceReport> checkAll(String migrationsDirectory, {Iterable<Type>? entityTypes})` | One report per `<datasource>/<schema>` pair under `migrationsDirectory`, which must exist — an absent tree throws (via `TomDbMigrations.requireMigrationsDirectory`) rather than yielding an empty list no caller could tell apart from "every pair converged". `entityTypes` defaults to every `@TomDbTable` type known to `tomReflector`. |
-| `checkSchema` | `TomSchemaConvergenceReport checkSchema(String migrationsDirectory, String datasource, String schema, {Iterable<Type>? entityTypes})` | The same check for one named pair. |
+| `checkAll` | `List<TomSchemaConvergenceReport> checkAll(String migrationsDirectory, {Iterable<Type>? entityTypes})` | One report per `system/<datasource>/<schema>` pair under the migration root `migrationsDirectory` — checked against the system tables among `entityTypes` — and per `tenant/<type>/<datasource>` chain — checked against the tenant tables, under the schema name `tenant_<type>`; the root must exist — an absent tree throws (via `TomDbMigrations.requireMigrationsDirectory`) rather than yielding an empty list no caller could tell apart from "every pair converged". `entityTypes` defaults to every `@TomDbTable` type known to `tomReflector`. |
+| `checkSchema` | `TomSchemaConvergenceReport checkSchema(String migrationsDirectory, String datasource, String schema, {Iterable<Type>? entityTypes})` | The same check for one named system pair, `system/<datasource>/<schema>`. |
 | `readChain` | `List<TomMigrationArtifact> readChain(String schemaDirectory)` | The migration artifacts of one schema directory, ordered and environment-filtered exactly as the engine would order and filter them — it shares `collectMigrationFiles` and `orderMigrationNames` with `TomDbMigrations`, so the check cannot accept a tree the engine refuses. A **missing** schema directory yields an empty chain rather than an error: unlike the root, it is a pair that has no migrations yet, which the diff then reports as missing tables. |
 | `verify` | `TomSchemaConvergenceReport verify({required String datasource, required String schema, required List<TomMigrationArtifact> chain, required Iterable<Type> entityTypes, bool reportUnschemedEntitiesAsAmbiguous = false})` | The pure core: compares an already-read `chain` against `entityTypes` with no file system and no database involved, which is what makes the comparison testable over string literals. Set `reportUnschemedEntitiesAsAmbiguous` when the datasource has more than one schema directory, so an entity that declares no `schema` is reported as `ambiguousEntitySchema` instead of being silently attributed. |
 | `diff` | `List<TomSchemaDivergence> diff(TomSchemaModel expected, TomSchemaModel actual)` | Every way `actual` fails to satisfy `expected`, in the one vocabulary both sides were reduced to. Public because `TomFrameworkSchemaCheck` runs the *same* comparison over different inputs — one diff, so the two checks cannot come to disagree about what counts as convergence. |
@@ -1068,15 +1199,24 @@ PostgresMigrationException(
 
 ### TomMigrationRunState
 
-Where a process's database migration stands — the `state` of
-`TomDbMigrations.lastRun`.
+Where a migration target's run stands — the `state` of a `TomMigrationRun`.
 
 | Value | Meaning |
 | ----- | ------- |
-| `notRun` | `migrateDatabases` has not been called in this process. Ready: a deployment whose schema a DBA or a job applies never calls it. |
-| `running` | A migration is being applied now. Not ready. |
-| `succeeded` | The last call applied every migration. |
-| `failed` | The last call threw; `TomMigrationRun.error` says why. Not ready. |
+| `notRun` | Not run in this process. |
+| `running` | Being applied now. Not ready, for the system schema. |
+| `succeeded` | Every migration applied. |
+| `failed` | A migration failed; `TomMigrationRun.error` says why. Not ready, for the system schema; a tenant is `migration-failed` and refused on its own. |
+
+### TomMigrationTargetKind
+
+What a migration target is — the `kind` of a `TomMigrationRun`.
+
+| Value | Meaning |
+| ----- | ------- |
+| `system` | The system schema, migrated by `<root>/system/`. |
+| `shared` | A tenant type's shared schema, migrated once by the type's tree for every shared-isolation tenant of the type. |
+| `tenant` | One tenant's own schema or database, migrated by its type's tree. |
 
 ### TomMigrationRepair
 

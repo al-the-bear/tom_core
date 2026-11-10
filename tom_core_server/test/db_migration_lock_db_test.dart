@@ -329,7 +329,7 @@ void main() async {
       await failVersionOne();
       final ran = await TomDbMigrations.repairFromArgs([
         'port=8080',
-        '--repair-migration=${TestDatabase.datasourceName}/$_schema/1',
+        '--repair-migration=system/${TestDatabase.datasourceName}/$_schema/1',
         '--repair-action=resolve',
       ]);
       expect(ran, isTrue);
@@ -344,10 +344,13 @@ void main() async {
 
     test('a malformed request is refused', () async {
       for (final args in [
-        ['--repair-migration=ds/schema', '--repair-action=remove'],
-        ['--repair-migration=ds/schema/x', '--repair-action=remove'],
-        ['--repair-migration=ds/schema/1', '--repair-action=rerun'],
-        ['--repair-migration=ds/schema/1'],
+        ['--repair-migration=ds/schema/1', '--repair-action=remove'],
+        ['--repair-migration=system/ds/schema', '--repair-action=remove'],
+        ['--repair-migration=system/ds/schema/x', '--repair-action=remove'],
+        ['--repair-migration=tenant:/ds/1', '--repair-action=remove'],
+        ['--repair-migration=tenant:acme/ds/x', '--repair-action=remove'],
+        ['--repair-migration=system/ds/schema/1', '--repair-action=rerun'],
+        ['--repair-migration=system/ds/schema/1'],
       ]) {
         await expectLater(
           TomDbMigrations.repairFromArgs(args),

@@ -62,7 +62,7 @@ void main() {
     tomLog.logOutput = previousOutput;
     tomLog.setLogLevel(previousLevel);
     TomHealthServer.resetHealthChecks();
-    TomDbMigrations.resetLastRun();
+    TomDbMigrations.resetRuns();
   });
 
   group('request context', () {
@@ -196,17 +196,17 @@ void main() {
 
     test('a failed migration makes the server not ready', () async {
       await expectLater(
-        TomDbMigrations.migrateDatabases('does/not/exist'),
+        TomDbMigrations.migrateAll('does/not/exist'),
         throwsA(isA<TomDbMigrationException>()),
       );
-      expect(TomDbMigrations.lastRun.state, TomMigrationRunState.failed);
+      expect(TomDbMigrations.runs.single.state, TomMigrationRunState.failed);
       final status = await TomFrameworkReadinessAnalyzer().analyzeHealth(
         TomHealthCheck('readiness', const Duration(seconds: 5)),
       );
       expect(status.isHealthy, isFalse);
       expect(status.statusCode, 503);
       expect(status.message.split('\n').first, 'not ready');
-      expect(status.message, contains('migrations: failed:'));
+      expect(status.message, contains('migrations system: failed:'));
     });
 
     test('a started outbox is checked; a stopped one is not ready', () async {
@@ -304,9 +304,9 @@ void main() {
         expect(ready.statusCode, 200);
         expect(await utf8.decodeStream(ready), startsWith('ready'));
 
-        TomDbMigrations.resetLastRun();
+        TomDbMigrations.resetRuns();
         await expectLater(
-          TomDbMigrations.migrateDatabases('does/not/exist'),
+          TomDbMigrations.migrateAll('does/not/exist'),
           throwsA(isA<TomDbMigrationException>()),
         );
         ready = await get(server, '/ready');

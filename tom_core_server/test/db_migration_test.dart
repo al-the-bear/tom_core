@@ -850,7 +850,7 @@ void main() {
   group('TomDbMigrations.migrateDataSource schema lifecycle', () {
     /// The committed fixture tree's data-source directory.
     final dataSourceDirectory = Directory(
-      'test/fixtures/migrations/tom_core_server_test',
+      'test/fixtures/migrations/system/tom_core_server_test',
     );
 
     /// A data source the fake migrator only reads a name from — no connection
@@ -1144,21 +1144,19 @@ void main() {
         TomDataSourceInfo('tom_core_server_test', <String, dynamic>{})
           ..type = 'mariadb';
 
-    test('migrateDatabases aborts inside the module exception family', () async {
+    test('migrateAll aborts inside the module exception family', () async {
       // Reflection is deliberately *not* initialized here. The test therefore
       // also pins the order: were the guard placed after the adaptor scan, this
       // would fail with a StateError about reflection — naming the runtime
       // instead of the path the caller actually got wrong.
       await expectLater(
-        TomDbMigrations.migrateDatabases(absent()),
+        TomDbMigrations.migrateAll(absent()),
         throwsA(isA<TomDbMigrationException>()),
       );
     });
 
     test('the abort carries the shared missing-directory key', () async {
-      final error = await _errorOf(
-        () => TomDbMigrations.migrateDatabases(absent()),
-      );
+      final error = await _errorOf(() => TomDbMigrations.migrateAll(absent()));
       expect(
         (error as TomDbMigrationException).key,
         'db_migration.migration.migrations_directory_not_found',
@@ -1170,7 +1168,7 @@ void main() {
       // the given path alone cannot distinguish the two — so the message has to
       // say what it resolved to as well.
       final error = await _errorOf(
-        () => TomDbMigrations.migrateDatabases('zz_no_such_migrations_dir'),
+        () => TomDbMigrations.migrateAll('zz_no_such_migrations_dir'),
       );
       expect(error.toString(), contains('zz_no_such_migrations_dir'));
       expect(
@@ -1184,9 +1182,7 @@ void main() {
       // The other branch. `absent()` is already absolute, so repeating it under
       // "resolved to" would be noise in the one message a reader is squinting
       // at to spot a wrong path.
-      final error = await _errorOf(
-        () => TomDbMigrations.migrateDatabases(absent()),
-      );
+      final error = await _errorOf(() => TomDbMigrations.migrateAll(absent()));
       expect(error.toString(), contains(absent()));
       expect(error.toString(), isNot(contains('resolved to')));
     });

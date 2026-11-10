@@ -323,7 +323,7 @@ bar the demo-password seed):
 | datasource | `initializeDatasourceInfo(...)` | opens the DB connections the repositories and migrations use |
 | blob stores | `initializeBlobStores(...)` | **must follow the datasource init** — a `type: database` store resolves its named data source eagerly, so a store pointing at an unregistered name fails at start-up rather than at the first upload |
 | bean context | `initializeBeanContext()` | instantiates the `@tomComponent` services |
-| migrations | `migrateDatabases(...)` | brings the schema + seed data up before serving |
+| migrations | `migrateAll(...)` | brings the schema + seed data up before serving |
 | seed | `seedDemoPasswords()` *(auth only)* | fills demo passwords onto the password-less seed rows so the README `curl`s can log in |
 | access registries *(app only)* | `registerAppDataScopes()`, `registerAppColumnGrades()` | installs the C-3 row scopes and the per-row C-4 column grades; both eagerly build their production resolvers, so both **must follow reflection and the datasource init** |
 | file slots | `TomFileSlots.register(...)` | publishes the exposed file columns; needs reflection and the store registry in place, and must precede serving |

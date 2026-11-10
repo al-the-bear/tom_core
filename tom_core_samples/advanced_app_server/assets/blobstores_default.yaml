@@ -21,7 +21,7 @@
 #
 # `createSchema: false` hands schema ownership to the migration chain: the
 # tom_blob / tom_blob_chunk tables are created by
-# database_migrations/app_db/app_schema/[003]-app_blob_tables.sql, which is the
+# database_migrations/system/app_db/app_schema/[003]-app_blob_tables.sql, which is the
 # only place this server's DDL lives and the thing the convergence test checks.
 # Leaving it at the default (true) would let the store issue its own CREATE TABLE
 # at boot — harmless when it agrees with the migration, and a silent divergence

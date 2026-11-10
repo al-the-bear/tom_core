@@ -66,7 +66,7 @@ the body.
 
 `TomFrameworkReadinessAnalyzer` is the readiness analyzer every Tom server
 needs: every registered data source operational and answering `SELECT 1`, no
-`TomDbMigrations.migrateDatabases` call running or failed in this process, every
+system schema of the last `TomDbMigrations.migrateAll` call running or failed — each shared schema and tenant listed with its state — every
 started `TomMessageOutbox` delivering. `TomServer.start` installs it on
 `GET /ready` when the `frameworkReadiness` configuration key is on (the default)
 and the readiness analyzer is still the default one. Its body is `ready` or
@@ -334,7 +334,7 @@ further dependencies installs its own analyzer and asks this one first.
 | Check | Ready when |
 | ----- | ---------- |
 | every registered data source | it reports operational, and an SQL data source answers `SELECT 1` within `dataSourceTimeout`; a `delegateTo` alias is checked once, under its target |
-| migrations | no `migrateDatabases` call is running or has failed in this process; one never made passes, since a deployment whose schema a DBA or a job applies never calls it |
+| migrations, per target (`migrations <target>`) | the system schema's run of the last `migrateAll` call is not running and has not failed; a shared schema's or a tenant's is listed with its state and passes — the tenant is refused on its own; no call made passes as one `migrations` check, since a deployment whose schema a DBA or a job applies never calls it |
 | every started `TomMessageOutbox` | its scheduler is running, and — when `maxOutboxWait` is set — no due message has waited longer |
 
 - **Extends:** `TomHealthAnalyzer`

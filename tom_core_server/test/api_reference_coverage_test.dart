@@ -5602,6 +5602,7 @@ final x = SampledType();
       expect(_enumSectionHeadingsOf(_summary('db_migration')), [
         'TomMigrationRepair',
         'TomMigrationRunState',
+        'TomMigrationTargetKind',
         'TomSchemaDivergenceKind',
       ]);
       expect(

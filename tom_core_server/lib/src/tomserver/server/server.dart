@@ -32,6 +32,8 @@ import '../metrics/otlp_exporter.dart';
 import '../tracing/otel_tracer.dart';
 import '../authorization/authorization_cache.dart';
 import '../ratelimit/rate_limit.dart';
+import '../db_migration/db_migration.dart';
+import '../db_migration/migration_run.dart';
 import '../tenancy/tenancy.dart';
 import '../tenancy/tenant_resolution.dart';
 import '../transactions/transaction_manager.dart';
@@ -790,6 +792,7 @@ class TomServer {
     configureIdempotency();
     await configureFieldEncryption();
     configurePrivacy();
+    await migrateOnStart();
     await recoverTransactions();
     await _installServerPrincipal();
     warnOnUnenforcedResourceKeys();
@@ -1155,6 +1158,26 @@ class TomServer {
         config ?? TomServerConfigResourceProvider.getServerConfig();
     if (!provider.exists(TomPrivacy.configurationKey)) return;
     TomPrivacy.configure(provider.get(TomPrivacy.configurationKey));
+  }
+
+  /// Runs [TomDbMigrations.migrateAll] when the server configuration's
+  /// [TomDbMigrations.configurationKey] map (or [config]) says
+  /// `onStart: true` — against its `root`, else
+  /// [TomBaseServerConfiguration.databaseMigrationsDirectory]. Called by
+  /// [start] before the transaction recovery, whose decision log lives in the
+  /// system schema; the data sources, and the tenancy when there is one, are
+  /// installed by then. A failure of the system schema fails the start; a
+  /// failing tenant is recorded and the start goes on.
+  Future<TomMigrationResult?> migrateOnStart([
+    TomServerConfigResourceProvider? config,
+  ]) async {
+    final provider =
+        config ?? TomServerConfigResourceProvider.getServerConfig();
+    if (!provider.exists(TomDbMigrations.configurationKey)) return null;
+    return TomDbMigrations.migrateOnStart(
+      provider.get(TomDbMigrations.configurationKey),
+      configuration.databaseMigrationsDirectory,
+    );
   }
 
   /// Applies the [TomTransactionRecovery.configurationKey] map of [config]

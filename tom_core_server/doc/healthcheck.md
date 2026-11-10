@@ -240,7 +240,7 @@ restart the process.
 | Check | Subject in the body | Ready when |
 | ----- | ------------------- | ---------- |
 | every registered data source | `datasource <name>` | it reports operational, and an SQL data source answers `SELECT 1` within `dataSourceTimeout` (two seconds by default). A `delegateTo` alias is checked once, under its target. |
-| migrations | `migrations` | `TomDbMigrations.lastRun` is not `running` and not `failed`. A process that never called `migrateDatabases` passes — `not run in this process` — because a deployment whose schema is applied by a DBA or a job never calls it, and a check waiting for it would never pass. |
+| migrations | `migrations <target>` per target of the last `TomDbMigrations.migrateAll` call (`TomDbMigrations.runs`) | The system schema's run is not `running` and not `failed`. A shared schema's or a tenant's run is listed with its state and passes whatever it is: a tenant still migrating, or whose migration failed, is refused on its own (`tenancy.tenant.unavailable`) while the others are served. A process that never called `migrateAll` has one `migrations` check that passes — `not run in this process` — because a deployment whose schema is applied by a DBA or a job never calls it, and a check waiting for it would never pass. |
 | every started outbox | `outbox <jobName>` | its scheduler is running — an outbox in `TomMessageOutbox.started` whose scheduler was stopped is `not delivering` — and, only when `maxOutboxWait` is set, no due message has waited longer than it. |
 
 The registries it reads are static state, and static state belongs to an
@@ -604,7 +604,7 @@ calls it.
 that `TomServer.start` installs through `installReadinessAnalyzer` — logged like
 every installation — when `frameworkReadiness` is on and the readiness analyzer
 is still a `TomDefaultHealthAnalyzer`. It reads process-wide state the other
-modules keep: `TomDataSourceInfo.datasources`, `TomDbMigrations.lastRun` and
+modules keep: `TomDataSourceInfo.datasources`, `TomDbMigrations.runs` and
 `TomMessageOutbox.started`.
 
 ## Not Yet Implemented
@@ -706,7 +706,7 @@ step of both checks its own result, and `test/examples_test.dart` runs them.
 | `shelf` | package | `health_check.dart` | `Response`, because the status code is part of the answer and a `String` has nowhere to put it |
 | `tom_core_kernel` | package | `health_check.dart` | `tomReflector` (reflection), `tomComponent` (the bean locator's component annotation), `TomPublicAccess` (an access control), `TomHeader` (the `Content-Type` name), and `TomHttpMethod` / `TomMimeType` (the HTTP vocabulary the endpoint annotation is written in) |
 | [datasources](datasources.md) | module | `framework_readiness.dart` | `TomDataSourceInfo` (the registered data sources and whether each is operational) and `TomSqlDatasource` (the `SELECT 1`) |
-| [db_migration](db_migration.md) | module | `framework_readiness.dart` | `TomDbMigrations.lastRun`, `TomMigrationRunState` |
+| [db_migration](db_migration.md) | module | `framework_readiness.dart` | `TomDbMigrations.runs`, `TomMigrationRunState`, `TomMigrationTargetKind` |
 | [endpoints](endpoints.md) | module | `health_check.dart` | `tomService` and `TomEndpoint`, the two annotations by which the endpoints pipeline discovers the route |
 | [little_things](little_things.md) | module | `health_check.dart` | `TomServerException`, the family `TomHealthCheckCancelled` belongs to |
 | [messaging](messaging.md) | module | `framework_readiness.dart` | `TomMessageOutbox.started` and `oldestWaitingSince` |

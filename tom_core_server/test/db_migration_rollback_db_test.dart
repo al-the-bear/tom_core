@@ -53,7 +53,7 @@ void main() async {
 
   setUp(() async {
     if (!reachable) return;
-    TomDbMigrations.resetLastRun();
+    TomDbMigrations.resetRuns();
     root = Directory.systemTemp.createTempSync('migration_rollback_');
     for (final table in ['${_schema}_versioning', 'rb_two', 'rb_one']) {
       await ds.executeCommand('DROP TABLE IF EXISTS $table');
@@ -67,7 +67,7 @@ void main() async {
   /// Writes the set under [datasource]: three migrations, each with its down
   /// script unless [without] names its version.
   void writeSet(String datasource, {int? without}) {
-    final dir = Directory('${root.path}/$datasource/$_schema')
+    final dir = Directory('${root.path}/system/$datasource/$_schema')
       ..createSync(recursive: true);
     void file(String name, String sql) =>
         File('${dir.path}/$name').writeAsStringSync(sql);
@@ -116,7 +116,7 @@ void main() async {
     'a set is applied, rolled back to a version, and applied again',
     () async {
       writeSet(name);
-      await TomDbMigrations.migrateDatabases(root.path);
+      await TomDbMigrations.migrateAll(root.path);
       expect(await history(), [0, 1, 2]);
 
       final undone = await TomDbMigrations.rollback(
@@ -131,7 +131,7 @@ void main() async {
       expect(await hasNote(), isFalse);
       expect(await exists('rb_one'), isTrue);
 
-      await TomDbMigrations.migrateDatabases(root.path);
+      await TomDbMigrations.migrateAll(root.path);
       expect(await history(), [0, 1, 2]);
       expect(await hasNote(), isTrue);
     },
@@ -140,7 +140,7 @@ void main() async {
 
   test('-1 rolls back everything; nothing left to undo is no error', () async {
     writeSet(name);
-    await TomDbMigrations.migrateDatabases(root.path);
+    await TomDbMigrations.migrateAll(root.path);
     expect(
       await TomDbMigrations.rollback(
         root.path,
@@ -166,7 +166,7 @@ void main() async {
   test('a migration without a down script refuses the rollback before '
       'anything is undone', () async {
     writeSet(name, without: 1);
-    await TomDbMigrations.migrateDatabases(root.path);
+    await TomDbMigrations.migrateAll(root.path);
     await expectLater(
       TomDbMigrations.rollback(
         root.path,
@@ -184,9 +184,9 @@ void main() async {
     'an up script changed since it was applied refuses the rollback',
     () async {
       writeSet(name);
-      await TomDbMigrations.migrateDatabases(root.path);
+      await TomDbMigrations.migrateAll(root.path);
       File(
-        '${root.path}/$name/$_schema/[2]-create_two.sql',
+        '${root.path}/system/$name/$_schema/[2]-create_two.sql',
       ).writeAsStringSync('CREATE TABLE rb_two (id BIGINT);');
       await expectLater(
         TomDbMigrations.rollback(
@@ -204,9 +204,9 @@ void main() async {
 
   test('a down script that fails leaves the migration recorded', () async {
     writeSet(name);
-    await TomDbMigrations.migrateDatabases(root.path);
+    await TomDbMigrations.migrateAll(root.path);
     File(
-      '${root.path}/$name/$_schema/[2]-create_two.down.sql',
+      '${root.path}/system/$name/$_schema/[2]-create_two.down.sql',
     ).writeAsStringSync('DROP TABLE rb_no_such_table;');
     await expectLater(
       TomDbMigrations.rollback(
@@ -222,19 +222,24 @@ void main() async {
 
   test('rollbackFromArgs runs the rollback the command line names', () async {
     writeSet(name);
-    await TomDbMigrations.migrateDatabases(root.path);
+    await TomDbMigrations.migrateAll(root.path);
     expect(
       await TomDbMigrations.rollbackFromArgs(['port=1'], root.path),
       isFalse,
     );
     expect(
       await TomDbMigrations.rollbackFromArgs([
-        '--rollback-migrations=$name/$_schema/1',
+        '--rollback-migrations=system/$name/$_schema/1',
       ], root.path),
       isTrue,
     );
     expect(await history(), [0, 1]);
-    for (final bad in ['$name/$_schema', '$name/$_schema/x', '/$_schema/1']) {
+    for (final bad in [
+      '$name/$_schema/1',
+      'system/$name/$_schema',
+      'system/$name/$_schema/x',
+      'system//$_schema/1',
+    ]) {
       await expectLater(
         TomDbMigrations.rollbackFromArgs([
           '--rollback-migrations=$bad',
@@ -257,7 +262,7 @@ void main() async {
   test('a two-phase data source migrates and rolls back through the '
       'adaptor of its database', () async {
     writeSet(_xa);
-    await TomDbMigrations.migrateDatabases(root.path);
+    await TomDbMigrations.migrateAll(root.path);
     expect(await history(), [0, 1, 2]);
     expect(
       await TomDbMigrations.rollback(

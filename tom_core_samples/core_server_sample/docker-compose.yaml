@@ -1,6 +1,6 @@
 # Bundled MariaDB for the sample. The migration tree is mounted into the
 # stock initdb hook for the first-boot bootstrap, and read again at runtime by
-# TomDbMigrations.migrateDatabases() for incremental migrations — one SQL tree,
+# TomDbMigrations.migrateAll() for incremental migrations — one SQL tree,
 # two consumers (the tom_uam_server pattern).
 #
 #   cp .env.example .env
@@ -14,7 +14,7 @@ services:
       - "${TODO_DB_PORT:-3306}:3306"
     volumes:
       - db_data:/var/lib/mysql
-      - ./database_migrations/todo_db/todo_schema:/docker-entrypoint-initdb.d:ro
+      - ./database_migrations/system/todo_db/todo_schema:/docker-entrypoint-initdb.d:ro
     environment:
       MARIADB_DATABASE: "${TODO_DB_NAME:-todo_db}"
       MARIADB_ROOT_PASSWORD: "${TODO_DB_ROOT_PASSWORD:-password}"

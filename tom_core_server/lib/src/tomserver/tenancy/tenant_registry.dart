@@ -8,12 +8,15 @@
 /// ([TomTenancy.registryConflicts]) — the row is what is used.
 library;
 
+import 'dart:async';
 import 'dart:convert';
 
+import 'package:crypto/crypto.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 
 import '../datasources/datasource_initialization.dart';
 import '../datasources/framework_table.dart';
+import '../datasources/sql_datasource.dart';
 import '../datasources/sql_instant.dart';
 import '../object_persistence/persistence_annotations.dart';
 import 'tenancy.dart';
@@ -307,8 +310,9 @@ abstract class TomTenantRegistry {
     return updated;
   }
 
-  /// Records that migration [version] of [target] (`<datasource>/<schema>`)
-  /// is applied to tenant [id], at [at]; answers the updated record.
+  /// Records that [version] is the highest migration of the tenant's type tree
+  /// applied to data source [target] for tenant [id], at [at]; answers the
+  /// updated record.
   Future<TomTenantRecord> setMigrated(
     String id,
     String target,
@@ -323,6 +327,36 @@ abstract class TomTenantRegistry {
     );
     await put(updated);
     return updated;
+  }
+
+  static final Expando<Map<String, Future<void>>> _held = Expando();
+
+  /// Runs [body] holding the registry's migration lock of [target] — a
+  /// migration target, `shared:<type>` or `tenant:<id>` — so two migrations
+  /// of one target never run at once.
+  ///
+  /// This one serialises within the process; a registry shared by several
+  /// processes ([TomSqlTenantRegistry]) holds a database session lock, which
+  /// serialises them all and is released by the database when the holder
+  /// dies.
+  Future<R> withMigrationLock<R>(
+    String target,
+    Future<R> Function() body,
+  ) async {
+    final held = _held[this] ??= {};
+    for (var busy = held[target]; busy != null; busy = held[target]) {
+      await busy;
+    }
+    final done = Completer<void>();
+    held[target] = done.future;
+    try {
+      return await body();
+    } finally {
+      // The entry is the future just awaited by waiters; dropping it is not
+      // waiting on it.
+      unawaited(held.remove(target));
+      done.complete();
+    }
   }
 
   /// The exception for a change to a tenant the registry does not hold.
@@ -466,6 +500,28 @@ class TomSqlTenantRegistry extends TomTenantRegistry {
       'updatedAt': sqlInstant(record.updatedAt),
     });
   }
+
+  /// The session-lock name of [target]'s migration lock: at most 64
+  /// characters, as MariaDB allows, the target hashed when it would not fit.
+  static String migrationLockName(String target) {
+    const prefix = 'tom_tenant_migration:';
+    final named = '$prefix$target';
+    return named.length <= 64
+        ? named
+        : '$prefix${sha256.convert(utf8.encode(target)).toString().substring(0, 64 - prefix.length)}';
+  }
+
+  /// Holds the database session lock [migrationLockName] of [target] on the
+  /// registry's data source, so no other process — of any node sharing the
+  /// registry — migrates [target] meanwhile; within this process, the base
+  /// registry's lock.
+  @override
+  Future<R> withMigrationLock<R>(String target, Future<R> Function() body) =>
+      super.withMigrationLock(target, () async {
+        final ds = datasource;
+        if (ds is! TomSqlDatasource) return body();
+        return ds.withSessionLock(migrationLockName(target), body);
+      });
 
   /// Removes every row. For tests.
   Future<void> deleteAll() async {

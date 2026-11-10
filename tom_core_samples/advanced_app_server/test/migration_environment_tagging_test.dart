@@ -13,7 +13,7 @@ import 'package:tom_core_server/tom_core_server.dart';
 import 'package:test/test.dart';
 
 /// The app schema migration directory, relative to the package root.
-const String _appSchemaDir = 'database_migrations/app_db/app_schema/';
+const String _appSchemaDir = 'database_migrations/system/app_db/app_schema/';
 
 /// Parses every `*.sql` migration basename in [dir] into `(version, parsed)`
 /// records ordered by ascending numeric version.

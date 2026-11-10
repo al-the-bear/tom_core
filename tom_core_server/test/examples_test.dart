@@ -106,6 +106,7 @@ const _stepCounts = <String, int>{
   'example/datasources/read_replicas_example.dart': 8,
   'example/db_migration/db_migration_example.dart': 10,
   'example/db_migration/db_migration_repair_example.dart': 8,
+  'example/db_migration/migrate_all_example.dart': 5,
   'example/endpoints/endpoints_example.dart': 11,
   'example/endpoints/idempotency_example.dart': 6,
   'example/export/export_email.dart': 6,

@@ -195,7 +195,7 @@ docker compose up -d app-db
 ```
 
 Each `docker compose` above mounts the database's
-`database_migrations/<db>/<schema>/` tree into MariaDB's
+`database_migrations/system/<db>/<schema>/` tree into MariaDB's
 `docker-entrypoint-initdb.d`, so first boot runs that tree's `[<version>]-<desc>.sql`
 files in order — schema-creation (`[0NN]`) first, then the idempotent sample-data
 seed (`[1NN]`). The same tree is re-read at runtime by `TomDbMigrations`, so the

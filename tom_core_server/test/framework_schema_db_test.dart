@@ -72,7 +72,7 @@ List<String> _migrationChains() {
 }
 
 /// The shipped migration files, laid out the way
-/// [TomDbMigrations.migrateDatabases] expects: `<dir>/<datasource>/<schema>/`.
+/// [TomDbMigrations.migrateAll] expects: `<dir>/<datasource>/<schema>/`.
 ///
 /// The **contents** are copied verbatim, so what is applied is the SQL a
 /// deployment applies. Only the leading `[n]` is rewritten, because each chain
@@ -84,7 +84,7 @@ List<String> _migrationChains() {
 Directory _migrationDirectory() {
   final root = Directory.systemTemp.createTempSync('tom_framework_migration_');
   final target = Directory(
-    '${root.path}/${TestDatabase.datasourceName}/$_migrationSchema',
+    '${root.path}/system/${TestDatabase.datasourceName}/$_migrationSchema',
   )..createSync(recursive: true);
   var version = 0;
   for (final chain in _migrationChains()) {
@@ -171,7 +171,7 @@ void main() async {
 
       final directory = _migrationDirectory();
       try {
-        await TomDbMigrations.migrateDatabases(directory.path);
+        await TomDbMigrations.migrateAll(directory.path);
       } finally {
         directory.deleteSync(recursive: true);
       }

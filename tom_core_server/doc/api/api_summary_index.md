@@ -456,7 +456,7 @@ Summary: [api_summary_audit_reports.md](api_summary_audit_reports.md)
 
 | Type | Kind | Description |
 | ---- | ---- | ----------- |
-| `TomDbMigrations` | class | Migration runner/registry; the migration lock by data-source name, the repair of a failed migration and the rollback of applied ones, from code or the command line. |
+| `TomDbMigrations` | class | Migration runner/registry: `migrateAll` (the system schema, then every tenant by its type), the migration lock by data-source name, the repair of a failed migration and the rollback of applied ones, from code, the command line or the configuration. |
 | `TomDbMigrator` | abstract class | Migrator contract, including the migration lock, the repair of a failed record and the rollback. |
 | `TomDbMigrationAdaptor` | class | Annotation tagging a migration adaptor with the data-source types it serves. |
 | `TomMigrationScript` | class | One migration's up and down scripts, as a rollback reads them. |
@@ -465,8 +465,11 @@ Summary: [api_summary_audit_reports.md](api_summary_audit_reports.md)
 | `PostgresMigrationAdaptor` | class | PostgreSQL migration adaptor (`postgresql`, `postgresql_xa`); a script and its version row in one transaction. |
 | `TomMigrationFileName` | class | Parses/validates migration file names. |
 | `TomDbVersion` | class | A schema version. |
-| `TomMigrationRun` | class | The process's most recent `migrateDatabases` call (`TomDbMigrations.lastRun`). |
+| `TomMigrationRun` | class | One target of a `migrateAll` call — system, shared schema or tenant — and where it stands (`TomDbMigrations.runs`). |
 | `TomMigrationRunState` | enum | `notRun`, `running`, `succeeded` or `failed`. |
+| `TomMigrationTargetKind` | enum | `system`, `shared` or `tenant`. |
+| `TomMigrationResult` | class | Every target's run of one `migrateAll` call. |
+| `TomMemoryDbMigrator` | class | A migrator in memory, for tests and examples of the orchestration. |
 | `TomMigrationRepair` | enum | What repair does with a failed migration: `remove` it or `markResolved`. |
 | `TomSchemaColumn` | class | One column, in the vocabulary the convergence check compares in. |
 | `TomSchemaTable` | class | One table: its columns, primary key and origin. |
@@ -1707,6 +1710,7 @@ Summary: [api_summary_audit_reports.md](api_summary_audit_reports.md)
 | `TomMemoryBlobStore` | File Storage |
 | `TomMemoryBlobStoreBackend` | File Storage |
 | `TomMemoryDataKeyStore` | Object Persistence |
+| `TomMemoryDbMigrator` | Database Migration |
 | `TomMemoryDecisionLog` | Transactions |
 | `TomMemoryDeliveryReportStore` | Messaging |
 | `TomMemoryExportRegister` | Export |
@@ -1735,9 +1739,11 @@ Summary: [api_summary_audit_reports.md](api_summary_audit_reports.md)
 | `TomMigrationArtifact` | Database Migration |
 | `TomMigrationFileName` | Database Migration |
 | `TomMigrationRepair` | Database Migration |
+| `TomMigrationResult` | Database Migration |
 | `TomMigrationRun` | Database Migration |
 | `TomMigrationRunState` | Database Migration |
 | `TomMigrationScript` | Database Migration |
+| `TomMigrationTargetKind` | Database Migration |
 | `TomMimeEncoder` | Messaging |
 | `tomMimeLineEnding` | Messaging |
 | `tomMimeMaxLineLength` | Messaging |

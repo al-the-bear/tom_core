@@ -21,9 +21,9 @@
 ///     ([TomSchemaConvergenceCheck.verify]).
 ///
 /// Two things genuinely need more than a Dart VM and are therefore described in
-/// `doc/db_migration.md` instead of run here. The orchestrator
-/// ([TomDbMigrations.migrateDatabases]) and the MariaDB adaptor's
-/// [TomDbMigrator] half need a registered data source and a live server; and
+/// `doc/db_migration.md` instead of run here. The SQL adaptors' [TomDbMigrator]
+/// half needs a registered data source and a live server — the orchestrator
+/// itself runs in `migrate_all_example.dart`, on [TomMemoryDbMigrator]; and
 /// the *entity* side of the convergence check reads `@TomDbTable` types out of
 /// `tomReflector`, so it needs a generated reflection root. Step 10 therefore
 /// runs [TomSchemaConvergenceCheck.verify] with no entity types at all, which

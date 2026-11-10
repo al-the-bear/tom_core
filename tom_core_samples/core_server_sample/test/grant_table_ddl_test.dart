@@ -1,6 +1,6 @@
 /// The drift guard over this package's copy of the `tom_resource_grant` DDL.
 ///
-/// `database_migrations/todo_db/todo_schema/[001]-todo_authz_grants.sql` restates the table the framework owns — its header says the DDL is
+/// `database_migrations/system/todo_db/todo_schema/[001]-todo_authz_grants.sql` restates the table the framework owns — its header says the DDL is
 /// `TomResourceGrant.createTableSql` "reused verbatim". tom_core_server pins its
 /// own reference migration against that constant, but a copy in a consuming
 /// package is outside that test's reach, and nothing in the language relates a
@@ -21,7 +21,7 @@ import 'package:tom_core_server/tom_core_server.dart';
 
 /// The migration that creates `tom_resource_grant`.
 const String _grantsMigration =
-    'database_migrations/todo_db/todo_schema/[001]-todo_authz_grants.sql';
+    'database_migrations/system/todo_db/todo_schema/[001]-todo_authz_grants.sql';
 
 /// Every `CREATE TABLE` statement in [sql], from the keyword to the `);` that
 /// closes it.

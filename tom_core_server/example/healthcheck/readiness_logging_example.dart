@@ -85,7 +85,7 @@ Future<void> run() async {
   //    not restarted for it: a restart would not change the schema.
   try {
     try {
-      await TomDbMigrations.migrateDatabases('example/does/not/exist');
+      await TomDbMigrations.migrateAll('example/does/not/exist');
     } on TomDbMigrationException {
       // The boot step reports it; readiness keeps reporting it.
     }
@@ -95,16 +95,16 @@ Future<void> run() async {
     print('2. after a failed migration  => ${failed.statusCode}');
     print(_indent(failed.message));
     check(
-      TomDbMigrations.lastRun.state == TomMigrationRunState.failed,
+      TomDbMigrations.runs.single.state == TomMigrationRunState.failed,
       'the failed run is recorded where readiness reads it',
     );
     check(failed.statusCode == 503, 'a failed migration is not ready');
     check(
-      failed.message.contains('migrations: failed:'),
+      failed.message.contains('migrations system: failed:'),
       'and the body names the migrations as the reason',
     );
   } finally {
-    TomDbMigrations.resetLastRun();
+    TomDbMigrations.resetRuns();
   }
 
   // 3. A started outbox is checked; one whose scheduler stopped is not

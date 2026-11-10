@@ -126,10 +126,15 @@ Future<void> run() async {
   //    is: the ERROR lines printed above each answer are that log.
   print('5. malformed repair requests');
   for (final args in [
-    ['--repair-migration=app_db/app_schema', '--repair-action=remove'],
-    ['--repair-migration=app_db/app_schema/seven', '--repair-action=remove'],
-    ['--repair-migration=app_db/app_schema/7', '--repair-action=rerun'],
-    ['--repair-migration=app_db/app_schema/7'],
+    // The flat form of a system target: it needs its `system/` prefix.
+    ['--repair-migration=app_db/app_schema/7', '--repair-action=remove'],
+    [
+      '--repair-migration=system/app_db/app_schema/seven',
+      '--repair-action=remove',
+    ],
+    ['--repair-migration=tenant:/app_db/7', '--repair-action=remove'],
+    ['--repair-migration=system/app_db/app_schema/7', '--repair-action=rerun'],
+    ['--repair-migration=system/app_db/app_schema/7'],
   ]) {
     final key = await _refusalOf(args);
     print('   ${args.join(' ')} -> $key');
@@ -194,14 +199,17 @@ Future<void> run() async {
   );
   check(!rolledBack, 'without --rollback-migrations nothing is rolled back');
 
-  // 8. `--rollback-migrations=<datasource>/<schema>/<version>` keeps the
-  //    migrations up to <version> (-1 for none). A request it cannot read is
-  //    refused before any data source is looked up.
+  // 8. `--rollback-migrations=system/<datasource>/<schema>/<version>` — or
+  //    `tenant:<id>/<datasource>/<version>` — keeps the migrations up to
+  //    <version> (-1 for none). A request it cannot read is refused before
+  //    any data source is looked up.
   print('8. malformed rollback requests');
   for (final args in [
-    ['--${TomDbMigrations.rollbackMigrationsOption}=app_db/app_schema'],
-    ['--${TomDbMigrations.rollbackMigrationsOption}=app_db/app_schema/two'],
-    ['--${TomDbMigrations.rollbackMigrationsOption}=/app_schema/2'],
+    ['--${TomDbMigrations.rollbackMigrationsOption}=app_db/app_schema/2'],
+    [
+      '--${TomDbMigrations.rollbackMigrationsOption}=system/app_db/app_schema/two',
+    ],
+    ['--${TomDbMigrations.rollbackMigrationsOption}=tenant:acme/app_db'],
   ]) {
     final key = await _rollbackRefusalOf(args);
     print('   ${args.join(' ')} -> $key');

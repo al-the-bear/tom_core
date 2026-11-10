@@ -38,7 +38,7 @@ import '../../tom_core_kernel/test/contracts/scheduling_contract.dart';
 import 'fixtures/reflection_fixture.reflection.dart';
 import 'fixtures/test_database.dart';
 
-/// A migration directory shaped the way [TomDbMigrations.migrateDatabases]
+/// A migration directory shaped the way [TomDbMigrations.migrateAll]
 /// expects — `<dir>/<datasource>/<schema>/` — holding the *shipped* migration
 /// files verbatim.
 ///
@@ -52,7 +52,7 @@ const String _migrationSchema = 'tomscheduling';
 Directory _migrationDirectory() {
   final root = Directory.systemTemp.createTempSync('tom_scheduling_migration_');
   final target = Directory(
-    '${root.path}/${TestDatabase.datasourceName}/$_migrationSchema',
+    '${root.path}/system/${TestDatabase.datasourceName}/$_migrationSchema',
   )..createSync(recursive: true);
   final source = Directory(
     'example/scheduling/${TestDatabase.referenceMigrations}/system/main/tomcore',
@@ -779,7 +779,7 @@ void main() async {
         // and the tables it just dropped stay dropped.
         await TestDatabase.dropMigrationVersioning(dsi, _migrationSchema);
 
-        await TomDbMigrations.migrateDatabases(_migrationDirectory().path);
+        await TomDbMigrations.migrateAll(_migrationDirectory().path);
 
         // `createSchema: false` is the deployment shape this migration exists
         // for: the application user may not run DDL, so if the migration did not

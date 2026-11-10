@@ -592,7 +592,8 @@ Two supported routes, and the choice is about who is allowed to run DDL:
   for a single-service deployment.
 - **`createSchema: false`** — the schema is owned by the migration module. Copy
   the five files from `example/scheduling/migrations/system/main/tomcore/` into the
-  application's own migration tree and let `TomDbMigrations.migrateDatabases()`
+  application's own migration tree (`system/<datasource>/<schema>/`) and let
+  `TomDbMigrations.migrateAll()`
   apply them. Right when the application's database user may not run DDL, which
   is the usual production posture.
 

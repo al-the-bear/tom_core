@@ -22,11 +22,11 @@ import 'package:test/test.dart';
 import 'package:tom_core_server/tom_core_server.dart';
 
 /// This package's contribution to the `app_db/app_schema` chain.
-const String _opsSchemaDir = 'database_migrations/app_db/app_schema/';
+const String _opsSchemaDir = 'database_migrations/system/app_db/app_schema/';
 
 /// The app server's part of the same chain.
 const String _appSchemaDir =
-    '../advanced_app_server/database_migrations/app_db/app_schema/';
+    '../advanced_app_server/database_migrations/system/app_db/app_schema/';
 
 /// The migration files of [directory], in applied order.
 List<TomMigrationArtifact> _artifacts(String directory) {

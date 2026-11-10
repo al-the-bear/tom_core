@@ -222,7 +222,7 @@ The endpoint pipeline and annotations are part
 ## Primary sources
 
 - `advanced_app_server/lib/src/access/{resource_role_resolver,field_grade_resolver}.dart`; `TomField.resolveEffectiveAuth` in `tom_flutter_ui/.../tom_form.dart`
-- `advanced_auth_server/database_migrations/auth_db/auth_schema/[003]-auth_demo_seed@dev,test.sql` (the grant matrix); `advanced_auth_server/lib/src/endpoints/admin_endpoints.dart`
+- `advanced_auth_server/database_migrations/system/auth_db/auth_schema/[003]-auth_demo_seed@dev,test.sql` (the grant matrix); `advanced_auth_server/lib/src/endpoints/admin_endpoints.dart`
 - Appendix [A1](README_advanced_A1_authorization_state_machine.md)
 
 ---

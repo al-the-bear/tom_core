@@ -2,6 +2,33 @@
 
 ### Added
 
+- **One migration entry point** (`db_migration`, `tenancy`, `server`,
+  `healthcheck`): `TomDbMigrations.migrateAll(root)` applies
+  `root/system/<datasource>/<schema>/` to the system schema (fatal on failure),
+  then each tenant type's `root/tenant/<type>/<datasource>/` once to the type's
+  shared schema and to each tenant with a schema or database of its own, under
+  the history `tenant_<type>`, with bounded `parallelism` (default 1), every
+  target under its database's migration lock and the new
+  `TomTenantRegistry.withMigrationLock` (a session lock in the SQL registry). A
+  target's tenants go `migrating`, then `active` with `setMigrated`, or
+  `migration-failed` with the error, and the others go on; the
+  `TomMigrationResult` lists every target's `TomMigrationRun` (now per target,
+  with `TomMigrationTargetKind` and `tenants`), and `TomDbMigrations.runs`
+  replaces `lastRun` — the readiness check reports one line per target and holds
+  the server back only for the system schema. `migrateDatabases`, `lastRun` and
+  `resetLastRun` are gone, as is the flat layout: a root entry other than
+  `system/` and `tenant/` is refused (`db_migration.layout.unknown_entry`), as
+  are an undeclared type's tree and a type tree over a data source the type does
+  not route. Start scripts gain `--migrate`, `--migrate-tenant=<id>` and
+  `--migrate-parallelism=<n>` (`migrateFromArgs`), and the configuration
+  `migrations.onStart` (`TomServer.migrateOnStart`); repair and rollback targets
+  are `system/<datasource>/<schema>/<version>` or
+  `tenant:<id>/<datasource>/<version>` (`repairTenant`, `rollbackTenant`).
+  `TomTenancy.setStatus` records a tenant's status; `TomMemoryDbMigrator` runs
+  the orchestration without a database. `TomSchemaConvergenceCheck.checkAll`
+  reads the two trees, system tables against `system/` and tenant tables
+  against each type's tree. The samples' migrations moved to
+  `database_migrations/system/`.
 - **Framework tables classified as system or tenant** (`datasources`,
   `db_migration`, every module with a framework table): `TomFrameworkTable`
   takes a required `kind` (`TomTableKind.system` / `.tenant`), and every store
