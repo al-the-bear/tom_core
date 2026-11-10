@@ -2,6 +2,27 @@
 
 ### Added
 
+- **The tenant registry** (`tenancy`): `TomTenantRegistry`, the durable list
+  of a deployment's tenants — `TomMemoryTenantRegistry`, and
+  `TomSqlTenantRegistry` over `tom_tenant` in the system schema (the base,
+  unrouted schema of its data source; declared as `tenantTable` with a
+  reference migration in both dialects, and in `frameworkOwnedTables()`). A row
+  holds a tenant's id, type, name, isolation, schema, data sources (never a
+  literal password), `TomTenantStatus` (`provisioning`, `migrating`, `active`,
+  `suspended`, `migration-failed`, `removed`) and the migration version applied
+  per `<datasource>/<schema>`. `TomTenancy.install` reads it: configured tenants
+  it lacks are seeded as active, a configured tenant its row contradicts is
+  reported in `registryConflicts` and the row used, and tenants added at run
+  time are served after a restart. `addTenant`, the new `suspendTenant` /
+  `resumeTenant`, and `removeTenant` write the registry before they change
+  routing; a request for a suspended tenant is refused as
+  `tenancy.tenant.suspended` (403), one provisioning, migrating or whose
+  migration failed as `tenancy.tenant.unavailable` (503). `refreshFromRegistry`
+  brings a node level with what other nodes changed, every `refreshInterval`
+  when set. `fromConfiguration` builds a SQL registry on the first routed data
+  source by default (`tenancy.registry`: `datasource`, `table`, `createSchema`,
+  `refreshSeconds` — 30 —, or `memory`). `TomTenant` gains `type` (`default`).
+
 - **The `audit_reports` module** (`lib/src/tomserver/audit_reports/`): the
   reporting surface above the audit trail. `TomAuditView` answers a
   `TomAuditQuery` across every writer of a trail (`TomSqlAuditTrailSource` over

@@ -59,6 +59,7 @@ import '../object_persistence/field_encryption_sql.dart';
 import '../object_persistence/persistence_annotations.dart';
 import '../privacy/subject_keys_sql.dart';
 import '../sync/sync_sql.dart';
+import '../tenancy/tenant_registry_sql.dart';
 import '../scheduling/sql_scheduling_sql.dart';
 import '../transactions/saga_sql.dart';
 import '../transactions/transaction_recovery.dart';
@@ -78,7 +79,8 @@ import 'schema_model.dart';
 /// The direction of the dependency is deliberate: this module reaches into
 /// `scheduling/`, `file_storage/`, `audit/`, `authentication/`, `messaging/`,
 /// `cache/`, `endpoints/`, `transactions/`, `object_persistence/`, `privacy/`,
-/// `export/` and `sync/` for their descriptors, and none of them reaches back.
+/// `export/`, `sync/` and `tenancy/` for their descriptors, and none of them
+/// reaches back.
 /// A deployment can run the scheduler without ever loading a migration.
 List<TomFrameworkTable> frameworkOwnedTables({
   String jobRun = defaultJobRunTable,
@@ -106,6 +108,7 @@ List<TomFrameworkTable> frameworkOwnedTables({
   String exportRegister = defaultExportRegisterTable,
   String syncChange = defaultSyncChangeTable,
   String syncSequence = defaultSyncSequenceTable,
+  String tenant = defaultTenantTable,
 }) => [
   jobRunTable(jobRun),
   leaseTable(lease),
@@ -132,6 +135,7 @@ List<TomFrameworkTable> frameworkOwnedTables({
   exportRegisterTable(exportRegister),
   syncChangeTable(syncChange),
   syncSequenceTable(syncSequence),
+  tenantTable(tenant),
 ];
 
 /// Compares framework-owned table descriptors against everything else that

@@ -1285,11 +1285,12 @@ entry.
 The framework's tables — `tom_job_run`, `tom_lease`, `tom_scheduler_node`,
 `tom_job_pause`, `tom_job_run_archive`,
 `tom_blob`, `tom_blob_chunk`, `tom_blob_ledger`, `tom_blob_content`,
-`tom_audit_trail`, `tom_oauth_state`,
-`tom_scim_resource`, `tom_delivery_report`, `tom_message_inbox`,
+`tom_audit_trail`, `tom_audit_question`, `tom_oauth_state`,
+`tom_scim_resource`, `tom_delivery_report`, `tom_message_suppression`,
+`tom_message_inbox`,
 `tom_cache_invalidation`, `tom_idempotency_key`, `tom_saga`,
 `tom_encryption_key`, `tom_subject_key`, `tom_transaction_decision`,
-`tom_export`, `tom_sync_change`, `tom_sync_sequence` — are not
+`tom_export`, `tom_sync_change`, `tom_sync_sequence`, `tom_tenant` — are not
 application entities
 and deliberately stay that way: making them entities would pull them into the
 application's reflection build and have `discoverEntityTypes()` report them
@@ -1319,7 +1320,8 @@ so two queues in one schema cannot collide.
 `frameworkOwnedTables()` returns them all at their default names.
 
 The set is the same in a multi-tenant deployment: these tables serve the whole
-deployment and are not created per tenant. Two of them carry the tenant as a
+deployment and are not created per tenant. `tom_tenant`, the tenant registry,
+lives in the system schema — the base schema of its data source, never routed. Two of them carry the tenant as a
 column — `tom_job_run.tenant` (`VARCHAR(32) NOT NULL DEFAULT ''`, part of the
 unique window key `(job_name, tenant, window_at)`) and
 `tom_delivery_report.tenant` (`VARCHAR(32) NULL`) — and their reference
@@ -1748,4 +1750,5 @@ here it cannot drift silently.
 | [privacy](privacy.md) | module | `framework_convergence.dart` | `defaultSubjectKeyTable`, `subjectKeyTable` |
 | [scheduling](scheduling.md) | module | `framework_convergence.dart` | `defaultJobRunTable`, `defaultLeaseTable`, `defaultSchedulerNodeTable`, `defaultJobPauseTable`, `defaultJobRunArchiveTable`, `jobRunTable`, `leaseTable`, `schedulerNodeTable`, `jobPauseTable`, `jobRunArchiveTable` |
 | [sync](sync.md) | module | `framework_convergence.dart` | `defaultSyncChangeTable`, `defaultSyncSequenceTable`, `syncChangeTable`, `syncSequenceTable` |
+| [tenancy](tenancy.md) | module | `framework_convergence.dart` | `defaultTenantTable`, `tenantTable` |
 | [transactions](transactions.md) | module | `framework_convergence.dart`, `postgres_migration_adapter.dart` | `defaultSagaTable` and `sagaTable`, `defaultDecisionTable` and `decisionTable`; `TomTransactionManager.runInTransaction`, which runs a PostgreSQL script and its version row — or a down script and the deletion of its record — as one transaction |

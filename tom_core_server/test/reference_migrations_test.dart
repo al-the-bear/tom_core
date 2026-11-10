@@ -168,6 +168,9 @@ final Map<String, String> _guardedElsewhere = {
   _migration('sync', '[1]-create_tom_sync_change.sql'):
       'descriptor tables — framework_schema_test.dart converges the chain '
       'against syncChangeTable and syncSequenceTable',
+  _migration('tenancy', '[1]-create_tom_tenant.sql'):
+      'descriptor table — framework_schema_test.dart converges the chain '
+      'against tenantTable',
   _migration('cache', '[1]-create_tom_cache_invalidation.sql'):
       'descriptor table — framework_schema_test.dart converges the chain '
       'against invalidationTable',

@@ -17,13 +17,23 @@ tenant — and how a request names the tenant it is for.
   - [TomTenantPathResolver](#tomtenantpathresolver)
   - [TomTenantHeaderResolver](#tomtenantheaderresolver)
   - [TomTenantResolution](#tomtenantresolution)
+  - [TomTenantRegistry](#tomtenantregistry)
+  - [TomMemoryTenantRegistry](#tommemorytenantregistry)
+  - [TomSqlTenantRegistry](#tomsqltenantregistry)
+  - [TomTenantRecord](#tomtenantrecord)
+  - [TomTenantRegistryConflict](#tomtenantregistryconflict)
+  - [TomTenantRegistryRefresh](#tomtenantregistryrefresh)
+  - [TomTenantRow](#tomtenantrow)
 - [Enums](#enums)
   - [TomTenantIsolation](#tomtenantisolation)
+  - [TomTenantStatus](#tomtenantstatus)
 - [Global Functions and Constants](#global-functions-and-constants)
 
 ## Overview
 
 Source: `lib/src/tomserver/tenancy/tenancy.dart`,
+`lib/src/tomserver/tenancy/tenant_registry.dart`,
+`lib/src/tomserver/tenancy/tenant_registry_sql.dart`,
 `lib/src/tomserver/tenancy/tenant_resolution.dart`.
 
 A **tenant** is an isolation boundary — whose data a query reads, which schema
@@ -54,6 +64,15 @@ TomServerException  (little_things)
 TomTenant
 TomTenancy
 TomTenantIsolation  (enum)
+TomTenantStatus     (enum)
+
+TomTenantRegistry  (abstract)
+    ├── TomMemoryTenantRegistry
+    └── TomSqlTenantRegistry
+TomTenantRecord
+TomTenantRegistryConflict
+TomTenantRegistryRefresh
+TomTenantRow
 
 TomTenantResolver  (abstract interface)
     ├── TomTenantHostResolver    (implements)
@@ -78,7 +97,12 @@ A tenancy configuration that cannot be used, or a tenant that does not exist.
 | `tenancy.config.invalid_schema` | A schema name that is not a plain identifier of at most 64 characters. |
 | `tenancy.config.missing_datasource` | Database isolation without a data source for a routed name. |
 | `tenancy.config.unknown_datasource` | A routed or referenced data source that is not registered. |
+| `tenancy.config.invalid_registry` | A `registry.refreshSeconds` that is not a whole number of seconds, 0 or more. |
 | `tenancy.tenant.unknown` | Work for a tenant the deployment does not have (`clientThrow: true`). |
+| `tenancy.tenant.suspended` | A request for a suspended tenant (403). |
+| `tenancy.tenant.unavailable` | A request for a tenant that is provisioning, migrating or whose migration failed (503). |
+
+The registry's own keys are on [TomTenantRegistry](#tomtenantregistry).
 
 - **Extends:** `TomServerException`
 
@@ -108,6 +132,7 @@ letters, digits or underscores).
 ```dart
 TomTenant(
   String id, {
+  String type = defaultType,
   String? name,
   TomTenantIsolation? isolation,
   String? schema,
@@ -116,7 +141,7 @@ TomTenant(
 factory TomTenant.fromMap(String id, Map<Object?, Object?> map)
 ```
 
-`fromMap` reads a tenant from its configuration map: `name`, `isolation`,
+`fromMap` reads a tenant from its configuration map: `type`, `name`, `isolation`,
 `schema`, and either `datasources` (per routed data source name) or `datasource`
 (the one routed name — the common case). A data-source value is a map of
 settings to open or the name of a registered data source.
@@ -126,6 +151,8 @@ settings to open or the name of a registered data source.
 | Property | Type | Description |
 | -------- | ---- | ----------- |
 | `id` | `String` | The tenant's id — what the token's `tenant` claim names (final). |
+| `defaultType` | `static const String` | `'default'` — the type of a tenant that names none. |
+| `type` | `String` | Its tenant type; `defaultType` unless it names one (final). |
 | `name` | `String?` | A display name, or `null` (final). |
 | `isolation` | `TomTenantIsolation?` | Where its data lives, or `null` for the deployment's default (final). |
 | `schema` | `String?` | Under schema isolation, the schema; `null` for `<databaseName>_<id>` (final). |
@@ -153,16 +180,28 @@ TomTenancy({
   List<TomTenantResolver> resolvers = const [],
   TomTenantIsolation defaultIsolation = TomTenantIsolation.shared,
   bool createSchemas = false,
+  TomTenantRegistry? registry,
+  Duration? refreshInterval,
+  DateTime Function()? clock,
 })
 factory TomTenancy.fromConfiguration([TomServerConfigResourceProvider? config])
 ```
 
+`tenants` seed the `registry` — a `TomMemoryTenantRegistry` unless one is given;
+`refreshInterval` makes the installed tenancy call `refreshFromRegistry` that
+often; `clock` stamps the registry rows.
+
 `fromConfiguration` reads the `tenancy` key of the server configuration
 (`TomServerConfigResourceProvider.getServerConfig()` unless one is passed):
 `isolation`, `datasources`, `resolution` (`host` / `header`, in order),
-`hostSuffix`, `header`, `createSchemas` and the `tenants` map. An absent key
-reads as a tenancy with no tenants. Throws `tenancy.config.not_a_map`,
-`tenancy.config.unknown_isolation` or `tenancy.config.unknown_resolver`.
+`hostSuffix`, `header`, `createSchemas`, the `registry` and the `tenants` map.
+An absent key reads as a tenancy with no tenants. `registry: memory` keeps the
+tenants in the process; otherwise — also when `registry` is absent — it is a
+`TomSqlTenantRegistry.named` on `registry.datasource` (default the first routed
+data source) with `registry.table` and `registry.createSchema`, refreshed every
+`registry.refreshSeconds` (default `defaultRefreshSeconds`, `0` for never).
+Throws `tenancy.config.not_a_map`, `tenancy.config.unknown_isolation`,
+`tenancy.config.unknown_resolver` or `tenancy.config.invalid_registry`.
 
 #### Properties
 
@@ -170,7 +209,11 @@ reads as a tenancy with no tenants. Throws `tenancy.config.not_a_map`,
 | -------- | ---- | ----------- |
 | `configurationKey` | `static const String` | `'tenancy'` — the configuration path of the settings. |
 | `current` | `static TomTenancy?` | *(getter)* The installed configuration, or `null` in a deployment without tenancy. |
-| `tenants` | `Map<String, TomTenant>` | The tenants, by id (final; `addTenant` adds to it, `removeTenant` removes from it). |
+| `defaultRefreshSeconds` | `static const int` | `30` — how often a configured tenancy refreshes from its registry. |
+| `tenants` | `Map<String, TomTenant>` | The tenants served, by id: the registry's tenants that are not removed once `install` has read it, the configured ones before (final; `addTenant`, `removeTenant` and `refreshFromRegistry` change it). |
+| `registry` | `TomTenantRegistry` | The durable list of tenants (final). |
+| `refreshInterval` | `Duration?` | How often the installed tenancy re-reads `registry`, or `null` for never (final). |
+| `registryConflicts` | `List<TomTenantRegistryConflict>` | The configured tenants their registry rows contradicted at the last `install`; the rows were used. |
 | `datasources` | `Set<String>` | The data sources routed per tenant (final). |
 | `resolvers` | `List<TomTenantResolver>` | How a request without a token claim names its tenant, in order (final). |
 | `defaultIsolation` | `TomTenantIsolation` | The isolation of a tenant that names none (final). |
@@ -180,16 +223,20 @@ reads as a tenancy with no tenants. Throws `tenancy.config.not_a_map`,
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `install` | `static Future<void> install(TomTenancy tenancy)` | Resets any installed configuration, provisions every tenant's schema or database, then publishes `tenancy` as `current` and installs `route` as `TomDataSourceInfo.router`. A provisioning failure fails the install. |
-| `reset` | `static Future<void> reset()` | Removes the installed configuration, uninstalls the router, and closes and unregisters the data sources it opened. |
+| `install` | `static Future<void> install(TomTenancy tenancy)` | Resets any installed configuration, reads the tenancy's `registry` — seeding it with the configured tenants it lacks as `active`, and reporting a configured tenant its row contradicts in `registryConflicts` — provisions every tenant the registry holds and has not removed, then publishes `tenancy` as `current`, installs `route` as `TomDataSourceInfo.router` and starts refreshing when `refreshInterval` is set. A provisioning failure fails the install. |
+| `reset` | `static Future<void> reset()` | Removes the installed configuration, stops its refresh, uninstalls the router, and closes and unregisters the data sources it opened. |
 | `unknownTenant` | `static TomTenancyException unknownTenant(String tenantId)` | The `tenancy.tenant.unknown` exception for work in a tenant the deployment does not have (`clientThrow: true`). |
-| `addTenant` | `Future<void> addTenant(TomTenant tenant)` | Provisions `tenant`'s schema or database, then adds it to the running deployment — onboarding without a restart. |
-| `removeTenant` | `Future<TomTenant> removeTenant(String tenantId)` | Withdraws the tenant from the running deployment: its requests and work are refused as `tenancy.tenant.unknown`, its routes dropped, the data sources opened for it closed (their pools with them). Returns the tenant; dropping its schema or database is the caller's. Throws `tenancy.tenant.unknown` for an unknown id. |
+| `addTenant` | `Future<void> addTenant(TomTenant tenant)` | Records `tenant` as `provisioning` in the registry, provisions its schema or database, records it as `active`, then serves it — onboarding without a restart. A failed provisioning leaves it `provisioning`, with the error as its status detail, and unserved. |
+| `suspendTenant` | `Future<void> suspendTenant(String tenantId)` | Records the tenant as `suspended`, then refuses its requests (`tenancy.tenant.suspended`, 403); data and routes stay. Throws `tenancy.tenant.unknown` for an unknown id. |
+| `resumeTenant` | `Future<void> resumeTenant(String tenantId)` | Records the tenant as `active` and serves it again. Throws `tenancy.tenant.unknown` for an unknown id. |
+| `statusOf` | `TomTenantStatus? statusOf(String tenantId)` | The registry status of a served tenant, or `null` for one the deployment does not have. |
+| `refreshFromRegistry` | `Future<TomTenantRegistryRefresh> refreshFromRegistry()` | Re-reads `registry` and brings this node's routing level with it: tenants another node added are provisioned and served, removed ones unrouted, changed statuses applied; a tenant that cannot be provisioned here is in the result's `failed`. |
+| `removeTenant` | `Future<TomTenant> removeTenant(String tenantId)` | Records the tenant as `removed` in the registry, then withdraws it from the running deployment: its requests and work are refused as `tenancy.tenant.unknown`, its routes dropped, the data sources opened for it closed (their pools with them). Returns the tenant; dropping its schema or database is the caller's. Throws `tenancy.tenant.unknown` for an unknown id. |
 | `isolationOf` | `TomTenantIsolation isolationOf(TomTenant tenant)` | The isolation `tenant` runs under: its own, or `defaultIsolation`. |
 | `route` | `TomDataSourceInfo route(TomDataSourceInfo base)` | `base` as the current tenant reaches it: the tenant's schema or database for a routed data source, `base` itself with no tenant, for an unrouted data source, or for a shared tenant. Throws `tenancy.tenant.unknown` for a tenant in context the deployment does not have — routing it to the shared data source would hand it everyone's rows. |
 | `runFor` | `Future<T> runFor<T>(String tenantId, FutureOr<T> Function() body)` | Runs `body` inside `tenantId`, which must be a tenant of the deployment (`tenancy.tenant.unknown` otherwise). |
 | `forEachTenant` | `Future<void> forEachTenant(FutureOr<void> Function(TomTenant tenant) body)` | Runs `body` once per tenant, in turn, inside each — per-tenant migrations, a nightly job doing each tenant's work, a cache warm-up. |
-| `resolveRequest` | `TomTenantResolution resolveRequest(Request request, {String? claim})` | The tenant `request` is for, or the rejection to answer it with; `claim` is the verified token's `tenant` claim. The claim is authoritative: a host or header naming another tenant is refused (`tenancy.resolution.conflict`, 403). Without a claim, the `resolvers` are asked in order. An unknown tenant is refused (`tenancy.tenant.unknown`, 404), as is an id that is not one (`tenancy.id.invalid`, 400). No answer is not a rejection: the request proceeds with no tenant. |
+| `resolveRequest` | `TomTenantResolution resolveRequest(Request request, {String? claim})` | The tenant `request` is for, or the rejection to answer it with; `claim` is the verified token's `tenant` claim. The claim is authoritative: a host or header naming another tenant is refused (`tenancy.resolution.conflict`, 403). Without a claim, the `resolvers` are asked in order. An unknown tenant is refused (`tenancy.tenant.unknown`, 404), as is an id that is not one (`tenancy.id.invalid`, 400); a suspended tenant is refused as `tenancy.tenant.suspended` (403), one provisioning, migrating or whose migration failed as `tenancy.tenant.unavailable` (503). No answer is not a rejection: the request proceeds with no tenant. |
 
 A routed data source is opened over a schema tenant's schema with the base data
 source's settings and the dialect's `schemaSetting` replaced — `databaseName` on
@@ -328,6 +375,170 @@ because each fills only its own case.
 | `message` | `String?` | The message of a rejection, or `null` (final). |
 | `isRejected` | `bool` | *(getter)* Whether the request is refused. |
 
+### TomTenantRegistry
+
+The durable list of the deployment's tenants.
+
+| Key | Meaning |
+| --- | ------- |
+| `tenancy.registry.unknown_tenant` | A status or version change for a tenant the registry does not hold. |
+| `tenancy.registry.unknown_status` | A stored status this code does not know. |
+| `tenancy.registry.unknown_datasource` | The registry's data source is not registered. |
+
+- **Extends:** none (abstract)
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `all` | `Future<List<TomTenantRecord>> all()` | Every recorded tenant, removed ones included, by id. |
+| `find` | `Future<TomTenantRecord?> find(String id)` | The tenant `id`, or `null`. |
+| `put` | `Future<void> put(TomTenantRecord record)` | Writes `record`, replacing the tenant's row. |
+| `setStatus` | `Future<TomTenantRecord> setStatus(String id, TomTenantStatus status, {String? detail, required DateTime at})` | Sets the tenant's status with `detail` (cleared when `null`) at `at`; answers the updated record. Throws `tenancy.registry.unknown_tenant`. |
+| `setMigrated` | `Future<TomTenantRecord> setMigrated(String id, String target, int version, {required DateTime at})` | Records migration `version` of `target` (`<datasource>/<schema>`) as applied to the tenant. Throws `tenancy.registry.unknown_tenant`. |
+| `unknownTenant` | `static TomTenancyException unknownTenant(String id)` | The `tenancy.registry.unknown_tenant` exception. |
+
+### TomMemoryTenantRegistry
+
+The registry in memory — a single process's tenants, lost on restart: the
+registry of a `TomTenancy` built in code, and of tests.
+
+- **Extends:** `TomTenantRegistry`
+
+#### Constructors
+
+```dart
+TomMemoryTenantRegistry()
+```
+
+### TomSqlTenantRegistry
+
+The registry in a SQL table of the system schema — the base data source's own
+schema, never routed: read and written through
+`TomDataSourceInfo.getBaseDataSourceInfo`, also inside a tenant.
+
+- **Extends:** `TomTenantRegistry`
+
+#### Constructors
+
+```dart
+TomSqlTenantRegistry(
+  TomDataSource datasource, {
+  String table = defaultTenantTable,
+  bool createSchema = true,
+})
+TomSqlTenantRegistry.named(
+  String this.datasourceName, {
+  String table = defaultTenantTable,
+  bool createSchema = true,
+})
+```
+
+`named` looks the data source up, unrouted, when the registry is first used, so
+it can be built before the data sources are registered.
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `datasourceName` | `String?` | The registered data source's name, or `null` for a fixed data source (final). |
+| `table` | `String` | The table name (final). |
+| `createSchema` | `bool` | Whether the store creates its table on first use (final). |
+| `datasource` | `TomDataSource` | *(getter)* The data source the table lives in; throws `tenancy.registry.unknown_datasource`. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `deleteAll` | `Future<void> deleteAll()` | Removes every row. For tests. |
+
+### TomTenantRecord
+
+One tenant as the registry records it.
+
+- **Extends:** none
+
+#### Constructors
+
+```dart
+const TomTenantRecord({
+  required String id,
+  String type = TomTenant.defaultType,
+  String? name,
+  TomTenantIsolation? isolation,
+  String? schema,
+  Map<String, Object> datasources = const {},
+  required TomTenantStatus status,
+  String? statusDetail,
+  Map<String, int> migrated = const {},
+  required DateTime createdAt,
+  required DateTime updatedAt,
+})
+factory TomTenantRecord.of(TomTenant tenant, TomTenantStatus status, DateTime at)
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `id`, `type`, `name`, `isolation`, `schema` | | As on `TomTenant` (final). |
+| `datasources` | `Map<String, Object>` | Per routed data source name, a registered name or settings — never a literal password (final). |
+| `status` | `TomTenantStatus` | Where it is in its lifecycle (final). |
+| `statusDetail` | `String?` | What the last status change said — the error of a failed step (final). |
+| `migrated` | `Map<String, int>` | The migration version applied per `<datasource>/<schema>` (final). |
+| `createdAt`, `updatedAt` | `DateTime` | When it was first recorded and last changed (final). |
+| `passwordKey` | `static const String` | `'password'` — the setting a data source's password is under. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `copyWith` | `TomTenantRecord copyWith({TomTenantStatus? status, String? statusDetail, bool clearDetail = false, Map<String, int>? migrated, DateTime? updatedAt})` | The record with those fields replaced. |
+| `copyWithCreated` | `TomTenantRecord copyWithCreated(DateTime? createdAt)` | The record created at `createdAt` when one is given. |
+| `toTenant` | `TomTenant toTenant({TomTenant? configured})` | The tenant it describes; a data source's `password` comes from `configured`, the same tenant as configured. |
+| `storableDatasources` | `static Map<String, Object> storableDatasources(Map<String, Object> datasources)` | `datasources` without a `password` that is not a `secret:` reference. |
+| `differencesFrom` | `Map<String, (Object?, Object?)> differencesFrom(TomTenant tenant)` | The fields `tenant` disagrees with — `type`, `isolation`, `schema`, `datasources` — each (configured, recorded). |
+| `toString` | `String toString()` | *(override)* `TomTenantRecord(<id>, <status>)`. |
+
+### TomTenantRegistryConflict
+
+A configured tenant its registry row contradicts: the row is used, the
+difference reported.
+
+- **Extends:** none
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `tenant` | `String` | The tenant's id (final). |
+| `differences` | `Map<String, (Object?, Object?)>` | The fields that differ: name → (configured, recorded) (final). |
+
+### TomTenantRegistryRefresh
+
+What `TomTenancy.refreshFromRegistry` changed on a node.
+
+- **Extends:** none
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `added` | `List<String>` | The tenants now served that were not (final). |
+| `removed` | `List<String>` | The tenants no longer served (final). |
+| `changed` | `List<String>` | The tenants whose status changed (final). |
+| `failed` | `Map<String, Object>` | The tenants that could not be provisioned here, with the error (final). |
+| `isEmpty` | `bool` | *(getter)* Whether nothing changed. |
+
+### TomTenantRow
+
+One row of the tenant registry table, as the data source's mapper reads it
+(`@tomReflector`): `id`, `type`, `name`, `isolation`, `schemaName`,
+`datasources` and `migrated` (JSON), `status`, `statusDetail`, `createdAt`,
+`updatedAt`.
+
+- **Extends:** none
+
 ## Enums
 
 ### TomTenantIsolation
@@ -346,6 +557,28 @@ Where a tenant's data lives.
 | ------ | --------- | ----------- |
 | `parse` | `static TomTenantIsolation parse(String raw)` | Parses a configured name, trimmed and case-insensitively; throws `tenancy.config.unknown_isolation`. |
 
+### TomTenantStatus
+
+Where a tenant is in its lifecycle; only `active` is served.
+
+| Value | Wire name | Meaning |
+| ----- | --------- | ------- |
+| `provisioning` | `provisioning` | Its schema or database is being created (503). |
+| `migrating` | `migrating` | Its type's migrations are being applied (503). |
+| `active` | `active` | Served. |
+| `suspended` | `suspended` | Kept, but refused (403). |
+| `migrationFailed` | `migration-failed` | A migration of it failed (503). |
+| `removed` | `removed` | Gone from the deployment; not routed. |
+
+| Member | Signature | Description |
+| ------ | --------- | ----------- |
+| `wireName` | `final String wireName` | The name stored in the registry. |
+| `parse` | `static TomTenantStatus parse(String raw)` | The status stored as `raw`; throws `tenancy.registry.unknown_status`. |
+
 ## Global Functions and Constants
 
-None — this module exposes no top-level functions or constants.
+| Name | Signature | Description |
+| ---- | --------- | ----------- |
+| `defaultTenantTable` | `const String defaultTenantTable` | `'tom_tenant'`. |
+| `tenantTable` | `TomFrameworkTable tenantTable(String table)` | The tenant registry table, declared once. |
+| `tenantTableDdl` | `String tenantTableDdl(String table)` | Its `CREATE TABLE` statement. |

@@ -22,6 +22,10 @@ This guide is the server half.
   - [How a data source is routed](#how-a-data-source-is-routed)
 - [Configuration](#configuration)
   - [A schema on each database](#a-schema-on-each-database)
+- [The Tenant Registry](#the-tenant-registry)
+  - [Configuration is a seed](#configuration-is-a-seed)
+  - [A tenant's status](#a-tenants-status)
+  - [A cluster reads one registry](#a-cluster-reads-one-registry)
 - [Starting a Multi-Tenant Server](#starting-a-multi-tenant-server)
   - [Per-tenant migrations](#per-tenant-migrations)
 - [Resolving a Request's Tenant](#resolving-a-requests-tenant)
@@ -34,6 +38,7 @@ This guide is the server half.
 - [What Stays Deployment-Wide](#what-stays-deployment-wide)
 - [Working in a Tenant Outside a Request](#working-in-a-tenant-outside-a-request)
 - [Onboarding a Tenant](#onboarding-a-tenant)
+- [Suspending a Tenant](#suspending-a-tenant)
 - [Removing a Tenant](#removing-a-tenant)
 - [Operating Costs](#operating-costs)
 - [Failure Keys](#failure-keys)
@@ -49,7 +54,17 @@ This guide is the server half.
 | Type | Kind | Purpose |
 | ---- | ---- | ------- |
 | `TomTenancy` | class | The deployment's tenants, their resolution rules and their routing; installed once per process |
-| `TomTenant` | class | One tenant: its id, display name, isolation model, schema and data sources |
+| `TomTenant` | class | One tenant: its id, type, display name, isolation model, schema and data sources |
+| `TomTenantRegistry` | abstract class | The durable list of tenants `TomTenancy` reads at install, writes every lifecycle change to and refreshes from |
+| `TomMemoryTenantRegistry` | class | The registry in memory — a tenancy built in code, and tests |
+| `TomSqlTenantRegistry` | class | The registry in the framework table `tom_tenant` of the system schema |
+| `TomTenantRecord` | class | One tenant as the registry records it: type, isolation, data sources, status, migrated versions, created and updated |
+| `TomTenantStatus` | enum | `provisioning`, `migrating`, `active`, `suspended`, `migration-failed`, `removed` |
+| `TomTenantRegistryConflict` | class | A configured tenant its registry row contradicts, with the differences |
+| `TomTenantRegistryRefresh` | class | What `refreshFromRegistry` changed on a node |
+| `TomTenantRow` | class | One row of `tom_tenant`, as the data source's mapper reads it |
+| `tenantTable` / `tenantTableDdl` | function | The `tom_tenant` table, declared once, and its DDL |
+| `defaultTenantTable` | const String | `tom_tenant` |
 | `TomTenantIsolation` | enum | `shared`, `schema` or `database` — where a tenant's rows live |
 | `TomTenancyException` | class | A tenancy configuration that cannot be used, or a tenant that does not exist |
 | `TomTenantResolver` | abstract interface class | Reads a tenant id from a request that carries no token claim |
@@ -155,7 +170,10 @@ tenancy:
     acme-gmbh: acme
   header: X-Tenant-Id            # the header the header resolver reads
   createSchemas: true            # create a schema tenant's schema at provisioning
-  tenants:
+  registry:                      # the tenant registry (see The Tenant Registry)
+    datasource: main             # its system schema: the base schema of this data source
+    refreshSeconds: 30           # how often each node re-reads it; 0 for never
+  tenants:                       # a seed for the registry
     acme: {}                     # shared, the default
     globex: {isolation: schema}  # schema main_globex on the shared server
     initech:
@@ -179,6 +197,8 @@ tenancy:
 | `pathSegments` | none | Segment → tenant id, for the `path` resolver. Without it the segment is the tenant id; with it only a listed segment names a tenant, and any other segment after the prefix is refused as an unknown tenant. |
 | `header` | `X-Tenant-Id` | The header the `header` resolver reads. |
 | `createSchemas` | `false` | Whether provisioning a `schema` tenant creates its schema if it does not exist — `CREATE DATABASE IF NOT EXISTS` on MariaDB, `CREATE SCHEMA IF NOT EXISTS` on PostgreSQL. |
+| `registry` | a SQL registry on the first routed data source | `memory` keeps the tenants in the process; a map names the registry's `datasource`, `table` (`tom_tenant`), `createSchema` (`true`) and `refreshSeconds` (`30`; `0` for never). |
+| `tenants.<id>.type` | `default` | The tenant's type. |
 | `tenants.<id>.name` | none | A display name. |
 | `tenants.<id>.isolation` | the default | The tenant's model. |
 | `tenants.<id>.schema` | `<databaseName>_<id>` | Under `schema`, the schema's name. |
@@ -193,8 +213,9 @@ everywhere is one that never needs quoting anywhere. A schema name is held to
 letters, digits and underscores, at most 64.
 
 The same configuration can be built in code — `TomTenancy`'s constructor takes
-the tenants, the routed data sources, the resolvers, the default model and
-`createSchemas`:
+the tenants, the routed data sources, the resolvers, the default model,
+`createSchemas`, the `registry` (an in-memory one unless given) and the
+`refreshInterval`:
 
 ```dart
 final tenancy = TomTenancy(
@@ -226,6 +247,67 @@ tenant's schema. The schema name defaults to `<databaseName>_<id>` on both, so
 the base data source has to name its `databaseName` on PostgreSQL too
 (`tenancy.config.schema_unsupported` otherwise).
 
+## The Tenant Registry
+
+A `TomTenantRegistry` is the durable list of the deployment's tenants. In a
+configured deployment it is `TomSqlTenantRegistry`, the framework table
+`tom_tenant` in the **system schema** — the base schema of the registry's data
+source, never routed, so it is read and written unrouted also inside a tenant.
+One row per tenant holds its id, type, name, isolation, schema, data sources,
+status (with the detail of the last change), the migration version applied per
+`<datasource>/<schema>`, and when it was created and last changed. A tenancy
+built in code without a registry keeps an in-memory one
+(`TomMemoryTenantRegistry`), which is what tests and a single-process tool
+want.
+
+The store creates its table on first use; a deployment whose database user may
+not run DDL applies the reference migration
+`example/tenancy/migrations/main/tomcore/[1]-create_tom_tenant.sql` (or
+`migrations_postgresql/`) to the system schema and configures
+`registry: {createSchema: false}`.
+
+### Configuration is a seed
+
+At `install` the registry is read. A configured tenant the registry does not
+hold yet is written into it as `active`; one it holds is taken from the
+registry, and where the configuration says something else — another type,
+isolation, schema or data sources, or a tenant the registry records as removed
+— the difference is reported in `TomTenancy.registryConflicts` and logged, and
+the row is used. A tenant the registry holds and the configuration does not
+name is served all the same: tenants added at run time survive a restart. So
+the configuration seeds a new deployment and is not a second source of truth.
+
+A literal `password` in a tenant's data-source settings is never written into
+the table: the row holds the settings without it, and the configured tenant's
+password is merged back in when the tenant is read. A cluster that adds
+`database` tenants at run time names their passwords by `secret:` reference,
+which the row does hold.
+
+### A tenant's status
+
+| Status | Served | A request is answered |
+| ------ | ------ | --------------------- |
+| `provisioning` | no | `503`, `tenancy.tenant.unavailable` |
+| `migrating` | no | `503`, `tenancy.tenant.unavailable` |
+| `active` | yes | — |
+| `suspended` | no | `403`, `tenancy.tenant.suspended` |
+| `migration-failed` | no | `503`, `tenancy.tenant.unavailable` |
+| `removed` | not routed at all | `404`, `tenancy.tenant.unknown` |
+
+`addTenant`, `suspendTenant`, `resumeTenant` and `removeTenant` write the
+tenant's new status into the registry **before** they change this node's
+routing, and `statusOf(id)` answers a served tenant's status.
+
+### A cluster reads one registry
+
+Every node of a cluster reads the same registry. `refreshFromRegistry()` brings a
+node level with it: a tenant another node added is provisioned and served, one
+it removed is unrouted and its pools closed, and a changed status takes effect;
+a tenant that cannot be provisioned on this node is reported in the result's
+`failed` and tried again at the next refresh. An installed tenancy with a
+`refreshInterval` (`registry.refreshSeconds` in configuration, 30 seconds by
+default) refreshes by itself; `reset` stops it.
+
 ## Starting a Multi-Tenant Server
 
 Tenancy is installed after the data sources are registered and before the
@@ -236,7 +318,9 @@ await TomDataSourceInfo.initializeDatasourceInfo(datasourceConfiguration);
 await TomTenancy.install(TomTenancy.fromConfiguration());
 ```
 
-`install` provisions every tenant first — a `schema` tenant's schema is created
+`install` reads the [registry](#the-tenant-registry) and seeds it with the
+configured tenants it lacks. It then provisions every tenant the registry holds
+and has not removed — a `schema` tenant's schema is created
 (with `createSchemas`) and a data source is opened over it; a `database`
 tenant's data source is opened from its settings or looked up by name — and only
 then publishes the configuration as `TomTenancy.current` and installs the
@@ -338,6 +422,8 @@ body is a small JSON object carrying the key and a message:
 | `403` | `tenancy.resolution.conflict` | The host, path or header names another tenant than the token's claim. A token is not a pass to another tenant. |
 | `404` | `tenancy.tenant.unknown` | The request names a tenant the deployment does not have — a path segment the path resolver's lookup does not know included. |
 | `400` | `tenancy.id.invalid` | The request names something that is not a tenant id. |
+| `403` | `tenancy.tenant.suspended` | The tenant is suspended ([Suspending a Tenant](#suspending-a-tenant)). |
+| `503` | `tenancy.tenant.unavailable` | The tenant is provisioning, migrating, or its migration failed. |
 
 ### A login binds the token to its tenant
 
@@ -675,10 +761,26 @@ await tenancy.runFor(
 );
 ```
 
-`addTenant` provisions the tenant's schema or database first and adds it to the
-running deployment only once that succeeded, so a request naming the tenant
-cannot arrive before its data source exists. No restart is needed. Add the
-tenant to the configuration as well, so the next start knows it.
+`addTenant` records the tenant in the registry as `provisioning`, provisions its
+schema or database, records it as `active`, and only then serves it, so a
+request naming the tenant cannot arrive before its data source exists. A
+provisioning that fails leaves the tenant `provisioning` in the registry, with
+the error as its status detail, and unserved. No restart is needed and no
+configuration change: the next start reads the tenant from the registry, and
+every node serves it from its next refresh.
+
+## Suspending a Tenant
+
+```dart
+await TomTenancy.current!.suspendTenant('umbrella');
+// ... later
+await TomTenancy.current!.resumeTenant('umbrella');
+```
+
+`suspendTenant` records the tenant as `suspended`, after which its requests are
+refused as `tenancy.tenant.suspended` (`403`); its data and routes stay, so
+`resumeTenant` serves it again at once. Suspending first is how a deployment
+stops a tenant's traffic before it removes the tenant.
 
 ## Removing a Tenant
 
@@ -694,7 +796,8 @@ await main.datasource.executeCommand('DROP DATABASE IF EXISTS `$schema`');
 ```
 
 `removeTenant` is the counterpart of `addTenant`, for a tenant whose deletion is
-final. It takes the tenant out of `tenants` first, so from then on a request
+final. It records the tenant as `removed` in the registry, then takes it out of
+`tenants`, so from then on a request
 naming it — by its token's claim, its host, its path or a header — is refused
 as `tenancy.tenant.unknown` (`404`), and work still in its context is refused by
 `route` and `runFor`. It then drops the tenant's routes and closes the data
@@ -705,9 +808,10 @@ open. Other tenants are untouched.
 The tenant's data is not touched: dropping its schema or database is the
 caller's, with the `TomTenant` the call returns. Work that is still running in
 the tenant when its pools close fails, so a deployment that needs it to finish
-stops admitting the tenant's requests first — Tom UAM suspends a tenant before
-it deletes it — and removes the tenant afterwards. Remove it from the
-configuration as well, so the next start does not provision it again.
+stops admitting the tenant's requests first — `suspendTenant` — and removes the
+tenant afterwards. The registry row stays, as `removed`, so the next start does
+not provision the tenant again even if the configuration still names it (that
+is reported as a conflict).
 
 ## Operating Costs
 
@@ -740,7 +844,13 @@ configuration as well, so the next start does not provision it again.
 | `tenancy.config.invalid_schema` | provisioning | A schema name that is not a plain identifier of at most 64 characters. |
 | `tenancy.config.missing_datasource` | provisioning | Database isolation without a data source for a routed name. |
 | `tenancy.config.unknown_datasource` | provisioning | A routed or referenced data source that is not registered. |
-| `tenancy.tenant.unknown` | `route`, `runFor`, `resolveRequest`, `removeTenant` | Work or a request for a tenant the deployment does not have (`404` on a request; `clientThrow: true`). |
+| `tenancy.config.invalid_registry` | `TomTenancy.fromConfiguration` | A `registry.refreshSeconds` that is not a whole number of seconds, 0 or more. |
+| `tenancy.tenant.unknown` | `route`, `runFor`, `resolveRequest`, `suspendTenant`, `resumeTenant`, `removeTenant` | Work or a request for a tenant the deployment does not have (`404` on a request; `clientThrow: true`). |
+| `tenancy.tenant.suspended` | `resolveRequest` | A request for a suspended tenant (`403`). |
+| `tenancy.tenant.unavailable` | `resolveRequest` | A request for a tenant that is provisioning, migrating or whose migration failed (`503`). |
+| `tenancy.registry.unknown_tenant` | `TomTenantRegistry.setStatus`, `setMigrated` | A change to a tenant the registry does not hold. |
+| `tenancy.registry.unknown_status` | `TomTenantStatus.parse` | A stored status this code does not know. |
+| `tenancy.registry.unknown_datasource` | `TomSqlTenantRegistry` | The registry's data source is not registered. |
 | `tenancy.resolution.conflict` | `resolveRequest` | A request naming another tenant than its token (`403`). |
 | `tenancy.id.invalid` | kernel `TomTenantContext.validate`, `TomTenant`, `resolveRequest` | A tenant id that is not a lower-case identifier of at most 32 characters (`400` on a request). |
 | `tenancy.context.missing` | kernel `TomTenantContext.require` | Tenant-owned work ran with no tenant in context. |
@@ -788,6 +898,19 @@ request inside its tenant and refusing a token used for another; a deployment
 without tenancy running every request in none; and a login binding its token to
 its tenant and refusing an account of another.
 
+`test/tenant_registry_test.dart` covers the registry without a database: the
+in-memory store, the stored status names, the password never written; `install`
+seeding the configured tenants, the registry winning over the configuration and
+the conflict reported, a removed tenant not served; `addTenant`,
+`suspendTenant`, `resumeTenant` and `removeTenant` writing the registry before
+routing, and the request answers for each status; a second node's additions,
+suspensions and removals reaching the first at its refresh, and the periodic
+refresh; the `registry` configuration, and a registry over an unregistered data
+source refused. `test/tenant_registry_db_test.dart`,
+tagged `db`, runs the SQL store on MariaDB and PostgreSQL: every field's round
+trip, and two nodes over one registry table, a schema-isolated tenant added on
+one provisioned, routed and dropped by the other.
+
 `test/tenancy_db_test.dart`, tagged `db`, runs two tenants against the database
 the DB suites run against — MariaDB or PostgreSQL — under
 each of the three isolation models with the same assertions — that is the point
@@ -831,12 +954,21 @@ result, and `test/examples_test.dart` runs it.
 ## Core Components
 
 - **`TomTenancy`** — the configuration (`tenants`, `datasources`, `resolvers`,
-  `defaultIsolation`, `createSchemas`), its reading (`fromConfiguration`,
-  `configurationKey`), its lifecycle (`install`, `reset`, `current`,
-  `addTenant`, `removeTenant`), its routing (`route`, `isolationOf`), work in a tenant
+  `defaultIsolation`, `createSchemas`, `registry`, `refreshInterval`), its
+  reading (`fromConfiguration`, `configurationKey`, `defaultRefreshSeconds`),
+  its lifecycle (`install`, `reset`, `current`, `addTenant`, `suspendTenant`,
+  `resumeTenant`, `removeTenant`, `statusOf`, `refreshFromRegistry`,
+  `registryConflicts`), its routing (`route`, `isolationOf`), work in a tenant
   (`runFor`, `forEachTenant`), request resolution (`resolveRequest`) and the
   refusal of an unknown tenant (`unknownTenant`).
-- **`TomTenant`** / **`TomTenantIsolation`** — one tenant and its model;
+- **`TomTenantRegistry`**, **`TomMemoryTenantRegistry`**,
+  **`TomSqlTenantRegistry`** — the durable list of tenants; **`TomTenantRecord`**
+  (one row), **`TomTenantStatus`**, **`TomTenantRegistryConflict`**,
+  **`TomTenantRegistryRefresh`**, **`TomTenantRow`** (the mapped row);
+  **`tenantTable`** / **`tenantTableDdl`** / **`defaultTenantTable`** — the table,
+  declared once.
+- **`TomTenant`** / **`TomTenantIsolation`** — one tenant (with its `type`,
+  `defaultType` `default`) and its model;
   `TomTenant.fromMap` reads one from configuration and `TomTenantIsolation.parse`
   a model name.
 - **`TomTenantResolver`**, **`TomTenantHostResolver`**,
@@ -849,9 +981,11 @@ result, and `test/examples_test.dart` runs it.
 
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
-| `dart:async` | dart | `tenancy.dart` | `FutureOr`, the body type of `runFor` and `forEachTenant` |
-| `shelf` | package | every file | `Request`, which a resolver reads and `resolveRequest` resolves |
-| `tom_core_kernel` | package | `tenancy.dart` | `TomTenantContext` — the zone-carried tenant, the id rule and `qualify` |
+| `dart:async` | dart | `tenancy.dart` | `FutureOr`, the body type of `runFor` and `forEachTenant`; `Timer`, the registry refresh |
+| `dart:convert` | dart | `tenant_registry.dart` | `jsonEncode` / `jsonDecode`, the registry's `datasources` and `migrated` columns |
+| `shelf` | package | `tenancy.dart`, `tenant_resolution.dart` | `Request`, which a resolver reads and `resolveRequest` resolves |
+| `tom_core_kernel` | package | `tenancy.dart`, `tenant_registry.dart` | `TomTenantContext` — the zone-carried tenant, the id rule and `qualify`; `TomDataSource`, `tomLog` and `tomReflector` |
 | [configuration](configuration.md) | module | `tenancy.dart` | `TomServerConfigResourceProvider`, which `fromConfiguration` reads the `tenancy` key from |
-| [datasources](datasources.md) | module | `tenancy.dart` | `TomDataSourceInfo` — the registry routed per tenant, the data sources opened over a tenant's schema or database — and the base data source's dialect, whose `createSchema` and `schemaSetting` say how a schema is made and pointed at |
+| [datasources](datasources.md) | module | `tenancy.dart`, `tenant_registry.dart`, `tenant_registry_sql.dart` | `TomDataSourceInfo` — the registry routed per tenant, the data sources opened over a tenant's schema or database — and the base data source's dialect, whose `createSchema` and `schemaSetting` say how a schema is made and pointed at; and `TomFrameworkTable`, `TomSchemaProvisioning` and `sqlInstant` / `parseSqlInstant`, the registry's table and its instants |
 | [little_things](little_things.md) | module | `tenancy.dart` | `TomServerException`, the base of `TomTenancyException` |
+| [object_persistence](object_persistence.md) | module | `tenant_registry.dart` | `@TomDbTable` / `@TomDbColumn`, the mapping of `TomTenantRow` |

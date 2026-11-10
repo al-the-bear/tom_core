@@ -214,6 +214,12 @@ void main() {
       ]);
     });
 
+    test('the tenancy chain builds the tenant-registry descriptor', () {
+      converges('example/tenancy/migrations/main/tomcore', [
+        tenantTable(defaultTenantTable),
+      ]);
+    });
+
     test('the cache chain builds the invalidation-log descriptor', () {
       converges('example/cache/migrations/main/tomcore', [
         invalidationTable(defaultInvalidationTable),
@@ -326,6 +332,10 @@ void main() {
         TomSyncChangeIdRow,
       ]);
       maps(syncSequenceTable(defaultSyncSequenceTable), [TomSyncSequenceRow]);
+    });
+
+    test('the tenant registry', () {
+      maps(tenantTable(defaultTenantTable), [TomTenantRow]);
     });
 
     test('the roll call', () {
@@ -505,6 +515,27 @@ void main() {
           await _issuing(() => register.deleteAll());
         },
       );
+    });
+
+    test('the tenant registry', () async {
+      final datasource = _RecordingDataSource();
+      final registry = TomSqlTenantRegistry(datasource);
+      final at = DateTime.utc(2026);
+      await audit(datasource, [tenantTable(defaultTenantTable)], () async {
+        await _issuing(
+          () => registry.put(
+            TomTenantRecord(
+              id: 'acme',
+              status: TomTenantStatus.active,
+              createdAt: at,
+              updatedAt: at,
+            ),
+          ),
+        );
+        await _issuing(() => registry.find('acme'));
+        await _issuing(() => registry.all());
+        await _issuing(() => registry.deleteAll());
+      });
     });
 
     test('the blob ledger', () async {

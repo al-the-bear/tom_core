@@ -917,11 +917,13 @@ TomSchemaConvergenceCheck({
 ### TomFrameworkSchemaCheck
 
 The convergence check for the tables the **framework itself** owns
-(`frameworkOwnedTables`): scheduling, file storage, audit, OAuth state, SCIM
-resources, messaging delivery reports, the messaging inbox, the
+(`frameworkOwnedTables`): scheduling, file storage, audit, saved audit
+questions, OAuth state, SCIM resources, messaging delivery reports and
+suppressions, the messaging inbox, the
 cache-invalidation log, the idempotency keys, the sagas, the field-encryption
 data keys, the privacy module's subject keys, the transaction decision log, the
-export register and the sync change log with its counters. A
+export register, the sync change log with its counters and the tenant
+registry. A
 sibling of `TomSchemaConvergenceCheck` rather than the same class, because the
 application check can only run where an application's entities and migrations
 exist, while this one holds for the framework and is meaningful in an empty
@@ -1126,11 +1128,11 @@ here rather than on the dialect.
 
 | Name | Signature | Description |
 | ---- | --------- | ----------- |
-| `frameworkOwnedTables` | `List<TomFrameworkTable> frameworkOwnedTables({String jobRun = defaultJobRunTable, String lease = defaultLeaseTable, String schedulerNode = defaultSchedulerNodeTable, String jobPause = defaultJobPauseTable, String jobRunArchive = defaultJobRunArchiveTable, String blobManifest = defaultBlobManifestTable, String blobChunk = defaultBlobChunkTable, String blobLedger = defaultBlobLedgerTable, String blobContent = defaultBlobContentTable, String auditTrail = defaultAuditTrailTable, String oauthState = defaultOAuthStateTable, String deliveryReport = defaultDeliveryReportTable, String invalidation = defaultInvalidationTable, String scimResource = defaultScimResourceTable, String inbox = defaultInboxTable, String idempotency = defaultIdempotencyTable, String saga = defaultSagaTable, String encryptionKey = defaultEncryptionKeyTable, String subjectKey = defaultSubjectKeyTable, String decision = defaultDecisionTable, String exportRegister = defaultExportRegisterTable, String syncChange = defaultSyncChangeTable, String syncSequence = defaultSyncSequenceTable})` | Every table the framework owns, at the names it uses when nothing overrides them — so that "all of them" is a thing a caller can name rather than a list each caller assembles and each forgets to extend. A deployment that renames a table passes the corresponding argument. The dependency runs one way: this module reads the descriptors of `scheduling/`, `file_storage/`, `audit/`, `authentication/`, `messaging/`, `cache/`, `endpoints/`, `transactions/`, `object_persistence/`, `privacy/`, `export/` and `sync/`, and none of them reads back, so the scheduler runs without loading a migration. |
+| `frameworkOwnedTables` | `List<TomFrameworkTable> frameworkOwnedTables({String jobRun = defaultJobRunTable, String lease = defaultLeaseTable, String schedulerNode = defaultSchedulerNodeTable, String jobPause = defaultJobPauseTable, String jobRunArchive = defaultJobRunArchiveTable, String blobManifest = defaultBlobManifestTable, String blobChunk = defaultBlobChunkTable, String blobLedger = defaultBlobLedgerTable, String blobContent = defaultBlobContentTable, String auditTrail = defaultAuditTrailTable, String auditQuestion = defaultAuditQuestionTable, String oauthState = defaultOAuthStateTable, String deliveryReport = defaultDeliveryReportTable, String suppression = defaultSuppressionTable, String invalidation = defaultInvalidationTable, String scimResource = defaultScimResourceTable, String inbox = defaultInboxTable, String idempotency = defaultIdempotencyTable, String saga = defaultSagaTable, String encryptionKey = defaultEncryptionKeyTable, String subjectKey = defaultSubjectKeyTable, String decision = defaultDecisionTable, String exportRegister = defaultExportRegisterTable, String syncChange = defaultSyncChangeTable, String syncSequence = defaultSyncSequenceTable, String tenant = defaultTenantTable})` | Every table the framework owns, at the names it uses when nothing overrides them — so that "all of them" is a thing a caller can name rather than a list each caller assembles and each forgets to extend. A deployment that renames a table passes the corresponding argument. The dependency runs one way: this module reads the descriptors of `scheduling/`, `file_storage/`, `audit/`, `audit_reports/`, `authentication/`, `messaging/`, `cache/`, `endpoints/`, `transactions/`, `object_persistence/`, `privacy/`, `export/`, `sync/` and `tenancy/`, and none of them reads back, so the scheduler runs without loading a migration. |
 
 The signature names the defaulting constants rather than their values, and each
-is declared by the module that owns the table — so the twenty-three names the check
-actually covers in a deployment that renames nothing are spread across twelve other
+is declared by the module that owns the table — so the twenty-six names the check
+actually covers in a deployment that renames nothing are spread across fourteen other
 modules. They are, parameter → constant → table name (owner):
 
 - `jobRun` → `defaultJobRunTable` → `tom_job_run` (Scheduling)
@@ -1143,8 +1145,10 @@ modules. They are, parameter → constant → table name (owner):
 - `blobLedger` → `defaultBlobLedgerTable` → `tom_blob_ledger` (File Storage)
 - `blobContent` → `defaultBlobContentTable` → `tom_blob_content` (File Storage)
 - `auditTrail` → `defaultAuditTrailTable` → `tom_audit_trail` (Audit)
+- `auditQuestion` → `defaultAuditQuestionTable` → `tom_audit_question` (Audit Reports)
 - `oauthState` → `defaultOAuthStateTable` → `tom_oauth_state` (Authentication)
 - `deliveryReport` → `defaultDeliveryReportTable` → `tom_delivery_report` (Messaging)
+- `suppression` → `defaultSuppressionTable` → `tom_message_suppression` (Messaging)
 - `invalidation` → `defaultInvalidationTable` → `tom_cache_invalidation` (Cache)
 - `scimResource` → `defaultScimResourceTable` → `tom_scim_resource` (Authentication)
 - `inbox` → `defaultInboxTable` → `tom_message_inbox` (Messaging)
@@ -1156,3 +1160,4 @@ modules. They are, parameter → constant → table name (owner):
 - `exportRegister` → `defaultExportRegisterTable` → `tom_export` (Export)
 - `syncChange` → `defaultSyncChangeTable` → `tom_sync_change` (Sync)
 - `syncSequence` → `defaultSyncSequenceTable` → `tom_sync_sequence` (Sync)
+- `tenant` → `defaultTenantTable` → `tom_tenant` (Tenancy)

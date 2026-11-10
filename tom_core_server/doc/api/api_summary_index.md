@@ -1038,7 +1038,7 @@ Summary: [api_summary_audit_reports.md](api_summary_audit_reports.md)
 | Type | Kind | Description |
 | ---- | ---- | ----------- |
 | `TomTenancy` | class | The deployment's tenants, their routing and request resolution; installed once per process. |
-| `TomTenant` | class | One tenant: its id, name, isolation model, schema and data sources. |
+| `TomTenant` | class | One tenant: its id, type, name, isolation model, schema and data sources. |
 | `TomTenantIsolation` | enum | `shared`, `schema` or `database` — where a tenant's rows live. |
 | `TomTenancyException` | class | Tenancy configuration or unknown-tenant error (extends `TomServerException`). |
 | `TomTenantResolver` | abstract interface class | Reads a tenant id from a request without a token claim. |
@@ -1046,6 +1046,16 @@ Summary: [api_summary_audit_reports.md](api_summary_audit_reports.md)
 | `TomTenantPathResolver` | class | Names the tenant by the path segment after a prefix, `/t/<segment>` by default. |
 | `TomTenantHeaderResolver` | class | Names the tenant by a header, `X-Tenant-Id` by default. |
 | `TomTenantResolution` | class | A request's tenant, none, or the rejection to answer it with. |
+| `TomTenantRegistry` | abstract class | The durable list of tenants `TomTenancy` reads at install and refreshes from. |
+| `TomMemoryTenantRegistry` | class | The registry in memory; right for a test or a single process. |
+| `TomSqlTenantRegistry` | class | The registry in `tom_tenant`, in the system schema — the durable half. |
+| `TomTenantRecord` | class | One tenant as the registry records it: type, isolation, data sources, status, migrated versions. |
+| `TomTenantStatus` | enum | `provisioning`, `migrating`, `active`, `suspended`, `migration-failed`, `removed`. |
+| `TomTenantRegistryConflict` | class | A configured tenant its registry row contradicts. |
+| `TomTenantRegistryRefresh` | class | What a refresh from the registry changed on a node. |
+| `TomTenantRow` | class | One row of `tom_tenant` as the driver hands it back. |
+| `tenantTable` / `tenantTableDdl` | function | The registry table, declared once, and its `CREATE TABLE`. |
+| `defaultTenantTable` | constant | `tom_tenant`. |
 
 ### Tracing (`lib/src/tomserver/tracing/`)
 
@@ -1159,6 +1169,7 @@ Summary: [api_summary_audit_reports.md](api_summary_audit_reports.md)
 | `defaultSubjectKeyTable` | Privacy |
 | `defaultSyncChangeTable` | Sync |
 | `defaultSyncSequenceTable` | Sync |
+| `defaultTenantTable` | Tenancy |
 | `deliveryReportTable` | Messaging |
 | `deliveryReportTableDdl` | Messaging |
 | `DoubleCol` | Object Persistence |
@@ -1265,6 +1276,8 @@ Summary: [api_summary_audit_reports.md](api_summary_audit_reports.md)
 | `Sum` | Object Persistence |
 | `syncChangeTable` | Sync |
 | `syncSequenceTable` | Sync |
+| `tenantTable` | Tenancy |
+| `tenantTableDdl` | Tenancy |
 | `TimeCol` | Object Persistence |
 | `TimeLiteral` | Object Persistence |
 | `Tom2FAAdaptor` | Authentication |
@@ -1704,6 +1717,7 @@ Summary: [api_summary_audit_reports.md](api_summary_audit_reports.md)
 | `TomMemoryScimStore` | Authentication |
 | `TomMemorySubjectKeyStore` | Privacy |
 | `TomMemorySuppressionList` | Messaging |
+| `TomMemoryTenantRegistry` | Tenancy |
 | `TomMessage` | Messaging |
 | `TomMessageBody` | Messaging |
 | `TomMessageChannel` | Messaging |
@@ -2012,6 +2026,7 @@ Summary: [api_summary_audit_reports.md](api_summary_audit_reports.md)
 | `TomSqlSubjectKeyStore` | Privacy |
 | `TomSqlSuppressionList` | Messaging |
 | `TomSqlSyncLog` | Sync |
+| `TomSqlTenantRegistry` | Tenancy |
 | `TomSqlTwoPhaseRecovery` | Datasources |
 | `TomSqlTypeFamily` | Datasources |
 | `TomSqlTypeFamilyCompatibility` | Database Migration |
@@ -2058,8 +2073,14 @@ Summary: [api_summary_audit_reports.md](api_summary_audit_reports.md)
 | `TomTenantOwned` | Object Persistence |
 | `TomTenantPathResolver` | Tenancy |
 | `TomTenantProviderSets` | Authentication |
+| `TomTenantRecord` | Tenancy |
+| `TomTenantRegistry` | Tenancy |
+| `TomTenantRegistryConflict` | Tenancy |
+| `TomTenantRegistryRefresh` | Tenancy |
 | `TomTenantResolution` | Tenancy |
 | `TomTenantResolver` | Tenancy |
+| `TomTenantRow` | Tenancy |
+| `TomTenantStatus` | Tenancy |
 | `TomTextLocale` | Resources |
 | `TomTlsConnectionInfo` | Server |
 | `TomTotp2FAService` | Authentication |

@@ -44,6 +44,8 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 import '../configuration/base_server_configuration.dart';
 import '../datasources/datasource_initialization.dart';
 import '../little_things/server_exception.dart';
+import 'tenant_registry.dart';
+import 'tenant_registry_sql.dart';
 import 'tenant_resolution.dart';
 
 /// A tenancy configuration that cannot be used, or a tenant that does not
@@ -58,7 +60,12 @@ import 'tenant_resolution.dart';
 /// | `tenancy.config.invalid_schema` | A schema name that is not a plain identifier of at most 64 characters. |
 /// | `tenancy.config.missing_datasource` | Database isolation without a data source for a routed name. |
 /// | `tenancy.config.unknown_datasource` | A routed or referenced data source that is not registered. |
+/// | `tenancy.config.invalid_registry` | A `registry.refreshSeconds` that is not a whole number of seconds, 0 or more. |
 /// | `tenancy.tenant.unknown` | Work for a tenant the deployment does not have. |
+/// | `tenancy.tenant.suspended` | A request for a suspended tenant (403). |
+/// | `tenancy.tenant.unavailable` | A request for a tenant that is provisioning, migrating or whose migration failed (503). |
+///
+/// The registry's own keys are listed on [TomTenantRegistry].
 class TomTenancyException extends TomServerException {
   /// Creates the exception.
   TomTenancyException(
@@ -102,6 +109,7 @@ class TomTenant {
   /// (`TomTenantContext.idPattern`).
   TomTenant(
     this.id, {
+    this.type = defaultType,
     this.name,
     this.isolation,
     this.schema,
@@ -112,6 +120,12 @@ class TomTenant {
 
   /// The tenant's id — what the token's `tenant` claim names.
   final String id;
+
+  /// The type of a tenant that names none.
+  static const String defaultType = 'default';
+
+  /// Its tenant type; [defaultType] unless it names one.
+  final String type;
 
   /// A display name, or `null`.
   final String? name;
@@ -144,6 +158,7 @@ class TomTenant {
     }
     return TomTenant(
       id,
+      type: map['type'] == null ? defaultType : '${map['type']}',
       name: map['name'] == null ? null : '${map['name']}',
       isolation: map['isolation'] == null
           ? null
@@ -167,19 +182,53 @@ class TomTenancy {
   /// token claim (see `tenant_resolution.dart`). With [createSchemas], a
   /// schema-isolated tenant's schema is created on the shared server when it
   /// is provisioned.
+  ///
+  /// [tenants] seed the [registry] (an in-memory one unless given): at
+  /// [install] the registry's tenants are the ones served. With
+  /// [refreshInterval], the installed tenancy re-reads the registry that often
+  /// ([refreshFromRegistry]), so a tenant another node added or removed is
+  /// served or dropped here too.
   TomTenancy({
     required Iterable<TomTenant> tenants,
     this.datasources = const {'main'},
     this.resolvers = const [],
     this.defaultIsolation = TomTenantIsolation.shared,
     this.createSchemas = false,
-  }) : tenants = {for (final tenant in tenants) tenant.id: tenant};
+    TomTenantRegistry? registry,
+    this.refreshInterval,
+    DateTime Function()? clock,
+  }) : tenants = {for (final tenant in tenants) tenant.id: tenant},
+       _configured = {for (final tenant in tenants) tenant.id: tenant},
+       registry = registry ?? TomMemoryTenantRegistry(),
+       _clock = clock ?? DateTime.now;
 
   /// The configuration path of the tenancy settings.
   static const String configurationKey = 'tenancy';
 
-  /// The tenants, by id.
+  /// The tenants served, by id: the registry's tenants that are not removed,
+  /// once [install] has read it; the configured ones before.
   final Map<String, TomTenant> tenants;
+
+  /// The tenants the configuration names — the registry's seed.
+  final Map<String, TomTenant> _configured;
+
+  /// The durable list of tenants ([TomTenantRegistry]).
+  final TomTenantRegistry registry;
+
+  /// How often the installed tenancy re-reads [registry], or `null` for never.
+  final Duration? refreshInterval;
+
+  final DateTime Function() _clock;
+
+  /// The status of each served tenant, as the registry records it.
+  final Map<String, TomTenantStatus> _statuses = {};
+
+  /// The configured tenants their registry rows contradicted at the last
+  /// [install] — the rows were used.
+  List<TomTenantRegistryConflict> registryConflicts = const [];
+
+  Timer? _refreshTimer;
+  bool _refreshing = false;
 
   /// The data sources routed per tenant.
   final Set<String> datasources;
@@ -245,6 +294,10 @@ class TomTenancy {
               : throw _notAMap('$configurationKey.tenants.${entry.key}'),
         ),
     ];
+    final routed = raw['datasources'] is List
+        ? {for (final name in raw['datasources'] as List) '$name'}
+        : const {'main'};
+    final registry = _registryOf(raw, routed);
     final resolution = raw['resolution'];
     final names = resolution is List
         ? [for (final name in resolution) '$name']
@@ -253,9 +306,7 @@ class TomTenancy {
         : ['$resolution'];
     return TomTenancy(
       tenants: tenants,
-      datasources: raw['datasources'] is List
-          ? {for (final name in raw['datasources'] as List) '$name'}
-          : const {'main'},
+      datasources: routed,
       resolvers: [
         for (final name in names)
           switch (name) {
@@ -279,8 +330,48 @@ class TomTenancy {
           ? TomTenantIsolation.shared
           : TomTenantIsolation.parse('${raw['isolation']}'),
       createSchemas: '${raw['createSchemas']}' == 'true',
+      registry: registry.$1,
+      refreshInterval: registry.$2,
     );
   }
+
+  /// The registry the configuration [raw] names, and how often to refresh
+  /// from it: `registry: memory` keeps the tenants in the process; otherwise
+  /// (also when `registry` is absent) a [TomSqlTenantRegistry] in the system
+  /// schema — the base schema of `registry.datasource`, by default the first
+  /// routed data source — refreshed every `refreshSeconds` (default 30, `0`
+  /// for never).
+  static (TomTenantRegistry, Duration?) _registryOf(
+    Map<Object?, Object?> raw,
+    Set<String> routed,
+  ) {
+    final config = raw['registry'];
+    if ('$config' == 'memory') return (TomMemoryTenantRegistry(), null);
+    if (config != null && config is! Map) {
+      throw _notAMap('$configurationKey.registry');
+    }
+    final settings = (config as Map?) ?? const <Object?, Object?>{};
+    final seconds = settings['refreshSeconds'] == null
+        ? defaultRefreshSeconds
+        : int.tryParse('${settings['refreshSeconds']}');
+    if (seconds == null || seconds < 0) {
+      throw TomTenancyException(
+        'tenancy.config.invalid_registry',
+        "Configuration '$configurationKey.registry.refreshSeconds' must be a "
+            'whole number of seconds, 0 or more.',
+        parameters: {'refreshSeconds': settings['refreshSeconds']},
+      );
+    }
+    final registry = TomSqlTenantRegistry.named(
+      '${settings['datasource'] ?? routed.first}',
+      table: '${settings['table'] ?? defaultTenantTable}',
+      createSchema: '${settings['createSchema']}' != 'false',
+    );
+    return (registry, seconds == 0 ? null : Duration(seconds: seconds));
+  }
+
+  /// How often a configured tenancy refreshes from its registry, in seconds.
+  static const int defaultRefreshSeconds = 30;
 
   static TomTenancyException _notAMap(String key) => TomTenancyException(
     'tenancy.config.not_a_map',
@@ -288,16 +379,128 @@ class TomTenancy {
     parameters: {'key': key},
   );
 
-  /// Installs [tenancy]: provisions every tenant's schema or database and
-  /// routes data source lookups through it. Replaces (and resets) any
-  /// configuration installed before.
+  /// Installs [tenancy]: reads its [registry] — seeding it with the
+  /// configured tenants it does not hold yet, and reporting a configured
+  /// tenant its row contradicts in [registryConflicts] — provisions every
+  /// tenant the registry holds and has not removed, routes data source lookups
+  /// through it, and starts refreshing from the registry when
+  /// [refreshInterval] is set. Replaces (and resets) any configuration
+  /// installed before.
   static Future<void> install(TomTenancy tenancy) async {
     await reset();
+    await tenancy._readRegistry();
     for (final tenant in tenancy.tenants.values) {
       await tenancy._provision(tenant);
     }
     _installed = tenancy;
     TomDataSourceInfo.router = tenancy.route;
+    tenancy._startRefreshing();
+  }
+
+  /// Reads [registry] into [tenants]: the configured tenants it lacks are
+  /// written into it as active; the configured ones it holds differently are
+  /// reported, and the registry's version is used.
+  Future<void> _readRegistry() async {
+    final now = _clock().toUtc();
+    final records = {for (final r in await registry.all()) r.id: r};
+    final conflicts = <TomTenantRegistryConflict>[];
+    for (final configured in _configured.values) {
+      final record = records[configured.id];
+      if (record == null) {
+        final seeded = TomTenantRecord.of(
+          configured,
+          TomTenantStatus.active,
+          now,
+        );
+        await registry.put(seeded);
+        records[configured.id] = seeded;
+        continue;
+      }
+      final differences = {
+        ...record.differencesFrom(configured),
+        if (record.status == TomTenantStatus.removed)
+          'status': ('configured', record.status.wireName),
+      };
+      if (differences.isNotEmpty) {
+        conflicts.add(TomTenantRegistryConflict(configured.id, differences));
+        tomLog.warn(
+          "Tenancy: the configuration's tenant '${configured.id}' differs "
+          'from its registry row in ${differences.keys.join(', ')}; the '
+          'registry row is used.',
+        );
+      }
+    }
+    registryConflicts = List.unmodifiable(conflicts);
+    tenants.clear();
+    _statuses.clear();
+    for (final record in records.values) {
+      if (record.status == TomTenantStatus.removed) continue;
+      tenants[record.id] = record.toTenant(configured: _configured[record.id]);
+      _statuses[record.id] = record.status;
+    }
+  }
+
+  void _startRefreshing() {
+    final interval = refreshInterval;
+    if (interval == null) return;
+    _refreshTimer = Timer.periodic(interval, (_) async {
+      if (_refreshing) return;
+      _refreshing = true;
+      try {
+        await refreshFromRegistry();
+      } catch (error, stack) {
+        tomLog.warn('Tenancy: refreshing from the registry failed: $error');
+        tomLog.debug('$stack');
+      } finally {
+        _refreshing = false;
+      }
+    });
+  }
+
+  /// Re-reads [registry] and brings this node's routing level with it: a
+  /// tenant another node added is provisioned and served, one it removed is
+  /// unrouted (its pools closed), and a changed status takes effect. A tenant
+  /// that cannot be provisioned here is reported in the result and tried again
+  /// at the next refresh.
+  Future<TomTenantRegistryRefresh> refreshFromRegistry() async {
+    final added = <String>[];
+    final removed = <String>[];
+    final changed = <String>[];
+    final failed = <String, Object>{};
+    final records = {for (final r in await registry.all()) r.id: r};
+    for (final record in records.values) {
+      final local = tenants[record.id];
+      if (record.status == TomTenantStatus.removed) {
+        if (local == null) continue;
+        await _unroute(record.id);
+        removed.add(record.id);
+      } else if (local == null) {
+        final tenant = record.toTenant(configured: _configured[record.id]);
+        try {
+          await _provision(tenant);
+        } catch (error) {
+          failed[record.id] = error;
+          continue;
+        }
+        tenants[record.id] = tenant;
+        _statuses[record.id] = record.status;
+        added.add(record.id);
+      } else if (_statuses[record.id] != record.status) {
+        _statuses[record.id] = record.status;
+        changed.add(record.id);
+      }
+    }
+    for (final id in List.of(tenants.keys)) {
+      if (records.containsKey(id)) continue;
+      await _unroute(id);
+      removed.add(id);
+    }
+    return TomTenantRegistryRefresh(
+      added: added,
+      removed: removed,
+      changed: changed,
+      failed: failed,
+    );
   }
 
   /// Removes the installed configuration and closes the data sources it
@@ -307,6 +510,8 @@ class TomTenancy {
     _installed = null;
     TomDataSourceInfo.router = null;
     if (previous == null) return;
+    previous._refreshTimer?.cancel();
+    previous._refreshTimer = null;
     for (final info in previous._opened) {
       TomDataSourceInfo.datasources.remove(info.name);
       await info.datasource.close();
@@ -315,12 +520,67 @@ class TomTenancy {
     previous._routes.clear();
   }
 
-  /// Adds [tenant] to the running deployment, provisioning its schema or
-  /// database first — onboarding without a restart.
+  /// Adds [tenant] to the running deployment — onboarding without a restart.
+  ///
+  /// In order: the tenant is recorded in the [registry] as provisioning, its
+  /// schema or database is provisioned, it is recorded as active, and it is
+  /// served. A provisioning that fails leaves it `provisioning` in the
+  /// registry, with the error as its status detail, and unserved. Every node
+  /// refreshing from the registry serves it from its next refresh.
   Future<void> addTenant(TomTenant tenant) async {
-    await _provision(tenant);
+    final now = _clock().toUtc();
+    final existing = await registry.find(tenant.id);
+    await registry.put(
+      TomTenantRecord.of(
+        tenant,
+        TomTenantStatus.provisioning,
+        now,
+      ).copyWithCreated(existing?.createdAt),
+    );
+    try {
+      await _provision(tenant);
+    } catch (error) {
+      await registry.setStatus(
+        tenant.id,
+        TomTenantStatus.provisioning,
+        detail: '$error',
+        at: _clock().toUtc(),
+      );
+      rethrow;
+    }
+    await registry.setStatus(
+      tenant.id,
+      TomTenantStatus.active,
+      at: _clock().toUtc(),
+    );
     tenants[tenant.id] = tenant;
+    _statuses[tenant.id] = TomTenantStatus.active;
   }
+
+  /// Suspends the tenant [tenantId]: recorded in the [registry] first, then its
+  /// requests are refused as `tenancy.tenant.suspended` (403). Its data and
+  /// routes stay, so [resumeTenant] serves it again at once.
+  ///
+  /// Throws `tenancy.tenant.unknown` for a tenant the deployment does not have.
+  Future<void> suspendTenant(String tenantId) =>
+      _setStatus(tenantId, TomTenantStatus.suspended);
+
+  /// Serves the suspended tenant [tenantId] again, recorded in the [registry]
+  /// first.
+  ///
+  /// Throws `tenancy.tenant.unknown` for a tenant the deployment does not have.
+  Future<void> resumeTenant(String tenantId) =>
+      _setStatus(tenantId, TomTenantStatus.active);
+
+  Future<void> _setStatus(String tenantId, TomTenantStatus status) async {
+    if (!tenants.containsKey(tenantId)) throw unknownTenant(tenantId);
+    await registry.setStatus(tenantId, status, at: _clock().toUtc());
+    _statuses[tenantId] = status;
+  }
+
+  /// The registry status of the served tenant [tenantId], or `null` for a
+  /// tenant the deployment does not have.
+  TomTenantStatus? statusOf(String tenantId) => _statuses[tenantId];
 
   /// Removes the tenant [tenantId] from the running deployment — the
   /// counterpart of [addTenant], for a tenant whose deletion is final.
@@ -342,8 +602,22 @@ class TomTenancy {
   ///
   /// Throws `tenancy.tenant.unknown` for a tenant the deployment does not have.
   Future<TomTenant> removeTenant(String tenantId) async {
-    final tenant = tenants.remove(tenantId);
+    final tenant = tenants[tenantId];
     if (tenant == null) throw unknownTenant(tenantId);
+    await registry.setStatus(
+      tenantId,
+      TomTenantStatus.removed,
+      at: _clock().toUtc(),
+    );
+    await _unroute(tenantId);
+    return tenant;
+  }
+
+  /// Stops serving [tenantId] on this node: it leaves [tenants], its routes are
+  /// dropped, and the data sources this tenancy opened for it are closed.
+  Future<void> _unroute(String tenantId) async {
+    tenants.remove(tenantId);
+    _statuses.remove(tenantId);
     _routes.removeWhere((key, _) => key.$2 == tenantId);
     final owned = [
       for (final info in _opened)
@@ -354,7 +628,6 @@ class TomTenancy {
       TomDataSourceInfo.datasources.remove(info.name);
       await info.datasource.close();
     }
-    return tenant;
   }
 
   /// The isolation [tenant] runs under.
@@ -441,6 +714,25 @@ class TomTenancy {
         'tenancy.tenant.unknown',
         'The request names a tenant this server does not have.',
       );
+    }
+    switch (_statuses[tenant] ?? TomTenantStatus.active) {
+      case TomTenantStatus.active:
+        break;
+      case TomTenantStatus.suspended:
+        return const TomTenantResolution.rejected(
+          403,
+          'tenancy.tenant.suspended',
+          'The tenant is suspended.',
+        );
+      case TomTenantStatus.provisioning ||
+          TomTenantStatus.migrating ||
+          TomTenantStatus.migrationFailed ||
+          TomTenantStatus.removed:
+        return const TomTenantResolution.rejected(
+          503,
+          'tenancy.tenant.unavailable',
+          'The tenant is not available yet.',
+        );
     }
     return TomTenantResolution.of(tenant);
   }
@@ -569,4 +861,36 @@ class TomTenancy {
     _opened.add(info);
     return info;
   }
+}
+
+/// What [TomTenancy.refreshFromRegistry] changed on this node.
+class TomTenantRegistryRefresh {
+  /// Creates the result.
+  const TomTenantRegistryRefresh({
+    this.added = const [],
+    this.removed = const [],
+    this.changed = const [],
+    this.failed = const {},
+  });
+
+  /// The tenants now served that were not.
+  final List<String> added;
+
+  /// The tenants no longer served.
+  final List<String> removed;
+
+  /// The tenants whose status changed.
+  final List<String> changed;
+
+  /// The tenants that could not be provisioned here, with the error.
+  final Map<String, Object> failed;
+
+  /// Whether nothing changed.
+  bool get isEmpty =>
+      added.isEmpty && removed.isEmpty && changed.isEmpty && failed.isEmpty;
+
+  @override
+  String toString() =>
+      'TomTenantRegistryRefresh(added: $added, removed: $removed, '
+      'changed: $changed, failed: ${failed.keys.toList()})';
 }
