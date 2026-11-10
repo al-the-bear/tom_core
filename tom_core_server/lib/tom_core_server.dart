@@ -237,6 +237,7 @@ export 'src/tomserver/sync/sync_sql.dart';
 export 'src/tomserver/tenancy/tenancy.dart';
 export 'src/tomserver/tenancy/tenant_registry.dart';
 export 'src/tomserver/tenancy/tenant_registry_sql.dart';
+export 'src/tomserver/tenancy/tenant_type.dart';
 export 'src/tomserver/tenancy/tenant_resolution.dart';
 export 'src/tomserver/tracing/otel_tracer.dart';
 export 'src/tomserver/transactions/saga.dart';

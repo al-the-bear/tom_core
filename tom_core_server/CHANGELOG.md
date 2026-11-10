@@ -2,6 +2,22 @@
 
 ### Added
 
+- **Tenant types** (`tenancy`): `TomTenantType` — a kind of tenant with a
+  default model, the models it allows, the data sources it routes and its
+  migration tree — declared under `tenancy.types`, its tree at
+  `<tenancy.migrations>/tenant/<type>` unless it names its own. A deployment
+  that declares none has the implicit type `default`. `TomTenancy` gains
+  `types`, `typeOf`, `validateTenant`, `datasourcesOf` and `routedDatasources`;
+  a tenant's model falls back to its type's. Refused with keys: an invalid type
+  name, a declared type without a tree (`tenancy.type.missing_migrations`, at
+  `install`), a tenant of an unknown type (`tenancy.type.unknown`, never
+  seeded), a model its type does not allow
+  (`tenancy.type.isolation_not_allowed`), adding a tenant the registry holds
+  under another type (`tenancy.type.change`), and a schema tenant taking a
+  type's shared schema (`tenancy.config.schema_collision`). The shared tenants
+  of a type other than `default` share one schema, `<databaseName>_<type>`,
+  through one pool (`<name>@type.<type>`), migrated once.
+
 - **The tenant registry** (`tenancy`): `TomTenantRegistry`, the durable list
   of a deployment's tenants — `TomMemoryTenantRegistry`, and
   `TomSqlTenantRegistry` over `tom_tenant` in the system schema (the base,

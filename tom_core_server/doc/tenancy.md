@@ -22,6 +22,9 @@ This guide is the server half.
   - [How a data source is routed](#how-a-data-source-is-routed)
 - [Configuration](#configuration)
   - [A schema on each database](#a-schema-on-each-database)
+- [Tenant Types](#tenant-types)
+  - [One shared schema per type](#one-shared-schema-per-type)
+  - [A type is not changed in place](#a-type-is-not-changed-in-place)
 - [The Tenant Registry](#the-tenant-registry)
   - [Configuration is a seed](#configuration-is-a-seed)
   - [A tenant's status](#a-tenants-status)
@@ -55,6 +58,7 @@ This guide is the server half.
 | ---- | ---- | ------- |
 | `TomTenancy` | class | The deployment's tenants, their resolution rules and their routing; installed once per process |
 | `TomTenant` | class | One tenant: its id, type, display name, isolation model, schema and data sources |
+| `TomTenantType` | class | A kind of tenant: the default and allowed isolation models, the data sources it routes, its migration tree; its shared tenants share one schema |
 | `TomTenantRegistry` | abstract class | The durable list of tenants `TomTenancy` reads at install, writes every lifecycle change to and refreshes from |
 | `TomMemoryTenantRegistry` | class | The registry in memory — a tenancy built in code, and tests |
 | `TomSqlTenantRegistry` | class | The registry in the framework table `tom_tenant` of the system schema |
@@ -73,9 +77,10 @@ This guide is the server half.
 | `TomTenantHeaderResolver` | class | Names the tenant by a request header, `X-Tenant-Id` by default |
 | `TomTenantResolution` | class | The outcome of resolving a request: a tenant, none, or a rejection |
 
-The module is two files: `tenancy.dart` holds the configuration, the
-provisioning and the routing; `tenant_resolution.dart` holds the request-side
-resolvers.
+The module is five files: `tenancy.dart` holds the configuration, the
+provisioning and the routing; `tenant_type.dart` the tenant types;
+`tenant_registry.dart` and `tenant_registry_sql.dart` the registry and its
+table; `tenant_resolution.dart` the request-side resolvers.
 
 ## Tenant and Organization
 
@@ -173,11 +178,19 @@ tenancy:
   registry:                      # the tenant registry (see The Tenant Registry)
     datasource: main             # its system schema: the base schema of this data source
     refreshSeconds: 30           # how often each node re-reads it; 0 for never
-  tenants:                       # a seed for the registry
-    acme: {}                     # shared, the default
-    globex: {isolation: schema}  # schema main_globex on the shared server
-    initech:
+  migrations: migrations         # the migrations root: a type's tree is <root>/tenant/<type>
+  types:                         # the tenant types (see Tenant Types); none: the type default
+    standard:
+      isolation: shared          # the default model of its tenants
+      isolations: [shared, schema]   # the models its tenants may use
+    enterprise:
       isolation: database
+      datasources: [main]        # the data sources it routes
+  tenants:                       # a seed for the registry
+    acme: {type: standard}       # shared, in the type's schema main_standard
+    globex: {type: standard, isolation: schema}  # schema main_globex
+    initech:
+      type: enterprise           # database, its type's default
       datasource:                # its own database, opened from these settings
         type: mariadb
         host: db.eu.example.com
@@ -198,9 +211,15 @@ tenancy:
 | `header` | `X-Tenant-Id` | The header the `header` resolver reads. |
 | `createSchemas` | `false` | Whether provisioning a `schema` tenant creates its schema if it does not exist — `CREATE DATABASE IF NOT EXISTS` on MariaDB, `CREATE SCHEMA IF NOT EXISTS` on PostgreSQL. |
 | `registry` | a SQL registry on the first routed data source | `memory` keeps the tenants in the process; a map names the registry's `datasource`, `table` (`tom_tenant`), `createSchema` (`true`) and `refreshSeconds` (`30`; `0` for never). |
-| `tenants.<id>.type` | `default` | The tenant's type. |
+| `migrations` | none | The migrations root; a declared type that names no `migrations` has its tree at `<root>/tenant/<type>`. |
+| `types` | none — the implicit type `default` | The tenant types, by name (a lower-case identifier of at most 32 characters). |
+| `types.<type>.isolation` | the deployment's `isolation` | The model of the type's tenants that name none. |
+| `types.<type>.isolations` | all three | The models the type's tenants may use; its own `isolation` must be one. |
+| `types.<type>.datasources` | the deployment's `datasources` | The data sources the type routes per tenant. |
+| `types.<type>.migrations` | `<migrations>/tenant/<type>` | The directory of the type's migration tree, which must exist when the tenancy is installed. |
+| `tenants.<id>.type` | `default` | The tenant's type, which must be declared. |
 | `tenants.<id>.name` | none | A display name. |
-| `tenants.<id>.isolation` | the default | The tenant's model. |
+| `tenants.<id>.isolation` | its type's, else the deployment's | The tenant's model; its type must allow it. |
 | `tenants.<id>.schema` | `<databaseName>_<id>` | Under `schema`, the schema's name. |
 | `tenants.<id>.datasource` | — | Under `database`, the tenant's data source for the one routed name: a map of data-source settings to open, or the name of a data source already registered. |
 | `tenants.<id>.datasources` | — | The same per routed name, when several data sources are routed: `{main: {...}, reporting: reporting_initech}`. |
@@ -213,7 +232,8 @@ everywhere is one that never needs quoting anywhere. A schema name is held to
 letters, digits and underscores, at most 64.
 
 The same configuration can be built in code — `TomTenancy`'s constructor takes
-the tenants, the routed data sources, the resolvers, the default model,
+the tenants, the `types` (`TomTenantType`), the routed data sources, the
+resolvers, the default model,
 `createSchemas`, the `registry` (an in-memory one unless given) and the
 `refreshInterval`:
 
@@ -246,6 +266,82 @@ the schema boundary is the `search_path`: an unqualified name resolves in the
 tenant's schema. The schema name defaults to `<databaseName>_<id>` on both, so
 the base data source has to name its `databaseName` on PostgreSQL too
 (`tenancy.config.schema_unsupported` otherwise).
+
+## Tenant Types
+
+A tenant type is a kind of tenant: the model its tenants use unless they name
+one, the models they may use, the data sources it routes, and its own migration
+tree — the tenant tables a tenant of the type has. A trial tenant and an
+enterprise tenant are typically two types. Every tenant names its type
+(`TomTenant.type`, `default` when it names none), and the registry stores it.
+
+| Declared types | The deployment has |
+| -------------- | ------------------ |
+| none | one implicit type, `default`: every model allowed, the deployment's `isolation` and `datasources`, no migration tree to check |
+| some | exactly those; a tenant naming no type is of `default`, which then has to be declared too |
+
+```dart
+final tenancy = TomTenancy(
+  tenants: [
+    TomTenant('acme', type: 'standard'),
+    TomTenant('initech', type: 'enterprise'),
+  ],
+  types: [
+    TomTenantType(
+      'standard',
+      isolation: TomTenantIsolation.shared,
+      isolations: {TomTenantIsolation.shared, TomTenantIsolation.schema},
+      migrations: 'migrations/tenant/standard',
+    ),
+    TomTenantType(
+      'enterprise',
+      isolation: TomTenantIsolation.database,
+      datasources: {'main'},
+      migrations: 'migrations/tenant/enterprise',
+    ),
+  ],
+);
+```
+
+A tenant's model is its own `isolation`, else its type's, else the deployment's
+(`isolationOf`); `typeOf` answers its type, and `datasourcesOf(type)` the data
+sources the type routes (`routedDatasources` is their union, what `route`
+considers). The refusals, each with a key:
+
+| Refused | When | Key |
+| ------- | ---- | --- |
+| a type name that is not one | the type is constructed | `tenancy.type.invalid` |
+| a type whose own `isolation` is not among its `isolations` | the type is constructed | `tenancy.type.isolation_not_allowed` |
+| a declared type without a migration tree — none named, or a directory that does not exist | `install`, before the registry is read | `tenancy.type.missing_migrations` |
+| a configured tenant, or a registry row, of a type the deployment does not declare | `install` (a configured one before it is seeded), `addTenant`; a row another node wrote is reported by `refreshFromRegistry` in `failed` | `tenancy.type.unknown` |
+| a tenant whose model its type does not allow | `install`, `addTenant`, `refreshFromRegistry` | `tenancy.type.isolation_not_allowed` |
+
+### One shared schema per type
+
+The shared-isolation tenants of one type share **one tenant schema**: for the
+type `default` the system schema — the base data source's own, so a one-type
+deployment keeps its tenant tables beside its system tables — and for every
+other type `<databaseName>_<type>` (`TomTenantType.sharedSchema`), so two
+types' trees never define one table twice in one schema. Every shared tenant of
+the type reaches it through one pool, registered as `<name>@type.<type>` and
+opened (and with `createSchemas` created) when the first of them is
+provisioned; removing one of them leaves the pool to the others. A
+`schema`-isolated tenant whose schema would be a type's shared schema is
+refused (`tenancy.config.schema_collision`).
+
+The shared schema is therefore **one migration target**: the type's tree is
+applied to it once, however many shared tenants it holds, and the tenant
+column keeps their rows apart. A `schema` or `database` tenant is a target of
+its own.
+
+### A type is not changed in place
+
+A configured tenant whose type differs from its registry row is reported as a
+conflict, and the row is used ([Configuration is a seed](#configuration-is-a-seed)).
+`addTenant` for a tenant the registry holds — not removed — under another type
+is refused (`tenancy.type.change`): a tenant of another type has other tables,
+so changing its type moves its data. A tenant that was removed may be added
+again as another type.
 
 ## The Tenant Registry
 
@@ -345,7 +441,8 @@ same tree applied inside each tenant lands in each tenant's schema or database:
 await TomDbMigrations.migrateDatabases('migrations/deployment');
 
 // Tenant tables, once per tenant: each run reaches that tenant's schema or
-// database, and a shared tenant's run is a no-op after the first. The whole
+// database, or its type's shared schema, and a shared tenant's run is a no-op
+// after the first of its type. The whole
 // walk holds the migration lock, so no other process migrates between two
 // tenants.
 await TomDbMigrations.withMigrationLock(
@@ -356,8 +453,9 @@ await TomDbMigrations.withMigrationLock(
 );
 ```
 
-Each tenant's schema or database keeps its own versioning table, so a tenant
-added later is brought to the current version by the same loop.
+Each tenant's schema or database, and each type's shared schema, keeps its own
+versioning table, so a tenant added later is brought to the current version by
+the same loop.
 
 Every migration run takes its database's migration lock, so several replicas
 starting together apply each script once (see
@@ -845,6 +943,12 @@ is reported as a conflict).
 | `tenancy.config.missing_datasource` | provisioning | Database isolation without a data source for a routed name. |
 | `tenancy.config.unknown_datasource` | provisioning | A routed or referenced data source that is not registered. |
 | `tenancy.config.invalid_registry` | `TomTenancy.fromConfiguration` | A `registry.refreshSeconds` that is not a whole number of seconds, 0 or more. |
+| `tenancy.config.schema_collision` | provisioning | A `schema` tenant whose schema is a tenant type's shared schema. |
+| `tenancy.type.invalid` | `TomTenantType` | A type name that is not a lower-case identifier of at most 32 characters. |
+| `tenancy.type.unknown` | `install`, `addTenant`, `refreshFromRegistry`, `typeOf`, `isolationOf` | A tenant of a type the deployment does not declare. |
+| `tenancy.type.missing_migrations` | `install`, `TomTenantType.verifyMigrations` | A declared type with no migration tree, or one whose directory does not exist. |
+| `tenancy.type.isolation_not_allowed` | `TomTenantType`, `install`, `addTenant`, `refreshFromRegistry` | A tenant whose model its type does not allow, or a type whose own default it does not allow. |
+| `tenancy.type.change` | `addTenant` | A tenant the registry holds under another type; changing a type moves the tenant. |
 | `tenancy.tenant.unknown` | `route`, `runFor`, `resolveRequest`, `suspendTenant`, `resumeTenant`, `removeTenant` | Work or a request for a tenant the deployment does not have (`404` on a request; `clientThrow: true`). |
 | `tenancy.tenant.suspended` | `resolveRequest` | A request for a suspended tenant (`403`). |
 | `tenancy.tenant.unavailable` | `resolveRequest` | A request for a tenant that is provisioning, migrating or whose migration failed (`503`). |
@@ -911,6 +1015,18 @@ tagged `db`, runs the SQL store on MariaDB and PostgreSQL: every field's round
 trip, and two nodes over one registry table, a schema-isolated tenant added on
 one provisioned, routed and dropped by the other.
 
+`test/tenant_type_test.dart` covers tenant types without a database: the
+implicit type, `tenancy.types` and `tenancy.migrations` read from
+configuration, each refusal (an invalid name, a disallowed default, a missing
+tree, an unknown type — not seeded — and a disallowed model, at `install` and
+`addTenant`), a type change refused while a removed tenant may come back as
+another type, an unknown type reported by a refresh, routing only the data
+sources a type routes, and the shared-schema name and its collision.
+`test/tenant_type_db_test.dart`, tagged `db`, shows on MariaDB and PostgreSQL
+two shared tenants of one type reaching one schema through one pool — a table
+created once serves both — beside a schema tenant of the same type with its own
+and a default-type tenant in the system schema.
+
 `test/tenancy_db_test.dart`, tagged `db`, runs two tenants against the database
 the DB suites run against — MariaDB or PostgreSQL — under
 each of the three isolation models with the same assertions — that is the point
@@ -953,12 +1069,14 @@ result, and `test/examples_test.dart` runs it.
 
 ## Core Components
 
-- **`TomTenancy`** — the configuration (`tenants`, `datasources`, `resolvers`,
+- **`TomTenancy`** — the configuration (`tenants`, `types`, `typesDeclared`,
+  `datasources`, `routedDatasources`, `datasourcesOf`, `resolvers`,
   `defaultIsolation`, `createSchemas`, `registry`, `refreshInterval`), its
   reading (`fromConfiguration`, `configurationKey`, `defaultRefreshSeconds`),
   its lifecycle (`install`, `reset`, `current`, `addTenant`, `suspendTenant`,
   `resumeTenant`, `removeTenant`, `statusOf`, `refreshFromRegistry`,
-  `registryConflicts`), its routing (`route`, `isolationOf`), work in a tenant
+  `registryConflicts`), its routing (`route`, `isolationOf`, `typeOf`,
+  `validateTenant`), work in a tenant
   (`runFor`, `forEachTenant`), request resolution (`resolveRequest`) and the
   refusal of an unknown tenant (`unknownTenant`).
 - **`TomTenantRegistry`**, **`TomMemoryTenantRegistry`**,
@@ -967,6 +1085,9 @@ result, and `test/examples_test.dart` runs it.
   **`TomTenantRegistryRefresh`**, **`TomTenantRow`** (the mapped row);
   **`tenantTable`** / **`tenantTableDdl`** / **`defaultTenantTable`** — the table,
   declared once.
+- **`TomTenantType`** — a tenant type: `name`, `isolation`, `isolations`,
+  `datasources`, `migrations`, `sharedSchema`, `verifyMigrations`,
+  `fromMap`, `treeUnder`, `namePattern`, `isolationNotAllowed`.
 - **`TomTenant`** / **`TomTenantIsolation`** — one tenant (with its `type`,
   `defaultType` `default`) and its model;
   `TomTenant.fromMap` reads one from configuration and `TomTenantIsolation.parse`
@@ -983,6 +1104,7 @@ result, and `test/examples_test.dart` runs it.
 | ---------- | ---- | ----------- | --- |
 | `dart:async` | dart | `tenancy.dart` | `FutureOr`, the body type of `runFor` and `forEachTenant`; `Timer`, the registry refresh |
 | `dart:convert` | dart | `tenant_registry.dart` | `jsonEncode` / `jsonDecode`, the registry's `datasources` and `migrated` columns |
+| `dart:io` | dart | `tenant_type.dart` | `Directory`, whether a type's migration tree exists |
 | `shelf` | package | `tenancy.dart`, `tenant_resolution.dart` | `Request`, which a resolver reads and `resolveRequest` resolves |
 | `tom_core_kernel` | package | `tenancy.dart`, `tenant_registry.dart` | `TomTenantContext` — the zone-carried tenant, the id rule and `qualify`; `TomDataSource`, `tomLog` and `tomReflector` |
 | [configuration](configuration.md) | module | `tenancy.dart` | `TomServerConfigResourceProvider`, which `fromConfiguration` reads the `tenancy` key from |

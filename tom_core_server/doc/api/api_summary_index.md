@@ -1040,6 +1040,7 @@ Summary: [api_summary_audit_reports.md](api_summary_audit_reports.md)
 | `TomTenancy` | class | The deployment's tenants, their routing and request resolution; installed once per process. |
 | `TomTenant` | class | One tenant: its id, type, name, isolation model, schema and data sources. |
 | `TomTenantIsolation` | enum | `shared`, `schema` or `database` — where a tenant's rows live. |
+| `TomTenantType` | class | A kind of tenant: default and allowed models, routed data sources, migration tree; its shared tenants share one schema. |
 | `TomTenancyException` | class | Tenancy configuration or unknown-tenant error (extends `TomServerException`). |
 | `TomTenantResolver` | abstract interface class | Reads a tenant id from a request without a token claim. |
 | `TomTenantHostResolver` | class | Names the tenant by an exact host or a subdomain. |
@@ -2081,6 +2082,7 @@ Summary: [api_summary_audit_reports.md](api_summary_audit_reports.md)
 | `TomTenantResolver` | Tenancy |
 | `TomTenantRow` | Tenancy |
 | `TomTenantStatus` | Tenancy |
+| `TomTenantType` | Tenancy |
 | `TomTextLocale` | Resources |
 | `TomTlsConnectionInfo` | Server |
 | `TomTotp2FAService` | Authentication |

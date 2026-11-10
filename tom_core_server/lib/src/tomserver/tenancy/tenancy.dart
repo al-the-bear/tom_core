@@ -47,6 +47,7 @@ import '../little_things/server_exception.dart';
 import 'tenant_registry.dart';
 import 'tenant_registry_sql.dart';
 import 'tenant_resolution.dart';
+import 'tenant_type.dart';
 
 /// A tenancy configuration that cannot be used, or a tenant that does not
 /// exist.
@@ -64,6 +65,12 @@ import 'tenant_resolution.dart';
 /// | `tenancy.tenant.unknown` | Work for a tenant the deployment does not have. |
 /// | `tenancy.tenant.suspended` | A request for a suspended tenant (403). |
 /// | `tenancy.tenant.unavailable` | A request for a tenant that is provisioning, migrating or whose migration failed (503). |
+/// | `tenancy.config.schema_collision` | A schema-isolated tenant whose schema is a tenant type's shared schema. |
+/// | `tenancy.type.invalid` | A tenant type name that is not a lowercase identifier of at most 32 characters. |
+/// | `tenancy.type.unknown` | A tenant of a type the deployment does not declare. |
+/// | `tenancy.type.missing_migrations` | A declared tenant type without a migration tree. |
+/// | `tenancy.type.isolation_not_allowed` | A tenant whose isolation its type does not allow, or a type whose default isolation it does not allow. |
+/// | `tenancy.type.change` | Adding a tenant the registry holds under another type; changing a type is a move. |
 ///
 /// The registry's own keys are listed on [TomTenantRegistry].
 class TomTenancyException extends TomServerException {
@@ -188,8 +195,14 @@ class TomTenancy {
   /// [refreshInterval], the installed tenancy re-reads the registry that often
   /// ([refreshFromRegistry]), so a tenant another node added or removed is
   /// served or dropped here too.
+  ///
+  /// [types] are the tenant types the deployment declares; without any, it
+  /// has the one implicit type [TomTenant.defaultType], allowing every model
+  /// and routing [datasources]. A declared type must have a migration tree
+  /// ([TomTenantType.migrations]), checked by [install].
   TomTenancy({
     required Iterable<TomTenant> tenants,
+    Iterable<TomTenantType> types = const [],
     this.datasources = const {'main'},
     this.resolvers = const [],
     this.defaultIsolation = TomTenantIsolation.shared,
@@ -197,7 +210,13 @@ class TomTenancy {
     TomTenantRegistry? registry,
     this.refreshInterval,
     DateTime Function()? clock,
-  }) : tenants = {for (final tenant in tenants) tenant.id: tenant},
+  }) : types = Map.unmodifiable({
+         for (final type
+             in types.isEmpty ? [TomTenantType(TomTenant.defaultType)] : types)
+           type.name: type,
+       }),
+       typesDeclared = types.isNotEmpty,
+       tenants = {for (final tenant in tenants) tenant.id: tenant},
        _configured = {for (final tenant in tenants) tenant.id: tenant},
        registry = registry ?? TomMemoryTenantRegistry(),
        _clock = clock ?? DateTime.now;
@@ -230,8 +249,26 @@ class TomTenancy {
   Timer? _refreshTimer;
   bool _refreshing = false;
 
-  /// The data sources routed per tenant.
+  /// The data sources routed for a type that names none — the implicit
+  /// type's, in a deployment that declares no types.
   final Set<String> datasources;
+
+  /// The tenant types, by name: the declared ones, or the implicit
+  /// [TomTenant.defaultType] alone.
+  final Map<String, TomTenantType> types;
+
+  /// Whether [types] were declared rather than implicit.
+  final bool typesDeclared;
+
+  /// Every data source some type routes.
+  Set<String> get routedDatasources => {
+    for (final type in types.values) ...?type.datasources,
+    if (types.values.any((type) => type.datasources == null)) ...datasources,
+  };
+
+  /// The data sources the type [type] routes.
+  Set<String> datasourcesOf(TomTenantType type) =>
+      type.datasources ?? datasources;
 
   /// How a request without a token claim names its tenant, in order.
   final List<TomTenantResolver> resolvers;
@@ -244,6 +281,9 @@ class TomTenancy {
 
   /// The routed data source per (data source name, tenant id).
   final Map<(String, String), TomDataSourceInfo> _routes = {};
+
+  /// The pool over a type's shared schema per (data source name, type name).
+  final Map<(String, String), TomDataSourceInfo> _sharedPools = {};
 
   /// The data sources this configuration opened, closed by [reset].
   final List<TomDataSourceInfo> _opened = [];
@@ -265,6 +305,11 @@ class TomTenancy {
   ///   pathSegments: {acme-gmbh: acme}  # segment → tenant id; omit: segment = id
   ///   header: X-Tenant-Id
   ///   createSchemas: true
+  ///   registry: {datasource: main, refreshSeconds: 30}  # or: memory
+  ///   migrations: migrations         # a type's tree: <root>/tenant/<type>
+  ///   types:                         # none declared: the implicit type 'default'
+  ///     standard: {isolation: shared, isolations: [shared, schema]}
+  ///     enterprise: {isolation: database, datasources: [main, reporting]}
   ///   tenants:
   ///     acme: {}
   ///     globex: {isolation: schema}
@@ -298,6 +343,7 @@ class TomTenancy {
         ? {for (final name in raw['datasources'] as List) '$name'}
         : const {'main'};
     final registry = _registryOf(raw, routed);
+    final types = _typesOf(raw);
     final resolution = raw['resolution'];
     final names = resolution is List
         ? [for (final name in resolution) '$name']
@@ -306,6 +352,7 @@ class TomTenancy {
         : ['$resolution'];
     return TomTenancy(
       tenants: tenants,
+      types: types,
       datasources: routed,
       resolvers: [
         for (final name in names)
@@ -370,6 +417,27 @@ class TomTenancy {
     return (registry, seconds == 0 ? null : Duration(seconds: seconds));
   }
 
+  /// The types `tenancy.types` declares, each with its tree under
+  /// `tenancy.migrations` unless it names its own `migrations`.
+  static List<TomTenantType> _typesOf(Map<Object?, Object?> raw) {
+    final rawTypes = raw['types'];
+    if (rawTypes == null) return const [];
+    if (rawTypes is! Map) throw _notAMap('$configurationKey.types');
+    final root = raw['migrations'] == null ? null : '${raw['migrations']}';
+    return [
+      for (final entry in rawTypes.entries)
+        TomTenantType.fromMap(
+          '${entry.key}',
+          entry.value == null
+              ? const {}
+              : entry.value is Map
+              ? entry.value as Map<Object?, Object?>
+              : throw _notAMap('$configurationKey.types.${entry.key}'),
+          migrationsRoot: root,
+        ),
+    ];
+  }
+
   /// How often a configured tenancy refreshes from its registry, in seconds.
   static const int defaultRefreshSeconds = 30;
 
@@ -386,9 +454,26 @@ class TomTenancy {
   /// through it, and starts refreshing from the registry when
   /// [refreshInterval] is set. Replaces (and resets) any configuration
   /// installed before.
+  ///
+  /// Refused — before the registry is read — when a declared type has no
+  /// migration tree (`tenancy.type.missing_migrations`), and when a tenant the
+  /// registry serves is of an unknown type (`tenancy.type.unknown`) or uses an
+  /// isolation its type does not allow (`tenancy.type.isolation_not_allowed`).
   static Future<void> install(TomTenancy tenancy) async {
     await reset();
+    if (tenancy.typesDeclared) {
+      for (final type in tenancy.types.values) {
+        type.verifyMigrations();
+      }
+    }
+    // The configured tenants first, so a refused one is never seeded.
+    for (final tenant in tenancy._configured.values) {
+      tenancy.validateTenant(tenant);
+    }
     await tenancy._readRegistry();
+    for (final tenant in tenancy.tenants.values) {
+      tenancy.validateTenant(tenant);
+    }
     for (final tenant in tenancy.tenants.values) {
       await tenancy._provision(tenant);
     }
@@ -477,6 +562,7 @@ class TomTenancy {
       } else if (local == null) {
         final tenant = record.toTenant(configured: _configured[record.id]);
         try {
+          validateTenant(tenant);
           await _provision(tenant);
         } catch (error) {
           failed[record.id] = error;
@@ -518,6 +604,7 @@ class TomTenancy {
     }
     previous._opened.clear();
     previous._routes.clear();
+    previous._sharedPools.clear();
   }
 
   /// Adds [tenant] to the running deployment — onboarding without a restart.
@@ -527,9 +614,29 @@ class TomTenancy {
   /// served. A provisioning that fails leaves it `provisioning` in the
   /// registry, with the error as its status detail, and unserved. Every node
   /// refreshing from the registry serves it from its next refresh.
+  ///
+  /// Refused before anything is recorded for a tenant of an unknown type, an
+  /// isolation its type does not allow, and a tenant the registry holds — not
+  /// removed — under another type (`tenancy.type.change`): a type is not
+  /// changed in place.
   Future<void> addTenant(TomTenant tenant) async {
+    validateTenant(tenant);
     final now = _clock().toUtc();
     final existing = await registry.find(tenant.id);
+    if (existing != null &&
+        existing.status != TomTenantStatus.removed &&
+        existing.type != tenant.type) {
+      throw TomTenancyException(
+        'tenancy.type.change',
+        "Tenant '${tenant.id}' is of type '${existing.type}'; changing its "
+            "type to '${tenant.type}' is a move, not an edit.",
+        parameters: {
+          'tenant': tenant.id,
+          'type': existing.type,
+          'requested': tenant.type,
+        },
+      );
+    }
     await registry.put(
       TomTenantRecord.of(
         tenant,
@@ -630,9 +737,42 @@ class TomTenancy {
     }
   }
 
-  /// The isolation [tenant] runs under.
+  /// The isolation [tenant] runs under: its own, else its type's default,
+  /// else the deployment's [defaultIsolation].
+  ///
+  /// Throws `tenancy.type.unknown` for a tenant of an undeclared type.
   TomTenantIsolation isolationOf(TomTenant tenant) =>
-      tenant.isolation ?? defaultIsolation;
+      tenant.isolation ?? typeOf(tenant).isolation ?? defaultIsolation;
+
+  /// The declared type of [tenant].
+  ///
+  /// Throws `tenancy.type.unknown` for a type the deployment does not
+  /// declare.
+  TomTenantType typeOf(TomTenant tenant) {
+    final type = types[tenant.type];
+    if (type != null) return type;
+    throw TomTenancyException(
+      'tenancy.type.unknown',
+      "Tenant '${tenant.id}' is of type '${tenant.type}', which the "
+          'deployment does not declare.',
+      parameters: {'tenant': tenant.id, 'type': tenant.type},
+    );
+  }
+
+  /// Throws unless [tenant] can be served: its type is declared
+  /// (`tenancy.type.unknown`) and allows its isolation
+  /// (`tenancy.type.isolation_not_allowed`).
+  void validateTenant(TomTenant tenant) {
+    final type = typeOf(tenant);
+    final isolation = isolationOf(tenant);
+    if (!type.isolations.contains(isolation)) {
+      throw TomTenantType.isolationNotAllowed(
+        type.name,
+        isolation,
+        "tenant '${tenant.id}''s",
+      );
+    }
+  }
 
   /// [base] as the current tenant reaches it: the tenant's schema or database
   /// for a routed data source, [base] itself otherwise.
@@ -642,7 +782,7 @@ class TomTenancy {
   /// hand it everyone's.
   TomDataSourceInfo route(TomDataSourceInfo base) {
     final tenant = TomTenantContext.currentId;
-    if (tenant == null || !datasources.contains(base.name)) return base;
+    if (tenant == null || !routedDatasources.contains(base.name)) return base;
     final routed = _routes[(base.name, tenant)];
     if (routed != null) return routed;
     if (!tenants.containsKey(tenant)) throw unknownTenant(tenant);
@@ -765,10 +905,20 @@ class TomTenancy {
         clientThrow: true,
       );
 
+  /// Opens what [tenant] reaches its data through and records its routes: a
+  /// `schema` or `database` tenant's own pool per routed data source, and a
+  /// shared tenant of a type other than [TomTenant.defaultType] the pool over
+  /// its type's shared schema — opened once per type and data source, so
+  /// every shared tenant of the type reaches the same schema. A shared tenant
+  /// of the default type keeps the base data source.
   Future<void> _provision(TomTenant tenant) async {
+    final type = typeOf(tenant);
     final isolation = isolationOf(tenant);
-    if (isolation == TomTenantIsolation.shared) return;
-    for (final name in datasources) {
+    if (isolation == TomTenantIsolation.shared &&
+        type.name == TomTenant.defaultType) {
+      return;
+    }
+    for (final name in datasourcesOf(type)) {
       final base = TomDataSourceInfo.getBaseDataSourceInfo(name);
       if (base == null) {
         throw TomTenancyException(
@@ -777,19 +927,18 @@ class TomTenancy {
           parameters: {'datasource': name},
         );
       }
-      final routed = isolation == TomTenantIsolation.schema
-          ? await _schemaOf(base, tenant)
-          : await _databaseOf(base, tenant);
+      final routed = switch (isolation) {
+        TomTenantIsolation.shared => await _sharedOf(base, type),
+        TomTenantIsolation.schema => await _schemaOf(base, tenant),
+        TomTenantIsolation.database => await _databaseOf(base, tenant),
+      };
       _routes[(name, tenant.id)] = routed;
     }
   }
 
   static final RegExp _schemaPattern = RegExp(r'^[A-Za-z0-9_]{1,64}$');
 
-  Future<TomDataSourceInfo> _schemaOf(
-    TomDataSourceInfo base,
-    TomTenant tenant,
-  ) async {
+  static String _databaseNameOf(TomDataSourceInfo base) {
     final database = base.settings['databaseName'];
     if (database == null || '$database'.isEmpty) {
       throw TomTenancyException(
@@ -799,6 +948,14 @@ class TomTenancy {
         parameters: {'datasource': base.name},
       );
     }
+    return '$database';
+  }
+
+  Future<TomDataSourceInfo> _schemaOf(
+    TomDataSourceInfo base,
+    TomTenant tenant,
+  ) async {
+    final database = _databaseNameOf(base);
     final schema = tenant.schema ?? '${database}_${tenant.id}';
     if (!_schemaPattern.hasMatch(schema)) {
       throw TomTenancyException(
@@ -808,15 +965,57 @@ class TomTenancy {
         parameters: {'tenant': tenant.id, 'schema': schema},
       );
     }
+    for (final type in types.values) {
+      if (type.sharedSchema(database) != schema) continue;
+      throw TomTenancyException(
+        'tenancy.config.schema_collision',
+        "The schema '$schema' of tenant '${tenant.id}' is the shared schema "
+            "of the tenant type '${type.name}'.",
+        parameters: {'tenant': tenant.id, 'schema': schema, 'type': type.name},
+      );
+    }
+    return _openSchema(base, schema, '${base.name}@${tenant.id}');
+  }
+
+  /// The pool over [type]'s shared schema on [base], opened on first use and
+  /// shared by every shared-isolation tenant of the type. Registered as
+  /// `<name>@type.<type>` — a `.` is never in a tenant id, so it cannot be a
+  /// tenant's pool.
+  Future<TomDataSourceInfo> _sharedOf(
+    TomDataSourceInfo base,
+    TomTenantType type,
+  ) async {
+    final key = (base.name, type.name);
+    final open = _sharedPools[key];
+    if (open != null) return open;
+    final schema = type.sharedSchema(_databaseNameOf(base))!;
+    if (!_schemaPattern.hasMatch(schema)) {
+      throw TomTenancyException(
+        'tenancy.config.invalid_schema',
+        "The shared schema '$schema' of the tenant type '${type.name}' is not "
+            'an identifier of at most 64 letters, digits and underscores.',
+        parameters: {'type': type.name, 'schema': schema},
+      );
+    }
+    return _sharedPools[key] = await _openSchema(
+      base,
+      schema,
+      '${base.name}@type.${type.name}',
+    );
+  }
+
+  Future<TomDataSourceInfo> _openSchema(
+    TomDataSourceInfo base,
+    String schema,
+    String name,
+  ) async {
     final dialect = base.datasource.sqlDialect;
     if (createSchemas) {
-      // The pattern above is what makes interpolating it safe.
+      // The schema pattern the callers check is what makes interpolating it
+      // safe.
       await base.datasource.executeCommand(dialect.createSchema(schema));
     }
-    return _open('${base.name}@${tenant.id}', {
-      ...base.settings,
-      dialect.schemaSetting: schema,
-    });
+    return _open(name, {...base.settings, dialect.schemaSetting: schema});
   }
 
   Future<TomDataSourceInfo> _databaseOf(
@@ -825,7 +1024,9 @@ class TomTenancy {
   ) async {
     final configured =
         tenant.datasources[base.name] ??
-        (datasources.length == 1 ? tenant.datasources[''] : null);
+        (datasourcesOf(typeOf(tenant)).length == 1
+            ? tenant.datasources['']
+            : null);
     if (configured == null) {
       throw TomTenancyException(
         'tenancy.config.missing_datasource',

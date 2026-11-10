@@ -7,6 +7,8 @@
 /// `test/tenant_registry_db_test.dart`.
 library;
 
+import 'dart:io';
+
 import 'package:shelf/shelf.dart';
 import 'package:test/test.dart';
 import 'package:tom_core_server/tom_core_server.dart';
@@ -26,6 +28,24 @@ class _RecordingRegistry extends TomMemoryTenantRegistry {
 }
 
 final DateTime _at = DateTime.utc(2026, 11, 10);
+
+/// Declared types, each with an (empty) migration tree in a scratch folder
+/// and no routed data sources: these tests are about the registry, not where
+/// a tenant's rows go.
+List<TomTenantType> _types(List<String> names) {
+  final root = Directory.systemTemp.createTempSync('tom_tenant_types_');
+  addTearDown(() => root.deleteSync(recursive: true));
+  return [
+    for (final name in names)
+      TomTenantType(
+        name,
+        datasources: const {},
+        migrations: (Directory(
+          TomTenantType.treeUnder(root.path, name),
+        )..createSync(recursive: true)).path,
+      ),
+  ];
+}
 
 void main() {
   tearDown(TomTenancy.reset);
@@ -155,6 +175,7 @@ void main() {
             TomTenant('acme'),
             TomTenant('globex', type: 'standard'),
           ],
+          types: _types(['default', 'standard']),
           registry: registry,
           clock: () => _at,
         );
@@ -200,6 +221,7 @@ void main() {
       );
       final tenancy = TomTenancy(
         tenants: [TomTenant('acme'), TomTenant('globex')],
+        types: _types(['default', 'enterprise']),
         registry: registry,
       );
       await TomTenancy.install(tenancy);

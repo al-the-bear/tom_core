@@ -23,9 +23,10 @@ header.
 | `TomTenancy` | The deployment's tenants and their routing. `install` reads the tenant registry (seeding it with the configured tenants it lacks), provisions each tenant's schema or database and routes data-source lookups; `runFor` / `forEachTenant` run work inside a tenant; `resolveRequest` names a request's tenant or the rejection to answer it with; `addTenant` onboards without a restart, `suspendTenant` / `resumeTenant` stop and restart a tenant's traffic, and `removeTenant` withdraws a tenant, closing the data sources opened for it — each recorded in the registry first; `refreshFromRegistry` brings a node level with what other nodes changed. |
 | `TomTenantRegistry` · `TomMemoryTenantRegistry` · `TomSqlTenantRegistry` | The durable list of tenants — in memory, or the framework table `tom_tenant` in the system schema, declared once as `tenantTable` (default name `defaultTenantTable`) — with `TomTenantRecord` (one row), `TomTenantStatus`, `TomTenantRegistryConflict` and `TomTenantRegistryRefresh`. |
 | `TomTenant` · `TomTenantIsolation` | One tenant, of a type (`default` unless it names one), and where its data lives: `shared`, `schema` or `database`. |
+| `TomTenantType` | A kind of tenant (`tenancy.types`): its default model, the models it allows, the data sources it routes and its migration tree. Its shared tenants share one schema — the system schema for `default`, `<databaseName>_<type>` otherwise. Without declared types the deployment has the implicit type `default`. |
 | `TomTenantResolver` · `TomTenantHostResolver` · `TomTenantPathResolver` · `TomTenantHeaderResolver` | How a request without a token claim names its tenant: by subdomain or own host, by the path segment after a prefix (`/t/<segment>`, mapped to a tenant id when a lookup is given), or by the `X-Tenant-Id` header. |
 | `TomTenantResolution` | A tenant, none, or a rejection with its HTTP status and key. |
-| `TomTenancyException` | Every refusal the module raises — `tenancy.config.*`, `tenancy.tenant.*` and `tenancy.registry.*`. |
+| `TomTenancyException` | Every refusal the module raises — `tenancy.config.*`, `tenancy.tenant.*`, `tenancy.type.*` and `tenancy.registry.*`. |
 
 ## Quick start
 
@@ -65,11 +66,12 @@ configuration, request resolution, what is tenant-scoped and what stays
 deployment-wide, and
 `example/tenancy/tenancy_example.dart` for two tenants walked through
 resolution, token binding, caches, revocations, jobs and the outbox, checking
-its own results. `test/tenancy_test.dart` and `test/tenant_registry_test.dart`
-cover the module without a database; `test/tenancy_db_test.dart` (tagged `db`)
+its own results. `test/tenancy_test.dart`, `test/tenant_registry_test.dart`
+and `test/tenant_type_test.dart` cover the module without a database; `test/tenancy_db_test.dart` (tagged `db`)
 runs it under all three isolation models against MariaDB or PostgreSQL, and
 `test/tenant_registry_db_test.dart` (tagged `db`) the SQL registry and two nodes
-over one registry table. `test/examples_test.dart` runs the example.
+over one registry table, and `test/tenant_type_db_test.dart` (tagged `db`) one
+shared schema per type. `test/examples_test.dart` runs the example.
 
 ---
 
