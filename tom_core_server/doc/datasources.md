@@ -2403,7 +2403,11 @@ tool/run_db_tests.sh            # boots a throwaway MariaDB on 3309, runs, tears
 tool/run_db_tests_postgres.sh   # the same against PostgreSQL 15 on 5439
 ```
 
-Each script needs Docker with Compose v2 and its free host port. The two
+Each script needs Docker with Compose v2, its free host port and `testkit` on
+PATH — one of the Tom binaries the workspace setup builds
+(`tom_binaries/tom/<platform>/`); without it the script stops before it boots
+anything and prints the same run by hand (`docker compose -f <file> up -d --wait`,
+then `dart test --tags db`). The two
 compose files (`docker-compose.test.yaml`, `docker-compose.test.postgres.yaml`)
 carry their own project names, so both databases can run side by side; the
 PostgreSQL one starts the server with `max_prepared_transactions=20` so the

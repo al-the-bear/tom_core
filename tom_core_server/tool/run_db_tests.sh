@@ -11,10 +11,24 @@
 #
 #   tom_core_server/tool/run_db_tests.sh
 #
-# Requirements: docker (+ compose v2) and the Dart SDK on PATH. Host port 3309
+# Requirements: docker (+ compose v2), the Dart SDK and testkit on PATH — the
+# Tom binaries the workspace setup builds (`tom_binaries/tom/<platform>/`; see
+# _copilot_guidelines/tool_dependencies.md). Host port 3309
 # must be free. The database starts from a fresh volume each run, and every
 # suite file creates (and afterwards drops) a database of its own inside it.
 set -euo pipefail
+
+# testkit runs the suites. Checked before anything is booted: without it the
+# script would start a database, fail at the last step and tear it down having
+# run nothing.
+if ! command -v testkit >/dev/null 2>&1; then
+  echo "testkit is not on PATH. It is one of the Tom binaries the workspace setup" >&2
+  echo "builds and puts on PATH (tom_binaries/tom/<platform>/, see" >&2
+  echo "_copilot_guidelines/tool_dependencies.md); fix the setup rather than this script." >&2
+  echo "The same run by hand, from tom_core_server/:" >&2
+  echo "  docker compose -f docker-compose.test.yaml up -d --wait && dart test --tags db" >&2
+  exit 1
+fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
