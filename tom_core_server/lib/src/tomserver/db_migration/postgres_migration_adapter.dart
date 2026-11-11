@@ -97,6 +97,7 @@ CREATE TABLE IF NOT EXISTS ${schemaName}_versioning (
         for (final statement in TomSqlLexer.splitStatements(
           sql,
           backslashEscapes: false,
+          dollarQuotes: true,
         )) {
           await dsi.datasource.executeCommand(statement);
         }
@@ -136,6 +137,7 @@ CREATE TABLE IF NOT EXISTS ${schemaName}_versioning (
         for (final statement in TomSqlLexer.splitStatements(
           downSql,
           backslashEscapes: false,
+          dollarQuotes: true,
         )) {
           await dsi.datasource.executeCommand(statement);
         }

@@ -1069,6 +1069,11 @@ Summary: [api_summary_audit_reports.md](api_summary_audit_reports.md)
 | `TomTenancyStartup` | abstract final class | What a server's start makes of tenancy, and the contradictions it refuses. |
 | `TomTenancyStartupReport` | class | The start's decision: mode, the application's tenant tables, warnings. |
 | `TomTenancyMode` | enum | `plain`, `implicit` or `configured`. |
+| `TomTenantMoveReport` | class | What moving a tenant copied, dropped and deleted. |
+| `TomTenantBackup` | class | A tenant's rows in its tenant tables, to keep or restore. |
+| `TomTenantTableBackup` | class | One table of a tenant backup. |
+| `TomTenantColumn` | class | A tenant table's column as the database describes it. |
+| `TomTenantTables` | abstract final class | The SQL that counts, copies, exports and imports one tenant's rows of a table. |
 | `tenantTable` / `tenantTableDdl` | function | The registry table, declared once, and its `CREATE TABLE`. |
 | `defaultTenantTable` | constant | `tom_tenant`. |
 
@@ -2094,10 +2099,13 @@ Summary: [api_summary_audit_reports.md](api_summary_audit_reports.md)
 | `TomTenancyStartup` | Tenancy |
 | `TomTenancyStartupReport` | Tenancy |
 | `TomTenant` | Tenancy |
+| `TomTenantBackup` | Tenancy |
+| `TomTenantColumn` | Tenancy |
 | `TomTenantData` | Tenancy |
 | `TomTenantHeaderResolver` | Tenancy |
 | `TomTenantHostResolver` | Tenancy |
 | `TomTenantIsolation` | Tenancy |
+| `TomTenantMoveReport` | Tenancy |
 | `TomTenantPathResolver` | Tenancy |
 | `TomTenantPoolSettings` | Tenancy |
 | `TomTenantProviderSets` | Authentication |
@@ -2111,6 +2119,8 @@ Summary: [api_summary_audit_reports.md](api_summary_audit_reports.md)
 | `TomTenantRow` | Tenancy |
 | `TomTenantStatus` | Tenancy |
 | `TomTenantTable` | Object Persistence |
+| `TomTenantTableBackup` | Tenancy |
+| `TomTenantTables` | Tenancy |
 | `TomTenantType` | Tenancy |
 | `TomTextLocale` | Resources |
 | `TomTlsConnectionInfo` | Server |

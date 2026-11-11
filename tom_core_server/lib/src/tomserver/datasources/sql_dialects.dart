@@ -701,6 +701,11 @@ class TomStandardSqlDialect {
   /// that reads it literally, `'C:\'` is a whole literal.
   bool get backslashEscapes => true;
 
+  /// Whether `$$ … $$` and `$tag$ … $tag$` are string literals —
+  /// PostgreSQL's dollar quoting, in which a function body's semicolons do not
+  /// end the statement. A statement splitter has to know.
+  bool get dollarQuotes => false;
+
   /// [statement], written in the framework's canonical DDL — MariaDB's
   /// spelling: `AUTO_INCREMENT`, `DATETIME(6)`, inline `KEY`s, table options —
   /// as the statements this database runs to the same effect.

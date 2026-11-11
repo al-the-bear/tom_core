@@ -294,6 +294,39 @@ void main() {
       );
     });
   });
+
+  group('PostgreSQL dollar quoting', () {
+    test('a function body is one statement, its semicolons inside', () {
+      expect(
+        TomSqlLexer.splitStatements(
+          r'CREATE FUNCTION f() RETURNS trigger AS $$ BEGIN DELETE FROM t; '
+          r'RETURN NULL; END $$ LANGUAGE plpgsql; SELECT 1',
+          backslashEscapes: false,
+          dollarQuotes: true,
+        ),
+        [
+          r'CREATE FUNCTION f() RETURNS trigger AS $$ BEGIN DELETE FROM t; '
+              r'RETURN NULL; END $$ LANGUAGE plpgsql',
+          'SELECT 1',
+        ],
+      );
+    });
+
+    test(r'a tagged quote ends at its own tag only; $1 and a$b open none', () {
+      expect(
+        TomSqlLexer.splitStatements(
+          r'SELECT $fn$ a $$; b $fn$; SELECT $1; SELECT a$b; SELECT 2',
+          dollarQuotes: true,
+        ),
+        [r'SELECT $fn$ a $$; b $fn$', r'SELECT $1', r'SELECT a$b', 'SELECT 2'],
+      );
+      expect(
+        TomSqlLexer.splitStatements(r'SELECT $$ a; b $$', dollarQuotes: false),
+        [r'SELECT $$ a', r'b $$'],
+        reason: 'MariaDB knows no dollar quoting',
+      );
+    });
+  });
 }
 
 /// The three comment openers MariaDB recognises.

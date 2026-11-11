@@ -56,7 +56,9 @@ import '../db_migration/schema_versions.dart';
 import '../little_things/server_exception.dart';
 import '../object_persistence/annotation_analyzer.dart';
 import '../object_persistence/persistence_annotations.dart';
+import '../transactions/transaction_manager.dart';
 import 'tenant_data.dart';
+import 'tenant_tables.dart';
 import 'tenant_registry.dart';
 import 'tenant_registry_sql.dart';
 import 'tenant_resolution.dart';
@@ -86,6 +88,16 @@ import 'tenant_type.dart';
 /// | `tenancy.config.invalid_number` | `purgeAfterDays` or a `pool` setting that is not a whole number in range. |
 /// | `tenancy.start.undeclared_type_tree` | At start: a tree under `<root>/tenant/` for a type the deployment does not declare (`TomTenancyStartup`). |
 /// | `tenancy.start.table_missing_from_type` | At start: a tenant table on a data source a type routes that the type's tree never creates. |
+/// | `tenancy.move.nothing_to_move` | `moveTenant` onto the tenant's own placement. |
+/// | `tenancy.move.same_place` | `moveTenant` into the schema the tenant is in. |
+/// | `tenancy.move.not_movable` | `moveTenant` of a tenant provisioning, migrating or whose migration failed. |
+/// | `tenancy.move.target_rejects` | `moveTenant` into a target lacking a table or column the tenant has rows in. |
+/// | `tenancy.move.target_not_empty` | `moveTenant` into a target holding rows of the tenant. |
+/// | `tenancy.move.count_mismatch` | `moveTenant` copying another number of rows than the source holds. |
+/// | `tenancy.backup.invalid` | `TomTenantBackup.fromJson` of a document that is not a backup. |
+/// | `tenancy.import.target_rejects` | `importTenant` into a placement lacking a table or column of the backup. |
+/// | `tenancy.import.not_empty` | `importTenant` over rows of the tenant, without `replace`. |
+/// | `tenancy.import.count_mismatch` | `importTenant` leaving another number of rows than the backup holds. |
 /// | `tenancy.tenant.schema_behind` | A request for a tenant whose schema is behind this server's code (503). |
 /// | `tenancy.tenant.schema_ahead` | A request for a tenant whose schema is ahead of this server's code by a migration not marked expand (503). |
 /// | `tenancy.config.schema_collision` | A schema-isolated tenant whose schema is a tenant type's shared schema. |
@@ -1030,6 +1042,531 @@ class TomTenancy {
     final tenant = record.toTenant(configured: _configured[tenantId]);
     final type = types[tenant.type];
     final isolation = tenant.isolation ?? type?.isolation ?? defaultIsolation;
+    final (:dropped, :kept, :deleted) = await _removePlacement(
+      tenant,
+      type,
+      isolation,
+    );
+    for (final store in <Object>{...stores, ..._jobStores(jobStores)}) {
+      final count = store is TomTenantData
+          ? await store.purgeTenant(tenantId)
+          : await (store as TomJobStore).purgeTenant(tenantId);
+      deleted['${store.runtimeType}'] =
+          (deleted['${store.runtimeType}'] ?? 0) + count;
+    }
+    await registry.delete(tenantId);
+    final report = TomTenantPurgeReport(
+      tenantId,
+      dropped: dropped,
+      kept: kept,
+      deleted: deleted,
+    );
+    tomLog.info('Tenancy: purged $report');
+    return report;
+  }
+
+  /// Moves the served tenant [tenantId] to another isolation model, another
+  /// type, another schema or other data sources, and answers what was done:
+  ///
+  /// 1. the tenant is suspended (unless it is already), so nothing writes its
+  ///    rows meanwhile;
+  /// 2. the target is provisioned — a `schema` tenant's schema, a `database`
+  ///    tenant's data source, a type's shared schema — and migrated by the
+  ///    target type's tree;
+  /// 3. its tenant tables are copied, each table's rows of the tenant (its
+  ///    tenant column) out of the source — all of a schema or database of its
+  ///    own, its rows out of a shared one — after every table it holds rows in
+  ///    is checked to exist in the target with every source column: a target
+  ///    type whose tree does not accept the data is refused before anything is
+  ///    copied (`tenancy.move.target_rejects`), and so is a target already
+  ///    holding rows of the tenant (`tenancy.move.target_not_empty`). On one
+  ///    server (`TomSqlDatasource.canQualify`) a table is copied with one
+  ///    `INSERT … SELECT`, its values as the database holds them; to another
+  ///    server through the backup's text form ([exportTenant]). Each data
+  ///    source's copy is one transaction, and its row counts are compared
+  ///    with the source's (`tenancy.move.count_mismatch`);
+  /// 4. the registry row is switched to the new placement, the tenant routed
+  ///    there, and — unless [keepSource] — its data removed from the source as
+  ///    a purge removes it (a shared source's rows deleted, a schema or
+  ///    database the tenancy opened dropped);
+  /// 5. it is migrated again ([migrateTenant], which records the versions)
+  ///    and resumed when it was active.
+  ///
+  /// The tenant's system-table rows — its queued jobs, its audit entries, its
+  /// blobs — stay where they are: the tenant's id does not change. A failure
+  /// before the switch leaves the tenant where it was, resumed when it was
+  /// active.
+  ///
+  /// [schema] names the target schema of a `schema` move (default
+  /// `<databaseName>_<id>`, the source's own when the type and isolation stay);
+  /// [datasources] a `database` move's data sources. Refused:
+  /// `tenancy.tenant.unknown`; `tenancy.move.nothing_to_move` when the target
+  /// is the tenant's placement; `tenancy.move.same_place` when a data
+  /// source's target is the schema the tenant is in; `tenancy.move.not_movable`
+  /// for a tenant provisioning, migrating or whose migration failed; and the
+  /// type and isolation refusals of [validateTenant].
+  Future<TomTenantMoveReport> moveTenant(
+    String tenantId, {
+    TomTenantIsolation? isolation,
+    String? type,
+    String? schema,
+    Map<String, Object>? datasources,
+    bool keepSource = false,
+  }) async {
+    final from = tenants[tenantId];
+    if (from == null) throw unknownTenant(tenantId);
+    final fromType = typeOf(from);
+    final fromIsolation = isolationOf(from);
+    final toIsolation = isolation ?? fromIsolation;
+    final toTypeName = type ?? from.type;
+    final to = TomTenant(
+      tenantId,
+      type: toTypeName,
+      name: from.name,
+      isolation: toIsolation,
+      schema: toIsolation == TomTenantIsolation.schema
+          ? schema ??
+                (fromIsolation == TomTenantIsolation.schema &&
+                        toTypeName == from.type
+                    ? from.schema
+                    : null)
+          : null,
+      datasources: datasources ?? from.datasources,
+    );
+    validateTenant(to);
+    final toType = typeOf(to);
+    if (toType.name == fromType.name &&
+        toIsolation == fromIsolation &&
+        to.schema == from.schema &&
+        datasources == null) {
+      throw TomTenancyException(
+        'tenancy.move.nothing_to_move',
+        "Tenant '$tenantId' is of the type '${toType.name}' and "
+            "${toIsolation.name} isolation already.",
+        parameters: {'tenant': tenantId},
+      );
+    }
+    final status = _statuses[tenantId] ?? TomTenantStatus.active;
+    if (status != TomTenantStatus.active &&
+        status != TomTenantStatus.suspended) {
+      throw TomTenancyException(
+        'tenancy.move.not_movable',
+        "Tenant '$tenantId' is ${status.wireName}; only an active or a "
+            'suspended tenant is moved.',
+        parameters: {'tenant': tenantId, 'status': status.wireName},
+      );
+    }
+    final wasActive = status == TomTenantStatus.active;
+    if (wasActive) await suspendTenant(tenantId);
+    final temporary = <TomDataSourceInfo>[];
+    final copied = <String, int>{};
+    try {
+      // 2. The target, opened beside the source under names of its own.
+      final targets = <String, TomDataSourceInfo>{};
+      for (final name in datasourcesOf(toType)) {
+        final base = _baseOf(name);
+        final info = switch (toIsolation) {
+          TomTenantIsolation.shared =>
+            toType.name == TomTenant.defaultType
+                ? base
+                : await _sharedOf(base, toType),
+          TomTenantIsolation.schema => await _schemaOf(
+            base,
+            to,
+            name: '$name@$tenantId.move',
+          ),
+          TomTenantIsolation.database => await _databaseOf(
+            base,
+            to,
+            name: '$name@$tenantId.move',
+          ),
+        };
+        if (info.name.endsWith('.move')) temporary.add(info);
+        final source = routeForMaintenance(tenantId, base);
+        if (_samePlace(source, info)) {
+          throw TomTenancyException(
+            'tenancy.move.same_place',
+            "Tenant '$tenantId' would be moved into the schema it is in, on "
+                "data source '$name'.",
+            parameters: {'tenant': tenantId, 'datasource': name},
+          );
+        }
+        targets[name] = info;
+      }
+      final tree = toType.migrations;
+      if (tree != null && Directory(tree).existsSync()) {
+        final environment = TomDbMigrations.resolveActiveEnvironment();
+        for (final MapEntry(key: name, value: info) in targets.entries) {
+          final chain = Directory('$tree${Platform.pathSeparator}$name');
+          if (!chain.existsSync()) continue;
+          await TomDbMigrations.migrateTree(
+            TomDbMigrations.newMigratorFor(info),
+            info,
+            chain,
+            TomDbMigrations.tenantHistoryLabel(toType.name),
+            environment,
+          );
+        }
+      }
+      // 3. Checked whole before anything is copied.
+      final plans =
+          <String, List<(String, String, int, List<TomTenantColumn>)>>{};
+      for (final name in datasourcesOf(fromType)) {
+        final source = _sqlOf(routeForMaintenance(tenantId, _baseOf(name)));
+        final target = targets[name];
+        final plan = <(String, String, int, List<TomTenantColumn>)>[];
+        for (final MapEntry(key: table, value: column)
+            in (await TomTenantTables.present(source, name)).entries) {
+          final rows = await TomTenantTables.count(
+            source,
+            table,
+            column,
+            tenantId,
+          );
+          if (rows == 0) continue;
+          final columns = await TomTenantTables.columns(source, table);
+          final into = target == null ? null : _sqlOf(target);
+          final missing =
+              into == null || !await TomTenantTables.exists(into, table)
+              ? ['the table']
+              : _missingColumns(
+                  columns,
+                  await TomTenantTables.columns(into, table),
+                );
+          if (missing.isNotEmpty) {
+            throw TomTenancyException(
+              'tenancy.move.target_rejects',
+              "The target of tenant '$tenantId' (type '${toType.name}', "
+                  "${toIsolation.name}) cannot take the rows of '$table' on "
+                  "data source '$name': it lacks ${missing.join(', ')}.",
+              parameters: {
+                'tenant': tenantId,
+                'table': table,
+                'datasource': name,
+                'missing': missing,
+              },
+            );
+          }
+          if (await TomTenantTables.count(into!, table, column, tenantId) > 0) {
+            throw TomTenancyException(
+              'tenancy.move.target_not_empty',
+              "The target of tenant '$tenantId' holds rows of the tenant in "
+                  "'$table' on data source '$name' already.",
+              parameters: {
+                'tenant': tenantId,
+                'table': table,
+                'datasource': name,
+              },
+            );
+          }
+          plan.add((table, column, rows, columns));
+        }
+        plans[name] = plan;
+      }
+      for (final MapEntry(key: name, value: plan) in plans.entries) {
+        if (plan.isEmpty) continue;
+        final source = _sqlOf(routeForMaintenance(tenantId, _baseOf(name)));
+        final target = _sqlOf(targets[name]!);
+        final sameServer = target.canQualify(source);
+        // Read before the transaction: it holds the target only.
+        final exported = sameServer
+            ? const <String, TomTenantTableBackup>{}
+            : {
+                for (final (table, column, _, _) in plan)
+                  table: await TomTenantTables.export(
+                    source,
+                    name,
+                    table,
+                    column,
+                    tenantId,
+                  ),
+              };
+        await TomTransactionManager.runInTransaction((_) async {
+          for (final (table, column, rows, columns) in plan) {
+            final written = sameServer
+                ? await TomTenantTables.copyQualified(
+                    source: source,
+                    target: target,
+                    table: table,
+                    column: column,
+                    columns: columns,
+                    tenant: tenantId,
+                  )
+                : await TomTenantTables.import(target, exported[table]!);
+            final counted = await TomTenantTables.count(
+              target,
+              table,
+              column,
+              tenantId,
+            );
+            if (written != rows || counted != rows) {
+              throw TomTenancyException(
+                'tenancy.move.count_mismatch',
+                "Moving tenant '$tenantId' copied $counted of $rows rows of "
+                    "'$table' on data source '$name'.",
+                parameters: {
+                  'tenant': tenantId,
+                  'table': table,
+                  'datasource': name,
+                  'expected': rows,
+                  'copied': counted,
+                },
+              );
+            }
+            copied['$name/$table'] = rows;
+          }
+        });
+      }
+    } catch (_) {
+      await _closePools(temporary);
+      if (wasActive) await resumeTenant(tenantId);
+      rethrow;
+    }
+    // 4. The switch.
+    final existing = await registry.find(tenantId);
+    final now = _clock().toUtc();
+    await registry.put(
+      TomTenantRecord.of(
+        to,
+        TomTenantStatus.suspended,
+        now,
+      ).copyWithCreated(existing?.createdAt),
+    );
+    await _closePools(temporary);
+    await _unroute(tenantId);
+    tenants[tenantId] = to;
+    _statuses[tenantId] = TomTenantStatus.suspended;
+    await _provision(to);
+    final removed = keepSource
+        ? (
+            dropped: const <String>[],
+            kept: const <String>[],
+            deleted: const <String, int>{},
+          )
+        : await _removePlacement(from, fromType, fromIsolation);
+    // 5. Migrated as the tenant it now is, then resumed.
+    await migrateTenant(tenantId);
+    if (wasActive) await resumeTenant(tenantId);
+    final report = TomTenantMoveReport(
+      tenantId,
+      from: '${fromType.name}/${fromIsolation.name}',
+      to: '${toType.name}/${toIsolation.name}',
+      copied: copied,
+      dropped: removed.dropped,
+      deleted: removed.deleted,
+    );
+    tomLog.info('Tenancy: moved $report');
+    return report;
+  }
+
+  /// The tenant [tenantId]'s rows in its tenant tables, as a backup to keep or
+  /// to restore with [importTenant] — here, into another schema or database
+  /// after a move, or on another server: every routed data source's tenant
+  /// tables that exist in the tenant's placement, each with its rows of the
+  /// tenant. Its system-table rows are not in it. Throws
+  /// `tenancy.tenant.unknown` for a tenant the deployment does not serve.
+  Future<TomTenantBackup> exportTenant(String tenantId) async {
+    final tenant = tenants[tenantId];
+    if (tenant == null) throw unknownTenant(tenantId);
+    final type = typeOf(tenant);
+    final tables = <TomTenantTableBackup>[];
+    for (final name in datasourcesOf(type)) {
+      final datasource = _sqlOf(routeForMaintenance(tenantId, _baseOf(name)));
+      for (final MapEntry(key: table, value: column)
+          in (await TomTenantTables.present(datasource, name)).entries) {
+        tables.add(
+          await TomTenantTables.export(
+            datasource,
+            name,
+            table,
+            column,
+            tenantId,
+          ),
+        );
+      }
+    }
+    return TomTenantBackup(
+      tenant: tenantId,
+      type: type.name,
+      isolation: isolationOf(tenant).name,
+      takenAt: _clock().toUtc(),
+      tables: tables,
+    );
+  }
+
+  /// Restores [backup] into its tenant's placement, which must be served and
+  /// migrated, and answers the rows written by `<datasource>/<table>`.
+  ///
+  /// Every table of the backup must exist there with every backed-up column
+  /// (`tenancy.import.target_rejects`) on a data source the tenant's type
+  /// routes, and hold no row of the tenant (`tenancy.import.not_empty`) —
+  /// unless [replace], which deletes them first. Each data source's tables are
+  /// written in one transaction and counted afterwards
+  /// (`tenancy.import.count_mismatch`). Throws `tenancy.tenant.unknown` for a
+  /// tenant the deployment does not serve.
+  Future<Map<String, int>> importTenant(
+    TomTenantBackup backup, {
+    bool replace = false,
+  }) async {
+    final tenantId = backup.tenant;
+    final tenant = tenants[tenantId];
+    if (tenant == null) throw unknownTenant(tenantId);
+    final routed = datasourcesOf(typeOf(tenant));
+    final byDatasource = <String, List<TomTenantTableBackup>>{};
+    for (final table in backup.tables) {
+      if (!routed.contains(table.datasource)) {
+        throw TomTenancyException(
+          'tenancy.import.target_rejects',
+          "Tenant '$tenantId' is not routed on data source "
+              "'${table.datasource}', which the backup's '${table.table}' is "
+              'of.',
+          parameters: {
+            'tenant': tenantId,
+            'table': table.table,
+            'datasource': table.datasource,
+          },
+        );
+      }
+      final datasource = _sqlOf(
+        routeForMaintenance(tenantId, _baseOf(table.datasource)),
+      );
+      if (!await TomTenantTables.exists(datasource, table.table)) {
+        throw TomTenancyException(
+          'tenancy.import.target_rejects',
+          "The placement of tenant '$tenantId' has no table '${table.table}' "
+              "on data source '${table.datasource}'.",
+          parameters: {
+            'tenant': tenantId,
+            'table': table.table,
+            'datasource': table.datasource,
+          },
+        );
+      }
+      if (!replace &&
+          await TomTenantTables.count(
+                datasource,
+                table.table,
+                table.tenantColumn,
+                tenantId,
+              ) >
+              0) {
+        throw TomTenancyException(
+          'tenancy.import.not_empty',
+          "The table '${table.table}' on data source '${table.datasource}' "
+              "holds rows of tenant '$tenantId' already.",
+          parameters: {
+            'tenant': tenantId,
+            'table': table.table,
+            'datasource': table.datasource,
+          },
+        );
+      }
+      byDatasource.putIfAbsent(table.datasource, () => []).add(table);
+    }
+    final written = <String, int>{};
+    for (final MapEntry(key: name, value: tables) in byDatasource.entries) {
+      final datasource = _sqlOf(routeForMaintenance(tenantId, _baseOf(name)));
+      await TomTransactionManager.runInTransaction((_) async {
+        for (final table in tables) {
+          if (replace) {
+            await TomTenantTables.delete(
+              datasource,
+              table.table,
+              table.tenantColumn,
+              tenantId,
+            );
+          }
+          await TomTenantTables.import(datasource, table);
+          final counted = await TomTenantTables.count(
+            datasource,
+            table.table,
+            table.tenantColumn,
+            tenantId,
+          );
+          if (counted != table.rows.length) {
+            throw TomTenancyException(
+              'tenancy.import.count_mismatch',
+              "Restoring tenant '$tenantId' left $counted of "
+                  "${table.rows.length} rows in '${table.table}' on data "
+                  "source '$name'.",
+              parameters: {
+                'tenant': tenantId,
+                'table': table.table,
+                'datasource': name,
+                'expected': table.rows.length,
+                'restored': counted,
+              },
+            );
+          }
+          written['$name/${table.table}'] = counted;
+        }
+      });
+    }
+    tomLog.info("Tenancy: restored tenant '$tenantId': $written");
+    return written;
+  }
+
+  TomDataSourceInfo _baseOf(String name) {
+    final base = TomDataSourceInfo.getBaseDataSourceInfo(name);
+    if (base == null) {
+      throw TomTenancyException(
+        'tenancy.config.unknown_datasource',
+        "The routed data source '$name' is not registered.",
+        parameters: {'datasource': name},
+      );
+    }
+    return base;
+  }
+
+  /// [info]'s data source as the SQL data source the tenancy routes: every
+  /// placement it provisions is opened over a SQL dialect.
+  static TomSqlDatasource _sqlOf(TomDataSourceInfo info) =>
+      info.datasource as TomSqlDatasource;
+
+  /// Whether [a] and [b] reach the same schema on the same server.
+  static bool _samePlace(TomDataSourceInfo a, TomDataSourceInfo b) {
+    if (identical(a, b)) return true;
+    final x = a.datasource;
+    final y = b.datasource;
+    return x is TomSqlDatasource &&
+        y is TomSqlDatasource &&
+        x.canQualify(y) &&
+        x.schemaName == y.schemaName;
+  }
+
+  static List<String> _missingColumns(
+    List<TomTenantColumn> source,
+    List<TomTenantColumn> target,
+  ) {
+    final present = {for (final c in target) c.name.toLowerCase()};
+    return [
+      for (final c in source)
+        if (!present.contains(c.name.toLowerCase())) 'the column ${c.name}',
+    ];
+  }
+
+  /// Closes and unregisters [pools], which this tenancy opened.
+  Future<void> _closePools(List<TomDataSourceInfo> pools) async {
+    for (final info in pools) {
+      _opened.remove(info);
+      _pooled.remove(info.name);
+      TomDataSourceInfo.datasources.remove(info.name);
+      await info.datasource.close();
+    }
+  }
+
+  /// Removes [tenant]'s data where [isolation] under [type] placed it, as a
+  /// purge or a move away does: a `schema` tenant's schema dropped on each
+  /// routed data source, a `database` tenant's database dropped when the
+  /// tenancy opened it on the base server (one named by reference, or on
+  /// another server, kept and reported), a `shared` tenant's rows deleted from
+  /// the tenant tables of its type's shared schema.
+  Future<({List<String> dropped, List<String> kept, Map<String, int> deleted})>
+  _removePlacement(
+    TomTenant tenant,
+    TomTenantType? type,
+    TomTenantIsolation isolation,
+  ) async {
     final dropped = <String>[];
     final kept = <String>[];
     final deleted = <String, int>{};
@@ -1075,25 +1612,10 @@ class TomTenancy {
           final pool = type == null || type.name == TomTenant.defaultType
               ? base
               : await _sharedOf(base, type);
-          deleted.addAll(await _deleteSharedRows(pool, name, tenantId));
+          deleted.addAll(await _deleteSharedRows(pool, name, tenant.id));
       }
     }
-    for (final store in <Object>{...stores, ..._jobStores(jobStores)}) {
-      final count = store is TomTenantData
-          ? await store.purgeTenant(tenantId)
-          : await (store as TomJobStore).purgeTenant(tenantId);
-      deleted['${store.runtimeType}'] =
-          (deleted['${store.runtimeType}'] ?? 0) + count;
-    }
-    await registry.delete(tenantId);
-    final report = TomTenantPurgeReport(
-      tenantId,
-      dropped: dropped,
-      kept: kept,
-      deleted: deleted,
-    );
-    tomLog.info('Tenancy: purged $report');
-    return report;
+    return (dropped: dropped, kept: kept, deleted: deleted);
   }
 
   /// Deletes [tenantId]'s rows from every tenant table of the shared schema
@@ -1106,11 +1628,7 @@ class TomTenancy {
   ) async {
     final deleted = <String, int>{};
     final datasource = pool.datasource;
-    final tables = <String, String>{
-      for (final MapEntry(key: entity, value: table) in tenantTables.entries)
-        if (table.datasource == name) table.table: _tenantColumnOf(entity),
-      for (final table in frameworkTenantTables()) table.name: 'tenant',
-    };
+    final tables = tenantTableColumns(name);
     for (final MapEntry(key: table, value: column) in tables.entries) {
       final exists = await datasource.executeQuery<TomCountResult>(
         'SELECT COUNT(*) AS count FROM information_schema.tables '
@@ -1129,6 +1647,15 @@ class TomTenancy {
   }
 
   /// The column of [entity]'s tenant field ([TomTenantTable.field]).
+  /// The tenant tables of the data source [name] — the application's
+  /// (`@TomTenantTable`) and the framework's ([frameworkTenantTables]) — by
+  /// table name, each with the column naming its rows' tenant.
+  static Map<String, String> tenantTableColumns(String name) => {
+    for (final MapEntry(key: entity, value: table) in tenantTables.entries)
+      if (table.datasource == name) table.table: _tenantColumnOf(entity),
+    for (final table in frameworkTenantTables()) table.name: 'tenant',
+  };
+
   static String _tenantColumnOf(Type entity) {
     final field = TomAnnotationAnalyzer.findTenantTable(entity)!.field;
     return TomAnnotationAnalyzer.getPersistentColumns(
@@ -1432,8 +1959,9 @@ class TomTenancy {
 
   Future<TomDataSourceInfo> _schemaOf(
     TomDataSourceInfo base,
-    TomTenant tenant,
-  ) async {
+    TomTenant tenant, {
+    String? name,
+  }) async {
     final database = _databaseNameOf(base);
     final schema = schemaNameOf(base, tenant);
     if (!_schemaPattern.hasMatch(schema)) {
@@ -1453,7 +1981,7 @@ class TomTenancy {
         parameters: {'tenant': tenant.id, 'schema': schema, 'type': type.name},
       );
     }
-    return _openSchema(base, schema, '${base.name}@${tenant.id}');
+    return _openSchema(base, schema, name ?? '${base.name}@${tenant.id}');
   }
 
   /// The pool over [type]'s shared schema on [base], opened on first use and
@@ -1508,8 +2036,9 @@ class TomTenancy {
 
   Future<TomDataSourceInfo> _databaseOf(
     TomDataSourceInfo base,
-    TomTenant tenant,
-  ) async {
+    TomTenant tenant, {
+    String? name,
+  }) async {
     final configured =
         tenant.datasources[base.name] ??
         (datasourcesOf(typeOf(tenant)).length == 1
@@ -1536,7 +2065,7 @@ class TomTenancy {
       return registered;
     }
     return _open(
-      '${base.name}@${tenant.id}',
+      name ?? '${base.name}@${tenant.id}',
       Map<String, dynamic>.of(configured as Map<String, dynamic>),
     );
   }
@@ -1704,4 +2233,41 @@ class TomTenantPurgeReport {
       '$tenant: dropped ${dropped.isEmpty ? 'nothing' : dropped.join(', ')}'
       '${kept.isEmpty ? '' : '; kept ${kept.join(', ')}'}'
       '; deleted $deleted';
+}
+
+/// What [TomTenancy.moveTenant] did for one tenant.
+class TomTenantMoveReport {
+  /// The report of [tenant].
+  const TomTenantMoveReport(
+    this.tenant, {
+    required this.from,
+    required this.to,
+    this.copied = const {},
+    this.dropped = const [],
+    this.deleted = const {},
+  });
+
+  /// The moved tenant.
+  final String tenant;
+
+  /// Where it was, as `<type>/<isolation>`.
+  final String from;
+
+  /// Where it is, as `<type>/<isolation>`.
+  final String to;
+
+  /// The rows copied, by `<datasource>/<table>`.
+  final Map<String, int> copied;
+
+  /// The source schemas and databases dropped.
+  final List<String> dropped;
+
+  /// The source rows deleted, by table (a shared source).
+  final Map<String, int> deleted;
+
+  @override
+  String toString() =>
+      '$tenant: $from -> $to; copied $copied'
+      '${dropped.isEmpty ? '' : '; dropped ${dropped.join(', ')}'}'
+      '${deleted.isEmpty ? '' : '; deleted $deleted'}';
 }

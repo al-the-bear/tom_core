@@ -2,6 +2,32 @@
 
 ### Added
 
+- **PostgreSQL dollar quoting in the statement splitter** (`datasources`,
+  `db_migration`). `TomSqlLexer.splitStatements(dollarQuotes:)` reads
+  `$$ … $$` and `$tag$ … $tag$` as one string (`endOfDollarQuote`), so a
+  `CREATE FUNCTION` whose body holds semicolons is one statement — in a
+  PostgreSQL migration and in a single `executeCommand`; the dialects say
+  whether they quote so (`TomStandardSqlDialect.dollarQuotes`, `true` on
+  PostgreSQL). Before, such a statement was split at the body's first `;`.
+
+- **Moving and backing up a tenant** (`tenancy`, `datasources`).
+  `TomTenancy.moveTenant(id, {isolation, type, schema, datasources,
+  keepSource})` suspends the tenant, provisions and migrates the target by the
+  target type's tree, refuses a target lacking a table or column the tenant has
+  rows in (`tenancy.move.target_rejects`) or holding its rows
+  (`target_not_empty`), copies each tenant table's rows of the tenant in one
+  transaction per data source (`INSERT … SELECT` on one server, the backup's
+  text form to another) with the counts compared (`count_mismatch`), switches
+  the registry row and the route, removes the source data as a purge would
+  unless `keepSource`, migrates again and resumes it; system-table rows stay
+  (`TomTenantMoveReport`). `exportTenant` / `importTenant(backup, {replace})`
+  carry a tenant's rows as a JSON-able `TomTenantBackup`
+  (`tom-tenant-backup/1`), values as text with types restored on import
+  (`tenancy.import.*`, `tenancy.backup.invalid`). `TomTenantTables` is the SQL
+  table by table; `TomTenancy.tenantTableColumns` the tables and tenant columns
+  a purge, move and backup filter by. `TomSqlDatasource.executeResult` answers a
+  query's raw result.
+
 - **Tenancy decided at start** (`tenancy`, `server`). `TomServer.start` calls
   `configureTenancy` (`TomTenancyStartup.configure`) before it migrates: with no
   application tenant table and no `tenancy` key a plain application, nothing

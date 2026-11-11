@@ -954,6 +954,7 @@ abstract class TomSqlDatasource implements TomDataSource {
     final statements = TomSqlLexer.splitStatements(
       command,
       backslashEscapes: sqlDialect.backslashEscapes,
+      dollarQuotes: sqlDialect.dollarQuotes,
     );
     if (statements.length <= 1) return;
     throw datasourceException(
@@ -1597,6 +1598,35 @@ abstract class TomSqlDatasource implements TomDataSource {
       ),
     );
     return mapSqlResult<T>(result, resultType);
+  }
+
+  /// Runs the query [command] with [params] and answers its result as the
+  /// driver read it — column names and the text of each value — mapped onto
+  /// nothing.
+  ///
+  /// For tooling that reads tables it has no entity for: copying, backing up
+  /// and restoring a tenant's rows (`TomTenantTables`). A value is read with
+  /// [TomSqlRow.text], [TomSqlRow.temporalText] or [TomSqlRow.boolean].
+  Future<TomSqlResult> executeResult(
+    String command, [
+    Map<String, dynamic>? params,
+  ]) async {
+    tomLog.trace("$driverLabel executing SQL for a raw result: $command");
+    _refuseMultipleStatements(command, "executeResult");
+    return withLink(
+      "executeQuery",
+      statement: command,
+      (link) => runChecked<TomSqlResult>(
+        () => runCommandOn(link, command, tomSqlBindParams(params)),
+        (e, StackTrace s) => datasourceException(
+          "error.failed-to-execute.exception",
+          "$driverLabel: execution of $command with $params failed. $e",
+          parameters: {...?params, "command": command},
+          rootException: e,
+          stack: s,
+        ),
+      ),
+    );
   }
 
   /// Maps [result] onto a list of [T], choosing between the five row shapes a

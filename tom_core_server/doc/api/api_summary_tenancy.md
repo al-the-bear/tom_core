@@ -30,6 +30,11 @@ tenant — and how a request names the tenant it is for.
   - [TomTenantData](#tomtenantdata)
   - [TomTenancyStartup](#tomtenancystartup)
   - [TomTenancyStartupReport](#tomtenancystartupreport)
+  - [TomTenantMoveReport](#tomtenantmovereport)
+  - [TomTenantBackup](#tomtenantbackup)
+  - [TomTenantTableBackup](#tomtenanttablebackup)
+  - [TomTenantColumn](#tomtenantcolumn)
+  - [TomTenantTables](#tomtenanttables)
 - [Enums](#enums)
   - [TomTenancyMode](#tomtenancymode)
   - [TomTenantIsolation](#tomtenantisolation)
@@ -40,6 +45,7 @@ tenant — and how a request names the tenant it is for.
 
 Source: `lib/src/tomserver/tenancy/tenancy.dart`,
 `lib/src/tomserver/tenancy/tenancy_startup.dart`,
+`lib/src/tomserver/tenancy/tenant_tables.dart`,
 `lib/src/tomserver/tenancy/tenant_data.dart`,
 `lib/src/tomserver/tenancy/tenant_registry.dart`,
 `lib/src/tomserver/tenancy/tenant_registry_sql.dart`,
@@ -90,6 +96,11 @@ TomTenantData  (abstract interface)
 TomTenancyStartup  (abstract final — the start's decision)
 TomTenancyStartupReport
 TomTenancyMode  (enum)
+TomTenantMoveReport
+TomTenantBackup
+TomTenantTableBackup
+TomTenantColumn
+TomTenantTables  (abstract final — static SQL)
 
 TomTenantResolver  (abstract interface)
     ├── TomTenantHostResolver    (implements)
@@ -246,6 +257,7 @@ Throws `tenancy.config.not_a_map`, `tenancy.config.unknown_isolation`,
 | `defaultRefreshSeconds` | `static const int` | `30` — how often a configured tenancy refreshes from its registry. |
 | `implicitTenant` | `static const String` | `'default'` — the tenant of a deployment that installs no tenancy, which tenant-table work with no tenant in context runs as. |
 | `tenantTables` | `static Map<Type, TomDbTable>` | *(getter)* The tenant tables the code declares — every reflected `@TomDbTable` entity marked `@TomTenantTable`, with its table, as the annotation analyzer reports them. |
+| `tenantTableColumns` | `static Map<String, String> tenantTableColumns(String name)` | The tenant tables of the data source `name` — the application's (`@TomTenantTable`) and the framework's — by table name, each with the column naming its rows' tenant: what a purge, a move and a backup filter by. |
 | `tenants` | `Map<String, TomTenant>` | The tenants served, by id: the registry's tenants that are not removed once `install` has read it, the configured ones before (final; `addTenant`, `removeTenant` and `refreshFromRegistry` change it). |
 | `registry` | `TomTenantRegistry` | The durable list of tenants (final). |
 | `refreshInterval` | `Duration?` | How often the installed tenancy re-reads `registry`, or `null` for never (final). |
@@ -285,6 +297,9 @@ Throws `tenancy.config.not_a_map`, `tenancy.config.unknown_isolation`,
 | `refreshFromRegistry` | `Future<TomTenantRegistryRefresh> refreshFromRegistry()` | Re-reads `registry` and brings this node's routing level with it: tenants another node added are provisioned and served, removed ones unrouted, changed statuses applied; a tenant that cannot be provisioned here is in the result's `failed`. |
 | `removeTenant` | `Future<TomTenant> removeTenant(String tenantId, {Iterable<TomJobStore> jobStores = const []})` | Records the tenant as `removed` in the registry, then withdraws it from the running deployment: its requests and work are refused as `tenancy.tenant.unknown`, its routes dropped, the data sources opened for it closed (their pools with them), and its queued runs cancelled in the job stores of the started schedulers and `jobStores` (`TomJobStore.cancelTenantRuns`). Its data stays for `purgeAfter`. Returns the tenant. Throws `tenancy.tenant.unknown` for an unknown id. |
 | `purgeTenant` | `Future<TomTenantPurgeReport> purgeTenant(String tenantId, {bool force = false, Iterable<TomTenantData> stores = const [], Iterable<TomJobStore> jobStores = const []})` | Deletes a removed tenant's data for good once `purgeAfter` has passed since its removal (or at once with `force`): a `schema` tenant's schema is dropped on each routed data source (`dropSchema`), a `database` tenant's database when the tenancy opened it on the base data source's server (`dropDatabase`; one named by reference, or on another server, is kept and reported), a `shared` tenant's rows are deleted from every tenant table of its type's shared schema — the application's and `frameworkTenantTables`; its system-table records go through `stores` and the job stores (`TomTenantData.purgeTenant`), and its registry row is deleted. The audit trail is kept; the personal values it sealed for the tenant's subjects become unreadable with their subject keys. Throws `tenancy.tenant.unknown`, `tenancy.purge.not_removed` or `tenancy.purge.retention`. |
+| `moveTenant` | `Future<TomTenantMoveReport> moveTenant(String tenantId, {TomTenantIsolation? isolation, String? type, String? schema, Map<String, Object>? datasources, bool keepSource = false})` | Moves a served tenant to another isolation, type, schema or data sources: suspends it; provisions and migrates the target by the target type's tree; refuses a target lacking a table or column the tenant has rows in (`tenancy.move.target_rejects`) or holding its rows (`tenancy.move.target_not_empty`); copies each table's rows of the tenant in one transaction per data source — one `INSERT … SELECT` on one server, the backup's text form to another — comparing counts (`tenancy.move.count_mismatch`); switches the registry row and the route; removes the source data as a purge would unless `keepSource`; migrates again and resumes it if it was active. System-table rows stay. Also refuses `tenancy.move.nothing_to_move`, `tenancy.move.same_place`, `tenancy.move.not_movable` and the type refusals. |
+| `exportTenant` | `Future<TomTenantBackup> exportTenant(String tenantId)` | The tenant's rows in every tenant table present in its placement, on every routed data source, as text: a backup to keep or restore elsewhere. |
+| `importTenant` | `Future<Map<String, int>> importTenant(TomTenantBackup backup, {bool replace = false})` | Restores a backup into its tenant's placement, one transaction per data source: refuses a missing table or column (`tenancy.import.target_rejects`) and existing rows of the tenant unless `replace` (`tenancy.import.not_empty`); compares counts (`tenancy.import.count_mismatch`). Answers the rows by `<datasource>/<table>`. |
 | `isolationOf` | `TomTenantIsolation isolationOf(TomTenant tenant)` | The isolation `tenant` runs under: its own, else its type's default, else `defaultIsolation`. Throws `tenancy.type.unknown`. |
 | `typeOf` | `TomTenantType typeOf(TomTenant tenant)` | The declared type of `tenant`; throws `tenancy.type.unknown`. |
 | `validateTenant` | `void validateTenant(TomTenant tenant)` | Throws unless `tenant` can be served: its type is declared (`tenancy.type.unknown`) and allows its model (`tenancy.type.isolation_not_allowed`). |
@@ -795,6 +810,167 @@ const TomTenancyStartupReport(
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `toString` | `String toString()` | *(override)* The mode, the table count and the warnings. |
+
+### TomTenantMoveReport
+
+What `TomTenancy.moveTenant` did for one tenant.
+
+- **Extends:** none
+
+#### Constructors
+
+```dart
+const TomTenantMoveReport(
+  String tenant, {
+  required String from,
+  required String to,
+  Map<String, int> copied = const {},
+  List<String> dropped = const [],
+  Map<String, int> deleted = const {},
+})
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `tenant` | `String` | The moved tenant (final). |
+| `from` | `String` | Where it was, as `<type>/<isolation>` (final). |
+| `to` | `String` | Where it is, as `<type>/<isolation>` (final). |
+| `copied` | `Map<String, int>` | The rows copied, by `<datasource>/<table>` (final). |
+| `dropped` | `List<String>` | The source schemas and databases dropped (final). |
+| `deleted` | `Map<String, int>` | The source rows deleted, by table, from a shared source (final). |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `toString` | `String toString()` | *(override)* The move on one line. |
+
+### TomTenantBackup
+
+A tenant's rows in its tenant tables, as `TomTenancy.exportTenant` writes them
+and `TomTenancy.importTenant` restores them. Its system-table rows are not in
+it.
+
+- **Extends:** none
+
+#### Constructors
+
+```dart
+const TomTenantBackup({
+  required String tenant,
+  required String type,
+  required String isolation,
+  required DateTime takenAt,
+  required List<TomTenantTableBackup> tables,
+})
+factory TomTenantBackup.fromJson(Map<String, Object?> json)
+```
+
+`fromJson` reads the form `toJson` writes and refuses another
+(`tenancy.backup.invalid`).
+
+#### Static Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `formatName` | `static const String` | `tom-tenant-backup/1`, the `format` a backup document names. |
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `tenant` | `String` | The tenant the rows are of (final). |
+| `type` | `String` | Its type when the backup was taken (final). |
+| `isolation` | `String` | Its isolation when the backup was taken (final). |
+| `takenAt` | `DateTime` | When the backup was taken (final). |
+| `tables` | `List<TomTenantTableBackup>` | Its tables with the tenant's rows (final). |
+| `counts` | `Map<String, int>` | *(getter)* The rows by `<datasource>/<table>`. |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `toJson` | `Map<String, Object?> toJson()` | The backup as JSON-native values. |
+
+### TomTenantTableBackup
+
+One tenant table of a `TomTenantBackup`: its columns and the tenant's rows,
+every value as text (bytes in hexadecimal), `null` for SQL `NULL`.
+
+- **Extends:** none
+
+#### Constructors
+
+```dart
+const TomTenantTableBackup({
+  required String datasource,
+  required String table,
+  required String tenantColumn,
+  required List<TomTenantColumn> columns,
+  required List<List<String?>> rows,
+})
+factory TomTenantTableBackup.fromJson(Map<String, Object?> json)
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `datasource` | `String` | The routed data source name (final). |
+| `table` | `String` | The table name (final). |
+| `tenantColumn` | `String` | The column naming each row's tenant (final). |
+| `columns` | `List<TomTenantColumn>` | The columns, in the order of each row's values (final). |
+| `rows` | `List<List<String?>>` | The rows (final). |
+
+#### Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `toJson` | `Map<String, Object?> toJson()` | The table as JSON-native values. |
+
+### TomTenantColumn
+
+A column of a tenant table, as the database describes it.
+
+- **Extends:** none
+
+#### Constructors
+
+```dart
+const TomTenantColumn(String name, String type)
+```
+
+#### Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `name` | `String` | The column name (final). |
+| `type` | `String` | The database type: `data_type` on MariaDB, `udt_name` on PostgreSQL (final). |
+| `isBinary` | `bool` | *(getter)* Whether it holds bytes, carried as hexadecimal text. |
+| `isTemporal` | `bool` | *(getter)* Whether it holds a date, a time or an instant. |
+| `isBoolean` | `bool` | *(getter)* Whether it is a PostgreSQL `boolean`. |
+
+### TomTenantTables
+
+The SQL that reads, counts, copies, exports and imports one tenant's rows of
+one table, every statement filtered by the table's tenant column.
+
+- **Kind:** abstract final class (static members only).
+
+#### Static Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `present` | `static Future<Map<String, String>> present(TomSqlDatasource datasource, String name)` | The tenant tables of the data source `name` that `datasource`'s schema holds, each with its tenant column. |
+| `exists` | `static Future<bool> exists(TomSqlDatasource datasource, String table)` | Whether `datasource`'s schema holds `table`. |
+| `columns` | `static Future<List<TomTenantColumn>> columns(TomSqlDatasource datasource, String table)` | The columns of `table`, in their order. |
+| `count` | `static Future<int> count(TomSqlDatasource datasource, String table, String column, String tenant)` | How many of `table`'s rows are `tenant`'s. |
+| `copyQualified` | `static Future<int> copyQualified({required TomSqlDatasource source, required TomSqlDatasource target, required String table, required String column, required List<TomTenantColumn> columns, required String tenant})` | Copies `tenant`'s rows of `table` with one `INSERT … SELECT` on `target`'s connection, the source table qualified (`target` must `canQualify` `source`); values travel as the database holds them. |
+| `export` | `static Future<TomTenantTableBackup> export(TomSqlDatasource datasource, String name, String table, String column, String tenant)` | `tenant`'s rows of `table` as text: temporal values as the driver's temporal text, bytes in hexadecimal. |
+| `import` | `static Future<int> import(TomSqlDatasource datasource, TomTenantTableBackup backup)` | Writes the backup's rows, each value converted to the target column's type (a `CAST` on PostgreSQL, bytes from hexadecimal); refuses a backed-up column the table lacks (`tenancy.import.target_rejects`). |
+| `delete` | `static Future<int> delete(TomSqlDatasource datasource, String table, String column, String tenant)` | Deletes `tenant`'s rows of `table`. |
 
 ## Enums
 

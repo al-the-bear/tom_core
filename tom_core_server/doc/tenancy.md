@@ -46,6 +46,8 @@ This guide is the server half.
 - [Suspending a Tenant](#suspending-a-tenant)
 - [Removing a Tenant](#removing-a-tenant)
 - [Purging a Tenant](#purging-a-tenant)
+- [Moving a Tenant](#moving-a-tenant)
+- [Backing Up and Restoring a Tenant](#backing-up-and-restoring-a-tenant)
 - [Operating Costs](#operating-costs)
 - [Failure Keys](#failure-keys)
 - [Not Yet Implemented](#not-yet-implemented)
@@ -84,11 +86,15 @@ This guide is the server half.
 | `TomTenantData` | abstract interface class | A store of a system table that deletes a purged tenant's records |
 | `TomTenancyStartup` | abstract final class | What the server's start makes of tenancy: plain, implicit or configured, and the contradictions it refuses |
 | `TomTenancyMode` | enum | `plain`, `implicit` or `configured` |
+| `TomTenantMoveReport` | class | What `moveTenant` copied, dropped and deleted |
+| `TomTenantBackup` · `TomTenantTableBackup` | class | A tenant's rows in its tenant tables, as `exportTenant` writes and `importTenant` restores them |
+| `TomTenantTables` · `TomTenantColumn` | abstract final class / class | The SQL that finds, counts, copies, exports and imports one tenant's rows of a table, and a column as the database describes it |
 | `TomTenancyStartupReport` | class | What the start decided: the mode, the application's tenant tables, the warnings |
 
-The module is seven files: `tenancy.dart` holds the configuration, the
+The module is eight files: `tenancy.dart` holds the configuration, the
 provisioning, the routing and the lifecycle; `tenancy_startup.dart` what the
-server's start makes of it; `tenant_data.dart` the stores'
+server's start makes of it; `tenant_tables.dart` a tenant's rows table by
+table, for moves and backups; `tenant_data.dart` the stores'
 purge contract; `tenant_type.dart` the tenant types;
 `tenant_registry.dart` and `tenant_registry_sql.dart` the registry and its
 table; `tenant_resolution.dart` the request-side resolvers.
@@ -1086,6 +1092,94 @@ registry does not hold (`tenancy.tenant.unknown`), one not removed
 It answers a `TomTenantPurgeReport`: what was `dropped`, what was `kept` and
 why, and the rows `deleted` per table and store.
 
+## Moving a Tenant
+
+```dart
+final report = await TomTenancy.current!.moveTenant(
+  'acme',
+  isolation: TomTenantIsolation.schema, // and/or type:, schema:, datasources:
+);
+// acme: default/shared -> default/schema; copied {main/invoice: 1200}; deleted …
+```
+
+`moveTenant(id, {isolation, type, schema, datasources, keepSource})` moves a
+served tenant to another isolation model, another type, another schema or other
+data sources:
+
+1. it suspends the tenant (unless it is suspended already), so nothing writes
+   its rows meanwhile;
+2. it provisions the target — the tenant's schema, its data source, the target
+   type's shared schema — and migrates it by the target type's tree;
+3. it checks every tenant table the tenant has rows in: the table must exist in
+   the target with every column of the source — a target type whose tree does
+   not take the data is refused before anything is copied
+   (`tenancy.move.target_rejects`), and so is a target already holding rows of
+   the tenant (`tenancy.move.target_not_empty`);
+4. it copies each table's rows of the tenant — every row of a schema or
+   database of its own, its rows by its tenant column out of a shared one — in
+   one transaction per data source, and compares the counts
+   (`tenancy.move.count_mismatch`). On one server
+   (`TomSqlDatasource.canQualify`) a table is one `INSERT … SELECT`, every value
+   as the database holds it; to another server the rows travel in the backup's
+   text form ([below](#backing-up-and-restoring-a-tenant));
+5. it switches the tenant's registry row to the new placement and routes the
+   tenant there, then removes its data from the source as a purge would — a
+   shared source's rows deleted, a schema or database the tenancy opened
+   dropped — unless `keepSource`;
+6. it migrates the tenant again, which records the versions, and resumes it if
+   it was active.
+
+The tenant's system-table rows — its queued jobs, audit entries, blobs and
+delivery reports — stay where they are: its id does not change. A failure before
+the switch leaves the tenant where it was, resumed when it was active; the copy
+of the failing data source is rolled back. The answer is a
+`TomTenantMoveReport`: `from` and `to` as `<type>/<isolation>`, the rows copied
+by `<datasource>/<table>`, the source schemas dropped and rows deleted.
+
+Moving into a shared schema whose other tenants use the same surrogate keys
+fails on the first duplicate key, and the copy is rolled back: a tenant table
+that is to be moved between shared schemas needs keys unique across tenants
+(UUIDs, or keys the tenant column is part of).
+
+| Refusal | Key |
+| ------- | --- |
+| The target is the tenant's placement | `tenancy.move.nothing_to_move` |
+| A data source's target is the schema the tenant is in | `tenancy.move.same_place` |
+| The tenant is provisioning, migrating or its migration failed | `tenancy.move.not_movable` |
+| A target type or isolation that is not allowed | `tenancy.type.unknown`, `tenancy.type.isolation_not_allowed` |
+
+## Backing Up and Restoring a Tenant
+
+```dart
+final backup = await tenancy.exportTenant('acme');
+File('acme.json').writeAsStringSync(jsonEncode(backup.toJson()));
+// … later, or on another server
+await tenancy.importTenant(
+  TomTenantBackup.fromJson(jsonDecode(File('acme.json').readAsStringSync())),
+  replace: true,
+);
+```
+
+`exportTenant(id)` answers a `TomTenantBackup`: for every routed data source,
+every tenant table present in the tenant's placement (`TomTenantTables.present`:
+the application's `@TomTenantTable` entities and the framework's tenant tables)
+with its columns and the tenant's rows. Values are text — dates and instants as
+the driver's temporal text, bytes in hexadecimal, SQL `NULL` as `null` — and
+`toJson()` / `TomTenantBackup.fromJson` carry it as a JSON document
+(`format: tom-tenant-backup/1`; another is refused with `tenancy.backup.invalid`).
+The tenant's system-table rows are not in it.
+
+`importTenant(backup, {replace})` writes the rows into the tenant's current
+placement, which must be served and migrated: every table must exist there with
+every backed-up column, on a data source the tenant's type routes
+(`tenancy.import.target_rejects`), and hold no row of the tenant
+(`tenancy.import.not_empty`) unless `replace`, which deletes them first. Values
+are converted to the target column's type — a `CAST` on PostgreSQL, bytes from
+hexadecimal on both — each data source's tables are written in one transaction,
+and the counts are compared (`tenancy.import.count_mismatch`). A residency move
+to another server is an export, the tenant added there with its new placement,
+and an import.
+
 ## Operating Costs
 
 - **Connection pools.** Every `schema` and `database` tenant has a data source
@@ -1127,12 +1221,19 @@ why, and the rows `deleted` per table and store.
   after ([db_migration.md](db_migration.md#expand-then-contract)). A tenant
   left behind by a failed run stays refused by the new release until it is
   migrated again.
-- **Moving a tenant between models** is a copy of its rows into the new place
-  and a configuration change: the rows already carry their tenant, so no schema
-  changes.
-- **Backups and residency** follow the model: a `database` tenant can be backed
-  up, restored or placed in a region on its own; a `shared` tenant's rows are
-  separable only by their tenant column.
+- **Moving a tenant between models or types** is one call,
+  `moveTenant` ([Moving a Tenant](#moving-a-tenant)): a copy of its rows into the
+  new place and a switch of its registry row. The rows already carry their
+  tenant, so no schema changes; the tenant is suspended for as long as the copy
+  takes — one `INSERT … SELECT` per table on one server, a row-by-row write to
+  another.
+- **Backups and residency** are per tenant in every model: `exportTenant` reads
+  a tenant's rows out of its tenant tables — out of a schema or database of its
+  own, or by its tenant column out of a shared one — and `importTenant` restores
+  them into its placement, on this server or another
+  ([Backing Up and Restoring a Tenant](#backing-up-and-restoring-a-tenant)). A
+  `database` tenant can also be backed up with the database's own tools, a
+  `schema` one with a dump of its schema.
 
 ## Failure Keys
 
@@ -1140,6 +1241,16 @@ why, and the rows `deleted` per table and store.
 | --- | --------- | ------- |
 | `tenancy.start.undeclared_type_tree` | `TomTenancyStartup.configure` | A tree under `<root>/tenant/` for a type the deployment does not declare. |
 | `tenancy.start.table_missing_from_type` | `TomTenancyStartup.configure` | A tenant table on a data source a type routes that the type's tree never creates. |
+| `tenancy.move.nothing_to_move` | `moveTenant` | The target is where the tenant is. |
+| `tenancy.move.same_place` | `moveTenant` | A data source's target is the schema the tenant is in. |
+| `tenancy.move.not_movable` | `moveTenant` | The tenant is provisioning, migrating or its migration failed. |
+| `tenancy.move.target_rejects` | `moveTenant` | The target lacks a table, or a column, the tenant has rows in. |
+| `tenancy.move.target_not_empty` | `moveTenant` | The target holds rows of the tenant already. |
+| `tenancy.move.count_mismatch` | `moveTenant` | A table's copied rows differ from the source's; the copy is rolled back. |
+| `tenancy.backup.invalid` | `TomTenantBackup.fromJson` | The document is not a tenant backup. |
+| `tenancy.import.target_rejects` | `importTenant`, `TomTenantTables.import` | The placement lacks a table or a column of the backup, or the type does not route its data source. |
+| `tenancy.import.not_empty` | `importTenant` | A table holds rows of the tenant already, and `replace` is not set. |
+| `tenancy.import.count_mismatch` | `importTenant` | A table's restored rows differ from the backup's; that data source's restore is rolled back. |
 | `tenancy.config.not_a_map` | `TomTenancy.fromConfiguration` | `tenancy` or one of its tenants is not a map. |
 | `tenancy.config.unknown_isolation` | `TomTenantIsolation.parse` | An isolation model other than `shared`, `schema` or `database`. |
 | `tenancy.config.unknown_resolver` | `TomTenancy.fromConfiguration` | A tenant resolution other than `host`, `path` or `header`. |
@@ -1189,6 +1300,16 @@ raised as the kernel's `TomTenantException`.
   <!-- unpinned: decision — account placement belongs to the authentication service -->
 
 ## Verification
+
+`test/tenant_move_db_test.dart` (tagged `db`) covers moves and backups on
+MariaDB and PostgreSQL: a shared tenant moved into a schema of its own and back
+(its source rows deleted, the schema dropped), a type change into another
+type's shared schema, a type whose tree does not take the data refused with the
+tenant left where it was, a move into a database of its own on the same server
+(on PostgreSQL out of reach of a qualified name, so copied through the backup's
+text form), a backup carried through JSON and restored, and the
+values of every column kind — numbers, booleans, instants, decimals, bytes,
+`NULL` — exported and imported unchanged.
 
 `test/tenancy_startup_test.dart` covers what the start makes of tenancy without a
 database: a plain application and the implicit tenant installing nothing, a
@@ -1344,8 +1465,9 @@ result, and `test/examples_test.dart` runs it.
 | [authentication](authentication.md) | module | `tenancy_startup.dart` | `TomExternalIdentityLink`, `TomExternalIdentityToken` and `TomUserTwoFactorEnrolment` — framework tenant tables the start does not count |
 | [authorization](authorization.md) | module | `tenancy_startup.dart` | `TomResourceGrant`, `TomPrincipalResourceGrant` and `TomPrincipalDelegation` — framework tenant tables the start does not count |
 | [configuration](configuration.md) | module | `tenancy.dart`, `tenancy_startup.dart` | `TomServerConfigResourceProvider`, which `fromConfiguration` reads the `tenancy` key from |
-| [datasources](datasources.md) | module | `tenancy.dart`, `tenant_registry.dart`, `tenant_registry_sql.dart` | `TomDataSourceInfo` — the registry routed per tenant, the data sources opened over a tenant's schema or database — and the base data source's dialect, whose `createSchema` and `schemaSetting` say how a schema is made and pointed at; and `TomFrameworkTable`, `TomSchemaProvisioning` and `sqlInstant` / `parseSqlInstant`, the registry's table and its instants |
+| [datasources](datasources.md) | module | `tenancy.dart`, `tenant_registry.dart`, `tenant_registry_sql.dart`, `tenant_tables.dart` | `TomDataSourceInfo` — the registry routed per tenant, the data sources opened over a tenant's schema or database — and the base data source's dialect, whose `createSchema` and `schemaSetting` say how a schema is made and pointed at; and `TomFrameworkTable`, `TomSchemaProvisioning` and `sqlInstant` / `parseSqlInstant`, the registry's table and its instants |
 | [db_migration](db_migration.md) | module | `tenancy.dart`, `tenancy_startup.dart` | `TomDbMigrations.treeVersions`, `requiresKey` and `resolveActiveEnvironment`, what a type's tree carries; `TomSchemaVersionCheck`, `TomSchemaSkew` and `TomMigrationRun.tenantTarget`, a tenant's schema check |
 | [little_things](little_things.md) | module | `tenancy.dart` | `TomServerException`, the base of `TomTenancyException` |
 | [object_persistence](object_persistence.md) | module | `tenancy.dart`, `tenancy_startup.dart`, `tenant_registry.dart` | `TomAnnotationAnalyzer.tenantTables` and `TomDbTable`, the tenant tables `tenantTables` reports; `@TomDbTable` / `@TomDbColumn`, the mapping of `TomTenantRow` |
 | [preferences](preferences.md) | module | `tenancy_startup.dart` | `TomUserPreference` and `TomPreferenceDefault` — framework tenant tables the start does not count |
+| [transactions](transactions.md) | module | `tenancy.dart` | `TomTransactionManager.runInTransaction` — a move's copy and a restore, one transaction per data source |

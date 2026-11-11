@@ -98,6 +98,25 @@ class TomSqlLexer {
     return sql.length - 1;
   }
 
+  /// The opening tag of a PostgreSQL dollar quote: `$`, an optional tag that
+  /// is an identifier not starting with a digit, `$`.
+  static final RegExp _dollarTag = RegExp(r'\$([A-Za-z_][A-Za-z0-9_]*)?\$');
+
+  /// The index of the last character of the dollar-quoted string opening at
+  /// [openIndex] — the closing tag's last `$`, or `sql.length - 1` when it is
+  /// never closed — or `null` when no dollar quote opens there: a `$` inside
+  /// an identifier (`a$b`) or a positional parameter (`$1`) opens none.
+  static int? endOfDollarQuote(String sql, int openIndex) {
+    if (openIndex > 0 &&
+        RegExp(r'[A-Za-z0-9_$]').hasMatch(sql[openIndex - 1])) {
+      return null;
+    }
+    final tag = _dollarTag.matchAsPrefix(sql, openIndex);
+    if (tag == null) return null;
+    final close = sql.indexOf(tag[0]!, tag.end);
+    return close < 0 ? sql.length - 1 : close + tag[0]!.length - 1;
+  }
+
   /// The index of the last character of the comment starting at [startIndex],
   /// or `sql.length - 1` when it runs to the end of the input.
   ///
@@ -146,10 +165,14 @@ class TomSqlLexer {
   ///
   /// [backslashEscapes] is the database's literal rule — see
   /// [endOfQuotedRun]; a caller holding a dialect passes its
-  /// `TomStandardSqlDialect.backslashEscapes`.
+  /// `TomStandardSqlDialect.backslashEscapes`. [dollarQuotes] reads
+  /// PostgreSQL's dollar-quoted strings (`$$ … $$`, `$tag$ … $tag$`) as one
+  /// run, so a function body's semicolons do not end its `CREATE FUNCTION`;
+  /// the dialect's `TomStandardSqlDialect.dollarQuotes`.
   static List<String> splitStatements(
     String sql, {
     bool backslashEscapes = true,
+    bool dollarQuotes = false,
   }) {
     final statements = <String>[];
     final buffer = StringBuffer();
@@ -161,6 +184,14 @@ class TomSqlLexer {
         buffer.write(sql.substring(i, end + 1));
         i = end;
         continue;
+      }
+      if (dollarQuotes && ch == r'$') {
+        final end = endOfDollarQuote(sql, i);
+        if (end != null) {
+          buffer.write(sql.substring(i, end + 1));
+          i = end;
+          continue;
+        }
       }
       if (quoteCharacters.contains(ch)) {
         final end = endOfQuotedRun(sql, i, backslashEscapes: backslashEscapes);

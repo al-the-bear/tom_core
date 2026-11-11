@@ -47,6 +47,10 @@ class PostgresSqlDialect extends TomStandardSqlDialect {
   @override
   bool get backslashEscapes => false;
 
+  /// PostgreSQL reads `$$ … $$` and `$tag$ … $tag$` as one string.
+  @override
+  bool get dollarQuotes => true;
+
   /// `TRUE` or `FALSE`: a predicate has to be a boolean.
   @override
   SqlString truthPredicate(bool value) => value ? 'TRUE' : 'FALSE';
