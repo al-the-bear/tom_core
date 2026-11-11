@@ -21,9 +21,11 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PACKAGE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$PACKAGE_DIR"
 
-ENGINES=("${@:-mariadb postgresql}")
-# shellcheck disable=SC2206
-ENGINES=(${ENGINES[*]})
+if [ "$#" -gt 0 ]; then
+  ENGINES=("$@")
+else
+  ENGINES=(mariadb postgresql)
+fi
 
 log() { printf '\n=== %s ===\n' "$*"; }
 
