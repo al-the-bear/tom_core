@@ -1,2 +1,5 @@
 # The recommended Flutter lint set, as the other Flutter samples use.
+analyzer:
+  exclude:
+    - build/**
 include: package:flutter_lints/flutter.yaml

@@ -1,2 +1,5 @@
 # Mirrors tom_flutter_ui_test: the recommended Flutter lint set.
+analyzer:
+  exclude:
+    - build/**
 include: package:flutter_lints/flutter.yaml
