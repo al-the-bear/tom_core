@@ -248,7 +248,7 @@ dart run example/message_bus_example.dart
 
 ## Status
 
-- **Version:** 0.1.0
+- **Version:** 0.1.1
 - **Tests:** run with `testkit :test` or `dart test`: the conformance suite and
   the in-memory bus's own tests (`test/memory_bus_test.dart`), the refusals
   (`test/refusals_test.dart`), the reflection codec (`test/codec_test.dart`)

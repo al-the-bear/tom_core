@@ -3,7 +3,7 @@ description: >-
   The Flutter widget library of the Tom Framework: authorization-aware,
   resource-bound, observable widgets, a declarative form system, the Tom
   Action system, and a fluent row-based layout engine over tom_core_kernel.
-version: 1.1.0
+version: 1.1.1
 repository: https://github.com/al-the-bear/tom_core
 
 environment:

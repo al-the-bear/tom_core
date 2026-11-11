@@ -4,7 +4,7 @@ description: >-
   consumer groups, acknowledgement and rejection, dead-letter topics, typed
   payloads through reflection and the trace context in the headers. Ships an
   in-memory bus and the conformance suite every broker adapter passes.
-version: 0.1.0
+version: 0.1.1
 repository: https://github.com/al-the-bear/tom_core
 
 environment:

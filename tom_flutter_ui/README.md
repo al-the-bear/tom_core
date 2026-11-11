@@ -1,6 +1,6 @@
 # tom_flutter_ui
 
-Published on pub.dev as [`tom_flutter_ui` 1.1.0](https://pub.dev/packages/tom_flutter_ui).
+Published on pub.dev as [`tom_flutter_ui` 1.1.1](https://pub.dev/packages/tom_flutter_ui).
 
 > Part of the Tom Framework. © Peter Nicolai Alexis Kyaw — BSD 3-Clause
 > licensed.
@@ -47,7 +47,7 @@ Or:
 flutter pub add tom_flutter_ui --path ../tom_flutter_ui
 ```
 
-It is on pub.dev (`tom_flutter_ui: ^1.1.0`). It targets **Dart SDK `^3.11.0`** / **Flutter `>=1.17.0`** and
+It is on pub.dev (`tom_flutter_ui: ^1.1.1`). It targets **Dart SDK `^3.11.0`** / **Flutter `>=1.17.0`** and
 depends on the sibling [`tom_core_kernel`](../tom_core_kernel/README.md) (state,
 security, resources, reflection) and on [`tom_undo`](../../basics/tom_undo/README.md)
 for the undo/redo stack its action history runs on. A single barrel re-exports
@@ -379,7 +379,7 @@ tooling rather than part of this package's documentation.
 
 ## Status
 
-- **Version:** 1.1.0 (on pub.dev)
+- **Version:** 1.1.1 (on pub.dev)
 - **Tests:** run with `flutter test`. No count is given: a count is a claim
   nothing checks, and every added test would be a README edit nobody makes. The
   version above is checked, because a wrong one is the claim that actively

@@ -1,6 +1,6 @@
 # tom_core_server
 
-Published on pub.dev as [`tom_core_server` 1.3.0](https://pub.dev/packages/tom_core_server).
+Published on pub.dev as [`tom_core_server` 1.4.0](https://pub.dev/packages/tom_core_server).
 
 > **Attribution.** The Tom Framework is developed by Peter Nicolai Alexis Kyaw.
 > These packages are BSD-3-Clause licensed and published on pub.dev.
@@ -99,7 +99,7 @@ Add it from pub.dev:
 
 ```yaml
 dependencies:
-  tom_core_server: ^1.3.0
+  tom_core_server: ^1.4.0
 ```
 
 Then import the single barrel — it re-exports `tom_core_kernel`,
@@ -568,7 +568,7 @@ application that publishes or subscribes imports it itself. See the
 
 ## Status
 
-- **Version:** 1.3.0
+- **Version:** 1.4.0
 - **Tests:** run with `testkit :test` or `dart test`. Part of the suite is
   tagged `db` and skips unless a live database is reachable. The same suites
   run against both databases: `tool/run_db_tests.sh` brings up a throwaway

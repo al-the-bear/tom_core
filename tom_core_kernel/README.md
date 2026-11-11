@@ -1,6 +1,6 @@
 # tom_core_kernel
 
-Published on pub.dev as [`tom_core_kernel` 1.1.16](https://pub.dev/packages/tom_core_kernel).
+Published on pub.dev as [`tom_core_kernel` 1.2.0](https://pub.dev/packages/tom_core_kernel).
 
 > **Attribution.** The Tom Framework is developed by Peter Nicolai Alexis Kyaw.
 > These packages are BSD-3-Clause licensed and published on pub.dev.
@@ -56,7 +56,7 @@ Add it from pub.dev:
 
 ```yaml
 dependencies:
-  tom_core_kernel: ^1.1.16
+  tom_core_kernel: ^1.2.0
 ```
 
 Then import the single barrel:
@@ -413,7 +413,7 @@ the common dependency of the server and Flutter layers. See the
 
 ## Status
 
-- **Version:** 1.1.16
+- **Version:** 1.2.0
 - **Tests:** run with `testkit :test` or `dart test`. No count is given: a
   count is a claim nothing checks, and every added test would be a README edit
   nobody makes. The version above is checked, because a wrong one is the claim
