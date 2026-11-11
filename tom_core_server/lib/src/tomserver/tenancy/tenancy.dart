@@ -81,7 +81,7 @@ import 'tenant_type.dart';
 /// | `tenancy.tenant.suspended` | A request for a suspended tenant (403). |
 /// | `tenancy.tenant.unavailable` | A request for a tenant that is provisioning or migrating (503). |
 /// | `tenancy.tenant.migration_failed` | A request for, or work in, a tenant whose migration failed (503) — not routed; or the migration of `addTenant` / `migrateTenant` failed. |
-/// | `tenancy.tenant.not_removed` | `restoreTenant` of a tenant that is not removed. |
+/// | `tenancy.tenant.not_removed` | `restoreTenant` or `readRemovedTenant` of a tenant that is not removed. |
 /// | `tenancy.purge.not_removed` | `purgeTenant` of a tenant that is not removed. |
 /// | `tenancy.purge.retention` | `purgeTenant` before the tenant's retention period passed. |
 /// | `tenancy.pool.cap_exceeded` | A tenant pool that would pass `tenancy.pool.maxTotal`. |
@@ -807,6 +807,79 @@ class TomTenancy {
     }
     return addTenant(record.toTenant(configured: _configured[tenantId]));
   }
+
+  /// The removed tenants whose data is kept until [purgeTenant] drops it:
+  /// every registry row with the status `removed`, by id.
+  Future<List<String>> removedTenantIds() async => [
+    for (final record in await registry.all())
+      if (record.status == TomTenantStatus.removed) record.id,
+  ]..sort();
+
+  /// Runs [body] in the removed tenant [tenantId], reading the data it left —
+  /// for a system service that must not mistake a removed tenant's rows for
+  /// no rows while they can still be restored, as the blob orphan sweep asks
+  /// which files they name.
+  ///
+  /// The tenant stays removed and unserved: no request and no other work
+  /// reaches it. Inside [body] — and only there — its tenant tables are routed
+  /// to its placement as the registry records it: a `schema` or `database`
+  /// tenant's own pools, opened for the call and closed after it, a type's
+  /// shared schema, or the base data source for the type `default`.
+  ///
+  /// Throws `tenancy.tenant.unknown` for a tenant the registry does not hold
+  /// and `tenancy.tenant.not_removed` for one that is not removed; a placement
+  /// that cannot be opened throws as provisioning would.
+  Future<T> readRemovedTenant<T>(
+    String tenantId,
+    Future<T> Function() body,
+  ) async {
+    final record = await registry.find(tenantId);
+    if (record == null) throw unknownTenant(tenantId);
+    if (record.status != TomTenantStatus.removed) {
+      throw TomTenancyException(
+        'tenancy.tenant.not_removed',
+        "Tenant '$tenantId' is ${record.status.wireName}, not removed.",
+        parameters: {'tenant': tenantId, 'status': record.status.wireName},
+      );
+    }
+    final tenant = record.toTenant(configured: _configured[tenantId]);
+    final type = typeOf(tenant);
+    final isolation = isolationOf(tenant);
+    final routes = <String, TomDataSourceInfo>{};
+    final temporary = <TomDataSourceInfo>[];
+    try {
+      if (isolation != TomTenantIsolation.shared ||
+          type.name != TomTenant.defaultType) {
+        for (final name in datasourcesOf(type)) {
+          final base = _baseOf(name);
+          final pool = '$name@$tenantId~removed';
+          final routed = switch (isolation) {
+            TomTenantIsolation.shared => await _sharedOf(base, type),
+            TomTenantIsolation.schema => await _schemaOf(
+              base,
+              tenant,
+              name: pool,
+            ),
+            TomTenantIsolation.database => await _databaseOf(
+              base,
+              tenant,
+              name: pool,
+            ),
+          };
+          routes[name] = routed;
+          if (routed.name == pool) temporary.add(routed);
+        }
+      }
+      return await runZoned(
+        () => TomTenantContext.run(tenantId, body),
+        zoneValues: {_removedReadKey: _RemovedRead(tenantId, routes)},
+      );
+    } finally {
+      await _closePools(temporary);
+    }
+  }
+
+  static final Object _removedReadKey = Object();
 
   /// Suspends the tenant [tenantId]: recorded in the [registry] first, then its
   /// requests are refused as `tenancy.tenant.suspended` (403). Its data and
@@ -1728,6 +1801,10 @@ class TomTenancy {
   TomDataSourceInfo route(TomDataSourceInfo base) {
     final tenant = TomTenantContext.currentId;
     if (tenant == null || !routedDatasources.contains(base.name)) return base;
+    final removed = Zone.current[_removedReadKey];
+    if (removed is _RemovedRead && removed.tenantId == tenant) {
+      return removed.routes[base.name] ?? base;
+    }
     if (_statuses[tenant] == TomTenantStatus.migrationFailed) {
       throw TomTenancyException(
         'tenancy.tenant.migration_failed',
@@ -2270,4 +2347,14 @@ class TomTenantMoveReport {
       '$tenant: $from -> $to; copied $copied'
       '${dropped.isEmpty ? '' : '; dropped ${dropped.join(', ')}'}'
       '${deleted.isEmpty ? '' : '; deleted $deleted'}';
+}
+
+/// A read of a removed tenant's data in progress
+/// ([TomTenancy.readRemovedTenant]): the tenant and its routes for the call.
+final class _RemovedRead {
+  _RemovedRead(this.tenantId, this.routes);
+
+  final String tenantId;
+
+  final Map<String, TomDataSourceInfo> routes;
 }

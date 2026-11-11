@@ -76,8 +76,13 @@ class TomRepositoryBlobReferences<T extends Object, K>
 
   /// Which of [keys] a row refers to — under an installed tenancy, for a
   /// tenant table asked outside any tenant (the sweep's own job), a row of
-  /// any served tenant, suspended ones included: a key one tenant's row names
-  /// is in use. In a tenant's context, that tenant's rows.
+  /// any served tenant, suspended ones included, and of every removed tenant
+  /// whose data is kept until it is purged (`TomTenancy.removedTenantIds`,
+  /// read through `TomTenancy.readRemovedTenant`): a key one tenant's row
+  /// names is in use, and a removed tenant's rows come back with
+  /// `restoreTenant`. A removed tenant whose data cannot be opened fails the
+  /// question rather than answering "not referenced". In a tenant's context,
+  /// that tenant's rows.
   @override
   Future<Set<String>> referenced(List<String> keys) async {
     final tenancy = TomTenancy.current;
@@ -90,6 +95,11 @@ class TomRepositoryBlobReferences<T extends Object, K>
     for (final tenant in List.of(tenancy.tenants.keys)) {
       found.addAll(
         await TomTenantContext.run(tenant, () => _referencedHere(keys)),
+      );
+    }
+    for (final tenant in await tenancy.removedTenantIds()) {
+      found.addAll(
+        await tenancy.readRemovedTenant(tenant, () => _referencedHere(keys)),
       );
     }
     return found;

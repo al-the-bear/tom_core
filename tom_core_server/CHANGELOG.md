@@ -2,6 +2,16 @@
 
 ### Added
 
+- **The orphan sweep keeps a removed tenant's files until it is purged**
+  (`tenancy`, `object_persistence`). `TomTenancy.removedTenantIds` lists the
+  removed tenants whose data is kept, and `readRemovedTenant(id, body)` runs
+  `body` in such a tenant with its tenant tables routed to its placement for
+  that call only — its own pools opened and closed around it — while it stays
+  unserved. `TomRepositoryBlobReferences` asks them beside the served tenants,
+  so a sweep in the retention window no longer deletes the files a removed
+  tenant's rows name, and `restoreTenant` brings back rows whose files are
+  there; after `purgeTenant` the next sweep deletes them.
+
 - **A system table in a tenant's transaction rides the tenant's connection**
   (`object_persistence`, `datasources`, `sync`). Inside a transaction a system
   table's repository runs on the tenant's connection when that connection

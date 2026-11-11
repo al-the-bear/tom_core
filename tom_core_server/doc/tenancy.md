@@ -1105,6 +1105,20 @@ default, `tenancy.purgeAfterDays`). Until it is purged, `restoreTenant(id)`
 serves the tenant again over the schema or database it left — provisioned and
 migrated as by `addTenant`.
 
+A system service that must not take a removed tenant's rows for no rows while
+they can still come back reads them without serving it:
+`removedTenantIds()` lists the removed tenants the registry keeps, and
+`readRemovedTenant(id, body)` runs `body` in the tenant with its tenant tables
+routed to its placement — its own pools opened for the call and closed after,
+its type's shared schema, or the base data source — while requests and every
+other work still find it unknown. The blob orphan sweep's
+`TomRepositoryBlobReferences` asks them this way, so a removed tenant's files
+stay until `purgeTenant` drops its data
+([object_persistence.md](object_persistence.md#sweeping-files-no-row-refers-to)).
+`readRemovedTenant` refuses a tenant that is not removed
+(`tenancy.tenant.not_removed`) or that the registry does not hold
+(`tenancy.tenant.unknown`).
+
 ## Purging a Tenant
 
 ```dart
@@ -1309,7 +1323,7 @@ and an import.
 | `tenancy.tenant.suspended` | `resolveRequest` | A request for a suspended tenant (`403`). |
 | `tenancy.tenant.unavailable` | `resolveRequest` | A request for a tenant that is provisioning or migrating (`503`). |
 | `tenancy.tenant.migration_failed` | `resolveRequest`, `route`, `addTenant`, `migrateTenant` | A request for, or work in, a tenant whose migration failed (`503`) — it is not routed; or the migration of `addTenant` / `migrateTenant` failed. |
-| `tenancy.tenant.not_removed` | `restoreTenant` | The tenant to restore is not removed. |
+| `tenancy.tenant.not_removed` | `restoreTenant`, `readRemovedTenant` | The tenant to restore or read is not removed. |
 | `tenancy.purge.not_removed` | `purgeTenant` | The tenant to purge is not removed. |
 | `tenancy.purge.retention` | `purgeTenant` | The tenant's retention period (`purgeAfter`) has not passed; the parameter `until` names its end. |
 | `tenancy.pool.cap_exceeded` | provisioning (`install`, `addTenant`, refresh) | Opening the tenant's pool would take the tenant pools past `tenancy.pool.maxTotal`. |

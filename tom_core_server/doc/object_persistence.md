@@ -2291,8 +2291,12 @@ left alone — give them when the store also holds files no source describes; wi
 none, every key is considered. Each `TomBlobReferenceSource` is asked which of
 the page's keys a row refers to — a `TomRepositoryBlobReferences` over a tenant
 table (`@TomTenantTable`), asked outside any tenant under an installed tenancy,
-answers the rows of every served tenant, suspended ones included, since a key
-any tenant's row names is in use — and the keys no source names are asked about a
+answers the rows of every served tenant, suspended ones included, and of every
+removed tenant whose data is kept until it is purged — read through
+`TomTenancy.readRemovedTenant`, so `restoreTenant` never brings back a row
+whose file the sweep took — since a key any tenant's row names is in use; a
+removed tenant whose data cannot be opened fails the sweep rather than letting
+it delete. The keys no source names are asked about a
 **second time** immediately before they are deleted, so a row saved while the
 page was being checked keeps its file. The keys still unreferenced are deleted
 from the store, and then — unless `reclaim: false` — the store's `reclaim` runs,
@@ -3208,8 +3212,11 @@ The orphan sweep is covered beside the store it sweeps.
 the second question before a delete, its refusals and `TomRepositoryBlobReferences`
 asking a plain column in batches and a graded one key by key;
 `test/deduplicating_blob_store_db_test.dart`, tagged `db`, runs it over a real
-repository's file columns. `example/file_storage/deduplicating_store_example.dart`
-shows a sweep deleting the one key no row names.
+repository's file columns. `test/tenant_orphan_sweep_db_test.dart`, tagged
+`db`, sweeps beside removed tenants of the system schema and of a schema of their
+own: their files survive until `purgeTenant`, and the next sweep deletes them.
+`example/file_storage/deduplicating_store_example.dart` shows a sweep deleting
+the one key no row names.
 
 `test/query_sentence_options_test.dart` asserts the matrix in
 [Which kind takes which option](#which-kind-takes-which-option) cell by cell —

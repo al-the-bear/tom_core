@@ -1970,7 +1970,10 @@ const TomBlobReferenceSource()
 
 The `@TomFileReference` columns of a repository's entity, as a
 `TomBlobReferenceSource`. Soft-deleted rows count: a restore brings their files
-back into use.
+back into use. Over a tenant table asked outside any tenant it answers the rows of
+every served tenant and of every removed tenant not purged yet
+(`TomTenancy.readRemovedTenant`): a removed tenant's rows come back with
+`restoreTenant`, so their files stay.
 
 - **Extends:** `TomBlobReferenceSource`
 
