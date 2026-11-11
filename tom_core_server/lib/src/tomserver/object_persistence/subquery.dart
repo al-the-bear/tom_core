@@ -30,6 +30,7 @@ import 'data_scope.dart';
 import 'entity_lifecycle.dart';
 import 'persistence_annotations.dart';
 import 'query_builder.dart';
+import '../datasources/table_qualification.dart';
 
 /// `SELECT <projection> FROM <the tables of types> WHERE <where>` — a
 /// subquery for [TomExists] and [TomInSubquery].
@@ -108,7 +109,10 @@ class TomSubquery {
   /// The subquery's SQL.
   SqlString generate(TomStandardSqlDialect t) => t.subquery(
     projection?.generate(t) ?? '1',
-    [for (final info in _info) info.table.table],
+    [
+      for (final info in _info)
+        TomSqlTableQualification.table(info.table.table),
+    ],
     [
       ?where?.generate(t),
       ..._liveRows,

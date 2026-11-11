@@ -36,6 +36,7 @@ import 'package:tom_core_kernel/tom_core_kernel.dart';
 import '../datasources/datasource_initialization.dart';
 import '../datasources/framework_table.dart';
 import '../datasources/sql_instant.dart';
+import '../datasources/table_qualification.dart';
 import '../little_things/server_exception.dart';
 import '../object_persistence/annotation_analyzer.dart';
 import '../object_persistence/column_authorization.dart';
@@ -229,13 +230,18 @@ class _SyncedEntity<T extends Object, K> {
     final int changedVersion = after != null
         ? versionOf(after)
         : versionOf(before!) + 1;
-    await log.append(
-      repository.datasourceInfo.datasource,
-      collection: collection,
-      entityId: '${change.key}',
-      version: changedVersion,
-      deleted: deleted,
-      at: change.at,
+    // A system entity written on a tenant's connection keeps its log beside
+    // it: the log's table is qualified the way the entity's is.
+    await TomSqlTableQualification.run(
+      repository.tableQualifier,
+      () => log.append(
+        repository.datasourceInfo.datasource,
+        collection: collection,
+        entityId: '${change.key}',
+        version: changedVersion,
+        deleted: deleted,
+        at: change.at,
+      ),
     );
   }
 }

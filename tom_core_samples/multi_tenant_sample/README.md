@@ -67,7 +67,7 @@ migrates (`migrateOnStart`) and guards the system schema
 | Onboarding | `umbrella` added at runtime (`addTenant`): recorded, its schema created and migrated, served |
 | The contract review | a job declared per tenant type (`TomJobTenants(types: ['enterprise'])`), run once for `initech` and once for `umbrella`, each run in its tenant, each writing the system table |
 | Schema check, suspension | every tenant's schema current (`checkSchemaVersions`); `globex` suspended — a request naming it is refused with `tenancy.tenant.suspended` — and resumed |
-| One transaction | an invoice and a review report in one transaction is refused on one-phase data sources (`crud_repository.transaction.tenant_and_system_one_phase`): they would be two commits |
+| One transaction | an invoice and a review report in one transaction commit as one branch: the report runs on `acme`'s connection, its table qualified with the system schema — no two-phase data source needed, since the tenant's connection reaches the system schema |
 | Move and backup | `globex` moved out of the shared schema into one of its own (`moveTenant`), its invoices with it; `acme`'s rows exported (`exportTenant`) |
 | Restart | the tenancy reinstalled from the same configuration — whose seed does not name `umbrella` — serves `umbrella`, and `globex` in its new schema: the registry, not the configuration, is the list of tenants |
 

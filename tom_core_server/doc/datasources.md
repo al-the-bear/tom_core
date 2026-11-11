@@ -99,6 +99,7 @@ declared.
 | `TomTypedPersistenceBase` | abstract class | Base for anything scoped to a set of entity types; analyses their annotations once and exposes the flattened column information |
 | `SqlPlaceholderScan` | class | Finds `:name` placeholders in generated SQL without mistaking one inside a quoted literal for a bind |
 | `TomSqlLexer` | class | The package's one quote/comment scanner and statement splitter — shared by this driver's one-statement check and by `db_migration`'s applier and DDL reader |
+| `TomSqlTableQualification` | abstract final class | Qualifies the table positions of the statements rendered in its zone (`run`, `table`) — how a system table's statements name the system schema on a tenant's connection; see [object_persistence.md](object_persistence.md#one-transaction-two-kinds) |
 | `TomDataSource` | abstract class | One configured data source (lifecycle + execution) |
 | `TomSqlDatasource` | abstract class | Everything a SQL driver does that does not depend on the database: the pool, a connection per transaction, the statement paths, the row mapping, the settings binding |
 | `TomSqlPreparedStatement<T>` | class | A prepared statement of a `TomSqlDatasource`, prepared on each pooled connection that runs it and retried once on another when its connection was lost |
@@ -2519,6 +2520,12 @@ and `test/examples_test.dart` runs it.
   driver uses it to refuse a multi-statement command
   ([One statement per call](#one-statement-per-call)); `db_migration`'s applier
   and DDL reader are written on it.
+- **`TomSqlTableQualification`** — the table positions of the statements
+  rendered inside `run` (`FROM`, `INSERT INTO`, `UPDATE`, `DELETE FROM`)
+  qualified with a schema: the generated queries, subqueries, grouped selects
+  and `TomFrameworkTable.insertRow` name their tables through `table`. A system
+  table's repository runs its statements this way on a tenant's connection
+  ([object_persistence.md](object_persistence.md#one-transaction-two-kinds)).
 - **`TomDataSource`** (+ `TomPreparedStatement`, `TomDatasourceDriver`,
   `TomDataSourceInfo`) — the data-source/driver abstraction and registry.
 - **`TomSqlDatasource`** (+ `TomSqlPreparedStatement`, `TomSqlRow`,
@@ -2615,7 +2622,7 @@ and `test/examples_test.dart` runs it.
 
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
-| `dart:async` | dart | `connection_pool.dart`, `sql_datasource.dart`, `mariadb_datasource.dart`, `postgres_datasource.dart`, `read_replicas.dart` | `Completer` and `Timer`: a caller waiting for a connection and its acquire timeout, and a statement waiting for its transaction's start; `Zone`: the zone marking a transaction's own lifecycle statements, and the zones marking read-only work, a forced primary and a repository read |
+| `dart:async` | dart | `connection_pool.dart`, `sql_datasource.dart`, `mariadb_datasource.dart`, `postgres_datasource.dart`, `read_replicas.dart`, `table_qualification.dart` | `Completer` and `Timer`: a caller waiting for a connection and its acquire timeout, and a statement waiting for its transaction's start; `Zone`: the zone marking a transaction's own lifecycle statements, the zones marking read-only work, a forced primary and a repository read, and the zone a statement's table positions are qualified in |
 | `dart:collection` | dart | `connection_pool.dart`, `sql_datasource.dart` | `Queue` for the pool's waiters, and identity-keyed `HashMap`s for lent connections and each transaction's branch |
 | `dart:convert` | dart | `postgres_datasource.dart` | `utf8` and `jsonEncode`, rendering a `bytea` or a JSON value into the text convention |
 | `dart:math` | dart | `mariadb_datasource.dart`, `postgres_datasource.dart` | `Random`, the per-process tag in a two-phase branch id |
@@ -2623,7 +2630,7 @@ and `test/examples_test.dart` runs it.
 | `meta` | package | `sql_datasource.dart` | `@protected` on the members a driver supplies or calls |
 | `mysql_client` | package | `mariadb_datasource.dart`, `sql_failure_mode.dart` | the MariaDB / MySQL client used by `MariaDbDatasource`, and its `MySQLServerException` |
 | `postgres` | package | `postgres_datasource.dart`, `sql_failure_mode.dart` | the PostgreSQL client used by `PostgresDatasource`, and its `ServerException` |
-| `tom_core_kernel` | package | 8 of 16 files | `TomBaseException` (walked to find the driver exception at the root of a failure chain), `TomObject`, `tomReflector` / `ClassMirror` / `InstanceMirror`, `TomException`, `TomZonedDate` / `TomZonedTime`, `TomExecutionContext`, `runChecked` / `runCheckedSync`, `tomLog`, `TomTracing` / `TomSpanKind` (a statement's span) |
+| `tom_core_kernel` | package | 8 of 17 files | `TomBaseException` (walked to find the driver exception at the root of a failure chain), `TomObject`, `tomReflector` / `ClassMirror` / `InstanceMirror`, `TomException`, `TomZonedDate` / `TomZonedTime`, `TomExecutionContext`, `runChecked` / `runCheckedSync`, `tomLog`, `TomTracing` / `TomSpanKind` (a statement's span) |
 | [little_things](little_things.md) | module | `connection_pool.dart`, `datasource_initialization.dart`, `sql_datasource.dart` | `TomServerException` |
 | [object_persistence](object_persistence.md) | module | `sql_datasource.dart`, `sql_dialects.dart`, `read_replicas.dart` | `TomAnnotationAnalyzer` (also reading `@TomPrimaryReads` off an entity), `TomColumnInformation`, `TomDbTable`, `DbCol`, `TomQuerySentenceCompiler`, `TomGroupedSelect` / `TomGroupedRow`, `TomFieldEncryption` (decrypting an entity's encrypted columns, and the raw read) |
 | [transactions](transactions.md) | module | `datasource_initialization.dart`, `sql_datasource.dart`, `mariadb_datasource.dart`, `postgres_datasource.dart`, `framework_table.dart`, `read_replicas.dart` | `TomTransactionParticipant` for the contract `TomDataSource` implements, `TomTransaction` for the one a driver is handed on enlistment (which is where `isReadOnly` becomes a `READ ONLY` begin statement), `TomTransactionManager.runInTransaction` for `TomFrameworkTable.replaceRow`'s two statements, and `TomTransactionManager.getCurrentTransaction` for whether the running transaction is read-only work; `TomPreparedBranchHolder` and `TomTwoPhaseRecoverable`, the two roles `TomSqlTwoPhaseRecovery` gives a two-phase driver in recovering its prepared branches |

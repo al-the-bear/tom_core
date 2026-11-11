@@ -6,9 +6,11 @@
 /// - a tenant table's rows land where the tenant's data lives, a system
 ///   table's in the system schema, also when written inside a tenant;
 /// - the tenant predicate holds in every model;
-/// - one transaction holding a tenant table and a system table runs where
-///   they share a data source, is refused where they do not and one of them
-///   commits in one phase, and commits in two phases where both are `*_xa`;
+/// - one transaction holding a tenant table and a system table is one branch
+///   where they share a data source or the tenant's connection reaches the
+///   system schema (the system table qualified on it), is refused where it does
+///   not and one of them commits in one phase, and commits in two phases where
+///   both are `*_xa`;
 /// - sync keeps a tenant table's change log beside the tenant's rows;
 /// - retention, run with no tenant, is applied in every tenant.
 ///
@@ -40,6 +42,28 @@ CREATE TABLE IF NOT EXISTS fixture_system_note (
   id   BIGINT       NOT NULL AUTO_INCREMENT,
   text VARCHAR(255) NULL,
   PRIMARY KEY (id)
+)''';
+
+const String _softNoteDdl = '''
+CREATE TABLE IF NOT EXISTS fixture_soft_note (
+  id         BIGINT       NOT NULL AUTO_INCREMENT,
+  version    BIGINT       NOT NULL DEFAULT 0,
+  text       VARCHAR(255) NULL,
+  deleted_at DATETIME(6)  NULL,
+  PRIMARY KEY (id)
+)''';
+
+const String _softNoteHistoryDdl = '''
+CREATE TABLE IF NOT EXISTS fixture_soft_note_history (
+  history_id     BIGINT       NOT NULL AUTO_INCREMENT,
+  history_action VARCHAR(16)  NOT NULL,
+  history_at     DATETIME(6)  NOT NULL,
+  history_by     VARCHAR(255) NULL,
+  id             BIGINT       NOT NULL,
+  version        BIGINT       NOT NULL,
+  text           VARCHAR(255) NULL,
+  deleted_at     DATETIME(6)  NULL,
+  PRIMARY KEY (history_id)
 )''';
 
 const String _tenantSyncNoteDdl = '''
@@ -105,6 +129,8 @@ void main() async {
       for (final ddl in [
         _tenantNoteDdl,
         _systemNoteDdl,
+        _softNoteDdl,
+        _softNoteHistoryDdl,
         _tenantSyncNoteDdl,
         _tenantVisitDdl,
       ]) {
@@ -189,6 +215,10 @@ void main() async {
               _tenantNoteDdl,
               _tenantSyncNoteDdl,
               _tenantVisitDdl,
+              // A decoy of the system table where the tenant lives: a system
+              // statement left unqualified on the tenant's connection would
+              // land here instead of failing.
+              _systemNoteDdl,
             ]) {
               await TestDatabase.execute(routed().datasource, ddl);
             }
@@ -211,6 +241,8 @@ void main() async {
           for (final table in [
             'fixture_tenant_note',
             'fixture_system_note',
+            'fixture_soft_note',
+            'fixture_soft_note_history',
             'fixture_tenant_visit',
           ]) {
             await base.datasource.executeCommand('DELETE FROM $table');
@@ -219,6 +251,7 @@ void main() async {
             for (final table in [
               'fixture_tenant_note',
               'fixture_tenant_visit',
+              'fixture_system_note',
             ]) {
               await routed().datasource.executeCommand('DELETE FROM $table');
             }
@@ -275,46 +308,175 @@ void main() async {
           );
         });
 
+        /// Whether the tenant's connection reaches the system schema: a type's
+        /// shared schema and a schema of its own do; a database of its own on
+        /// the same server does on MariaDB, whose databases are its schemas,
+        /// and not on PostgreSQL, where another database cannot be named.
+        bool reachesSystem() => switch (placement) {
+          _Placement.systemSchema => false,
+          _Placement.typeSchema || _Placement.ownSchema => true,
+          _Placement.ownDatabase => !TestDatabase.isPostgres,
+        };
+
+        Matcher refusedAs(String key) => throwsA(
+          isA<TomRepositoryException>().having((e) => e.key, 'key', key),
+        );
+
+        test('TTB-2: one transaction over a tenant table and a system table is '
+            "one branch on a shared data source or on the tenant's connection, "
+            'and refused on two one-phase data sources', () async {
+          final tenantNotes = FixtureTenantNoteRepository();
+          final systemNotes = FixtureSystemNoteRepository();
+          Future<void> both() => tenancy.runFor(
+            'acme',
+            () => TomTransactionManager.runInTransaction((_) async {
+              await tenantNotes.save(FixtureTenantNote()..text = 'in tx');
+              await systemNotes.save(FixtureSystemNote()..text = 'in tx');
+            }),
+          );
+          final acmeRoute = await tenancy.runFor('acme', routed);
+          if (placement == _Placement.systemSchema || reachesSystem()) {
+            await both();
+            expect(await _count(base, 'fixture_system_note'), 1);
+            expect(await _count(acmeRoute, 'fixture_tenant_note'), 1);
+            if (reachesSystem()) {
+              expect(
+                await _count(acmeRoute, 'fixture_system_note'),
+                0,
+                reason:
+                    "the system row is qualified on the tenant's "
+                    "connection, not written to the tenant's schema",
+              );
+            }
+            return;
+          }
+          await expectLater(
+            both(),
+            refusedAs(TomSqlDatasourceRepository.tenantSystemTransactionKey),
+          );
+          expect(
+            await _count(acmeRoute, 'fixture_tenant_note'),
+            0,
+            reason: 'the tenant write was rolled back with the transaction',
+          );
+          expect(await _count(base, 'fixture_system_note'), 0);
+        });
+
         test(
-          'TTB-2: one transaction over a tenant table and a system table '
-          'runs on one data source and is refused on two one-phase ones',
+          "TTB-5: on the tenant's connection the system table comes first or "
+          'second, its writes roll back with the tenant\'s, and it reads its '
+          'own uncommitted rows',
           () async {
+            if (!reachesSystem()) return;
             final tenantNotes = FixtureTenantNoteRepository();
             final systemNotes = FixtureSystemNoteRepository();
-            Future<void> both() => tenancy.runFor(
+            final acmeRoute = await tenancy.runFor('acme', routed);
+            // System first, then the tenant table: one branch all the same.
+            await tenancy.runFor(
               'acme',
               () => TomTransactionManager.runInTransaction((_) async {
-                await tenantNotes.save(FixtureTenantNote()..text = 'in tx');
-                await systemNotes.save(FixtureSystemNote()..text = 'in tx');
+                final entry = await systemNotes.save(
+                  FixtureSystemNote()..text = 'first',
+                );
+                await tenantNotes.save(FixtureTenantNote()..text = 'second');
+                // Reads inside the transaction see its own system row.
+                expect((await systemNotes.findById(entry.id!))!.text, 'first');
+                expect((await systemNotes.count()).get(), 1);
+                expect(
+                  (await systemNotes.findByQuerySentence('find by text = :t', {
+                    't': 'first',
+                  })).single.id,
+                  entry.id,
+                );
               }),
             );
-            if (placement == _Placement.systemSchema) {
-              await both();
-              expect(await _count(base, 'fixture_system_note'), 1);
-              expect(await _count(base, 'fixture_tenant_note'), 1);
-              return;
-            }
+            expect(await _count(base, 'fixture_system_note'), 1);
+            expect(await _count(acmeRoute, 'fixture_system_note'), 0);
+            expect(await _count(acmeRoute, 'fixture_tenant_note'), 1);
+
+            // A failure after both writes undoes both: they were one commit.
             await expectLater(
-              both(),
-              throwsA(
-                isA<TomRepositoryException>().having(
-                  (e) => e.key,
-                  'key',
-                  TomSqlDatasourceRepository.tenantSystemTransactionKey,
-                ),
+              tenancy.runFor(
+                'acme',
+                () => TomTransactionManager.runInTransaction((_) async {
+                  await tenantNotes.save(FixtureTenantNote()..text = 'undone');
+                  await systemNotes.save(FixtureSystemNote()..text = 'undone');
+                  throw StateError('after both writes');
+                }),
               ),
+              throwsStateError,
             );
-            expect(
-              await _count(
-                await tenancy.runFor('acme', routed),
-                'fixture_tenant_note',
-              ),
-              0,
-              reason: 'the tenant write was rolled back with the transaction',
-            );
-            expect(await _count(base, 'fixture_system_note'), 0);
+            expect(await _count(base, 'fixture_system_note'), 1);
+            expect(await _count(acmeRoute, 'fixture_tenant_note'), 1);
           },
         );
+
+        test(
+          "TTB-6: on the tenant's connection a system table's updates, deletes, "
+          'soft deletes, restores and history are all qualified',
+          () async {
+            if (!reachesSystem()) return;
+            final tenantNotes = FixtureTenantNoteRepository();
+            final softNotes = FixtureSoftNoteRepository();
+            final entry = await tenancy.runFor(
+              'acme',
+              () => TomTransactionManager.runInTransaction((_) async {
+                await tenantNotes.save(FixtureTenantNote()..text = 'beside');
+                final note = await softNotes.save(
+                  FixtureSoftNote()..text = 'v1',
+                );
+                final updated = await softNotes.save(note..text = 'v2');
+                expect(await softNotes.deleteById(updated.id!), 1);
+                expect(await softNotes.findAll(), isEmpty);
+                expect(await softNotes.restoreById(updated.id!), 1);
+                expect((await softNotes.historyOf(updated.id!)).length, 3);
+                return updated;
+              }),
+            );
+            expect(await _count(base, 'fixture_soft_note'), 1);
+            expect(await _count(base, 'fixture_soft_note_history'), 3);
+            final stored = await softNotes.findById(entry.id!);
+            expect(stored!.text, 'v2');
+            expect(stored.deletedAt, isNull);
+            // Deleted for good inside a tenant transaction as well.
+            await tenancy.runFor(
+              'acme',
+              () => TomTransactionManager.runInTransaction((_) async {
+                await tenantNotes.save(FixtureTenantNote()..text = 'again');
+                await softNotes.purgeById(entry.id!);
+              }),
+            );
+            expect(await _count(base, 'fixture_soft_note'), 0);
+          },
+        );
+
+        test("TTB-7: a raw statement for a system table runs on its own data "
+            "source until the transaction runs the table on the tenant's "
+            'connection, and is refused after', () async {
+          final systemNotes = FixtureSystemNoteRepository();
+          final raw = 'SELECT * FROM fixture_system_note WHERE text = :t';
+          // Raw first: the table stays on its own data source.
+          await tenancy.runFor(
+            'acme',
+            () => TomTransactionManager.runInTransaction((_) async {
+              await systemNotes.executeQueryString(raw, {'t': 'x'});
+              await systemNotes.save(FixtureSystemNote()..text = 'x');
+            }),
+          );
+          expect(await _count(base, 'fixture_system_note'), 1);
+          if (!reachesSystem()) return;
+          await expectLater(
+            tenancy.runFor(
+              'acme',
+              () => TomTransactionManager.runInTransaction((_) async {
+                await systemNotes.save(FixtureSystemNote()..text = 'y');
+                await systemNotes.executeQueryString(raw, {'t': 'y'});
+              }),
+            ),
+            refusedAs(TomSqlDatasourceRepository.literalOnTenantConnectionKey),
+          );
+          expect(await _count(base, 'fixture_system_note'), 1);
+        });
 
         test("TTB-3: sync keeps a tenant table's change log beside the "
             "tenant's rows: each tenant pulls its own changes", () async {
@@ -439,40 +601,78 @@ void main() async {
       await TestDatabase.reset();
     });
 
-    test('TTB-5: a schema tenant and the system schema on two-phase data '
-        'sources commit in one transaction, two branches', () async {
+    test("TTB-8: on two-phase data sources a schema tenant's system write "
+        "joins the tenant's branch; a tenant whose connection cannot reach "
+        'the system schema commits in two phases', () async {
       final tenancy = TomTenancy(
-        tenants: [TomTenant('acme', isolation: TomTenantIsolation.schema)],
+        tenants: [
+          TomTenant('acme', isolation: TomTenantIsolation.schema),
+          if (TestDatabase.isPostgres)
+            TomTenant(
+              'globex',
+              isolation: TomTenantIsolation.database,
+              datasources: {
+                name: {
+                  ...(TestDatabase.datasourceConfig[name] as Map)
+                      .cast<String, Object>(),
+                  'type': 'postgresql_xa',
+                  'databaseName': '${TestDatabase.databaseName}_ttxglobex',
+                },
+              },
+            ),
+        ],
         datasources: {name},
         createSchemas: true,
       );
+      if (TestDatabase.isPostgres) {
+        await TestDatabase.createDatabase(
+          base.datasource,
+          '${TestDatabase.databaseName}_ttxglobex',
+        );
+      }
       await TomTenancy.install(tenancy);
-      final acmeRoute = await tenancy.runFor(
-        'acme',
-        () => TomDataSourceInfo.getDataSourceInfo(name)!,
-      );
-      expect(acmeRoute.datasource, isA<TomSqlTwoPhaseRecovery>());
-      await TestDatabase.execute(acmeRoute.datasource, _tenantNoteDdl);
-      await tenancy.runFor(
-        'acme',
-        () => TomTransactionManager.runInTransaction((transaction) async {
-          await FixtureTenantNoteRepository().save(
-            FixtureTenantNote()..text = 'two-phase',
-          );
-          await FixtureSystemNoteRepository().save(
-            FixtureSystemNote()..text = 'two-phase',
-          );
-          expect(transaction.participantIds, hasLength(2));
-        }),
-      );
-      expect(await _count(acmeRoute, 'fixture_tenant_note'), 1);
+      Future<int> branchesOf(String tenant) async {
+        final route = await tenancy.runFor(
+          tenant,
+          () => TomDataSourceInfo.getDataSourceInfo(name)!,
+        );
+        expect(route.datasource, isA<TomSqlTwoPhaseRecovery>());
+        await TestDatabase.execute(route.datasource, _tenantNoteDdl);
+        var participants = 0;
+        await tenancy.runFor(
+          tenant,
+          () => TomTransactionManager.runInTransaction((transaction) async {
+            await FixtureTenantNoteRepository().save(
+              FixtureTenantNote()..text = 'two-phase',
+            );
+            await FixtureSystemNoteRepository().save(
+              FixtureSystemNote()..text = 'two-phase',
+            );
+            participants = transaction.participantIds.length;
+          }),
+        );
+        expect(await _count(route, 'fixture_tenant_note'), 1);
+        return participants;
+      }
+
+      expect(await branchesOf('acme'), 1);
       expect(await _count(base, 'fixture_system_note'), 1);
+      if (TestDatabase.isPostgres) {
+        expect(await branchesOf('globex'), 2);
+        expect(await _count(base, 'fixture_system_note'), 2);
+      }
       // Dropped here, while the suite's database still exists.
       await TomTenancy.reset();
       await TestDatabase.dropSchema(
         base.datasource,
         '${TestDatabase.databaseName}_acme',
       );
+      if (TestDatabase.isPostgres) {
+        await TestDatabase.dropDatabase(
+          base.datasource,
+          '${TestDatabase.databaseName}_ttxglobex',
+        );
+      }
     });
   }, skip: skipReason ?? await TestDatabase.twoPhaseSkipReason());
 }

@@ -717,9 +717,12 @@ A tenant table and a system table **never meet in one statement**: a
 `@TomReference`, a subquery or a repository over both kinds is refused when it
 is analysed (`annotation_analyzer.tenant_table.mixed`), because a tenant's rows
 may move to a database of their own at any time. They refer to each other by
-id. **One transaction** may hold both: on one data source it is one branch; on
-two two-phase (`*_xa`) data sources it commits in two phases; on two data
-sources of which one is one-phase it is refused
+id. **One transaction** may hold both: on one data source it is one branch; for a
+tenant whose data source reaches the system schema — `schema` isolation, a
+type's shared schema, a `database` tenant on the same MariaDB server — it is
+one branch too, the system table running on the tenant's connection with its
+table qualified; otherwise on two two-phase (`*_xa`) data sources it commits in
+two phases, and on two data sources of which one is one-phase it is refused
 (`crud_repository.transaction.tenant_and_system_one_phase`). See
 [object_persistence.md](object_persistence.md#tenant-tables-and-system-tables)
 for the repository side.
@@ -1321,7 +1324,8 @@ and an import.
 | `tenancy.context.missing` | kernel `TomTenantContext.require`, `TomTenancy.tenantForWork` | A tenant table read or written with no tenant in context under an installed tenancy. |
 | `data_scope.write.foreign_tenant` | object_persistence | A tenant-table row naming another tenant than the one in context. |
 | `annotation_analyzer.tenant_table.mixed` | object_persistence | A `@TomReference`, a subquery or a repository over tenant tables and system tables together. |
-| `crud_repository.transaction.tenant_and_system_one_phase` | object_persistence | One transaction over a tenant table and a system table on two data sources, one of them one-phase. |
+| `crud_repository.transaction.tenant_and_system_one_phase` | object_persistence | One transaction over a tenant table and a system table on two data sources, one of them one-phase, the tenant's not reaching the system schema. |
+| `crud_repository.transaction.literal_on_tenant_connection` | object_persistence | A raw statement for a system table the transaction already runs on a tenant's connection. |
 | `login.error.tenant-mismatch` | authentication | An account of one tenant signing in through another tenant. |
 
 `TomTenancyException` extends `TomServerException`; the two kernel keys are

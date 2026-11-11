@@ -103,13 +103,10 @@ void main() async {
       expect(sample.refusalOf('globex'), isNull);
     }, skip: skip);
 
-    test('MT-7: one transaction over a tenant table and a system table is '
-        'refused on one-phase data sources', () async {
-      expect(
-        await sample.invoiceWithReport('acme'),
-        'crud_repository.transaction.tenant_and_system_one_phase',
-      );
-      expect(await sample.invoicesOf('acme'), ['inv-acme-1']);
+    test('MT-7: one transaction over a tenant table and a system table '
+        "commits as one branch on the tenant's connection", () async {
+      expect(await sample.invoiceWithReport('acme'), isNull);
+      expect(await sample.invoicesOf('acme'), ['acme-tx', 'inv-acme-1']);
     }, skip: skip);
 
     test('MT-8: a tenant moves from the shared schema into one of its own; a '
@@ -120,9 +117,9 @@ void main() async {
       );
       expect(moved.copied, {'main/mt_invoice': 1});
       expect(await sample.invoicesOf('globex'), ['inv-globex-1']);
-      expect(await sample.invoicesOf('acme'), ['inv-acme-1']);
+      expect(await sample.invoicesOf('acme'), ['acme-tx', 'inv-acme-1']);
       final backup = await sample.tenancy.exportTenant('acme');
-      expect(backup.counts, {'main/mt_invoice': 1, 'main/mt_contract': 0});
+      expect(backup.counts, {'main/mt_invoice': 2, 'main/mt_contract': 0});
     }, skip: skip);
 
     test('MT-9: a restarted node serves what the registry holds: the tenant '

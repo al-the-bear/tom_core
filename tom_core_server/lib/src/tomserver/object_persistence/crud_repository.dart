@@ -27,6 +27,7 @@ import 'entity_lifecycle.dart';
 import 'field_encryption.dart';
 import '../privacy/personal_data.dart';
 import '../datasources/sql_datasource.dart';
+import '../datasources/table_qualification.dart';
 import '../tenancy/tenancy.dart';
 import '../transactions/transaction_manager.dart';
 
@@ -329,12 +330,134 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
   /// unless both data sources commit in two phases (see
   /// [tenantSystemTransactionKey]).
   TomDataSourceInfo get datasourceInfo {
-    final info = isTenantTable ? _tenantRoute() : _baseDatasourceInfo;
     final transaction = TomTransactionManager.getCurrentTransaction();
-    if (transaction != null && transaction.isRunning) {
-      _guardTransaction(transaction, info.datasource);
+    if (transaction == null || !transaction.isRunning) {
+      return isTenantTable ? _tenantRoute() : _baseDatasourceInfo;
     }
+    final info = isTenantTable ? _tenantRoute() : _systemBranch(transaction);
+    _guardTransaction(transaction, info);
     return info;
+  }
+
+  /// The branch a system table's statements run on in [transaction].
+  ///
+  /// Its own data source, unless a tenant's connection reaches it
+  /// ([TomSqlDatasource.canQualify]): then the statements run on the tenant's
+  /// connection with the table qualified ([tableQualifier]), so the
+  /// transaction stays one branch without a two-phase commit. In order:
+  ///
+  /// 1. the transaction already holds the system table's own data source —
+  ///    stay there, so its system writes are never split over two branches;
+  /// 2. it holds a tenant table on a data source that reaches this one, or
+  ///    already runs this system table there — join that branch;
+  /// 3. the work runs in a tenant whose route of this data source reaches it
+  ///    (`schema` isolation, a type's shared schema on the same server) — run
+  ///    on the tenant's connection, as the tenant's tenant tables will;
+  /// 4. else its own data source, and a tenant table on another one is
+  ///    refused by [_guardTransaction] unless both commit in two phases.
+  ///
+  /// With [literal] (a statement the repository did not render, which it
+  /// cannot qualify) step 3 is skipped.
+  TomDataSourceInfo _systemBranch(
+    TomTransaction transaction, {
+    bool literal = false,
+  }) {
+    final base = _baseDatasourceInfo;
+    final own = base.datasource;
+    if (own is! TomSqlDatasource) return base;
+    final used = _transactionBranches[transaction];
+    if (used != null) {
+      if (used.containsKey(own)) return base;
+      for (final branch in used.values) {
+        final there = branch.info.datasource;
+        if ((branch.kinds.contains(true) || branch.qualified.contains(own)) &&
+            there is TomSqlDatasource &&
+            there.canQualify(own)) {
+          return branch.info;
+        }
+      }
+    }
+    if (literal) return base;
+    final TomDataSourceInfo routed;
+    try {
+      routed = TomDataSourceInfo.route(base);
+    } on TomTenancyException {
+      // A tenant this node does not route (unknown, its migration failed):
+      // system work does not depend on its routing.
+      return base;
+    }
+    final there = routed.datasource;
+    if (!identical(there, own) &&
+        there is TomSqlDatasource &&
+        there.canQualify(own)) {
+      return routed;
+    }
+    return base;
+  }
+
+  /// How this repository's statements name their tables in the current zone:
+  /// `null` for the bare name, or — for a system table running on a tenant's
+  /// connection in a transaction ([datasourceInfo]) — the function qualifying
+  /// a table with the system schema ([TomSqlDatasource.qualify]).
+  ///
+  /// Code that runs statements of its own on [datasourceInfo]'s data source
+  /// for this repository's entity — a change log beside it — renders them
+  /// inside `TomSqlTableQualification.run(tableQualifier, ...)`.
+  String Function(String table)? get tableQualifier {
+    if (isTenantTable) return null;
+    final own = _baseDatasourceInfo.datasource;
+    if (own is! TomSqlDatasource) return null;
+    return identical(datasourceInfo.datasource, own) ? null : own.qualify;
+  }
+
+  /// The key of the refusal raised when a statement the repository did not
+  /// render — [executeQueryString] — would run for a system table that this
+  /// transaction already runs on a tenant's connection.
+  ///
+  /// The repository qualifies the tables of the statements it renders; it
+  /// cannot rewrite the text of a raw one, which on the tenant's connection
+  /// would name the tenant's schema. Before the transaction moved the table
+  /// there, a raw statement runs on the system table's own data source, and
+  /// the table's later statements stay there with it.
+  static const String literalOnTenantConnectionKey =
+      'crud_repository.transaction.literal_on_tenant_connection';
+
+  /// Settles the branch of a raw statement: a system table's own data source,
+  /// or the refusal [literalOnTenantConnectionKey] when the transaction already
+  /// runs the table on a tenant's connection.
+  void _guardLiteral() {
+    if (isTenantTable) return;
+    final transaction = TomTransactionManager.getCurrentTransaction();
+    if (transaction == null || !transaction.isRunning) return;
+    final branch = _systemBranch(transaction, literal: true);
+    if (!identical(branch.datasource, _baseDatasourceInfo.datasource)) {
+      throw TomRepositoryException(
+        literalOnTenantConnectionKey,
+        'A raw statement for the system table of ${queryTypes[0]} cannot run '
+        "in this transaction: it runs the table on a tenant's connection, "
+        'where a statement the repository did not render would name the '
+        "tenant's schema; use the repository's queries, or run the raw "
+        'statement in a transaction of its own.',
+        parameters: {'entity': '${queryTypes[0]}'},
+      );
+    }
+    _guardTransaction(transaction, branch);
+  }
+
+  /// [table] as this repository's statement names it in the current zone.
+  String _sqlTable(String table) => tableQualifier?.call(table) ?? table;
+
+  /// Prepares [query] on [datasourceInfo]'s data source, its table positions
+  /// rendered as [tableQualifier] says.
+  Future<TomPreparedStatement<R>> _prepare<R extends Object>(
+    TomQuery query, [
+    Type? resultType,
+  ]) {
+    final datasource = datasourceInfo.datasource;
+    return TomSqlTableQualification.run(
+      tableQualifier,
+      () => datasource.prepareStatement<R>(query, resultType),
+    );
   }
 
   /// The tenant route of a tenant table: requires the tenant first, so a
@@ -362,15 +485,18 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
       'crud_repository.transaction.tenant_and_system_one_phase';
 
   /// The data sources entity repositories ran statements on in a transaction,
-  /// each with the classifications (tenant table `true`, system table
-  /// `false`) that used it.
-  static final Expando<Map<TomDataSource, Set<bool>>> _transactionKinds =
-      Expando('tenantSystemKinds');
+  /// each with its info and the classifications (tenant table `true`, system
+  /// table `false`) that used it.
+  static final Expando<Map<TomDataSource, _TransactionBranch>>
+  _transactionBranches = Expando('tenantSystemBranches');
 
-  void _guardTransaction(TomTransaction transaction, TomDataSource here) {
-    final kinds = _transactionKinds[transaction] ??= {};
-    for (final MapEntry(key: other, value: used) in kinds.entries) {
-      if (identical(other, here) || !used.contains(!isTenantTable)) continue;
+  void _guardTransaction(TomTransaction transaction, TomDataSourceInfo info) {
+    final here = info.datasource;
+    final branches = _transactionBranches[transaction] ??= {};
+    for (final MapEntry(key: other, value: branch) in branches.entries) {
+      if (identical(other, here) || !branch.kinds.contains(!isTenantTable)) {
+        continue;
+      }
       if (other is TomSqlTwoPhaseRecovery && here is TomSqlTwoPhaseRecovery) {
         continue;
       }
@@ -384,7 +510,10 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
         parameters: {'entity': '${queryTypes[0]}'},
       );
     }
-    (kinds[here] ??= {}).add(isTenantTable);
+    final branch = branches[here] ??= _TransactionBranch(info);
+    branch.kinds.add(isTenantTable);
+    final own = _baseDatasourceInfo.datasource;
+    if (!isTenantTable && !identical(here, own)) branch.qualified.add(own);
   }
 
   /// Prepared statements, per data source.
@@ -612,7 +741,7 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
     ];
     final names = [for (final c in columns) c.getQueryFieldName()];
     final sql =
-        'INSERT INTO ${history.table} (history_action, history_at, '
+        'INSERT INTO ${_sqlTable(history.table)} (history_action, history_at, '
         'history_by, ${names.join(', ')}) VALUES (:__tomhistory_action, '
         ':__tomhistory_at, :__tomhistory_by, '
         '${[for (final c in columns) ':${c.declaredName}'].join(', ')})';
@@ -805,7 +934,7 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
             persistenceInfo,
           ]).getQueryFieldName();
     final sql =
-        'SELECT * FROM ${history.table} WHERE ${_keyWhereClause()} '
+        'SELECT * FROM ${_sqlTable(history.table)} WHERE ${_keyWhereClause()} '
         '${tenantColumn == null ? '' : 'AND $tenantColumn = :__tomhistory_tenant '}'
         'ORDER BY history_id';
     final params = {
@@ -1631,7 +1760,7 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
       );
       return;
     }
-    _deleteQuery ??= await datasourceInfo.datasource.prepareStatement(
+    _deleteQuery ??= await _prepare(
       TomDelete(
         queryTypes,
         query: version == null
@@ -1734,7 +1863,7 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
       final stored = await _selectById(id);
       if (stored != null) doomed.add(stored);
     }
-    _deleteByIdQuery ??= await datasourceInfo.datasource.prepareStatement(
+    _deleteByIdQuery ??= await _prepare(
       TomDelete(queryTypes, query: _keyPredicate()),
     );
     final affected = (await _deleteByIdQuery!.run(
@@ -1797,12 +1926,12 @@ abstract class TomSqlDatasourceRepository<T extends Object, K>
     final window = _effectivePage(page);
     if (scope == null) {
       if (window == null) {
-        _findAllQuery ??= await datasourceInfo.datasource.prepareStatement(
+        _findAllQuery ??= await _prepare(
           TomLiteralSelect(
             [T],
             query:
                 '''
-SELECT * FROM ${dbTable.table}
+SELECT * FROM ${_sqlTable(dbTable.table)}
       ''',
           ),
         );
@@ -1820,7 +1949,7 @@ SELECT * FROM ${dbTable.table}
           TomLiteralSelect(
             [T],
             query:
-                'SELECT * FROM ${dbTable.table}'
+                'SELECT * FROM ${_sqlTable(dbTable.table)}'
                 '${TomGeneratedQuery.orderByClause(sort)}'
                 '${TomGeneratedQuery.limitClause(window.limit, window.offset)}',
           ),
@@ -1891,11 +2020,11 @@ SELECT * FROM ${dbTable.table}
       final params = _keyParameters(id);
       _findByIdQuery =
           _findByIdQuery ??
-          await datasourceInfo.datasource.prepareStatement(
+          await _prepare(
             TomLiteralSelect(
               [T],
               query:
-                  'SELECT * FROM ${dbTable.table} WHERE ${_keyWhereClause()}',
+                  'SELECT * FROM ${_sqlTable(dbTable.table)} WHERE ${_keyWhereClause()}',
               parameters: params.keys.toList(),
             ),
           );
@@ -1952,16 +2081,15 @@ SELECT * FROM ${dbTable.table}
     final scope = await _resolveScope();
     List<TomCountResult> result;
     if (scope == null) {
-      _countQuery ??= await datasourceInfo.datasource
-          .prepareStatement<TomCountResult>(
-            TomLiteralSelect(
-              [T],
-              query:
-                  '''
-    SELECT COUNT(*) AS count FROM ${dbTable.table}
+      _countQuery ??= await _prepare<TomCountResult>(
+        TomLiteralSelect(
+          [T],
+          query:
+              '''
+    SELECT COUNT(*) AS count FROM ${_sqlTable(dbTable.table)}
 ''',
-            ),
-          );
+        ),
+      );
       result = await _countQuery!.execute({});
     } else {
       result = await _runPrepared<TomCountResult>(
@@ -2093,16 +2221,15 @@ SELECT * FROM ${dbTable.table}
         clientThrow: true,
       );
     }
-    _keyStoredQuery ??= await datasourceInfo.datasource
-        .prepareStatement<TomCountResult>(
-          TomLiteralSelect(
-            [T],
-            query:
-                'SELECT COUNT(*) AS count FROM ${dbTable.table} '
-                'WHERE ${_keyWhereClause()}',
-            parameters: _keyParameters(primaryKey).keys.toList(),
-          ),
-        );
+    _keyStoredQuery ??= await _prepare<TomCountResult>(
+      TomLiteralSelect(
+        [T],
+        query:
+            'SELECT COUNT(*) AS count FROM ${_sqlTable(dbTable.table)} '
+            'WHERE ${_keyWhereClause()}',
+        parameters: _keyParameters(primaryKey).keys.toList(),
+      ),
+    );
     final rows = await _keyStoredQuery!.execute(_keyParameters(primaryKey));
     return rows.isEmpty || rows[0].count == 0;
   }
@@ -2316,7 +2443,7 @@ SELECT * FROM ${dbTable.table}
         : primaryKeyColumns.single.getQueryFieldName();
     final datasource = datasourceInfo.datasource;
     final sql = datasource.sqlDialect.upsert(
-      dbTable.table,
+      _sqlTable(dbTable.table),
       {
         for (final col in writable)
           col.getQueryFieldName(): ':${col.declaredName}',
@@ -2329,7 +2456,7 @@ SELECT * FROM ${dbTable.table}
       ],
       keyColumn: keyColumn,
     );
-    final statement = await datasource.prepareStatement<T>(
+    final statement = await _prepare<T>(
       TomLiteralSelect(
         [T],
         query: sql,
@@ -2512,7 +2639,7 @@ SELECT * FROM ${dbTable.table}
     if (insert) {
       // INSERT
       final (insertSql, paramNames) = buildInsertStatement(
-        dbTable.table,
+        _sqlTable(dbTable.table),
         writable,
       );
       // A single surrogate key is assigned by the database, and asked back
@@ -2524,11 +2651,11 @@ SELECT * FROM ${dbTable.table}
       final suppliedKey = hasCompositeKey || !isUnsavedKey(primaryKey);
       final datasource = datasourceInfo.datasource;
       if (suppliedKey) {
-        _saveInsertSuppliedKeyQuery ??= await datasource.prepareStatement<T>(
+        _saveInsertSuppliedKeyQuery ??= await _prepare<T>(
           TomLiteralSelect([T], query: insertSql, parameters: paramNames),
         );
       } else {
-        _saveInsertQuery ??= await datasource.prepareStatement<T>(
+        _saveInsertQuery ??= await _prepare<T>(
           TomLiteralSelect(
             [T],
             query: datasource.sqlDialect.returningKey(
@@ -2595,12 +2722,12 @@ SELECT * FROM ${dbTable.table}
           ? null
           : _heldVersion(toSave, version, 'save');
       final (sql, paramNames) = buildUpdateStatement(
-        dbTable.table,
+        _sqlTable(dbTable.table),
         writable,
         primaryKeyColumns,
         version: version,
       );
-      _saveUpdateQuery ??= await datasourceInfo.datasource.prepareStatement<T>(
+      _saveUpdateQuery ??= await _prepare<T>(
         TomLiteralSelect([T], query: sql, parameters: paramNames),
       );
       final params = <String, Object?>{
@@ -2717,10 +2844,7 @@ SELECT * FROM ${dbTable.table}
     Map<String, Object?> params, [
     Type? resultType,
   ]) async {
-    final stmt = await datasourceInfo.datasource.prepareStatement<R>(
-      query,
-      resultType,
-    );
+    final stmt = await _prepare<R>(query, resultType);
     try {
       return await stmt.execute(params);
     } finally {
@@ -2738,7 +2862,7 @@ SELECT * FROM ${dbTable.table}
     TomQuery query,
     Map<String, Object?> params,
   ) async {
-    final stmt = await datasourceInfo.datasource.prepareStatement<T>(query);
+    final stmt = await _prepare<T>(query);
     try {
       return (await stmt.run(params)).affectedRows;
     } finally {
@@ -2978,6 +3102,7 @@ SELECT * FROM ${dbTable.table}
     String dbQuery,
     Map<String, Object?> params,
   ) async {
+    _guardLiteral();
     // Wrap the raw SQL as a literal query whose parameters are its `:name`
     // placeholders in textual order, so it prepares and binds positionally
     // instead of string-substituting values into the command.
@@ -2988,4 +3113,18 @@ SELECT * FROM ${dbTable.table}
     );
     return _maskRows(await _runPrepared<T>(query, params));
   }
+}
+
+/// One data source entity repositories ran statements on in a transaction.
+final class _TransactionBranch {
+  _TransactionBranch(this.info);
+
+  /// The data source, as the repositories reached it.
+  final TomDataSourceInfo info;
+
+  /// The classifications that used it: tenant table `true`, system `false`.
+  final Set<bool> kinds = {};
+
+  /// The system tables' own data sources whose tables ran on it qualified.
+  final Set<TomDataSource> qualified = {};
 }

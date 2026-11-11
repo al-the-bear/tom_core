@@ -76,6 +76,8 @@ module builds its query DSL and repositories on top of this layer.
     - [SqlPlaceholderScan](#sqlplaceholderscan)
   - [SQL Lexing](#sql-lexing)
     - [TomSqlLexer](#tomsqllexer)
+  - [Table Qualification](#table-qualification)
+    - [TomSqlTableQualification](#tomsqltablequalification)
   - [Framework-Owned Tables](#framework-owned-tables)
     - [TomFrameworkColumn](#tomframeworkcolumn)
     - [TomFrameworkKey](#tomframeworkkey)
@@ -114,6 +116,7 @@ Source: `lib/src/tomserver/datasources/connection_pool.dart`,
 `lib/src/tomserver/datasources/sql_instant.dart`,
 `lib/src/tomserver/datasources/sql_lexer.dart`,
 `lib/src/tomserver/datasources/sql_placeholder_scan.dart`,
+`lib/src/tomserver/datasources/table_qualification.dart`,
 `lib/src/tomserver/datasources/types_operator.dart`.
 
 A `TomDbType<T>` boxes a Dart value together with its SQL column type; a
@@ -229,6 +232,7 @@ TomPrimaryReads  (annotation)
 TomReplicaRouting  (statics)
 SqlPlaceholderScan
 TomSqlLexer
+TomSqlTableQualification  (statics)
 TomFrameworkTable
 TomFrameworkColumn
 TomFrameworkKey
@@ -2010,6 +2014,31 @@ implements what MariaDB actually does under the default `sql_mode`
 | `commentOpensAt` | `static bool commentOpensAt(String sql, int index)` | Whether a comment opens at `index` — `--`, `#` or `/*`. Only meaningful outside a quoted run. |
 | `endOfDollarQuote` | `static int? endOfDollarQuote(String sql, int openIndex)` | The index of the last character of the PostgreSQL dollar-quoted string opening at `openIndex` — its closing tag's last `$`, or the end of the input when unclosed — or `null` when none opens there: a `$` inside an identifier (`a$b`) or a positional parameter (`$1`). |
 | `splitStatements` | `static List<String> splitStatements(String sql, {bool backslashEscapes = true, bool dollarQuotes = false})` | Splits `sql` into its statements on unquoted, uncommented semicolons, trimmed, dropping whitespace-only fragments; `backslashEscapes` is the database's literal rule (`false` for PostgreSQL, where `'C:\'` is a whole literal). **Comments are preserved** — `/*!40101 … */` is executable, version-gated SQL, so dropping it would silently remove a statement. With `dollarQuotes` (PostgreSQL) a dollar-quoted string — `$$ … $$`, `$tag$ … $tag$` — is one run, so a function body's semicolons do not end its statement. |
+
+### Table Qualification
+
+#### TomSqlTableQualification
+
+The schema the table names of a statement are qualified with while it is
+rendered — how a system table's statements run on a tenant's connection. Only
+the table positions are qualified (`FROM`, `INSERT INTO`, `UPDATE`,
+`DELETE FROM`): the generated queries, subqueries, grouped selects and
+`TomFrameworkTable.insertRow` render theirs through `table`; a column stays
+`table.column`, which MariaDB and PostgreSQL resolve against a qualified table
+by its bare name.
+
+##### Static Methods
+
+| Method | Signature | Description |
+| ------ | --------- | ----------- |
+| `table` | `static String table(String table)` | `table` as the statement being rendered in this zone names it: qualified inside `run` with a qualifier, else unchanged. |
+| `run` | `static R run<R>(String Function(String table)? qualify, R Function() body)` | Runs `body` with every table position rendered in it qualified by `qualify` (typically `TomSqlDatasource.qualify`, or `TomSqlDatasourceRepository.tableQualifier`); with `null`, runs it unchanged. |
+
+##### Static Properties
+
+| Property | Type | Description |
+| -------- | ---- | ----------- |
+| `isActive` | `bool` | *(getter)* Whether the statements rendered in this zone qualify their tables. |
 
 ### Framework-Owned Tables
 

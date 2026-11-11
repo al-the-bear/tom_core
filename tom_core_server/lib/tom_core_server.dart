@@ -108,6 +108,7 @@ export 'src/tomserver/datasources/sql_failure_mode.dart';
 export 'src/tomserver/datasources/sql_instant.dart';
 export 'src/tomserver/datasources/sql_lexer.dart';
 export 'src/tomserver/datasources/sql_datasource.dart';
+export 'src/tomserver/datasources/table_qualification.dart';
 export 'src/tomserver/datasources/sql_placeholder_scan.dart';
 export 'src/tomserver/datasources/types_operator.dart';
 export 'src/tomserver/db_migration/db_migration.dart';

@@ -243,8 +243,12 @@ class MultiTenantSample {
 
   /// Writes an invoice of [tenant] and a review report in one transaction —
   /// a tenant table and a system table — and answers the refusal's key, or
-  /// `null` when it committed. Refused on one-phase data sources, where the
-  /// two would be two commits.
+  /// `null` when it committed.
+  ///
+  /// Every tenant here lives on the system schema's server, so its connection
+  /// reaches the system schema: the report runs on it, its table qualified,
+  /// and the transaction commits as one branch. A tenant on another server
+  /// would need two-phase (`*_xa`) data sources, and is refused without them.
   Future<String?> invoiceWithReport(String tenant) async {
     try {
       await tenancy.runFor(

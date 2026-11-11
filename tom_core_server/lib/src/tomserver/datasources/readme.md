@@ -39,6 +39,7 @@ one convention. `MariaDbDatasource` and `PostgresDatasource` supply the wire;
 | `TomSqlFailureMode` · `classifySqlFailure` | Whether a failed write is known not to have happened (`definite`) or may have (`ambiguous`) — the difference between a safe retry and a duplicate. `isLostConnectionFailure` is the narrower question the driver's own retry asks. |
 | `SqlPlaceholderScan` | Rewrites the generated `:name` placeholders into the positional form a driver binds — `?` for MariaDB, `$1`, `$2`, … for PostgreSQL — leaving quoted text and `::` casts alone. |
 | `TomSqlLexer` | The package's one quote- and comment-aware SQL scanner: where a quoted run ends, where a comment ends, and `splitStatements`. The driver uses it to refuse a multi-statement command; `db_migration`'s applier and DDL reader are written on it. |
+| `TomSqlTableQualification` | Qualifies the table positions of the statements rendered in its zone (`table_qualification.dart`): how a system table's repository names the system schema on a tenant's connection. |
 
 ## Instants are UTC, everywhere
 

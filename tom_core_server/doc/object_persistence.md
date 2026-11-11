@@ -470,7 +470,8 @@ Every repository rejection is a keyed `TomServerException`, never a bare
 | `crud_repository.save.update_not_readable` | An `UPDATE` ran but the row could not be re-read. |
 | `crud_repository.upsert.unsupported` | `upsert` was called for an entity whose write needs the stored row — `upsertBlocker` names why (parameters `type`, `reason`). See [Upserting by a unique key](#upserting-by-a-unique-key). |
 | `crud_repository.upsert.unscoped_conflict_key` | `upsert`'s `conflictFields` leave out the entity's `@TomDbScope` or tenant field (parameters `type`, `field`). |
-| `crud_repository.transaction.tenant_and_system_one_phase` | One transaction would hold a tenant table and a system table on two data sources of which one commits in a single phase (parameter `entity`). See [One transaction, two kinds](#one-transaction-two-kinds). |
+| `crud_repository.transaction.tenant_and_system_one_phase` | One transaction would hold a tenant table and a system table on two data sources of which one commits in a single phase and the tenant's does not reach the system's (parameter `entity`). See [One transaction, two kinds](#one-transaction-two-kinds). |
+| `crud_repository.transaction.literal_on_tenant_connection` | A raw statement (`executeQueryString`) for a system table that the transaction already runs on a tenant's connection, where its text would name the tenant's schema (parameter `entity`). See [One transaction, two kinds](#one-transaction-two-kinds). |
 | `crud_repository.delete.unsaved_entity` | `delete(entity)` was handed an entity that was never persisted. |
 | `crud_repository.save.incomplete_key` | `save` was handed a composite-key entity with a key field still `null`. |
 | `crud_repository.key.shape_mismatch` | A composite-key method was handed a key that is not a `TomCompositeKey` of exactly the entity's key fields. |
@@ -1942,14 +1943,43 @@ unit depends on the data sources involved:
 | The two tables' data sources | In one transaction |
 | ---------------------------- | ------------------ |
 | the same one — a shared tenant of the type `default`, or no tenancy | one branch, as any transaction |
-| two, both two-phase (`mariadb_xa`, `postgresql_xa`) | two branches, committed in two phases by the transaction manager |
-| two, one of them one-phase | refused at the statement that would join the second, `crud_repository.transaction.tenant_and_system_one_phase` |
+| the tenant's reaches the system's — `schema` isolation, a type's shared schema, a `database` tenant on the same MariaDB server | one branch: the system table runs on the tenant's connection, its table qualified with the system schema |
+| two, both two-phase (`mariadb_xa`, `postgresql_xa`), the tenant's not reaching the system's | two branches, committed in two phases by the transaction manager |
+| two, one of them one-phase, the tenant's not reaching the system's | refused at the statement that would join the second, `crud_repository.transaction.tenant_and_system_one_phase` |
 
-Two one-phase data sources would commit one after the other, and a failure
-between the two commits would leave the tenant's change without the system's
-or the other way round. A deployment whose `schema` or `database` tenants write
-system tables in their transactions configures the `*_xa` data source types, or
-splits the work into two transactions.
+A tenant's data source **reaches** the system's when a statement on its
+connection can name the system schema's tables: the same driver, server and
+user, and on PostgreSQL the same database (`TomSqlDatasource.canQualify`). A
+schema of the tenant's own and a type's shared schema always do; a database of
+its own does on MariaDB, whose databases are its schemas, and not on
+PostgreSQL. Then a system table in the tenant's transaction runs on the
+tenant's connection, and every statement the repository renders for it —
+reads, counts, query sentences, inserts, updates, deletes, upserts, soft
+deletes, restores and history rows — names its table qualified
+(`TomSqlDatasource.qualify`, the table positions only: a column stays
+`table.column`). The transaction is one branch, committed once, with no
+two-phase data source needed. Inside a transaction a system table takes the
+tenant's connection when the work runs in a tenant that reaches it, or when the
+transaction already holds a tenant table on such a connection; a transaction
+that already holds the system table on its own data source keeps it there, so
+its system writes are never split.
+
+`tableQualifier` tells code that runs statements of its own for the entity
+beside the repository how to name its tables
+(`TomSqlTableQualification.run(repository.tableQualifier, ...)`); sync's change
+log does. A raw statement (`executeQueryString`) cannot be qualified: it runs on
+the system table's own data source, and the table's later statements in that
+transaction stay there with it; once the transaction runs the table on a
+tenant's connection, a raw statement for it is refused
+(`crud_repository.transaction.literal_on_tenant_connection`).
+
+Where the tenant's data source does not reach the system's — another server,
+another database on PostgreSQL — two one-phase data sources would commit one
+after the other, and a failure between the two commits would leave the
+tenant's change without the system's or the other way round. A deployment whose
+`database` tenants on other servers write system tables in their transactions
+configures the `*_xa` data source types, or splits the work into two
+transactions.
 
 ### What follows the classification
 

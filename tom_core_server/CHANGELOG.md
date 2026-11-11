@@ -2,6 +2,25 @@
 
 ### Added
 
+- **A system table in a tenant's transaction rides the tenant's connection**
+  (`object_persistence`, `datasources`, `sync`). Inside a transaction a system
+  table's repository runs on the tenant's connection when that connection
+  reaches the system schema (`TomSqlDatasource.canQualify`: `schema`
+  isolation, a type's shared schema, a `database` tenant on the same MariaDB
+  server) — the work runs in such a tenant, or the transaction already holds a
+  tenant table there — and names its table qualified with the system schema in
+  every statement it renders (`TomSqlTableQualification`, the table positions
+  only; `tableQualifier`). The transaction stays one branch, so a tenant's
+  transaction writing a system table no longer needs `*_xa` data sources; the
+  refusal `crud_repository.transaction.tenant_and_system_one_phase` remains for
+  a tenant whose connection does not reach the system schema. A transaction
+  that already holds the system table's own data source keeps it there. A raw
+  statement (`executeQueryString`) for a system table the transaction already
+  runs on a tenant's connection is refused
+  (`crud_repository.transaction.literal_on_tenant_connection`). Sync's change
+  log of a system entity follows it; `TomFrameworkTable.insertRow` qualifies
+  its table in the zone.
+
 - **PostgreSQL dollar quoting in the statement splitter** (`datasources`,
   `db_migration`). `TomSqlLexer.splitStatements(dollarQuotes:)` reads
   `$$ … $$` and `$tag$ … $tag$` as one string (`endOfDollarQuote`), so a

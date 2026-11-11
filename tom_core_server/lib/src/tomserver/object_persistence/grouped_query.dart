@@ -32,6 +32,7 @@ import '../datasources/types_operator.dart';
 
 import 'operators_expressions.dart';
 import 'persistence_annotations.dart';
+import '../datasources/table_qualification.dart';
 
 /// The identifier shape a projection alias must have.
 ///
@@ -447,7 +448,8 @@ class TomGroupedSelect extends TomGeneratedQuery {
   String generateQuery(TomStandardSqlDialect t) {
     _assertHavingIsGrouped(t);
     final tables = <String>{
-      for (final column in getColumnInformation()) column.table.table,
+      for (final column in getColumnInformation())
+        TomSqlTableQualification.table(column.table.table),
     };
     final projection = [
       for (final column in groupBy)

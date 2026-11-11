@@ -5,6 +5,7 @@ import "../object_persistence/persistence_annotations.dart";
 import "../object_persistence/query_sentence_compiler.dart";
 import "types_operator.dart";
 import "sql_dialects.dart";
+import "table_qualification.dart";
 
 /// The persistence metadata for one entity type: its [classMirror], the
 /// [TomDbTable] it maps to, and the per-field [TomColumnInformation] derived
@@ -279,7 +280,7 @@ class TomSelect extends TomGeneratedQuery {
     var columns = getColumnInformation();
     Set<String> tables = {};
     var fieldList = columns.fold<String>("", (current, nextCol) {
-      tables.add(nextCol.table.table);
+      tables.add(TomSqlTableQualification.table(nextCol.table.table));
       if (nextCol.reference != null) {
         return current;
       }
@@ -383,7 +384,7 @@ class TomCount extends TomGeneratedQuery {
     Set<String> tables = {};
     List<String> columnExprs = [];
     for (var nextCol in columns) {
-      tables.add(nextCol.table.table);
+      tables.add(TomSqlTableQualification.table(nextCol.table.table));
       if (nextCol.reference == null) {
         columnExprs.add(
           "${nextCol.table.table}.${nextCol.getQueryFieldName()}",
@@ -427,7 +428,7 @@ class TomDelete extends TomGeneratedQuery {
     );
     // Resolved at construction, like the sort columns above: a type that maps
     // to no table never becomes a query, so by here there is a table to name.
-    return "DELETE FROM ${persistenceInfo[0].table.table}"
+    return "DELETE FROM ${TomSqlTableQualification.table(persistenceInfo[0].table.table)}"
         " WHERE ${query.generate(t)}"
         "${TomGeneratedQuery.orderByClause(dbSort)}"
         "${TomGeneratedQuery.limitClause(top)}";
@@ -456,7 +457,7 @@ class TomUpdate extends TomGeneratedQuery {
       for (final entry in set.entries)
         '${entry.key} = ${entry.value.generate(t)}',
     ];
-    return "UPDATE ${persistenceInfo[0].table.table}"
+    return "UPDATE ${TomSqlTableQualification.table(persistenceInfo[0].table.table)}"
         " SET ${assignments.join(', ')}"
         " WHERE ${query.generate(t)}";
   }

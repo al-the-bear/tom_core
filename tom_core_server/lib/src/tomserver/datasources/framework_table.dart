@@ -51,6 +51,7 @@ import 'datasource_initialization.dart';
 import 'sql_datasource.dart';
 import 'sql_dialects.dart';
 import '../transactions/transaction_manager.dart';
+import 'table_qualification.dart';
 
 /// The dialect the canonical renderings ([TomFrameworkColumn.ddl],
 /// [TomFrameworkTable.createTableDdl]) use: the type vocabulary as declared.
@@ -356,7 +357,11 @@ class TomFrameworkTable {
     bool ignoreConflict = false,
   }) {
     _refuseUnknown(values.keys, 'values');
-    return dialect.insertInto(name, values, ignoreConflict: ignoreConflict);
+    return dialect.insertInto(
+      TomSqlTableQualification.table(name),
+      values,
+      ignoreConflict: ignoreConflict,
+    );
   }
 
   /// The statements writing a row over every row it supersedes — the one with

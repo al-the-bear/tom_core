@@ -417,6 +417,7 @@ Summary: [api_summary_audit_reports.md](api_summary_audit_reports.md)
 | `TomPrimaryReads` | class | Annotation pinning an entity's reads to the primary, never a read replica. |
 | `SqlPlaceholderScan` | class | SQL placeholder scanner. |
 | `TomSqlLexer` | class | The package's one quote/comment scanner and statement splitter. |
+| `TomSqlTableQualification` | abstract final class | Qualifies the table positions of the statements rendered in its zone — a system table's statements on a tenant's connection. |
 | `TomFrameworkTable` | class | The single declaration of a table the framework itself owns, with its kind and placement. |
 | `TomTableKind` | enum | `system` or `tenant` — whether a framework table is the deployment's or a tenant's. |
 | `TomFrameworkColumn` | class | One column of a framework-owned table. |
@@ -2054,6 +2055,7 @@ Summary: [api_summary_audit_reports.md](api_summary_audit_reports.md)
 | `TomSqlSubjectKeyStore` | Privacy |
 | `TomSqlSuppressionList` | Messaging |
 | `TomSqlSyncLog` | Sync |
+| `TomSqlTableQualification` | Datasources |
 | `TomSqlTenantRegistry` | Tenancy |
 | `TomSqlTwoPhaseRecovery` | Datasources |
 | `TomSqlTypeFamily` | Datasources |
