@@ -488,7 +488,7 @@ packages:
       path: "../../tom_core_kernel"
       relative: true
     source: path
-    version: "1.1.16"
+    version: "1.2.0"
   tom_crypto:
     dependency: transitive
     description:
@@ -503,7 +503,7 @@ packages:
       path: "../../tom_flutter_ui"
       relative: true
     source: path
-    version: "1.1.0"
+    version: "1.1.1"
   tom_reflection:
     dependency: transitive
     description:
