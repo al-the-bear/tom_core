@@ -1,0 +1,35 @@
+# The two databases the sample runs against, one per engine, on ports of
+# their own so they sit beside the other samples' stacks. Fresh state per run:
+# tool/run_integration.sh brings each up with `down -v` first.
+#
+#   docker compose up -d --wait mariadb     # MT_DB_ENGINE=mariadb, :3341
+#   docker compose up -d --wait postgres    # MT_DB_ENGINE=postgresql, :5441
+services:
+  mariadb:
+    image: mariadb:11
+    container_name: mt-sample-mariadb
+    ports:
+      - "3341:3306"
+    environment:
+      MARIADB_DATABASE: mtapp
+      # The sample connects as root: provisioning a schema tenant creates its
+      # schema, which on MariaDB is a database.
+      MARIADB_ROOT_PASSWORD: password
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 3s
+      timeout: 5s
+      retries: 30
+  postgres:
+    image: postgres:16
+    container_name: mt-sample-postgres
+    ports:
+      - "5441:5432"
+    environment:
+      POSTGRES_DB: mtapp
+      POSTGRES_PASSWORD: password
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d mtapp"]
+      interval: 3s
+      timeout: 5s
+      retries: 30

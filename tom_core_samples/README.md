@@ -16,7 +16,7 @@ with the depth. Nothing about a package's API is re-documented here — the samp
 
 **No sample package carries a `doc/` folder, and none carries a `doc/api/`
 summary. That is a decision, not an omission**, and it is the same for all
-eighteen. The framework packages carry API mirrors because they have consumers
+nineteen. The framework packages carry API mirrors because they have consumers
 who need the surface without reading the source; a sample has none. Every one
 here is `publish_to: none`, nothing outside this folder imports one, and the
 three libraries among them (`advanced_todo_domain`,
@@ -128,12 +128,12 @@ linked from its name.
 
 ### Focused feature samples
 
-One sample stands outside the todo application: it shows a single framework
-contract implemented over a third-party plugin, and shares no domain with the
-others.
+Two samples stand outside the todo application: each shows one framework
+capability on its own, and shares no domain with the others.
 
 | Project | What it is | Exercises |
 | --- | --- | --- |
+| [`multi_tenant_sample`](multi_tenant_sample/README.md) | Tenancy end to end, live on MariaDB and PostgreSQL: two tenant types with their own migration trees, tenants of shared and schema isolation, an application system table beside tenant tables, the start's migrations and version guard, a tenant onboarded at runtime, a job planned per tenant type, suspend and resume, a move and a backup, the registry read by a restarted node. | [`tom_core_server`](../tom_core_server/README.md) tenancy, db_migration, scheduling |
 | [`core_flutter_code_scanner_sample`](core_flutter_code_scanner_sample/README.md) | Reading QR codes and barcodes with the device camera: an adapter that implements the `TomCodeScanner` contract over the `mobile_scanner` plugin, and a screen that scans through the contract. The plugin stays in the application; the framework holds only the contract. | [`tom_core_flutter`](../tom_core_flutter/README.md) security |
 
 ---
@@ -153,6 +153,7 @@ server whose most useful seam needs no infrastructure gets a runnable file.
 | `core_flutter_ui_showcase`, `core_flutter_form_showcase` | **no — exempt** | Flutter showcase apps: each screen is an example, run with `flutter run` |
 | `core_flutter_acl_sample`, `core_flutter_acl_responsive` | **no — exempt** | Flutter showcase apps, as above |
 | `core_flutter_code_scanner_sample` | **no — exempt** | a Flutter app: `lib/main.dart` is the entry point, and its two suites run the adapter's mappings and the scan screen without a camera |
+| `multi_tenant_sample` | **no — exempt** | a program: `bin/multi_tenant_start.dart` is the walk-through, printing each step, and `tool/run_integration.sh` asserts it on both databases |
 | the ten `advanced_*` packages | the three hand-written libraries and `advanced_ops_server` — yes; the other five runtimes and the generated `advanced_openapi_client` — **no, exempt** | stated per package in [the advanced family's index](README_advanced_sample.md#the-ten-packages) |
 
 An exempt row is a decision, not a gap: a sweep that finds no `example/` in one
@@ -203,12 +204,14 @@ server over `dart:io` cannot target web — and
 
 `core_server_sample` additionally brings up MySQL in Docker (compose file +
 bootstrap) — see its `README.md` for the one-command bring-up.
+`multi_tenant_sample` brings up MariaDB and PostgreSQL in turn
+(`./tool/run_integration.sh`).
 
 ---
 
 ## Reflection seeds
 
-Fourteen of the eighteen packages carry a generated `*.reflection.dart` — the
+Fifteen of the nineteen packages carry a generated `*.reflection.dart` — the
 reflection seed a program or a test installs with `initializeReflection()`.
 The rule for them is the same in every package, decided once here:
 
@@ -287,6 +290,7 @@ tom_core_samples/
   core_flutter_acl_sample/       Advanced Container Layout engine + four auth states
   core_flutter_acl_responsive/   responsive layouts on the ACL engine
   core_flutter_code_scanner_sample/  TomCodeScanner over the mobile_scanner camera plugin
+  multi_tenant_sample/           tenancy end to end, live on MariaDB and PostgreSQL
   advanced_todo_domain/          the advanced sample's reflected domain and grade vocabulary
   advanced_todo_contracts/       its wire DTOs and endpoint registry
   advanced_client_core/          its Flutter-free authenticated HTTP client
@@ -299,7 +303,7 @@ tom_core_samples/
   advanced_openapi_client/       Dart clients generated from the servers' OpenAPI documents
 ```
 
-Four of the packages also have an `assets/` folder of their own — the servers'
+Five of the packages also have an `assets/` folder of their own — the servers'
 runtime configuration, loaded at boot. The suite-level `assets/` is not one of
 those; it holds only figures.
 

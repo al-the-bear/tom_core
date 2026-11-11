@@ -1,0 +1,6 @@
+# The live suite runs against a database tool/run_integration.sh brings up;
+# without one it skips. Suites run one at a time: the live suite installs a
+# process-wide tenancy.
+concurrency: 1
+tags:
+  live:

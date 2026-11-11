@@ -17,6 +17,7 @@ with a down script beside it can be [rolled back](#rolling-migrations-back).
   - [The migration engine](#the-migration-engine)
   - [The convergence checks](#the-convergence-checks)
   - [The shared schema model and DDL replay](#the-shared-schema-model-and-ddl-replay)
+- [Migrations and Tenancy](#migrations-and-tenancy)
 - [The Directory Layout](#the-directory-layout)
   - [One File per Migration](#one-file-per-migration)
   - [What a Schema Directory May Hold Besides Migrations](#what-a-schema-directory-may-hold-besides-migrations)
@@ -140,6 +141,22 @@ real disagreement rather than two spellings of the same thing.
 | `TomSchemaColumn` | class | One column: its type family, declared type and origin |
 | `TomSchemaBuilder` | class | The mutable accumulator both sides build their model through |
 | `TomSqlTypeFamilyCompatibility` | extension | How much difference between two type families still counts as agreement |
+
+## Migrations and Tenancy
+
+Migrations and tenancy are one path, described from the tenancy side in
+[tenancy.md](tenancy.md#tenancy-and-migrations-end-to-end). This guide holds
+its migration steps: the system tree and one tree per tenant type under one
+root ([The Directory Layout](#the-directory-layout)); `migrateAll`, which the
+start runs after it installed the tenancy — the system schema first, then each
+type's shared schema and every tenant of its own
+([Tenants, by their type](#tenants-by-their-type)); and the version guard that
+keeps a node from serving a schema its code does not fit
+([Rolling Deploys](#rolling-deploys-version-skew)). Which tables a type's tree
+must create, and what the start refuses, is in
+[tenancy.md](tenancy.md#what-the-start-refuses);
+[`multi_tenant_sample`](../../tom_core_samples/multi_tenant_sample/README.md)
+runs both halves live on MariaDB and PostgreSQL.
 
 ## The Directory Layout
 

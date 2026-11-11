@@ -309,6 +309,7 @@ core_server_sample/
 │   ├── todo_authorization_test.dart        # DB-free: the four-state resolver
 │   ├── boot_assets_test.dart               # DB-free: required vs optional assets
 │   ├── grant_table_ddl_test.dart           # DB-free: grant DDL == framework's
+│   ├── tenancy_plain_test.dart             # DB-free: no tenancy, nothing to configure
 │   ├── readme_api_reference_test.dart      # DB-free: README ## API == the source
 │   └── todo_endpoints_integration_test.dart # live endpoints (skips if down)
 ├── tool/
@@ -877,6 +878,11 @@ wrote itself, so running it does not disturb a `.env` you are working with.
   (`todo_health_config_test.dart`);
 - the boot's asset preconditions — which configuration files it refuses to start
   without, and the resolved path its failure names (`boot_assets_test.dart`);
+- that it is a plain application as far as tenancy goes: no entity of its own
+  is a tenant table and its configuration names no tenancy, so the start
+  installs nothing (`TomTenancyStartup`, mode `plain`) and the sample configures
+  nothing for it (`tenancy_plain_test.dart`; the multi-tenant counterpart is
+  [`multi_tenant_sample`](../multi_tenant_sample/README.md));
 - the runnable database-free example (`run_all_examples.dart`);
 - the full infrastructure: Docker compose, migrations (schema + grants),
   datasource/config assets, `.env.example`, reflection wiring.

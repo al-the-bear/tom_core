@@ -1,0 +1,40 @@
+# The server configuration the sample starts with. The data source `main`
+# is built from the environment (MT_DB_ENGINE and friends) by the program;
+# everything about tenancy and migrations is here — what TomServer.start
+# reads.
+
+# TomServer.configureTenancy installs this tenancy (no tenancy is installed
+# in code), and checks the types' trees against the tenant tables.
+tenancy:
+  datasources: [main]
+  # A request without a token names its tenant by header.
+  resolution: [header]
+  header: X-Tenant-Id
+  # A schema tenant's schema is created when it is provisioned.
+  createSchemas: true
+  # The registry: the table tom_tenant in the system schema of `main`.
+  registry:
+    datasource: main
+    refreshSeconds: 0
+  # A type's tree is <migrations>/tenant/<type>.
+  migrations: database_migrations
+  types:
+    # Small customers: one shared schema for the type, a tenant column.
+    standard:
+      isolation: shared
+      isolations: [shared, schema]
+    # Large customers: a schema each.
+    enterprise:
+      isolation: schema
+  # A seed: the registry is the list of tenants once written.
+  tenants:
+    acme: {type: standard, name: Acme}
+    globex: {type: standard, name: Globex}
+    initech: {type: enterprise, name: Initech}
+
+# TomServer.migrateOnStart: the system tree, each type's shared schema, then
+# every tenant of its own, one at a time. TomServer.guardSchemaOnStart then
+# refuses a system schema behind or incompatibly ahead of the code.
+migrations:
+  onStart: true
+  root: database_migrations

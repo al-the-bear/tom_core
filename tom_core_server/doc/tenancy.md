@@ -16,6 +16,7 @@ This guide is the server half.
 ## Table of Contents
 
 - [Overview](#overview)
+- [Tenancy and Migrations, End to End](#tenancy-and-migrations-end-to-end)
 - [Do I Need Tenancy?](#do-i-need-tenancy)
   - [What the start refuses](#what-the-start-refuses)
 - [Tenant and Organization](#tenant-and-organization)
@@ -98,6 +99,42 @@ table, for moves and backups; `tenant_data.dart` the stores'
 purge contract; `tenant_type.dart` the tenant types;
 `tenant_registry.dart` and `tenant_registry_sql.dart` the registry and its
 table; `tenant_resolution.dart` the request-side resolvers.
+
+## Tenancy and Migrations, End to End
+
+This guide and [db_migration.md](db_migration.md) describe one path, which a
+multi-tenant deployment walks in this order:
+
+1. **Decide whether it needs tenancy.** The start decides from the tenant
+   tables and the configuration — plain, implicit or configured
+   ([Do I Need Tenancy?](#do-i-need-tenancy)).
+2. **Mark its tables.** An entity with `@TomTenantTable` is a tenant's, every
+   other one a system table in the system schema
+   ([Tenant Tables and System Tables](#tenant-tables-and-system-tables)).
+3. **Declare its tenant types**, each with its isolation models and a migration
+   tree under `<root>/tenant/<type>/`, beside the system tree `<root>/system/`
+   ([Tenant Types](#tenant-types);
+   [the directory layout](db_migration.md#the-directory-layout)).
+4. **Start.** `TomServer.start` installs the configured tenancy and checks it,
+   migrates the system schema, each type's shared schema and every tenant of
+   its own ([Tenants, by their type](db_migration.md#tenants-by-their-type)),
+   and refuses a system schema the code does not fit; a tenant whose schema
+   does not fit is refused per request while the others are served
+   ([Rolling Deploys](db_migration.md#rolling-deploys-version-skew)).
+5. **Serve.** A request names its tenant
+   ([Resolving a Request's Tenant](#resolving-a-requests-tenant)); queued work
+   keeps the tenant it was raised in, and a job declared per tenant type runs
+   once in each ([What Is Tenant-Scoped](#what-is-tenant-scoped)).
+6. **Run the tenants.** Onboard, suspend, remove, restore and purge them; move
+   one to another isolation or type; back one up and restore it
+   ([Onboarding a Tenant](#onboarding-a-tenant) and the sections after it).
+
+[`multi_tenant_sample`](../../tom_core_samples/multi_tenant_sample/README.md)
+walks this path live on MariaDB and PostgreSQL: two types, shared and schema
+tenants, an application system table, a tenant onboarded at runtime, a job per
+type, a move, a backup and a restarted node reading the registry.
+[`core_server_sample`](../../tom_core_samples/core_server_sample/README.md) is
+the other path: no tenant table, no tenancy, nothing configured.
 
 ## Do I Need Tenancy?
 

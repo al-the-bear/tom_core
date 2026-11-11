@@ -1,0 +1,13 @@
+targets:
+  $default:
+    builders:
+      tom_reflection_generator:reflection_generator:
+        generate_for:
+          # The program is the reflection root: through its imports the
+          # generator reaches the sample's entities and, through the
+          # tom_core_server barrel, the drivers, migration adaptors and the
+          # framework's own reflected types. Emits
+          # bin/multi_tenant_start.reflection.dart.
+          - bin/multi_tenant_start.dart
+        options:
+          formatted: true

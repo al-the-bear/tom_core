@@ -1,0 +1,28 @@
+name: multi_tenant_sample
+description: >-
+  Tom Core multi-tenant sample — two tenant types with their own migration
+  trees, tenants of shared and schema isolation, an application system table
+  beside tenant tables, onboarding at runtime, a job planned per tenant type,
+  the start's migrations and version guard, a move and a backup. Verified live
+  on MariaDB and PostgreSQL by tool/run_integration.sh.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.10.0
+
+dependencies:
+  tom_core_server:
+    path: ../../tom_core_server
+  tom_core_kernel:
+    path: ../../tom_core_kernel
+  tom_reflection: ">=1.0.1"
+  shelf: ^1.4.2
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.28.0
+  build: ^4.0.3
+  build_runner: ^2.10.4
+  tom_reflection_generator:
+    path: ../../../reflection/tom_reflection_generator
