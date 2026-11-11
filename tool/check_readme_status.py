@@ -115,9 +115,20 @@ def self_test() -> int:
     """Perturb a real Status block in each direction; require an objection."""
     readme = REPO_ROOT / "tom_core_server" / "README.md"
     original = readme.read_text(encoding="utf8")
+    # The version the README states is the pubspec's, so the perturbation is
+    # derived from it rather than written here, where every release would
+    # break the self-test.
+    pubspec = (REPO_ROOT / "tom_core_server" / "pubspec.yaml").read_text(
+        encoding="utf8"
+    )
+    declared = re.search(r"^version:\s*(\S+)", pubspec, re.M).group(1)
+    stated = f"- **Version:** {declared}"
+    if stated not in original:
+        print(f"self-test: the README does not state '{stated}'", file=sys.stderr)
+        return 2
     try:
         readme.write_text(
-            original.replace("- **Version:** 1.3.0", "- **Version:** 9.9.9", 1),
+            original.replace(stated, "- **Version:** 9.9.9", 1),
             encoding="utf8",
         )
         block = STATUS.search(readme.read_text(encoding="utf8"))

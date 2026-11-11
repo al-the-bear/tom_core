@@ -25,8 +25,9 @@ git-tracked files minus what pub leaves out: `.pubignore` when the package has
 one, else `.gitignore` (pub reads one or the other, never both, which is why a
 `.pubignore` repeats the `.gitignore` lines it still needs). Patterns follow
 gitignore: a pattern holding a slash is anchored to the package directory, one
-without matches a name at any depth, a trailing slash matches a directory.
-Negated patterns are refused rather than half-understood.
+without matches a name at any depth, a trailing slash matches a directory,
+and the last pattern that matches decides — a `!` pattern re-including what an
+earlier one left out, as a tracked `pubspec.lock` is.
 
 `package:` and `dart:` URIs are a dependency's business and are not checked.
 """
@@ -60,34 +61,40 @@ def ignore_patterns(package: Path) -> list[str]:
                 line = line.strip()
                 if not line or line.startswith("#"):
                     continue
-                if line.startswith("!"):
-                    raise SystemExit(
-                        f"{gate_scope.rel(file)}: negated pattern {line!r} is not "
-                        "understood by this gate"
-                    )
                 patterns.append(line)
             return patterns
     return []
 
 
 def ignored(relative: PurePosixPath, patterns: list[str]) -> bool:
+    """Whether [patterns] leave [relative] out: the last pattern that matches
+    decides, a `!` pattern re-including it."""
+    left_out = False
+    for line in patterns:
+        negated = line.startswith("!")
+        if _matches(relative, line[1:] if negated else line):
+            left_out = not negated
+    return left_out
+
+
+def _matches(relative: PurePosixPath, raw: str) -> bool:
+    """Whether the gitignore pattern [raw] (without its `!`) matches [relative]."""
     parts = relative.parts
-    for raw in patterns:
-        directory = raw.endswith("/")
-        pattern = raw.strip("/") if raw.startswith("/") else raw.rstrip("/")
-        anchored = raw.startswith("/") or "/" in pattern
-        pattern = pattern.lstrip("/")
-        # A directory pattern matches any leading run of the path's parent
-        # directories; a file pattern matches the path itself as well.
-        candidates = [PurePosixPath(*parts[:i]) for i in range(1, len(parts))]
-        if not directory:
-            candidates.append(relative)
-        for candidate in candidates:
-            if anchored:
-                if fnmatch.fnmatchcase(str(candidate), pattern):
-                    return True
-            elif fnmatch.fnmatchcase(candidate.name, pattern):
+    directory = raw.endswith("/")
+    pattern = raw.strip("/") if raw.startswith("/") else raw.rstrip("/")
+    anchored = raw.startswith("/") or "/" in pattern
+    pattern = pattern.lstrip("/")
+    # A directory pattern matches any leading run of the path's parent
+    # directories; a file pattern matches the path itself as well.
+    candidates = [PurePosixPath(*parts[:i]) for i in range(1, len(parts))]
+    if not directory:
+        candidates.append(relative)
+    for candidate in candidates:
+        if anchored:
+            if fnmatch.fnmatchcase(str(candidate), pattern):
                 return True
+        elif fnmatch.fnmatchcase(candidate.name, pattern):
+            return True
     return False
 
 
@@ -164,6 +171,12 @@ def self_test() -> int:
         return 1
     if ignored(PurePosixPath("lib/test_util.dart"), ["test/"]):
         print("self-test: a directory line matched a file of a similar name", file=sys.stderr)
+        return 1
+    if ignored(PurePosixPath("pubspec.lock"), ["*.lock", "!/pubspec.lock"]):
+        print("self-test: a negated line did not re-include its file", file=sys.stderr)
+        return 1
+    if not ignored(PurePosixPath("other.lock"), ["*.lock", "!/pubspec.lock"]):
+        print("self-test: a negated line re-included another file", file=sys.stderr)
         return 1
     print("self-test: passed")
     return 0

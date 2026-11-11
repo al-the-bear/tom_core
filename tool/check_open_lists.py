@@ -213,9 +213,13 @@ def fault_of(item: Item, finished: dict[str, bool]) -> str | None:
     return None
 
 
-def audit(texts: dict[Path, str] | None = None) -> tuple[list[str], int, int]:
-    """Faults, items read and sections read, over the set or over [texts]."""
-    finished = corpus()
+def audit(
+    texts: dict[Path, str] | None = None,
+    extra: dict[str, bool] | None = None,
+) -> tuple[list[str], int, int]:
+    """Faults, items read and sections read, over the set or over [texts];
+    [extra] adds todo stems to the corpus (the self-test's own)."""
+    finished = {**corpus(), **(extra or {})}
     faults: list[str] = []
     item_count = sections = 0
     for document in documents():
@@ -236,9 +240,12 @@ def self_test() -> int:
     finished = corpus()
     done = next(s for s, f in sorted(finished.items()) if f)
     live = next((s for s, f in sorted(finished.items()) if not f), None)
+    # A finished backlog leaves no unfinished todo to plant; the self-test then
+    # brings one of its own, so it measures the gate rather than the backlog.
+    extra: dict[str, bool] = {}
     if live is None:
-        print("self-test: the corpus holds no unfinished todo to plant")
-        return 1
+        live = "tcselftestopen1"
+        extra = {live: False}
     subject = next(d for d in documents() if HEADING.search(d.read_text("utf8")))
     original = subject.read_text(encoding="utf8")
     heading = HEADING.search(original)
@@ -266,17 +273,17 @@ def self_test() -> int:
             f"- An open end whose todo is named\n  on its second line (`{live}`).",
         ),
     ]
-    baseline, _, _ = audit()
+    baseline, _, _ = audit(extra=extra)
     failures = 0
     for label, item in checks:
-        faults, _, _ = audit(plant(item))
+        faults, _, _ = audit(plant(item), extra)
         hit = len(faults) == len(baseline) + 1 and any(
             f.startswith(label + " ") for f in faults if f not in baseline
         )
         print(f"{'ok  ' if hit else 'FAIL'} {label} reported when planted")
         failures += 0 if hit else 1
     for label, item in clean:
-        faults, _, _ = audit(plant(item))
+        faults, _, _ = audit(plant(item), extra)
         quiet = len(faults) == len(baseline)
         print(f"{'ok  ' if quiet else 'FAIL'} no fault for: {label}")
         failures += 0 if quiet else 1
