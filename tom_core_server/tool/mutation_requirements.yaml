@@ -1,0 +1,7 @@
+# Preconditions of tool/mutations.yaml entries (`requires:`), read by
+# `testkit :mutations`. An entry whose precondition is not met is skipped
+# rather than run: the suites it names self-skip without it, and a skipped
+# suite passes, which would report the mutation as surviving.
+db:
+  description: the MariaDB the db-tagged suites need (docker-compose.test.yaml)
+  tcp: 127.0.0.1:3309
