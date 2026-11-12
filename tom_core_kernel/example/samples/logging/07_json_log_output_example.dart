@@ -187,8 +187,9 @@ void run() {
     assert(traced['span_id'] == trace.spanId, 'span_id is this span');
     assert(traced['tenant'] == 'acme', 'tenant from the zone');
     assert(
-      TomLogContext.names.take(3).join(',') == 'trace_id,span_id,tenant',
-      'The kernel registers trace_id, span_id and tenant, in that order',
+      TomLogContext.names.take(4).join(',') ==
+          'trace_id,span_id,request_id,tenant',
+      'The kernel registers trace_id, span_id, request_id and tenant, in that order',
     );
 
     // Example 4

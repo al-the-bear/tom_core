@@ -1,3 +1,11 @@
+## Unreleased
+
+### Changed
+
+- **The dev dependency `tom_build` is no longer declared.** Nothing imports
+  it, and it closed a dependency cycle through `tom_core_kernel` that buildkit
+  could not order.
+
 ## 1.4.0
 
 ### Added

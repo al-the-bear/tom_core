@@ -1,3 +1,14 @@
+## Unreleased
+
+### Changed
+
+- **Dependencies nothing imports are no longer declared.** The runtime
+  dependencies `typed_data` and `yaml` (the library uses `dart:typed_data`),
+  and the dev dependencies `tom_core_server`, `tom_build`, `mysql_client` and
+  `shelf`. The two path dev dependencies closed a dependency cycle
+  (`tom_core_kernel` → `tom_core_server` → `tom_core_kernel`, and through
+  `tom_build`) that buildkit could not order.
+
 ## 1.2.0
 
 ### Added

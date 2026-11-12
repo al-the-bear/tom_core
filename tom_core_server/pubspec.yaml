@@ -87,6 +87,4 @@ dev_dependencies:
   # Hosted, lower bound only: pub takes the analyzer-10 line (1.8.x) while
   # flutter or tom_d4rt hold analyzer below 14, and 1.9+ once they move.
   tom_reflection_generator: ">=1.8.2"
-  tom_build:
-    path: ../../devops/tom_build
   jose: ^0.3.5+2
