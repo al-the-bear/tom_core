@@ -25,6 +25,7 @@ export 'src/commit_progress.dart';
 export 'src/git_locator.dart';
 export 'src/github_locator.dart';
 export 'src/lfs_pointer.dart';
+export 'src/medium_file_storage.dart';
 export 'src/location_prefix.dart';
 export 'src/object_ceiling.dart';
 export 'src/recording_medium.dart';

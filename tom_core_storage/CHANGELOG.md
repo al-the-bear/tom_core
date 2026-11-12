@@ -4,6 +4,10 @@
 
 ### Added
 
+- **`TomMediumFileStorage`**: single-file containers on a `TomBundleMedium`,
+  one per locator under a prefix, with a compare-and-swap on the SHA-256 of
+  the stored bytes — the storage a browser root has for a KDBX container in
+  IndexedDB.
 - **Settings and secrets, in `settings.dart`.** Formerly the package
   `tom_core_settings`, folded in before the first release:
 
