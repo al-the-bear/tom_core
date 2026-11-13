@@ -48,8 +48,8 @@ import 'package:tom_core_kernel/src/tombase/timezoned/timezones.dart'
     as prefix23;
 
 import 'reflection_test.dart' as prefix24;
-import 'support/reflection_clash_first.dart' as prefix25;
-import 'support/reflection_clash_second.dart' as prefix26;
+import 'test/support/reflection_clash_first.dart' as prefix25;
+import 'test/support/reflection_clash_second.dart' as prefix26;
 
 // ignore_for_file: camel_case_types
 // ignore_for_file: implementation_imports
