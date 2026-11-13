@@ -494,7 +494,8 @@ Anchor: `TomAction`
   **not reference any document or source outside the repo**. If information from
   an external doc is needed, **inline it**.
 - **G-DOC-2** — Workspace/build documentation MUST NOT reference
-  `tom_master.yaml`, `tom_workspace.yaml`, or `tom_project.yaml`.
+  the retired build-stack files (its manifest, workspace and project files);
+  the build files are `buildkit_master.yaml` and `buildkit.yaml`.
 - **G-DOC-3** — Docs describe the **current** design only — no
   backward-compatibility notes, no deprecated-state descriptions.
 - **G-DOC-4** — Every architecture illustration is an **SVG** with (a) an HTML
