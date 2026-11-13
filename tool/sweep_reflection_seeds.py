@@ -7,6 +7,7 @@ Run from anywhere, by hand::
     python3 tool/sweep_reflection_seeds.py todo_domain ops # a subset, by name part
     python3 tool/sweep_reflection_seeds.py --status        # the last sweep, and what moved since
     python3 tool/sweep_reflection_seeds.py --list          # the seeds it would check
+    python3 tool/sweep_reflection_seeds.py --help          # this text
 
 Exits 0 only when every selected seed was measured and is up to date.
 
@@ -68,6 +69,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import shutil
 import subprocess
 import sys
 import time
@@ -206,7 +208,19 @@ def status() -> int:
     return 0
 
 
+OPTIONS = ("--status", "--list", "--help", "-h")
+
+
 def main(argv: list[str]) -> int:
+    unknown = [a for a in argv if a.startswith("-") and a not in OPTIONS]
+    if unknown:
+        # An unknown option is refused rather than ignored: ignored, it would
+        # start the full fifteen-minute sweep the caller did not ask for.
+        print(f"unknown option {' '.join(unknown)}; see --help", file=sys.stderr)
+        return 2
+    if "--help" in argv or "-h" in argv:
+        print(__doc__)
+        return 0
     if argv == ["--status"]:
         return status()
     packages, unscripted = seed_packages()
@@ -227,6 +241,13 @@ def main(argv: list[str]) -> int:
         for p in unscripted:
             print(f"{p}  (no {SCRIPT})")
         return 0
+
+    if shutil.which("dart") is None:
+        # Without it every check fails at once and the sweep reports each seed
+        # FAILED in 0 s, which reads as a broken generator rather than a PATH.
+        print("dart is not on PATH; put the Flutter SDK's bin directory on it "
+              "first", file=sys.stderr)
+        return 2
 
     commit = git("rev-parse", "HEAD").strip()
     # Taken before the checks, so an edit made while they run reads as a
