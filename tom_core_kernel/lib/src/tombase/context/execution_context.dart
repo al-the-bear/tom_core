@@ -644,9 +644,8 @@ class TomContextProviders {
 /// ```
 ///
 /// `final`, and deliberately so. Nothing in the workspace replaces it, the
-/// dartdoc above describes only reading it, and the downstream re-export
-/// already exposes it read-only — `tom_build_cli`'s `D4rtGlobals` publishes a
-/// getter. A reassignable global would
+/// dartdoc above describes only reading it, and a downstream re-export
+/// exposes it read-only (a getter). A reassignable global would
 /// let one importer swap the ambient context out from under every other, which
 /// is a coupling nobody asked for and nothing uses. Build a `TomExecutionContext`
 /// of your own and call `runInContext` on it when you need different providers.

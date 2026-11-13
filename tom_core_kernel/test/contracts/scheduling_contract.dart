@@ -20,7 +20,7 @@
 /// and rejected in the same pass:
 ///
 ///  * a separate `tom_core_scheduling_contract` package — the idiomatic Dart
-///    answer, but it costs a pubspec, a `tom_master.yaml` registration and a
+///    answer, but it costs a pubspec, a `buildkit.yaml` and a
 ///    build-order entry to carry two functions;
 ///  * adding the SQL variants to the kernel's own parameterised loop — the DB
 ///    fixture (`tom_core_server/test/fixtures/test_database.dart`) is not
