@@ -601,14 +601,20 @@ application that publishes or subscribes imports it itself. See the
   `dart analyze` cannot see any of these. The one check too slow to run that way
   is `tool/check_reflection_current.sh`, which regenerates and compares
   exactly (two to four minutes).
-- **Mutation sweep:** `python3 tool/mutation_sweep.py` breaks one recorded
-  behaviour at a time in `lib/` and reports whether the suite noticed. A green
+- **Mutation sweep:** `testkit :mutations` breaks one recorded behaviour at a
+  time in `lib/` and reports whether the tests that name it noticed. A green
   test that *names* a behaviour is not the same as one that pins it, and
   reading the test cannot tell them apart. The catalogue is
   `tool/mutations.yaml` and is the committed half: a module absent from it has
-  not been swept. A mutant that does not compile is reported as INVALID rather
-  than killed, because it turns every test red without asking anything of
-  them; one that makes the suite hang is stopped after ten minutes and counted
-  as killed, since the suite did notice. Not part of a normal test run — it edits `lib/`, restores in a
-  `finally`, and takes minutes.
+  not been swept. Entries whose tests need the MariaDB of the `db`-tagged
+  suites carry `requires: db` (declared in `tool/mutation_requirements.yaml`)
+  and are skipped when nothing listens on `127.0.0.1:3309`, since a
+  self-skipped suite would report the mutation as surviving. A mutant that does
+  not compile is reported as invalid rather than killed, because it turns every
+  test red without asking anything of them; one that makes the suite hang is
+  stopped and counted as killed, since the suite did notice. The report goes
+  to `testlog/mutations_<MMDD_HHMM>.md` and `.json`. Not part of a normal test
+  run: it edits `lib/`, restores each file whatever happens, and takes
+  minutes. `testkit :mutations --list` shows what would run, and
+  `testkit :mutations cache endpoints` sweeps named modules.
 - **License:** BSD-3-Clause — see [LICENSE](LICENSE).

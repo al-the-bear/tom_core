@@ -82,6 +82,22 @@ void main() {
       );
     });
 
+    test('registryStrength ranks a role the registry does not know as none', () {
+      // A role name nobody registered -- a typo in a grant row, or a role an
+      // application removed -- must lose to every registered role, wherever it
+      // stands in the fold. Ranking it as strongest would let a stale grant
+      // win over the role the principal actually holds. Found by mutation --
+      // defaulting an unknown role to `full` left the suite green.
+      expect(
+        TomPrincipalResourceRoleResolver.registryStrength('retired', 'viewer'),
+        'viewer',
+      );
+      expect(
+        TomPrincipalResourceRoleResolver.registryStrength('viewer', 'retired'),
+        'viewer',
+      );
+    });
+
     test(
       'Alice\'s role differs per resource → per-resource role map',
       () async {

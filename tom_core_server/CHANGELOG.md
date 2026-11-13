@@ -2,6 +2,25 @@
 
 ### Changed
 
+- **The mutation sweep is `testkit :mutations`; `tool/mutation_sweep.py` is
+  removed** (archived in tom_archived, `code/261113_tom-core-server-mutation-sweep`).
+  The script's compile-error detection no longer matched `dart test`'s output,
+  so it counted a mutant that does not compile as killed. testkit reads the
+  same catalogue.
+- **`tool/mutations.yaml` matches the code again.** 28 entries whose `find` no
+  longer occurred are rewritten against the current code. Among them, the bind,
+  reference and transaction entries now name `sql_datasource.dart`, where that
+  code moved. The entry for a statement waiting on another transaction's
+  connection is removed, because each transaction has its own branch
+  connection now. Four entries that did not compile are rewritten as compiling
+  mutants:
+  - the error envelope's `errorKey` for a non-Tom error;
+  - an unknown role ranking as `TomAuthState.full`;
+  - an unknown OAuth state handle refused under another key;
+  - a column with no authorization key hidden.
+- **`registryStrength` is pinned for a role the registry does not know**
+  (`principal_resource_grant_test.dart`). Ranking an unregistered role as
+  strongest left the suite green once the mutant compiled.
 - **The dev dependency `tom_build` is no longer declared.** Nothing imports
   it, and it closed a dependency cycle through `tom_core_kernel` that buildkit
   could not order.

@@ -3,11 +3,11 @@
 # One entry per behaviour this package promises: a fallback, a precedence rule,
 # a guard, an error path. `find` is the smallest edit that removes the promise
 # and `tests` are the files expected to notice. Run with
-# `python3 tool/mutation_sweep.py`; a surviving mutation is a behaviour the
-# suite names without pinning.
+# `testkit :mutations` (tom_test_kit; `--list` shows what would run); a
+# surviving mutation is a behaviour the suite names without pinning.
 #
 # A module absent from this file has not been swept. That is the reason the
-# catalogue is committed and not the script alone.
+# catalogue is committed.
 #
 # `find` must match its file exactly once, so an entry cannot silently drift
 # onto a different line.
@@ -47,8 +47,8 @@ cache:
     tests: test/cache_test.dart
   - behaviour: an expired entry is dropped from the cache, not merely reported absent
     file: lib/src/tomserver/cache/server_cache.dart
-    find: "          cache.removeEntry(key);\n          return null;"
-    replace: "          return null;"
+    find: "          cache.removeEntry(key);\n          _countLookup(cacheName, 'expired');\n          return null;"
+    replace: "          _countLookup(cacheName, 'expired');\n          return null;"
     tests: test/cache_test.dart
 
 cmdline:
@@ -118,8 +118,8 @@ resources:
 little_things:
   - behaviour: the envelope omits errorKey for a non-Tom error rather than nulling it
     file: lib/src/tomserver/little_things/server_exception.dart
-    find: "  if (error is TomException) {\n    envelope['errorKey'] = error.key;"
-    replace: "  if (true) {\n    envelope['errorKey'] = error is TomException ? error.key : null;"
+    find: "    envelope['requestUuid'] = error.requestUuid;\n  }\n  if (error is TomServerException) {"
+    replace: "    envelope['requestUuid'] = error.requestUuid;\n  } else {\n    envelope['errorKey'] = null;\n  }\n  if (error is TomServerException) {"
     tests: test/little_things_test.dart test/server_exception_family_test.dart
   - behaviour: the envelope omits clientThrow for a kernel exception
     file: lib/src/tomserver/little_things/server_exception.dart
@@ -183,7 +183,7 @@ authorization:
   - behaviour: a role the registry does not know ranks as none, not as strongest
     file: lib/src/tomserver/authorization/principal_resource_grant.dart
     find: "    final sa = TomResourceRoleRegistry.stateFor(a) ?? TomAuthState.none;"
-    replace: "    final sa = TomResourceRoleRegistry.stateFor(a) ?? TomAuthState.write;"
+    replace: "    final sa = TomResourceRoleRegistry.stateFor(a) ?? TomAuthState.full;"
     tests: test/principal_resource_grant_test.dart test/graded_authorization_test.dart
   - behaviour: a caller supplying no comparator gets the registry ordering
     file: lib/src/tomserver/authorization/principal_resource_grant.dart
@@ -210,13 +210,13 @@ audit:
 
 datasources:
   - behaviour: a TomZonedDate binds the calendar day, not the instant
-    file: lib/src/tomserver/datasources/mariadb_datasource.dart
-    find: "  if (unwrapped is TomZonedDate) return sqlDate(unwrapped);"
+    file: lib/src/tomserver/datasources/sql_datasource.dart
+    find: "  if (unwrapped is TomZonedDate) return sqlDate(unwrapped);\n"
     replace: ""
     tests: test/datasources_test.dart
   - behaviour: a TomZonedTime binds the time of day, not the instant
-    file: lib/src/tomserver/datasources/mariadb_datasource.dart
-    find: "  if (unwrapped is TomZonedTime) return sqlTimeOfDay(unwrapped);"
+    file: lib/src/tomserver/datasources/sql_datasource.dart
+    find: "  if (unwrapped is TomZonedTime) return sqlTimeOfDay(unwrapped);\n"
     replace: ""
     tests: test/datasources_test.dart
   - behaviour: the date literal takes its components as labelled
@@ -225,37 +225,37 @@ datasources:
     replace: "String sqlDate(DateTime value) {\n  final labelled = value.toUtc();"
     tests: test/datasources_test.dart test/object_persistence_test.dart
   - behaviour: the date box unwraps before the renderer is chosen
-    file: lib/src/tomserver/datasources/mariadb_datasource.dart
+    file: lib/src/tomserver/datasources/sql_datasource.dart
     find: "  final unwrapped = value is TomDbType ? value.get() : value;"
     replace: "  final unwrapped = value;"
     tests: test/datasources_test.dart
 
   - behaviour: the pending-reference stack is per row, so an n-row read costs n queries
-    file: lib/src/tomserver/datasources/mariadb_datasource.dart
-    find: "      for (var row in qResult.rows) {\n        // Per row: the stack is drained at the end of this iteration, so a\n        // stack that outlived it would re-resolve every earlier row's\n        // references once more for each row that follows.\n        final refStack = <_PendingReference>[];"
-    replace: "      final refStack = <_PendingReference>[];\n      for (var row in qResult.rows) {"
+    file: lib/src/tomserver/datasources/sql_datasource.dart
+    find: "      for (var row in result.rows) {\n        // Per row: the stack is drained at the end of this iteration.\n        final refStack = <_PendingReference>[];"
+    replace: "      final refStack = <_PendingReference>[];\n      for (var row in result.rows) {"
     requires: db
     tests: test/reference_association_db_test.dart
   - behaviour: a null reference field is refused rather than skipped
-    file: lib/src/tomserver/datasources/mariadb_datasource.dart
-    find: "        List? value = im.invokeGetter(vm.simpleName) as List?;\n        if (value != null) {"
-    replace: "        List? value = im.invokeGetter(vm.simpleName) as List?;\n        if (value == null) { continue; }\n        if (value != null) {"
+    file: lib/src/tomserver/datasources/sql_datasource.dart
+    find: "        List? value = im.invokeGetter(vm.simpleName) as List?;\n        if (value == null) {\n          throw datasourceException("
+    replace: "        List? value = im.invokeGetter(vm.simpleName) as List?;\n        if (value == null) {\n          if (true) continue;\n          throw datasourceException("
     requires: db
     tests: test/reference_association_db_test.dart
   - behaviour: the referenced rows are written into the entity's list
-    file: lib/src/tomserver/datasources/mariadb_datasource.dart
-    find: "            for (var r in result) {\n              value.add(r);\n            }"
-    replace: "            for (var r in <Object>[]) {\n              value.add(r);\n            }"
+    file: lib/src/tomserver/datasources/sql_datasource.dart
+    find: "          for (var r in result) {\n            value.add(r);"
+    replace: "          for (var r in <Object>[]) {\n            value.add(r);"
     requires: db
     tests: test/reference_association_db_test.dart
   - behaviour: a bool binds as 1 or 0, not as its text
-    file: lib/src/tomserver/datasources/mariadb_datasource.dart
-    find: "  if (unwrapped is bool) return unwrapped ? 1 : 0;"
+    file: lib/src/tomserver/datasources/sql_datasource.dart
+    find: "  if (unwrapped is bool) return unwrapped ? 1 : 0;\n"
     replace: ""
     tests: test/datasources_test.dart
   - behaviour: a DateTime binds as an instant literal
-    file: lib/src/tomserver/datasources/mariadb_datasource.dart
-    find: "  if (unwrapped is DateTime) return sqlInstant(unwrapped);"
+    file: lib/src/tomserver/datasources/sql_datasource.dart
+    find: "  if (unwrapped is DateTime) return sqlInstant(unwrapped);\n"
     replace: ""
     tests: test/datasources_test.dart
   - behaviour: an instant is bound in UTC, whatever the local zone
@@ -268,10 +268,10 @@ datasources:
     find: "      '${pad(utc.millisecond, 3)}${pad(utc.microsecond, 3)}';"
     replace: "      '${pad(utc.millisecond, 3)}000';"
     tests: test/datasources_test.dart test/object_persistence_test.dart
-  - behaviour: a server-reported SQL error is a definite failure
+  - behaviour: a MariaDB server-reported SQL error is a definite failure
     file: lib/src/tomserver/datasources/sql_failure_mode.dart
-    find: "    if (cause is MySQLServerException) return TomSqlFailureMode.definite;"
-    replace: ""
+    find: "    if (cause is MySQLServerException || cause is pg.ServerException) {"
+    replace: "    if (cause is pg.ServerException) {"
     tests: test/datasources_test.dart test/sql_text_test.dart test/scheduling_cluster_test.dart
   - behaviour: a failure wrapped in a Tom exception is classified by its root cause
     file: lib/src/tomserver/datasources/sql_failure_mode.dart
@@ -285,7 +285,7 @@ datasources:
     tests: test/datasources_test.dart test/sql_text_test.dart test/scheduling_cluster_test.dart
   - behaviour: a colon inside a quoted literal is not a placeholder
     file: lib/src/tomserver/datasources/sql_placeholder_scan.dart
-    find: "      if (c == _singleQuote || c == _doubleQuote) {\n        i = _copyQuoted(namedSql, i, c, out, escapeWithBackslash: true);\n        continue;\n      }"
+    find: "      if (c == _singleQuote || c == _doubleQuote) {\n        i = _copyQuoted(\n          namedSql,\n          i,\n          c,\n          out,\n          escapeWithBackslash: backslashEscapes,\n        );\n        continue;\n      }\n"
     replace: ""
     tests: test/datasources_test.dart test/sql_text_test.dart test/scheduling_cluster_test.dart
   - behaviour: a colon inside a backticked identifier is not a placeholder
@@ -299,21 +299,15 @@ datasources:
     replace: "      if (false) {"
     tests: test/datasources_test.dart test/sql_text_test.dart test/scheduling_cluster_test.dart
   - behaviour: a data source used inside a running transaction enlists in it
-    file: lib/src/tomserver/datasources/mariadb_datasource.dart
-    find: "    if (_owner != null || current == null || !current.isRunning) return;\n    await current.registerParticipant(this);"
-    replace: "    if (_owner != null || current == null || !current.isRunning) return;"
-    requires: db
-    tests: test/transactional_endpoint_db_test.dart
-  - behaviour: a statement from outside the owning transaction waits for its release
-    file: lib/src/tomserver/datasources/mariadb_datasource.dart
-    find: "    while (_owner != null && !identical(_owner, current)) {\n      await _released!.future;\n    }\n    if (_owner != null || current == null"
-    replace: "    if (_owner != null || current == null"
+    file: lib/src/tomserver/datasources/sql_datasource.dart
+    find: "    await current.registerParticipant(this);\n    return _branches[current];"
+    replace: "    return _branches[current];"
     requires: db
     tests: test/transactional_endpoint_db_test.dart
   - behaviour: ending the transaction releases the connection
-    file: lib/src/tomserver/datasources/mariadb_datasource.dart
-    find: "  Future<bool> endTransaction() async {\n    _releaseConnection();"
-    replace: "  Future<bool> endTransaction() async {"
+    file: lib/src/tomserver/datasources/sql_datasource.dart
+    find: "  Future<bool> endTransaction(TomTransaction transaction) async {\n    await _endBranch(transaction);"
+    replace: "  Future<bool> endTransaction(TomTransaction transaction) async {"
     requires: db
     tests: test/transactional_endpoint_db_test.dart
 
@@ -376,15 +370,15 @@ messaging:
     tests: test/sms_service_test.dart
 
 file_storage:
-  - behaviour: an entry's own factory wins over the registered backend for its type
+  - behaviour: an entry made by register keeps the store it was given, not one built from its type
     file: lib/src/tomserver/file_storage/blob_store_registry.dart
-    find: "    final factory = _factory ?? _backends[type];"
-    replace: "    final factory = _backends[type] ?? _factory;"
+    find: "    if (provided != null) {\n      _store = provided;"
+    replace: "    if (false) {\n      _store = provided;"
     tests: test/file_storage_test.dart
   - behaviour: a backend nobody registered is a configuration error, not a null store
     file: lib/src/tomserver/file_storage/blob_store_registry.dart
-    find: "    final factory = _factory ?? _backends[type];\n    if (factory == null) {"
-    replace: "    final factory = _factory ?? _backends[type];\n    if (false) {"
+    find: "    final factory = _backends[type];\n    if (factory == null) {\n      throw TomStorageException("
+    replace: "    final factory = _backends[type];\n    if (factory == null) {\n      if (true) return;\n      throw TomStorageException("
     tests: test/file_storage_test.dart
   - behaviour: an entry naming no type reports an empty one rather than throwing
     file: lib/src/tomserver/file_storage/blob_store_registry.dart
@@ -562,8 +556,8 @@ configuration:
     tests: test/configuration_test.dart
   - behaviour: an int value widens onto a double property
     file: lib/src/tomserver/configuration/tom_config.dart
-    find: "        if (raw is int && 0.0 is T) {"
-    replace: "        if (raw is int && 0.0 is T && false) {"
+    find: "        } else if (value is int && 0.0 is T) {"
+    replace: "        } else if (value is int && 0.0 is T && false) {"
     tests: test/configuration_test.dart
   - behaviour: a type mismatch carries key, type and value as parameters
     file: lib/src/tomserver/configuration/tom_config.dart
@@ -649,12 +643,12 @@ configuration:
 authentication:
   - behaviour: an inbound bearer token is refused when its signature does not verify
     file: lib/src/tomserver/authentication/jwt_signing.dart
-    find: "    jwt.JWT.verify(\n      token,\n      configuration.key,"
-    replace: "    jwt.JWT.decode(token);\n    if (false) jwt.JWT.verify(\n      token,\n      configuration.key,"
+    find: "    jwt.JWT.verify(\n      token,\n      key.verificationKey,"
+    replace: "    if (false) jwt.JWT.verify(\n      token,\n      key.verificationKey,"
     tests: test/jwt_signing_test.dart test/authentication_test.dart test/server_test.dart
   - behaviour: outside development and test, the bundled sample keys are refused
     file: lib/src/tomserver/authentication/jwt_signing.dart
-    find: "    if (!_isDevelopmentOrTest()) throw TomSigningKeyException(unconfigured);"
+    find: "    if (!isDevelopmentOrTestRuntime()) {\n      throw TomSigningKeyException(unconfigured);\n    }\n"
     replace: ""
     tests: test/jwt_signing_test.dart test/authentication_test.dart
   - behaviour: a blank configured key counts as unconfigured
@@ -664,8 +658,8 @@ authentication:
     tests: test/jwt_signing_test.dart test/authentication_test.dart
   - behaviour: a configured shared secret replaces the sample HMAC key
     file: lib/src/tomserver/authentication/jwt_signing.dart
-    find: "    secret == null ? TomJwtConfiguration.hmacKey : jwt.SecretKey(secret),"
-    replace: "    TomJwtConfiguration.hmacKey,"
+    find: "        ? TomJwtConfiguration.hmacKey\n        : jwt.SecretKey(secret);"
+    replace: "        ? TomJwtConfiguration.hmacKey\n        : TomJwtConfiguration.hmacKey;"
     tests: test/jwt_signing_test.dart test/authentication_test.dart
   - behaviour: the installed configuration becomes the default the server signs with
     file: lib/src/tomserver/authentication/jwt_signing.dart
@@ -737,10 +731,10 @@ authentication:
     find: "      if (state.skipSpendsGrace) {"
     replace: "      if (false) {"
     tests: test/two_factor_test.dart test/authentication_test.dart test/two_factor_enrolment_db_test.dart
-  - behaviour: an authorization completed with an unknown state handle is refused
+  - behaviour: an authorization completed with an unknown state handle is refused as unknown_state, not as another error
     file: lib/src/tomserver/authentication/oauth_flow.dart
     find: "    if (pending == null) {\n      throw TomOAuthException(\n        'oauth.flow.unknown_state',"
-    replace: "    if (false) {\n      throw TomOAuthException(\n        'oauth.flow.unknown_state',"
+    replace: "    if (pending == null) {\n      throw TomOAuthException(\n        'oauth.flow.missing_code',"
     tests: test/oauth_test.dart test/oauth_state_store_test.dart
   - behaviour: a provider redirect with no code is refused
     file: lib/src/tomserver/authentication/oauth_flow.dart
@@ -749,7 +743,7 @@ authentication:
     tests: test/oauth_test.dart test/oauth_state_store_test.dart
   - behaviour: a pending authorization expires after its time to live
     file: lib/src/tomserver/authentication/oauth_flow.dart
-    find: "      DateTime.now().toUtc().difference(pending.createdAt) > timeToLive;"
+    find: "      clock().toUtc().difference(pending.createdAt) > timeToLive;"
     replace: "      false;"
     tests: test/oauth_test.dart test/oauth_state_store_test.dart
   - behaviour: the PKCE verifier is sent with the code exchange
@@ -811,13 +805,13 @@ object_persistence:
     tests: test/paging_test.dart
   - behaviour: a paged read is made stable by appending the primary key to its sort
     file: lib/src/tomserver/object_persistence/paging.dart
-    find: "    return withSort([...sort, TomSortField.asc(key)]);"
+    find: "    return withSort([\n      ...sort,\n      for (final key in missing) TomSortField.asc(key),\n    ]);"
     replace: "    return this;"
     tests: test/paging_test.dart
   - behaviour: a column with no authorization key is always shown in full
     file: lib/src/tomserver/object_persistence/column_authorization.dart
     find: "    if (authKey == null || !_tierEnabled) return TomAuthState.full;"
-    replace: "    if (!_tierEnabled) return TomAuthState.full;"
+    replace: "    if (!_tierEnabled) return TomAuthState.full;\n    if (authKey == null) return TomAuthState.none;"
     tests: test/column_authorization_test.dart
   - behaviour: with database protection off, every column is shown in full
     file: lib/src/tomserver/object_persistence/column_authorization.dart
@@ -841,13 +835,13 @@ object_persistence:
     tests: test/column_authorization_test.dart
   - behaviour: an empty data-scope value list matches no row rather than all
     file: lib/src/tomserver/object_persistence/data_scope.dart
-    find: "    if (list.isEmpty) {\n      return TomDataScopePredicate(builder.boolOp(false), const {});"
-    replace: "    if (list.isEmpty) {\n      return TomDataScopePredicate(builder.boolOp(true), const {});"
+    find: "    if (list.isEmpty) {\n      return TomDataScopePredicate(builder.truthPredicate(false), const {});"
+    replace: "    if (list.isEmpty) {\n      return TomDataScopePredicate(builder.truthPredicate(true), const {});"
     tests: test/data_scope_test.dart test/resource_data_scope_test.dart
   - behaviour: no data-scope groups at all match no row rather than all
     file: lib/src/tomserver/object_persistence/data_scope.dart
-    find: "    if (groups.isEmpty) {\n      return TomDataScopePredicate(builder.boolOp(false), const {});"
-    replace: "    if (groups.isEmpty) {\n      return TomDataScopePredicate(builder.boolOp(true), const {});"
+    find: "    if (groups.isEmpty) {\n      return TomDataScopePredicate(builder.truthPredicate(false), const {});"
+    replace: "    if (groups.isEmpty) {\n      return TomDataScopePredicate(builder.truthPredicate(true), const {});"
     tests: test/data_scope_test.dart test/resource_data_scope_test.dart
   - behaviour: several data-scope groups are ORed, not ANDed
     file: lib/src/tomserver/object_persistence/data_scope.dart
@@ -932,18 +926,18 @@ healthcheck:
     tests: test/healthcheck_test.dart test/endpoints_pipeline_test.dart
   - behaviour: /health consults the liveness analyzer
     file: lib/src/tomserver/healthcheck/health_check.dart
-    find: "      responseFor(await verdictOf(_livenessAnalyzer, 'liveness'));"
-    replace: "      responseFor(await verdictOf(_readinessAnalyzer, 'liveness'));"
+    find: "      responseFor(await verdictOf(liveness, 'liveness', timeout: timeout));"
+    replace: "      responseFor(await verdictOf(readiness, 'liveness', timeout: timeout));"
     tests: test/healthcheck_test.dart test/endpoints_pipeline_test.dart
   - behaviour: /ready consults the readiness analyzer
     file: lib/src/tomserver/healthcheck/health_check.dart
-    find: "      responseFor(await verdictOf(_readinessAnalyzer, 'readiness'));"
-    replace: "      responseFor(await verdictOf(_livenessAnalyzer, 'readiness'));"
+    find: "        : await verdictOf(readiness, 'readiness', timeout: timeout),"
+    replace: "        : await verdictOf(liveness, 'readiness', timeout: timeout),"
     tests: test/healthcheck_test.dart test/endpoints_pipeline_test.dart
   - behaviour: an analyzer that does not answer in time is unhealthy
     file: lib/src/tomserver/healthcheck/health_check.dart
-    find: "      return await analyzer.analyzeHealth().timeout(_healthTimeout);"
-    replace: "      return await analyzer.analyzeHealth().timeout(_healthTimeout * 100);"
+    find: "      return await analysis.timeout(deadline);"
+    replace: "      return await analysis.timeout(deadline * 100);"
     tests: test/healthcheck_test.dart test/endpoints_pipeline_test.dart
   - behaviour: an analyzer that throws is unhealthy, not a server error
     file: lib/src/tomserver/healthcheck/health_check.dart
@@ -989,7 +983,7 @@ transactions:
     tests: test/transactions_test.dart
   - behaviour: a participant that throws while preparing rolls the transaction back
     file: lib/src/tomserver/transactions/transaction_manager.dart
-    find: "          tomLog.debug('$stack');\n          return rollbackTransaction();"
+    find: "          tomLog.debug('$stack');\n          return await rollbackTransaction();"
     replace: "          tomLog.debug('$stack');\n          continue;"
     tests: test/transactions_test.dart
   - behaviour: a concluded transaction accepts no further participants
@@ -1044,8 +1038,8 @@ transactions:
     tests: test/transactions_test.dart
   - behaviour: commit marks the transaction not-running before it runs
     file: lib/src/tomserver/transactions/transaction_manager.dart
-    find: "  Future<TomTransactionResult> commitTransaction() async {\n    _isRunning = false;"
-    replace: "  Future<TomTransactionResult> commitTransaction() async {"
+    find: "  Future<TomTransactionResult> _commit() async {\n    _isRunning = false;"
+    replace: "  Future<TomTransactionResult> _commit() async {"
     tests: test/transactions_test.dart
   - behaviour: a concluded transaction clears itself from its scope
     file: lib/src/tomserver/transactions/transaction_manager.dart
