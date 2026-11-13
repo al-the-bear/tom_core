@@ -44148,7 +44148,7 @@ final _data = <r.Reflection, r.ReflectorData>{
         const <int>[8408, 8409],
         const <int>[2735, 2736, 2737, 2738, 2739, 8408, 8409],
         const <int>[],
-        -1,
+        161,
         const {},
         const {},
         {},
@@ -51076,7 +51076,7 @@ final _data = <r.Reflection, r.ReflectorData>{
           11078,
         ],
         const <int>[11054, 11080],
-        -1,
+        161,
         const {},
         const {},
         {
@@ -51382,7 +51382,7 @@ final _data = <r.Reflection, r.ReflectorData>{
         const <int>[11161, 11162, 11163, 11164],
         const <int>[2735, 2736, 2737, 2738, 2739, 11161, 11162],
         const <int>[],
-        -1,
+        161,
         const {},
         const {},
         {
@@ -58222,7 +58222,7 @@ final _data = <r.Reflection, r.ReflectorData>{
         {},
         {
           r'': (bool b) =>
-              ({distance = 0.001, time = 0.001, velocity = 0.001}) => b
+              ({distance = 1e-3, time = 1e-3, velocity = 1e-3}) => b
               ? prefix137.Tolerance(
                   distance: distance,
                   time: time,
@@ -315567,7 +315567,7 @@ final _data = <r.Reflection, r.ReflectorData>{
         294,
         const <int>[],
         const [],
-        0.001,
+        1e-3,
         #distance,
       ),
       r.ParameterMirrorImpl(
@@ -315580,7 +315580,7 @@ final _data = <r.Reflection, r.ReflectorData>{
         294,
         const <int>[],
         const [],
-        0.001,
+        1e-3,
         #time,
       ),
       r.ParameterMirrorImpl(
@@ -315593,7 +315593,7 @@ final _data = <r.Reflection, r.ReflectorData>{
         294,
         const <int>[],
         const [],
-        0.001,
+        1e-3,
         #velocity,
       ),
       r.ParameterMirrorImpl(
