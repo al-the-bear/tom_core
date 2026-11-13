@@ -1,13 +1,21 @@
 # Changelog
 
-## 0.1.0
+## 0.1.1
 
 ### Added
 
+- **`TomGitHubStorage.committer`**: the author and committer its commits name
+  (a `GitHubGitIdentity`, e.g. a device), instead of the token's owner. Needs
+  `tom_github_api` 1.4.0.
 - **`TomMediumFileStorage`**: single-file containers on a `TomBundleMedium`,
   one per locator under a prefix, with a compare-and-swap on the SHA-256 of
   the stored bytes — the storage a browser root has for a KDBX container in
   IndexedDB.
+
+## 0.1.0
+
+### Added
+
 - **Settings and secrets, in `settings.dart`.** Formerly the package
   `tom_core_settings`, folded in before the first release:
 

@@ -320,6 +320,13 @@ class TomGitHubStorage extends TomStorage {
   /// the caller passes to [commit] is used as it is.
   final String commitMessagePrefix;
 
+  /// Who the commits of [commit] and [delete] name as author and committer,
+  /// e.g. a device (`bigbeast <bigbeast@tsm.invalid>`); null leaves both to
+  /// GitHub, which records the token's owner. The README commit that
+  /// bootstraps an empty repository goes through the contents API and is
+  /// always the token owner's.
+  final GitHubGitIdentity? committer;
+
   /// Branches whose durable snapshot has been looked for this session.
   ///
   /// Once per branch, so that a caller which *drops* the in-memory snapshot to
@@ -337,6 +344,7 @@ class TomGitHubStorage extends TomStorage {
     this.diagnostics = const TomNullDiagnostics(),
     this.cache,
     this.commitMessagePrefix = '',
+    this.committer,
   }) : _tokens = tokens,
        _clientFactory = clientFactory ?? _defaultClient,
        _clock = clock ?? _utcNow;
@@ -349,6 +357,7 @@ class TomGitHubStorage extends TomStorage {
     this.diagnostics = const TomNullDiagnostics(),
     this.cache,
     this.commitMessagePrefix = '',
+    this.committer,
   }) : _tokens = null,
        _clientFactory = null,
        _client = client,
@@ -641,6 +650,8 @@ class TomGitHubStorage extends TomStorage {
         message: message ?? '${commitMessagePrefix}save ${_basename(loc.path)}',
         treeSha: tree.sha,
         parentShas: [if (snapshot != null) snapshot.commitSha],
+        author: committer,
+        committer: committer,
       );
       try {
         if (snapshot == null) {
@@ -754,6 +765,8 @@ class TomGitHubStorage extends TomStorage {
         message: '${commitMessagePrefix}delete ${_basename(loc.path)}',
         treeSha: tree.sha,
         parentShas: [snapshot.commitSha],
+        author: committer,
+        committer: committer,
       );
       await _api.git.updateRef(
         owner: loc.owner,

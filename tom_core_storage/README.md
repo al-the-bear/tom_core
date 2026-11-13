@@ -1,6 +1,6 @@
 # tom_core_storage
 
-Published on pub.dev as [`tom_core_storage` 0.1.0](https://pub.dev/packages/tom_core_storage).
+Published on pub.dev as [`tom_core_storage` 0.1.1](https://pub.dev/packages/tom_core_storage).
 
 > **Attribution.** The Tom Framework is developed by Peter Nicolai Alexis Kyaw.
 > These packages are BSD-3-Clause licensed and published on pub.dev.
@@ -233,7 +233,7 @@ Future<void> main() async {
 
 ## Status
 
-Version **0.1.0**. `dart test` runs the unit suite, the settings suite in
+Version **0.1.1**. `dart test` runs the unit suite, the settings suite in
 `test/settings/` (the device file and its write queue, the bootstrap against a
 failing and a wiped keychain, the key port, forgetting a location), the
 local-filesystem atomicity suite, the GitHub backend against an in-memory GitHub, the storage

@@ -9,3 +9,6 @@ library;
 
 export 'src/github/github_rate_limits.dart';
 export 'src/github/github_storage.dart';
+
+// The identity TomGitHubStorage.committer takes.
+export 'package:tom_github_api/tom_github_api.dart' show GitHubGitIdentity;

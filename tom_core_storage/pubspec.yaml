@@ -5,7 +5,7 @@ description: >-
   filesystem, browser (IndexedDB) and cache-cipher implementations behind
   entry points of their own, and a GitHub repository or any git server over
   smart HTTP as a backend.
-version: 0.1.0
+version: 0.1.1
 repository: https://github.com/al-the-bear/tom_core
 
 environment:
