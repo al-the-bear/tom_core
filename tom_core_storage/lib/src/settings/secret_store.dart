@@ -33,6 +33,16 @@ abstract interface class TomSecretStore implements TomCacheKeyStore {
   Future<void> delete(String handle);
 }
 
+/// A [TomSecretStore] that can say beforehand whether it can be used at all
+/// (an OS keychain may be locked, absent, or unreachable from the session).
+///
+/// A separate interface so the stores that always answer need not implement
+/// it; a caller asks `store is TomSecretStoreAvailability`.
+abstract interface class TomSecretStoreAvailability {
+  /// Whether the store can be read and written now, without a prompt.
+  Future<bool> isAvailable();
+}
+
 /// Which call on a [TomSecretStore] failed.
 enum TomSecretStoreStep { read, write }
 

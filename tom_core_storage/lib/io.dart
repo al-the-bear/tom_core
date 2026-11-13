@@ -4,6 +4,7 @@
 /// `dart:io`, so a web build cannot link it.
 library;
 
+export 'src/io/desktop_secret_store.dart';
 export 'src/io/directory_medium.dart';
 export 'src/io/git_clones.dart';
 export 'src/io/local_storage.dart';

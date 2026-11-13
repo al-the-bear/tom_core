@@ -1,6 +1,6 @@
 # tom_core_storage
 
-Published on pub.dev as [`tom_core_storage` 0.1.1](https://pub.dev/packages/tom_core_storage).
+Published on pub.dev as [`tom_core_storage` 0.1.2](https://pub.dev/packages/tom_core_storage).
 
 > **Attribution.** The Tom Framework is developed by Peter Nicolai Alexis Kyaw.
 > These packages are BSD-3-Clause licensed and published on pub.dev.
@@ -83,7 +83,7 @@ Dart SDK `^3.10.0`. No Flutter dependency.
 | Import | Holds | Platforms |
 | --- | --- | --- |
 | `package:tom_core_storage/tom_core_storage.dart` | the port, media, cache, journal, asset store and policies, and both repository locators (`TomGitHubLocator`, `TomGitLocator`) | all, the web included (no `dart:io`, no browser API, no cipher) |
-| `package:tom_core_storage/io.dart` | `TomLocalFileSystemStorage`, `TomDirectoryBundleMedium`, `tomGitDirectoryClones`, `tomGitLocalRepositories` | desktop, server, mobile |
+| `package:tom_core_storage/io.dart` | `TomLocalFileSystemStorage`, `TomDirectoryBundleMedium`, `tomGitDirectoryClones`, `tomGitLocalRepositories`, `TomDesktopSecretStore` | desktop, server, mobile |
 | `package:tom_core_storage/github.dart` | `TomGitHubStorage`, `tomGitHubWaitOf` | all, the web included (over `tom_github_api`) |
 | `package:tom_core_storage/git.dart` | `TomGitStorage`, `TomGitLocalRepository`, `tomGitMemoryClones` | all, the web included (over `tom_git` and `http`) |
 | `package:tom_core_storage/web.dart` | `tomOpenBrowserMedium`, `TomBrowserStorageException` | browser (a VM test gets an in-memory stand-in) |
@@ -164,6 +164,8 @@ has said what that would remove.
 | `TomSettingsKeyBootstrap` | Mints the device's settings key into the secret store and records its handle; answers a `TomSettingsKey`. |
 | `TomSecretStore` | The platform secret-store port (implements the cache's `TomCacheKeyStore`); `TomInMemorySecretStore` for tests. |
 | `TomSecretStoreException` | A secret store that could not answer, naming the step (`TomSecretStoreStep`) and keeping the cause. |
+| `TomSecretStoreAvailability` | A secret store that says beforehand whether it can be used now (`isAvailable`), without a prompt. |
+| `TomDesktopSecretStore` | The OS keychain for programs without Flutter (`io.dart`): the macOS login keychain through `security` (the secret on its standard input, never an argument), libsecret through `secret-tool`, the Windows Credential Manager through FFI; every call with a timeout. Not available without a session that has a keychain (an SSH login on Linux without D-Bus, a Windows key-based SSH logon). |
 | `TomKeyMaterial` | A container key: passphrase, key-file bytes, key-file locator; `isResolvable` and `isEmpty` kept apart. |
 | `TomKeyRegistry` | The keys a session tries, by container, with a default; `TomMemoryKeyRegistry` opens nothing. |
 | `TomKeyStore` | Keys persisted between sessions: two defaults and per-file overrides; `TomInMemoryKeyStore`. |
@@ -233,7 +235,7 @@ Future<void> main() async {
 
 ## Status
 
-Version **0.1.1**. `dart test` runs the unit suite, the settings suite in
+Version **0.1.2**. `dart test` runs the unit suite, the settings suite in
 `test/settings/` (the device file and its write queue, the bootstrap against a
 failing and a wiped keychain, the key port, forgetting a location), the
 local-filesystem atomicity suite, the GitHub backend against an in-memory GitHub, the storage

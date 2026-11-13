@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.1.2
+
+### Added
+
+- **`TomDesktopSecretStore`** (`io.dart`): a `TomSecretStore` over the OS
+  keychain for programs without Flutter — the macOS login keychain through
+  `/usr/bin/security` (the secret goes on its standard input), libsecret
+  through `secret-tool`, the Windows Credential Manager through FFI — with a
+  timeout on every call.
+- **`TomSecretStoreAvailability`**: `isAvailable()` for a store that may be
+  locked or absent in the current session.
+
 ## 0.1.1
 
 ### Added

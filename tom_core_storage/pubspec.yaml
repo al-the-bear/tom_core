@@ -5,7 +5,7 @@ description: >-
   filesystem, browser (IndexedDB) and cache-cipher implementations behind
   entry points of their own, and a GitHub repository or any git server over
   smart HTTP as a backend.
-version: 0.1.1
+version: 0.1.2
 repository: https://github.com/al-the-bear/tom_core
 
 environment:
@@ -14,6 +14,8 @@ environment:
 dependencies:
   # ZIP: a bundle medium reads and writes its container as one archive.
   archive: ^4.0.0
+  # The Windows Credential Manager for the desktop secret store (io.dart).
+  ffi: ^2.1.0
   meta: ^1.15.0
   # Joining paths on the local filesystem (io.dart).
   path: ^1.9.0
