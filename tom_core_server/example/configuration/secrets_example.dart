@@ -140,8 +140,8 @@ class _PrefixProvider implements TomSecretsProvider {
   String get name => 'prefix';
 
   @override
-  Future<TomSecretPayload> fetch(String path) async =>
-      TomSecretPayload('hello $path', version: '1');
+  Future<TomSecretPayload> fetch(TomSecretReference reference) async =>
+      TomSecretPayload('hello ${reference.path}', version: '1');
 
   @override
   Future<void> close() async {}

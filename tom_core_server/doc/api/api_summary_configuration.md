@@ -561,13 +561,20 @@ factory TomSecretReference.parse(String text)
 
 ### TomSecretPayload
 
-What a provider read for one path.
+What a provider read for a reference: the whole secret at its path, or the
+value of exactly the field it names.
 
 #### Constructors
 
 ```dart
 const TomSecretPayload(this.data, {this.version})
+const TomSecretPayload.field(String this.data, {this.version})
 ```
+
+The first is the whole secret at a path, from which every field referenced at
+that path is read; `.field` is the value of exactly the field the fetched
+reference names (its default field when it names none), from a store that
+reads one field at a time.
 
 #### Properties
 
@@ -575,12 +582,13 @@ const TomSecretPayload(this.data, {this.version})
 | -------- | ---- | ----------- |
 | `data` | `Object` | The secret: a `String`, or a `Map<String, Object?>` for a secret with several members. |
 | `version` | `String?` | The store's version of the secret, when it reports one. |
+| `isField` | `bool` | Whether `data` is the value of the reference's field alone (`.field`). |
 
 #### Methods
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `valueOf` | `String valueOf(TomSecretReference reference)` | The value `reference` names. Without a field, `data` must be a `String` (`secrets.field.required` otherwise). With a field, the member of a map — or of the JSON object a string decodes to — is taken; a member that is not a string is JSON-encoded; an absent one is `secrets.field.missing`. |
+| `valueOf` | `String valueOf(TomSecretReference reference)` | The value `reference` names. A `.field` payload is its `data`. Without a field, `data` must be a `String` (`secrets.field.required` otherwise). With a field, the member of a map — or of the JSON object a string decodes to — is taken; a member that is not a string is JSON-encoded; an absent one is `secrets.field.missing`. |
 
 ### TomSecretsProvider
 
@@ -591,7 +599,7 @@ address it.
 ```dart
 abstract class TomSecretsProvider {
   String get name;
-  Future<TomSecretPayload> fetch(String path);
+  Future<TomSecretPayload> fetch(TomSecretReference reference);
   Future<void> close() async {}
 }
 ```
@@ -600,13 +608,13 @@ abstract class TomSecretsProvider {
 
 | Property | Type | Description |
 | -------- | ---- | ----------- |
-| `name` | `String` | *(getter)* The name references use for this store (`vault`, `aws`, `azure`). |
+| `name` | `String` | *(getter)* The name references use for this store (`vault`, `aws`, `azure`, `local`). |
 
 #### Methods
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `fetch` | `Future<TomSecretPayload> fetch(String path)` | Reads the secret at `path`. Throws `TomSecretsException` — `secrets.fetch.not_found` for a path the store does not hold, `secrets.fetch.failed` for anything else — and never puts the value in a message. |
+| `fetch` | `Future<TomSecretPayload> fetch(TomSecretReference reference)` | Reads the secret `reference` names: the whole secret at its path (`TomSecretPayload`, every field referenced at that path taken from it), or the value of exactly its field (`TomSecretPayload.field`; each other field of the path is then fetched on its own). Throws `TomSecretsException` — `secrets.fetch.not_found` for a secret the store does not hold, `secrets.fetch.failed` for anything else — and never puts the value in a message. |
 | `close` | `Future<void> close()` | Releases anything the provider holds open; the default holds nothing. Called by `TomSecrets.reset`. |
 
 ### TomMapSecretsProvider
@@ -635,7 +643,7 @@ TomMapSecretsProvider(this.name, Map<String, Object> secrets)
 
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
-| `fetch` | `Future<TomSecretPayload> fetch(String path)` | The entry at `path`; `secrets.fetch.not_found` when there is none. |
+| `fetch` | `Future<TomSecretPayload> fetch(TomSecretReference reference)` | The entry at the reference's path; `secrets.fetch.not_found` when there is none. |
 | `close` | `Future<void> close()` | Does nothing. |
 
 ### TomSecretSubscription
@@ -683,6 +691,7 @@ abstract final class TomSecrets {
   static Future<void> load(Object? values);
   static Future<String> resolve(String reference);
   static String current(String reference);
+  static String? versionOf(String reference);
   static Object? substitute(Object? values);
   static TomSecretSubscription watch(
     String reference,
@@ -710,6 +719,7 @@ abstract final class TomSecrets {
 | `load` | `static Future<void> load(Object? values)` | Resolves every reference `values` holds — strings anywhere in the tree — fetching each provider path once however many fields of it are named, and remembers the values. Throws `TomSecretsException` on the first reference it cannot resolve. |
 | `resolve` | `static Future<String> resolve(String reference)` | Resolves `reference` now and answers its value; fails as `load` does. |
 | `current` | `static String current(String reference)` | The resolved value of `reference`; `secrets.reference.unresolved` when it was never loaded. |
+| `versionOf` | `static String? versionOf(String reference)` | The version the store reported with the current value of `reference` (`TomSecretPayload.version`); `null` when it reports none or the reference was never resolved. |
 | `substitute` | `static Object? substitute(Object? values)` | `values` with every reference replaced by its resolved value, maps and lists walked; `secrets.reference.unresolved` for a reference not loaded, never its text left in place. |
 | `watch` | `static TomSecretSubscription watch(String reference, void Function(String value) onChange)` | Calls `onChange` with the new value whenever a `refresh` finds `reference` changed. |
 | `refresh` | `static Future<TomSecretsRefresh> refresh()` | Fetches every resolved reference again and calls the watchers of those that changed; a watcher that throws is logged. A reference that cannot be fetched keeps its value and is listed in `failed`. |

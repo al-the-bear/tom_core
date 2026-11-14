@@ -1386,7 +1386,7 @@ secret:<provider>:<path>[#<field>]
 | Part | Meaning |
 | ---- | ------- |
 | `secret:` | The prefix that makes a string a reference. A value is a reference only when it **starts** with it; a string that merely contains `secret:` is a plain value. |
-| `<provider>` | The name a `TomSecretsProvider` was registered under — `vault`, `aws`, `azure`, or a third party's. Up to the first colon. |
+| `<provider>` | The name a `TomSecretsProvider` was registered under — `vault`, `aws`, `azure`, `local`, or a third party's. Up to the first colon. |
 | `<path>` | Where the secret lives in the provider's own terms — a Vault API path, a Secrets Manager name or ARN, a Key Vault secret name. Everything after the provider's colon, so a path may hold colons (an ARN does). |
 | `#<field>` | One member of a secret that holds several — a Vault KV entry, a JSON secret. After the **last** `#`. Without it the secret must be a single value. |
 
@@ -1520,18 +1520,30 @@ A store is reached through a `TomSecretsProvider`:
 ```dart quote
 abstract class TomSecretsProvider {
   String get name;
-  Future<TomSecretPayload> fetch(String path);
+  Future<TomSecretPayload> fetch(TomSecretReference reference);
   Future<void> close() async {}
 }
 ```
 
-`fetch` answers a `TomSecretPayload` — the secret as a `String`, or a
-`Map<String, Object?>` for one with several members, and the store's version
-when it reports one. The payload, not the provider, picks the field: a map is
-read by key, and a string that holds a JSON object is decoded for a field, the
-shape a store that keeps one JSON string needs; a member that is not a string
-is handed on JSON-encoded. `fetch` throws `TomSecretsException` —
-`secrets.fetch.not_found` for a path the store does not hold,
+`fetch` receives the whole reference — provider, path and field — and
+answers a `TomSecretPayload` in one of two shapes:
+
+- **the whole secret at the path** (`TomSecretPayload(data, version: ...)`):
+  the secret as a `String`, or a `Map<String, Object?>` for one with several
+  members, and the store's version when it reports one. The payload, not the
+  provider, picks the field: a map is read by key, and a string that holds a
+  JSON object is decoded for a field, the shape a store that keeps one JSON
+  string needs; a member that is not a string is handed on JSON-encoded.
+  `TomSecrets` fetches such a path once however many of its fields the
+  configuration names, so they come from one version of the secret.
+- **the value of exactly the field named** (`TomSecretPayload.field(value,
+  version: ...)`), from a store that reads one field at a time (the Tom
+  Secrets Manager's `local` provider); each reference is then fetched on its
+  own.
+
+`TomSecrets.versionOf(reference)` answers the version stored with a value.
+`fetch` throws `TomSecretsException` —
+`secrets.fetch.not_found` for a secret the store does not hold,
 `secrets.fetch.failed` for anything else — and never puts a secret's value in a
 message. `TomSecrets.register` installs it under its `name`, replacing one of
 that name. Step 9 of the example is a complete third-party provider:
@@ -1542,8 +1554,8 @@ class PrefixProvider implements TomSecretsProvider {
   String get name => 'prefix';
 
   @override
-  Future<TomSecretPayload> fetch(String path) async =>
-      TomSecretPayload('hello $path', version: '1');
+  Future<TomSecretPayload> fetch(TomSecretReference reference) async =>
+      TomSecretPayload('hello ${reference.path}', version: '1');
 
   @override
   Future<void> close() async {}
@@ -1556,16 +1568,19 @@ Changing its `secrets` map simulates a rotation.
 
 ### The provider libraries
 
-The three stores are libraries of one package, `tom_core_secrets` in
+The four stores are libraries of one package, `tom_core_secrets` in
 `tom_core_extensions`, so a deployment imports only the store it uses and no
-cloud SDK; each talks to its store's HTTP API with
-`package:http` and builds itself from configuration with `fromConfiguration`.
+cloud SDK; each cloud store is reached over its HTTP API with `package:http`,
+the Tom Secrets Manager over its local client protocol with
+`tom_secrets_client`, and each provider builds itself from configuration with
+`fromConfiguration`.
 
 | Library | Provider | Reference | Authentication | Settings |
 | ------- | -------- | --------- | -------------- | -------- |
 | [`tom_core_secrets/vault.dart`](../../../core_extension/tom_core_secrets/README.md#hashicorp-vault-vaultdart) | `TomVaultSecretsProvider` | `secret:vault:secret/data/billing#jwt` — the API path after `/v1/`, KV version 1 or 2 | a token, or AppRole; Vault Enterprise namespaces | `secrets.vault`, `VAULT_*` |
 | [`tom_core_secrets/aws.dart`](../../../core_extension/tom_core_secrets/README.md#aws-secrets-manager-awsdart) | `TomAwsSecretsProvider` | `secret:aws:prod/billing#password` — a secret name or ARN | static keys, or a credentials source for a role; signed with `TomAwsV4Signer` | `secrets.aws`, `AWS_*` |
 | [`tom_core_secrets/azure.dart`](../../../core_extension/tom_core_secrets/README.md#azure-key-vault-azuredart) | `TomAzureKeyVaultSecretsProvider` | `secret:azure:db-password[/<version>]` | a service principal, the host's managed identity, or a static token | `secrets.azure`, `AZURE_*` |
+| [`tom_core_secrets/local.dart`](../../../core_extension/tom_core_secrets/README.md#the-tom-secrets-manager-localdart) | `TomLocalSecretsProvider` | `secret:local:[env:prod]db.main#UserName` — a Tom Secrets Manager reference, the field after the last `#` | the secrets service on the same machine identifies the process and keeps its approvals | `secrets.local`, `TSM_RUNTIME_DIR` |
 
 A provider's settings live under `secrets.<store>` in the configuration
 resources and are read as written — they are the credentials that open the

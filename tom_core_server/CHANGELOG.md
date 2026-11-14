@@ -1,7 +1,13 @@
-## Unreleased
+## 1.5.0
 
 ### Changed
 
+- **Breaking: `TomSecretsProvider.fetch` takes the whole reference**
+  (`fetch(TomSecretReference reference)` instead of `fetch(String path)`), so
+  a store that reads one field at a time fetches exactly the field named — the
+  Tom Secrets Manager's `local` provider in `tom_core_secrets` sends one
+  reference and gets back one value. A provider that reads a whole secret
+  takes `reference.path` as before. `TomMapSecretsProvider` follows.
 - **The mutation sweep is `testkit :mutations`; `tool/mutation_sweep.py` is
   removed** (archived in tom_archived, `code/261113_tom-core-server-mutation-sweep`).
   The script's compile-error detection no longer matched `dart test`'s output,
@@ -24,6 +30,17 @@
 - **The dev dependency `tom_build` is no longer declared.** Nothing imports
   it, and it closed a dependency cycle through `tom_core_kernel` that buildkit
   could not order.
+
+### Added
+
+- **`TomSecretPayload.field(value, version: ...)`**: the value of exactly the
+  field the fetched reference names (`isField`). `TomSecrets` fetches a path
+  once for every field referenced at it when the payload is the whole secret,
+  and each reference on its own when it is a field — all of them before any
+  value is stored, so a failure leaves the path at its last values.
+- **`TomSecrets.versionOf(reference)`**: the version the store reported with
+  the current value (`TomSecretPayload.version`), kept beside the value by
+  `load`, `resolve` and `refresh`, and forgotten by `reset`.
 
 ## 1.4.0
 

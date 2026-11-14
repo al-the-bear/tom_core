@@ -173,6 +173,53 @@ void main() {
         expect(TomSecrets.current('secret:counting:p#two'), '2');
       },
     );
+
+    test('fetch receives the whole reference; a store that answers one '
+        'field is asked for each field it is named with', () async {
+      final local = _FieldProvider({
+        '[env:prod]db.main': {'Password': 'demo-pw', 'UserName': 'demo-user'},
+      });
+      TomSecrets.register(local);
+      await TomSecrets.load({
+        'password': 'secret:local:[env:prod]db.main',
+        'user': 'secret:local:[env:prod]db.main#UserName',
+      });
+      expect(local.fetched, [
+        'secret:local:[env:prod]db.main',
+        'secret:local:[env:prod]db.main#UserName',
+      ]);
+      expect(TomSecrets.current('secret:local:[env:prod]db.main'), 'demo-pw');
+      expect(
+        TomSecrets.current('secret:local:[env:prod]db.main#UserName'),
+        'demo-user',
+      );
+      expect(const TomSecretPayload.field('x').isField, isTrue);
+      expect(
+        const TomSecretPayload.field(
+          '{"a":1}',
+        ).valueOf(const TomSecretReference('local', 'p', 'a')),
+        '{"a":1}',
+        reason: 'a field payload is the value, never decoded',
+      );
+    });
+
+    test('a field that fails leaves the path at its last values', () async {
+      final local = _FieldProvider({
+        'db': {'Password': 'p1', 'UserName': 'u1'},
+      });
+      TomSecrets.register(local);
+      await TomSecrets.load({
+        'a': 'secret:local:db',
+        'b': 'secret:local:db#UserName',
+      });
+      local.entries['db'] = {'Password': 'p2'};
+      final outcome = await TomSecrets.refresh();
+      expect(
+        outcome.failed,
+        unorderedEquals(['secret:local:db', 'secret:local:db#UserName']),
+      );
+      expect(TomSecrets.current('secret:local:db'), 'p1');
+    });
   });
 
   group('rotation', () {
@@ -198,6 +245,26 @@ void main() {
         expect(seen, ['v2']);
       },
     );
+
+    test('the version a store reports is kept with the value', () async {
+      final local = _FieldProvider({
+        'db': {'Password': 'p1'},
+      });
+      TomSecrets.register(local);
+      await TomSecrets.load({'a': 'secret:local:db'});
+      expect(TomSecrets.versionOf('secret:local:db'), 'v1');
+      local
+        ..entries['db'] = {'Password': 'p2'}
+        ..version = 'v2';
+      final outcome = await TomSecrets.refresh();
+      expect(outcome.changed, ['secret:local:db']);
+      expect(TomSecrets.versionOf('secret:local:db'), 'v2');
+      expect(TomSecrets.versionOf('secret:local:other'), isNull);
+      final vault = TomMapSecretsProvider('vault', {'x': 'y'});
+      TomSecrets.register(vault);
+      await TomSecrets.load({'b': 'secret:vault:x'});
+      expect(TomSecrets.versionOf('secret:vault:x'), isNull);
+    });
 
     test('a refresh that cannot fetch keeps the last value', () async {
       final vault = TomMapSecretsProvider('vault', {'db': 'v1'});
@@ -231,7 +298,7 @@ class _CountingProvider implements TomSecretsProvider {
   String get name => 'counting';
 
   @override
-  Future<TomSecretPayload> fetch(String path) async {
+  Future<TomSecretPayload> fetch(TomSecretReference reference) async {
     onFetch();
     return const TomSecretPayload({'one': '1', 'two': '2'});
   }
@@ -245,8 +312,43 @@ class _ThrowingProvider implements TomSecretsProvider {
   String get name => 'throwing';
 
   @override
-  Future<TomSecretPayload> fetch(String path) async =>
+  Future<TomSecretPayload> fetch(TomSecretReference reference) async =>
       throw StateError('connection reset');
+
+  @override
+  Future<void> close() async {}
+}
+
+/// A store that reads one field at a time, as the Tom Secrets Manager's
+/// `local` provider does: it answers [TomSecretPayload.field].
+class _FieldProvider implements TomSecretsProvider {
+  _FieldProvider(this.entries);
+
+  /// Fields by path; the default field is `Password`.
+  final Map<String, Map<String, String>> entries;
+
+  /// The references fetched, in order.
+  final List<String> fetched = [];
+
+  /// The version reported with each value.
+  String version = 'v1';
+
+  @override
+  String get name => 'local';
+
+  @override
+  Future<TomSecretPayload> fetch(TomSecretReference reference) async {
+    fetched.add('$reference');
+    final value = entries[reference.path]?[reference.field ?? 'Password'];
+    if (value == null) {
+      throw TomSecretsException(
+        'secrets.fetch.not_found',
+        'No such field.',
+        parameters: {'reference': '$reference'},
+      );
+    }
+    return TomSecretPayload.field(value, version: version);
+  }
 
   @override
   Future<void> close() async {}

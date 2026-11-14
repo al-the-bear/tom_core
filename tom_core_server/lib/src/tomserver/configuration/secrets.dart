@@ -22,15 +22,19 @@
 /// a server cannot start with `secret:vault:…` as its database password.
 ///
 /// `#<field>` picks one member of a secret that holds several — a Vault KV
-/// entry, a JSON secret in AWS Secrets Manager. Without it the secret must be a
-/// single value.
+/// entry, a JSON secret in AWS Secrets Manager, a field of a KDBX entry in the
+/// Tom Secrets Manager. Without it the secret must be a single value, or the
+/// store's default field.
 ///
 /// ## Providers
 ///
 /// A store is reached through a [TomSecretsProvider] registered under the name
-/// the references use. The framework ships [TomMapSecretsProvider] for tests
-/// and local development; the stores are libraries of `tom_core_secrets`, in
-/// `tom_core_extensions` — `vault.dart`, `aws.dart`, `azure.dart` — so a
+/// the references use. [TomSecretsProvider.fetch] receives the whole
+/// [TomSecretReference], path and field, so a store that reads one field at a
+/// time fetches exactly the one named. The framework ships
+/// [TomMapSecretsProvider] for tests and local development; the stores are
+/// libraries of `tom_core_secrets`, in `tom_core_extensions` — `vault.dart`,
+/// `aws.dart`, `azure.dart`, `local.dart` (the Tom Secrets Manager) — so a
 /// deployment imports only the store it uses. A third party implements
 /// [TomSecretsProvider] the same way.
 ///
@@ -44,6 +48,8 @@
 /// the watchers of the values that changed. A refresh that fails keeps the
 /// values it had and says so; only the first [TomSecrets.load] is fatal,
 /// because a server that cannot read its secrets at start must not start.
+/// The version a store reports with a value ([TomSecretPayload.version]) is
+/// kept beside it ([TomSecrets.versionOf]).
 library;
 
 import 'dart:async';
@@ -138,7 +144,8 @@ class TomSecretReference {
   int get hashCode => toString().hashCode;
 }
 
-/// What a provider read for one path.
+/// What a provider read for a reference: the whole secret at its path, or
+/// ([TomSecretPayload.field]) the value of exactly the field it names.
 class TomSecretPayload {
   /// The secret: a [String], or a `Map<String, Object?>` for a secret with
   /// several members.
@@ -147,15 +154,26 @@ class TomSecretPayload {
   /// The store's version of the secret, when it reports one.
   final String? version;
 
-  /// A payload.
-  const TomSecretPayload(this.data, {this.version});
+  /// Whether [data] is the value of the reference's field alone, not the
+  /// whole secret at its path.
+  final bool isField;
+
+  /// The whole secret at a path; every field referenced at that path is read
+  /// from it.
+  const TomSecretPayload(this.data, {this.version}) : isField = false;
+
+  /// The value of exactly the field the fetched reference names (its default
+  /// field when it names none) — from a store that reads one field at a time.
+  const TomSecretPayload.field(String this.data, {this.version})
+    : isField = true;
 
   /// The member [field] of [data], or the whole when [field] is `null` —
   /// decoding a JSON object string the way a store that keeps one JSON string
-  /// (AWS Secrets Manager) needs.
+  /// (AWS Secrets Manager) needs. A [TomSecretPayload.field] is its value.
   String valueOf(TomSecretReference reference) {
-    final field = reference.field;
     final data = this.data;
+    if (isField) return data as String;
+    final field = reference.field;
     if (field == null) {
       if (data is String) return data;
       throw TomSecretsException(
@@ -197,12 +215,16 @@ abstract class TomSecretsProvider {
   /// The name references use for this store (`vault`, `aws`, `azure`).
   String get name;
 
-  /// Reads the secret at [path].
+  /// Reads the secret [reference] names: the whole secret at its
+  /// [TomSecretReference.path] (a [TomSecretPayload], from which every field
+  /// referenced at that path is taken), or the value of exactly its
+  /// [TomSecretReference.field] (a [TomSecretPayload.field]; then each other
+  /// field of the path is fetched on its own).
   ///
-  /// Throws [TomSecretsException] — `secrets.fetch.not_found` for a path the
+  /// Throws [TomSecretsException] — `secrets.fetch.not_found` for a secret the
   /// store does not hold, `secrets.fetch.failed` for anything else — and
   /// never puts the secret's value in a message.
-  Future<TomSecretPayload> fetch(String path);
+  Future<TomSecretPayload> fetch(TomSecretReference reference);
 
   /// Releases anything the provider holds open. The default holds nothing.
   Future<void> close() async {}
@@ -222,7 +244,8 @@ class TomMapSecretsProvider implements TomSecretsProvider {
   final Map<String, Object> secrets;
 
   @override
-  Future<TomSecretPayload> fetch(String path) async {
+  Future<TomSecretPayload> fetch(TomSecretReference reference) async {
+    final path = reference.path;
     final data = secrets[path];
     if (data == null) {
       throw TomSecretsException(
@@ -264,6 +287,7 @@ class TomSecretsRefresh {
 abstract final class TomSecrets {
   static final Map<String, TomSecretsProvider> _providers = {};
   static final Map<String, String> _values = {};
+  static final Map<String, String?> _versions = {};
   static final Map<String, List<void Function(String)>> _watchers = {};
   static Timer? _timer;
 
@@ -330,6 +354,12 @@ abstract final class TomSecrets {
     return values;
   }
 
+  /// The version the store reported with the current value of [reference]
+  /// ([TomSecretPayload.version]), or `null` when it reports none or the
+  /// reference was never resolved.
+  static String? versionOf(String reference) =>
+      _versions['${TomSecretReference.parse(reference)}'];
+
   /// Calls [onChange] with the new value whenever a [refresh] finds
   /// [reference] changed.
   static TomSecretSubscription watch(
@@ -390,6 +420,7 @@ abstract final class TomSecrets {
     }
     _providers.clear();
     _values.clear();
+    _versions.clear();
     _watchers.clear();
   }
 
@@ -407,9 +438,10 @@ abstract final class TomSecrets {
     }
   }
 
-  /// Fetches each path once, however many fields of it are referenced, and
-  /// stores the values. With [failSoft], answers the references that failed
-  /// instead of throwing.
+  /// Fetches each path once, however many fields of it are referenced — or,
+  /// from a provider that answers one field ([TomSecretPayload.field]), each
+  /// reference once — and stores the values and their versions. With
+  /// [failSoft], answers the references that failed instead of throwing.
   static Future<List<String>> _resolveAll(
     Set<TomSecretReference> references, {
     required bool failSoft,
@@ -433,9 +465,23 @@ abstract final class TomSecrets {
             parameters: {'provider': first.provider},
           );
         }
-        final payload = await provider.fetch(first.path);
-        for (final reference in group) {
-          _values['$reference'] = payload.valueOf(reference);
+        final payload = await provider.fetch(first);
+        if (payload.isField) {
+          // Fetched before any value is stored, so a failure leaves the whole
+          // path at its last values.
+          final fetched = {first: payload};
+          for (final reference in group.skip(1)) {
+            fetched[reference] = await provider.fetch(reference);
+          }
+          for (final MapEntry(key: reference, value: p) in fetched.entries) {
+            _values['$reference'] = p.valueOf(reference);
+            _versions['$reference'] = p.version;
+          }
+        } else {
+          for (final reference in group) {
+            _values['$reference'] = payload.valueOf(reference);
+            _versions['$reference'] = payload.version;
+          }
         }
       } on Object catch (e) {
         if (!failSoft) {
