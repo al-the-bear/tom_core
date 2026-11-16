@@ -157,6 +157,7 @@ headers.
 | `deadLetterAttempts` | `String` | `'tom-dead-letter-attempts'` | How many deliveries it had. |
 | `traceparent` | `String` | `'traceparent'` | The W3C `traceparent` of the trace the message was published in. |
 | `tracestate` | `String` | `'tracestate'` | The W3C `tracestate` that goes with it. |
+| `tenant` | `String` | `'tom-tenant'` | The tenant the message was published in (the tenant in context at the publish), which its handling runs in (`TomBusTrace.delivering`). |
 
 ### TomBusException
 
@@ -306,7 +307,8 @@ broker the same way.
 | Method | Signature | Description |
 | ------ | --------- | ----------- |
 | `publishing` | `static Future<R> publishing<R>(String topic, Map<String, String> headers, Future<R> Function(Map<String, String> headers) publish)` | Runs `publish` with the headers to send: `headers` and, when the current zone is in a trace, its position. With a tracer installed the publish is a `producer` span, `<topic> publish` (`messaging.operation.type` `send`, `messaging.destination.name`), and the position sent is the span's. |
-| `delivering` | `static Future<R> delivering<R>(TomBusMessage message, String group, Future<R> Function() handle)` | Runs `handle` — the handling of `message` by `group` — in the trace the message was published in: a new span of it, whose trace id is the request id (`TomRequestId`), or a trace of its own for a message published in none. With a tracer installed the handling is a `consumer` span, `<topic> process` (`messaging.operation.type` `process`, `messaging.destination.name`, `messaging.consumer.group.name`, `messaging.message.id`). |
+| `delivering` | `static Future<R> delivering<R>(TomBusMessage message, String group, Future<R> Function() handle)` | Runs `handle` — the handling of `message` by `group` — in the trace the message was published in: a new span of it, whose trace id is the request id (`TomRequestId`), or a trace of its own for a message published in none, and in the tenant it was published in (`tenantOf`) when it names one. With a tracer installed the handling is a `consumer` span, `<topic> process` (`messaging.operation.type` `process`, `messaging.destination.name`, `messaging.consumer.group.name`, `messaging.message.id`). |
+| `tenantOf` | `static String? tenantOf(TomBusMessage message)` | The tenant `message` was published in, from its `TomBusHeaders.tenant` header, or `null` for a message that names none. Throws `tenancy.id.invalid` for a header that is not a tenant id; `tomDispatch` dead-letters such a message, reason `invalid-tenant`. |
 
 ### TomMemoryMessageBus
 

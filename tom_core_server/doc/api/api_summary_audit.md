@@ -1508,6 +1508,8 @@ TomAuditTriggerRow()
 | `tomAuditGenesisHash` | `String` | The hash a chain starts from — sixty-four zeros, the shape of a SHA-256 digest, so a reader never has to special-case the first entry's `previousHash`. |
 | `tomAuditRedactedPlaceholder` | `String` | What a redacted value is recorded as (`'***'`). A placeholder rather than an omission, so "changed, and you may not see to what" stays distinguishable from "did not change". |
 | `defaultAuditTrailTable` | `String` | The default name of the audit trail table (`'tom_audit_trail'`). |
+| `tomAuditAnchorMonitorBean` | `String` | The bean name `TomAuditAnchorVerificationJob` resolves its monitor under (`'tomAuditAnchorMonitor'`). Named rather than resolved by type, because a deployment may watch more than one set of chains and only one of them is the job's. |
+| `tomAuditAnchorVerificationJobName` | `String` | The store key of `TomAuditAnchorVerificationJob` (`'tom.audit.anchorVerification'`). |
 
 ### Functions
 

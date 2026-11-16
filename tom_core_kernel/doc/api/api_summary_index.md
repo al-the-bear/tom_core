@@ -20,7 +20,7 @@ declarations are omitted.
 | HTTP Connection | [api_summary_http_connection.md](api_summary_http_connection.md) | Server call model, remote APIs/endpoints, headers, MIME types, auth-retry, client factories, and the timeout, retry, circuit-breaker and bulkhead policies of outgoing calls. |
 | Isolate Pooling | [api_summary_isolate_pooling.md](api_summary_isolate_pooling.md) | Worker/executor/command model and isolate worker pool. |
 | JSON | [api_summary_json.md](api_summary_json.md) | JSON serialization contract, map merge/traversal, env substitution, pretty printing. |
-| Little Things | [api_summary_little_things.md](api_summary_little_things.md) | Kernel base exception, zone helpers, checked runners, stack-trace and offset formatting. |
+| Little Things | [api_summary_little_things.md](api_summary_little_things.md) | Kernel base exception, zone helpers, checked runners, stack-trace and offset formatting, and a file lock shared by isolates and processes. |
 | Logging | [api_summary_logging.md](api_summary_logging.md) | Cross-isolate and remote log transport, outputs, and log servers, and the structured JSON line output with its zone-read context fields. |
 | Metrics | [api_summary_metrics.md](api_summary_metrics.md) | Counters, gauges, histograms and observed gauges in a per-isolate registry, and the Prometheus text rendering of its snapshot. |
 | Observable | [api_summary_observable.md](api_summary_observable.md) | Observable base, observers, and the boxed `TomObject<T>` value/collection hierarchy. |
@@ -181,6 +181,10 @@ declarations are omitted.
 | `tomGetStackTraceAsTuple` | function | Returns a stack trace as structured tuples. |
 | `convertMinutesToUtcOffset` | function | Formats a minute offset as a UTC offset string; throws outside ±14:00. |
 | `TomStackTraceNoise` | class | Classifies a stack frame as noise for the formatting functions in this library. |
+| `tomFileLockPath` | function | The guard file protecting a path: `<path>.lock` (`tom_core_kernel_io.dart`). |
+| `tomWithFileLock` | function | Runs a body with exclusive access to a guard file among isolates and processes, waiting synchronously (`tom_core_kernel_io.dart`). |
+| `tomWithFileLockAsync` | function | The same without blocking the isolate while it waits (`tom_core_kernel_io.dart`). |
+| `tomFileLockStaleAfter` | constant | How long a guard may stand unchanged before it is presumed abandoned (`tom_core_kernel_io.dart`). |
 
 ### Logging (`lib/src/tombase/logging/`)
 

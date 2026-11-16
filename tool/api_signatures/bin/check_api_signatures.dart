@@ -34,12 +34,33 @@ Future<void> main(List<String> args) async {
 
   final collection = AnalysisContextCollection(includedPaths: [package]);
   final context = collection.contextFor(barrel);
-  final result = await context.currentSession.getResolvedLibrary(barrel);
-  if (result is! ResolvedLibraryResult) {
-    stderr.writeln('could not resolve $barrel');
-    exit(2);
+  // Every public library, the main barrel first: a package may export API
+  // from more than one (tom_core_kernel_io, tom_core_agentic's agent_sdk).
+  final libraries =
+      Directory('$package/lib')
+          .listSync()
+          .whereType<File>()
+          .map((f) => f.path)
+          .where((p) => p.endsWith('.dart') && p != barrel)
+          .toList()
+        ..sort();
+  final namespaces = <Element? Function(String)>[];
+  for (final library in [barrel, ...libraries]) {
+    final result = await context.currentSession.getResolvedLibrary(library);
+    if (result is ResolvedLibraryResult) {
+      namespaces.add(result.element.exportNamespace.get2);
+    } else if (library == barrel) {
+      stderr.writeln('could not resolve $barrel');
+      exit(2);
+    }
   }
-  final exported = result.element.exportNamespace;
+  Element? lookUp(String name) {
+    for (final namespace in namespaces) {
+      final element = namespace(name);
+      if (element != null) return element;
+    }
+    return null;
+  }
 
   final tally = Tally();
   final documents =
@@ -54,7 +75,7 @@ Future<void> main(List<String> args) async {
         ? document.path.substring(package.length + 1)
         : document.path;
     for (final fence in fences(document.readAsStringSync())) {
-      checkFence(shown, fence, exported.get2, tally);
+      checkFence(shown, fence, lookUp, tally);
     }
   }
   for (final fault in tally.faults) {

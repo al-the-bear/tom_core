@@ -372,9 +372,9 @@ const _apiSummaryIndex = 'api_summary_index.md';
 /// not. A line threshold placing those two on the same side of it would be
 /// measuring the generated tables inside one of them.
 ///
-/// `tom_core_agentic` applies the same ten to exported **members**, because its
-/// units concentrate surface in few types; the index says so, and a test below
-/// holds that sentence.
+/// `tom_core_agentic` summarises its whole API with no threshold; the index
+/// says so, so the ten here is not read as a rule of both packages, and a test
+/// below holds that sentence.
 ///
 /// Ten is where a readme table stops working. Below it the module's own
 /// `readme.md` **is** the mirror, and not merely by assertion — a
@@ -784,23 +784,20 @@ void main() {
       }
     });
 
-    test('the index says that tom_core_agentic counts members for the same '
-        'ten', () {
-      // Both packages state "a summary at ten", and each counts a different
-      // thing. A reader who has met one index reads the other's number as the
-      // same number unless the index says otherwise, and so does a third
-      // package adopting "the rule". tom_core_agentic's suite holds the mirror
-      // sentence in its own index.
+    test('the index says that tom_core_agentic summarises everything', () {
+      // A reader who has met one index reads its rule as the other's unless
+      // the index says otherwise, and so does a third package adopting "the
+      // rule". tom_core_agentic's index says the same about this package.
       final index = File('doc/api/$_apiSummaryIndex').readAsStringSync();
       expect(
         index,
         contains(
-          '**`tom_core_agentic` states the same threshold over members**',
+          '**`tom_core_agentic` summarises its whole API, with no threshold**',
         ),
         reason:
-            'doc/api/$_apiSummaryIndex must say that tom_core_agentic applies '
-            '$_summaryThreshold to exported members, so the two numbers are '
-            'never read as one',
+            'doc/api/$_apiSummaryIndex must say that tom_core_agentic '
+            'summarises its whole API, so the threshold of '
+            '$_summaryThreshold here is not read as a rule of both packages',
       );
     });
 

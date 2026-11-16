@@ -2,7 +2,8 @@
 
 Small, cross-cutting kernel utilities: the framework's full-featured exception
 class, Dart zone accessors, checked-execution wrappers, stack-trace formatting,
-and a UTC-offset formatting helper.
+a UTC-offset formatting helper, and a file lock shared by isolates and
+processes.
 
 ## Table of Contents
 
@@ -21,6 +22,7 @@ and a UTC-offset formatting helper.
 Sources:
 
 - `lib/src/tombase/little_things/exception_base.dart`
+- `lib/src/tombase/little_things/file_mutex.dart` (exported by the `tom_core_kernel_io` library)
 - `lib/src/tombase/little_things/formatting.dart`
 - `lib/src/tombase/little_things/little_things.dart`
 
@@ -206,6 +208,7 @@ frame *not* noise, so one the built-in set already claimed stays folded.
 | Constant | Type | Description |
 | -------- | ---- | ----------- |
 | `tomStackTraceNoise` | `TomStackTraceNoise` | The process-wide noise classification every formatting function in this module reads. `final`, not `const` — it holds the registration list, which is mutated at startup. |
+| `tomFileLockStaleAfter` | `Duration` | How long a lock's guard file may stand unchanged before a waiting writer presumes its holder abandoned it and breaks it: 10 seconds, generous so a slow but live holder is not broken. |
 
 ### Functions
 
@@ -219,4 +222,7 @@ frame *not* noise, so one the built-in set already claimed stays folded.
 | `tomGetStackTrace` | `String tomGetStackTrace([StackTrace? s, int depth = -1])` | Returns a formatted stack trace as a newline-separated string, folding out core/`shelf`/`TomLogger` frames, this module's own formatting functions, and anything registered on `tomStackTraceNoise`. An asynchronous trace is reported whole: every segment of the `await` chain is included, newest first, so the frames run from the throw site back to the caller that started the work. `depth` bounds the flattened chain, counting from the throw site. |
 | `tomGetStackTraceAsList` | `List<String> tomGetStackTraceAsList([StackTrace? s, int depth = -1])` | Same as `tomGetStackTrace` but returns individual frames as a list. Empty for a trace with no frames, such as `StackTrace.empty`. |
 | `tomGetStackTraceAsTuple` | `(String, List<String>) tomGetStackTraceAsTuple([StackTrace? s, int depth = -1])` | Returns the formatted stack trace as both a string and a list of frame strings. |
+| `tomFileLockPath` | `String tomFileLockPath(String path)` | The guard file protecting `path`: `<path>.lock`. A sibling rather than `path` itself, because a file replaced by a rename on every write would leave a guard held on an inode that no longer has the name. |
+| `tomWithFileLock` | `T tomWithFileLock<T>(File lockFile, T Function() body, {Duration staleAfter = tomFileLockStaleAfter, Duration timeout = const Duration(seconds: 30), void Function(String warning)? onBrokenLock})` | Runs `body` with exclusive access to `lockFile` among every isolate and process using the guard, and releases it however `body` ends. Waits synchronously, sleeping between attempts (for the kernel's synchronous file-backed stores). `onBrokenLock` is called when an abandoned guard had to be broken: another writer died mid-mutation and its last write may not have landed. Throws `FileSystemException` when the guard cannot be taken within `timeout`, so a caller never believes it wrote when it did not. |
+| `tomWithFileLockAsync` | `Future<T> tomWithFileLockAsync<T>(File lockFile, Future<T> Function() body, {Duration staleAfter = tomFileLockStaleAfter, Duration timeout = const Duration(seconds: 30), void Function(String warning)? onBrokenLock})` | `tomWithFileLock` for a caller that must not block its isolate while it waits (a UI isolate): the waits are `Future.delayed` and `body` may be asynchronous. The same guard file excludes every other holder, another task on this isolate as much as another isolate or process; code that must stay out of the critical section between `body`'s awaits takes the same guard. |
 | `convertMinutesToUtcOffset` | `String convertMinutesToUtcOffset(int totalMinutes)` | Converts a UTC offset in minutes to an ISO 8601 string (`"Z"`, `"+HH:MM"`, or `"-HH:MM"`). Throws `TomFormattingException` (`formatting.utc_offset.out_of_range`) outside ±840 minutes (±14:00, inclusive) — the hour field is two digits wide, so a wider offset has no valid rendering. |

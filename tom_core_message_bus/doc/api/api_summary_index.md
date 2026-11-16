@@ -25,7 +25,7 @@ declarations are omitted.
 | `TomMessageBus` | abstract class | The contract every bus keeps: publish, subscribe with a consumer group, close. |
 | `TomBusCapabilities` | class | What a bus does beyond the contract: ordering per key. |
 | `TomBusSubscription` | abstract class | One consumer's place on a topic. |
-| `TomBusHeaders` | abstract final class | The dead-letter and trace header names. |
+| `TomBusHeaders` | abstract final class | The dead-letter, trace and tenant header names. |
 | `TomBusException` | class | Every refusal of the bus (extends `TomException`). |
 | `TomBusMessage` | class | A message as it travels, with its JSON wire form. |
 | `TomBusDelivery<T>` | class | One delivery to a consumer, its payload decoded; settled once. |

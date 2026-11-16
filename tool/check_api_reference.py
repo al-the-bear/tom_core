@@ -22,6 +22,13 @@ document checks already are; the server-specific checks stay in its suite.
 module has a guide, a summary and a sample -- the file-level layer, not this
 one.)
 
+**What is exported** is read from every public library, each `lib/*.dart` --
+not only the main barrel, since a package may export API from a second one
+(`tom_core_kernel_io`, `tom_core_agentic`'s `agent_sdk`). A name a library
+hides on its export (`hide main`) is not API. A package named in
+`TOP_LEVEL_MODULES` has one more module: the files its libraries export
+straight from `lib/src/`, documented by the summary that table names.
+
 **What is checked**, per module directory under `lib/src/<layer>/`:
 
 - **summary** -- the module has `doc/api/api_summary_<module>.md`, no
@@ -89,6 +96,14 @@ PACKAGES = {
     "tom_core_agentic": "",
 }
 
+#: Packages whose barrel also exports files straight from `lib/src/` (outside
+#: any module directory), and the name of the summary that documents them as
+#: one module: `doc/api/api_summary_<name>.md`. A package not named here keeps
+#: such files out of the audit.
+TOP_LEVEL_MODULES = {
+    "tom_core_agentic": "utilities",
+}
+
 #: Packages whose summaries in `doc/api/` were written before this gate read
 #: them and have not yet been brought to its standard. In a default run each
 #: counts as ONE fault naming how many it would report, so the debt stays
@@ -119,9 +134,10 @@ TYPE_DECLARATION = re.compile(
     r"([A-Za-z_][A-Za-z0-9_]*)",
     re.M)
 FUNCTION_DECLARATION = re.compile(
-    r"^[A-Za-z_][\w<>,?\s.]*?\s+([A-Za-z_]\w*)\s*(?:<[^<>]*>)?\s*\(", re.M)
+    r"^(?!(?:const|final|var|late)\b)"
+    r"[A-Za-z_][\w<>,?\s.]*?\s+([A-Za-z_]\w*)\s*(?:<[^<>]*>)?\s*\(", re.M)
 RECORD_FUNCTION_DECLARATION = re.compile(
-    r"^\([^()]*(?:\([^()]*\)[^()]*)*\)\s+([A-Za-z_]\w*)\s*\(", re.M)
+    r"^\([^()]*(?:\([^()]*\)[^()]*)*\)\??\s+([A-Za-z_]\w*)\s*\(", re.M)
 GETTER_DECLARATION = re.compile(
     r"^[A-Za-z_][\w<>,?\s.]*?\s+get\s+([A-Za-z_]\w*)\b", re.M)
 VARIABLE_DECLARATION = re.compile(
@@ -412,6 +428,18 @@ def source_list_of(summary: str, layer: str) -> list[str] | None:
     return entries
 
 
+def top_level_source_list_of(summary: str, layer: str,
+                             module: str) -> list[str] | None:
+    """The `<module>/<file>` entries of [summary]'s Source list for the
+    module of the files straight under `lib/src/` (`lib/src/<file>.dart`)."""
+    span = source_list_span(summary)
+    if span is None:
+        return None
+    prefix = f"lib/src/{layer}/" if layer else "lib/src/"
+    return [f"{module}/{m}" for m in re.findall(
+        r"`" + re.escape(prefix) + r"([^/`]+\.dart)`", span)]
+
+
 def abbreviated_entries(summary: str, layer: str) -> list[str]:
     span = source_list_span(summary)
     if span is None:
@@ -509,22 +537,59 @@ class Package:
     def reference(self) -> Path:
         return self.root / "doc" / "api"
 
+    @property
+    def top_level_module(self) -> str | None:
+        """The module the files straight under `lib/src/` form, if any."""
+        return TOP_LEVEL_MODULES.get(self.name) if not self.layer else None
+
+    def module_dir(self, module: str) -> Path:
+        if module == self.top_level_module:
+            return self.modules_root
+        return self.modules_root / module
+
     def modules(self) -> list[str]:
-        return sorted(p.name for p in self.modules_root.iterdir()
-                      if p.is_dir())
+        found = sorted(p.name for p in self.modules_root.iterdir()
+                       if p.is_dir())
+        if self.top_level_module is not None:
+            found = sorted([*found, self.top_level_module])
+        return found
+
+    def libraries(self) -> list[str]:
+        """The text of every public library: each `lib/*.dart`, not only the
+        package's main barrel (`lib/tom_core_kernel_io.dart`,
+        `lib/agent_sdk.dart` export API of their own)."""
+        return [path.read_text(encoding="utf-8")
+                for path in sorted((self.root / "lib").glob("*.dart"))]
+
+    def hidden(self) -> set[str]:
+        """The names a library hides on an export (`export 'x.dart' hide
+        main;`): declared in an exported file and still not its API."""
+        return {name.strip()
+                for library in self.libraries()
+                for match in re.finditer(
+                    r"^export\s+'[^']+'\s+hide\s+([\w\s,]+);", library, re.M)
+                for name in match.group(1).split(",") if name.strip()}
 
     def exports(self) -> dict[str, list[str]]:
-        barrel = (self.root / "lib" / f"{self.name}.dart").read_text(
-            encoding="utf-8")
         prefix = f"src/{self.layer}/" if self.layer else "src/"
         pattern = re.compile(
-            r"^export '" + re.escape(prefix) + r"([^/']+)/([^']+)';", re.M)
+            r"^export '" + re.escape(prefix) + r"([^/']+)/([^']+)'", re.M)
+        top = re.compile(
+            r"^export '" + re.escape(prefix) + r"([^/']+\.dart)'", re.M)
         found: dict[str, list[str]] = {}
-        for match in pattern.finditer(barrel):
-            module, file = match.group(1), match.group(2)
-            for reached in self.reexported(module, file, set()):
-                if reached not in found.setdefault(module, []):
-                    found[module].append(reached)
+        for library in self.libraries():
+            for match in pattern.finditer(library):
+                module, file = match.group(1), match.group(2)
+                for reached in self.reexported(module, file, set()):
+                    if reached not in found.setdefault(module, []):
+                        found[module].append(reached)
+            module = self.top_level_module
+            if module is None:
+                continue
+            for match in top.finditer(library):
+                for reached in self.reexported(module, match.group(1), set()):
+                    if reached not in found.setdefault(module, []):
+                        found[module].append(reached)
         return found
 
     def reexported(self, module: str, file: str, seen: set[str]) -> list[str]:
@@ -541,7 +606,7 @@ class Package:
             return []
         seen.add(file)
         reached = [file]
-        path = self.modules_root / module / file
+        path = self.module_dir(module) / file
         if not path.exists():
             return reached
         source = without_block_comments(path.read_text(encoding="utf-8"))
@@ -560,7 +625,7 @@ class Package:
     def over(self, module: str, files: list[str], scan) -> set[str]:
         names: set[str] = set()
         for file in files:
-            path = self.modules_root / module / file
+            path = self.module_dir(module) / file
             if path.exists():
                 names |= scan(path.read_text(encoding="utf-8"))
         return names
@@ -603,7 +668,9 @@ def audit(package: Package) -> list[str]:
                           f"api_summary_{module}.md")
         summary = path.read_text(encoding="utf-8")
 
-        listed = source_list_of(summary, package.layer)
+        listed = (top_level_source_list_of(summary, package.layer, module)
+                  if module == package.top_level_module
+                  else source_list_of(summary, package.layer))
         if listed is None:
             faults.append(f"{where}: no Source: line")
         else:
@@ -615,11 +682,14 @@ def audit(package: Package) -> list[str]:
                 if file not in exported_files:
                     faults.append(f"{where}: Source list names {file}, "
                                   "which the barrel does not export")
-            for bare in abbreviated_entries(summary, package.layer):
+            bare_entries = ([] if module == package.top_level_module
+                            else abbreviated_entries(summary, package.layer))
+            for bare in bare_entries:
                 faults.append(f"{where}: Source entry `{bare}` is a bare "
                               "file name, not a path")
 
-        api = sorted(package.over(module, files, declared_api))
+        hidden = package.hidden()
+        api = sorted(package.over(module, files, declared_api) - hidden)
         if index:
             for name in api:
                 if not index_names(index, name):
@@ -629,7 +699,8 @@ def audit(package: Package) -> list[str]:
             if name not in named:
                 faults.append(f"{where}: the summary never names `{name}`")
 
-        functions = sorted(package.over(module, files, declared_functions))
+        functions = sorted(
+            package.over(module, files, declared_functions) - hidden)
         listed_functions = global_function_names(summary)
         # A function may also be given a subsection of its own -- `###
         # clientPlatformUtils` with its signature in a fence -- which lists it
