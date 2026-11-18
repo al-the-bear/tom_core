@@ -9,6 +9,7 @@
 library;
 
 export 'src/settings/device_settings.dart';
+export 'src/settings/gated_secret_store.dart';
 export 'src/settings/identity.dart';
 export 'src/settings/keys/key_material.dart';
 export 'src/settings/keys/key_registry.dart';

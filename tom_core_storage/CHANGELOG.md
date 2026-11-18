@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.1.3
+
+### Added
+
+- **`TomGatedSecretStore`** (`settings.dart`): device secrets released only
+  after the OS's own check (Touch ID, Face ID, a fingerprint, Windows Hello,
+  the passcode) — `availability()` (`TomGatedAvailability`: none,
+  biometric, passcode, gate-only), `write(handle, secret, {lifetime,
+  reason})`, `read(handle, reason:)` with the prompt, `delete`; failures as
+  `TomGatedSecretStoreException` of kind cancelled, lockedOut, invalidated,
+  unavailable or failed, never a miss and never the secret. The port of
+  `tom_biometric_storage`; `TomInMemoryGatedSecretStore` for tests.
+
 ## 0.1.2
 
 ### Added

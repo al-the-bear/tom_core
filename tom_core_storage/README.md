@@ -1,6 +1,6 @@
 # tom_core_storage
 
-Published on pub.dev as [`tom_core_storage` 0.1.2](https://pub.dev/packages/tom_core_storage).
+Published on pub.dev as [`tom_core_storage` 0.1.3](https://pub.dev/packages/tom_core_storage).
 
 > **Attribution.** The Tom Framework is developed by Peter Nicolai Alexis Kyaw.
 > These packages are BSD-3-Clause licensed and published on pub.dev.
@@ -163,6 +163,7 @@ has said what that would remove.
 | `TomDeviceSettings` | The device settings file: an open registry of keys written back whole, typed accessors for the settings-key handle, the log's path and level and the cache's quota and sealing, and one serialized write queue. |
 | `TomSettingsKeyBootstrap` | Mints the device's settings key into the secret store and records its handle; answers a `TomSettingsKey`. |
 | `TomSecretStore` | The platform secret-store port (implements the cache's `TomCacheKeyStore`); `TomInMemorySecretStore` for tests. |
+| `TomGatedSecretStore` | Device secrets released only after the OS's own check (Touch ID, Windows Hello, the passcode): `availability()`, `write`, `read(handle, reason:)` with the prompt, `delete`; `TomGatedSecretStoreException` (cancelled, lockedOut, invalidated, unavailable, failed); `TomInMemoryGatedSecretStore` for tests. The implementation is the plugin package `tom_biometric_storage`. |
 | `TomSecretStoreException` | A secret store that could not answer, naming the step (`TomSecretStoreStep`) and keeping the cause. |
 | `TomSecretStoreAvailability` | A secret store that says beforehand whether it can be used now (`isAvailable`), without a prompt. |
 | `TomDesktopSecretStore` | The OS keychain for programs without Flutter (`io.dart`): the macOS login keychain through `security` (the secret on its standard input, never an argument), libsecret through `secret-tool`, the Windows Credential Manager through FFI; every call with a timeout. Not available without a session that has a keychain (an SSH login on Linux without D-Bus, a Windows key-based SSH logon). |
@@ -235,7 +236,7 @@ Future<void> main() async {
 
 ## Status
 
-Version **0.1.2**. `dart test` runs the unit suite, the settings suite in
+Version **0.1.3**. `dart test` runs the unit suite, the settings suite in
 `test/settings/` (the device file and its write queue, the bootstrap against a
 failing and a wiped keychain, the key port, forgetting a location), the
 local-filesystem atomicity suite, the GitHub backend against an in-memory GitHub, the storage
