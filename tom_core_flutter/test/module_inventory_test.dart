@@ -27,7 +27,7 @@ void main() {
       .map((d) => d.uri.pathSegments[d.uri.pathSegments.length - 2])
       .toSet();
 
-  final guidePath = '_copilot_guidelines/refactoring_guide.md';
+  final guidePath = '_agent_guidelines/refactoring_guide.md';
   final guide = File(guidePath).readAsStringSync();
 
   /// The `## Target Modules` section, up to the horizontal rule that ends it.

@@ -35,7 +35,7 @@ void main() {
     'doc',
     'lib',
     'example',
-    '_copilot_guidelines',
+    '_agent_guidelines',
   ];
 
   /// `[label](target)`, with an optional `"title"` after the target.

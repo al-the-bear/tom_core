@@ -12,7 +12,7 @@ Exits non-zero when any link is unresolvable, so it can gate a build.
 *take you somewhere*, and it is the part nothing verifies. The sweep that
 prompted this gate found 89 broken links under this repo alone and 371 of one
 single shape across the workspace -- every project's
-``_copilot_guidelines/index.md``, each one opening with a table of four to seven
+``_agent_guidelines/index.md``, each one opening with a table of four to seven
 links to the shared guidelines, and not one of those links working anywhere.
 They had been copied from a template in ``dart/new_project_setup.md`` that
 carried the defect, so the count grew by one table with every new project.
@@ -35,10 +35,10 @@ carried the defect, so the count grew by one table with every new project.
     says seventeen modules and which listed eighteen.
 
 ``GUIDELINE``
-    A link from outside a ``_copilot_guidelines/`` folder into one. This is not
+    A link from outside a ``_agent_guidelines/`` folder into one. This is not
     a broken link -- it resolves fine -- it is a layering rule: ``doc/`` and
     ``README.md`` are what a *consumer* of the package reads, and
-    ``_copilot_guidelines/`` is workspace tooling that ships with neither the
+    ``_agent_guidelines/`` is workspace tooling that ships with neither the
     package nor its pub.dev page. A README that routes its reader there is
     making the package's documentation depend on the workspace it happens to
     sit in. Naming the folder in prose is fine and is not matched; pointing at
@@ -141,7 +141,7 @@ DEFINITION = re.compile(r"^\s{0,3}\[([^\]]+)\]:\s*\S", re.M)
 #: text, which is what makes them harmless there and a defect outside.
 QUOTED = re.compile(r"``.+?``")
 
-GUIDELINES = "_copilot_guidelines"
+GUIDELINES = "_agent_guidelines"
 
 
 def tracked_markdown(root: Path) -> list[Path]:

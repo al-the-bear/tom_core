@@ -46,7 +46,7 @@ What is deliberately *not* a fault:
     the reader has it. Only ``Todo <n>`` and ``plan step <n>`` name something
     outside the artefact.
 
-``_copilot_guidelines/`` and ``CHANGELOG.md``
+``_agent_guidelines/`` and ``CHANGELOG.md``
     A development guideline is a working document that does not leave the
     workspace, and a changelog is a history by definition. Both may name work
     items freely.
@@ -89,7 +89,7 @@ SKIP_DIRS = {
     ".git",
     "node_modules",
     "__pycache__",
-    "_copilot_guidelines",
+    "_agent_guidelines",
     "testlog",
     # Scratch output. `check_doc_dart_blocks.py` extracts every ```dart block
     # in the corpus to `tool/ztmp/` so `dart analyze` can compile it; the copy

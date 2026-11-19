@@ -365,7 +365,7 @@ one.
 | [`tool/check_demo_counts.py`](tool/check_demo_counts.py) | Pins the demo screen/tile counts printed in `tom_flutter_ui_test/README.md` to the source |
 | [`tool/check_pubspec_boilerplate.py`](tool/check_pubspec_boilerplate.py) | Finds pubspecs still carrying a `flutter create` / `dart create` placeholder description or its tutorial commentary |
 | [`tool/check_doc_source_paths.py`](tool/check_doc_source_paths.py) | Checks that every `**Source:**` pointer in documentation names a path that exists |
-| [`tool/check_doc_links.py`](tool/check_doc_links.py) | Finds markdown links that open nothing, references that point at nothing, and links from a package's documentation into `_copilot_guidelines/` |
+| [`tool/check_doc_links.py`](tool/check_doc_links.py) | Finds markdown links that open nothing, references that point at nothing, and links from a package's documentation into `_agent_guidelines/` |
 | [`tool/check_doc_artifacts.py`](tool/check_doc_artifacts.py) | Finds machine-generated artifacts tracked under a package's `doc/` |
 | [`tool/check_shipped_imports.py`](tool/check_shipped_imports.py) | Finds a Dart file a publishable package ships whose relative import, export or part resolves outside the package, so it cannot load from the installed archive |
 | [`tool/check_doc_ai_citations.py`](tool/check_doc_ai_citations.py) | Finds shipped files citing a document under `_ai/` — by path or by bare name — which no reader of the package can open |
@@ -791,7 +791,7 @@ to a new subject. Names under a negation are skipped, because "carries no
 `TomForm` of its own" is prose whose whole point is that the file does not
 contain it; a claim is judged against everything it cites rather than the first
 path only; and containment follows `export` and `part` transitively, since a
-barrel declares nothing itself. Changelogs and `_copilot_guidelines/` are out
+barrel declares nothing itself. Changelogs and `_agent_guidelines/` are out
 of scope — one describes a past tree and the other an intended one, and neither
 can be repaired.
 
@@ -1353,10 +1353,10 @@ deleted — which is the argument against the tempting alternative of *validatin
 the numbers instead: where the annotation exists it has already made the number
 redundant, and where it doesn't the citation is unverifiable.
 
-CHANGELOGs, `_copilot_guidelines/` and this README are out, each for a reason
+CHANGELOGs, `_agent_guidelines/` and this README are out, each for a reason
 that can be stated rather than listed. A CHANGELOG is a dated record, so its
 citations describe a tree that no longer exists and repairing one would falsify
-the entry. `_copilot_guidelines/` is workspace tooling that ships with neither
+the entry. `_agent_guidelines/` is workspace tooling that ships with neither
 the package nor its pub.dev page — the same seam `check_doc_links.py` draws.
 And this README is where the suite explains its rules, which it cannot do
 without quoting the shapes it forbids; excluding it is what lets the gate keep
@@ -2023,7 +2023,7 @@ operational, and it cannot go stale.
 `test/api_reference_coverage_test.dart` — the gate covers the corpus, but a
 package's suite is what runs when that package changes, which is when its README
 rots. The convention itself is written in
-`_copilot_guidelines/component_module_readme_example.md` §2, which is where a
+`_agent_guidelines/component_module_readme_example.md` §2, which is where a
 README that mandates a rotting count would otherwise come from.
 
 ```bash
@@ -2140,7 +2140,7 @@ Follows every markdown link in the tree. A link is the one part of a document
 that promises to take you somewhere, and it was the part nothing verified: the
 sweep that prompted this gate found 89 broken links under this repo and 371 of
 a single shape across the workspace — every project's
-`_copilot_guidelines/index.md` opened with a table of links to the shared
+`_agent_guidelines/index.md` opened with a table of links to the shared
 guidelines, and not one of them worked anywhere.
 
 Three faults. `ABSOLUTE` is a target beginning with `/`, which reads like "from
@@ -2150,9 +2150,9 @@ that carried the defect, growing by one table per new project. `DEAD` is a
 relative target not on disk — the kernel's API index offered a "Result" row
 pointing at a summary nobody wrote, for a module the kernel does not have, in a
 table whose own header says seventeen and which listed eighteen. `GUIDELINE` is
-a link from outside `_copilot_guidelines/` into it: not broken, but a layering
+a link from outside `_agent_guidelines/` into it: not broken, but a layering
 fault, because `doc/` and `README.md` are what a consumer reads and
-`_copilot_guidelines/` ships with neither the package nor its pub.dev page.
+`_agent_guidelines/` ships with neither the package nor its pub.dev page.
 
 Anchors are deliberately not checked here — whether a heading exists is
 `check_doc_tocs`'s question, and answering it twice in two dialects of
@@ -2233,7 +2233,7 @@ Every `.dart` and `.md` file is in scope, `CHANGELOG.md` included — it ships,
 and a reader following an entry to a document they cannot open is stranded as
 surely as one following `doc/`. So is `test/`: a checkout of `tom_ai/core`
 carries its tests, and their reader is as likely to lack the mount.
-`_copilot_guidelines/` and `tool/` are out of scope because their readers work
+`_agent_guidelines/` and `tool/` are out of scope because their readers work
 inside this workspace, where the mount is present; generated Dart is skipped
 because its comments are copies of scanned source.
 

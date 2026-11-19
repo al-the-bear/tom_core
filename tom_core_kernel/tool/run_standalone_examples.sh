@@ -132,7 +132,7 @@ mkdir -p "$LOG_DIR"
 # The sweep covers the whole package rather than `example/`, `doc/` and
 # `README.md`, because a reader does not know which directory a command came
 # from: a dartdoc comment in `lib/`, a module `readme.md`, the `CHANGELOG`, a
-# sibling script in `tool/` and a note in `_copilot_guidelines/` all hand out a
+# sibling script in `tool/` and a note in `_agent_guidelines/` all hand out a
 # command that gets typed. Restricting the search to the three places the
 # commands happen to live today would leave the check passing the moment one is
 # written anywhere else — which is precisely when it is needed.

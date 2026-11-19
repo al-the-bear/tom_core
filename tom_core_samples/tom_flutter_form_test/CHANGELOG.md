@@ -111,7 +111,7 @@ of the suite today. The current suite is described in the README's
   nothing. The same template `description` ("A new Flutter project.") was also
   replaced in `web/manifest.json` and `web/index.html`, where it is visible in
   the browser tab and the PWA install prompt.
-- Documentation: `_copilot_guidelines/refactoring_plan.md` reconciled with the
+- Documentation: `_agent_guidelines/refactoring_plan.md` reconciled with the
   project it describes — it named `tom_core_flutter` (never a dependency; see
   `pubspec.yaml`) as an upstream, called `CHANGELOG.md` and `LICENSE` missing
   when both are tracked, said a catalogue still had to be written when

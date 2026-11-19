@@ -1426,7 +1426,7 @@
 
   That is not a comfort to a reader. `iding` is named five times in
   documentation that outlived it — four in `doc/review_findings.md`, once in
-  `_copilot_guidelines/refactoring_guide.md` — and this record is the designated
+  `_agent_guidelines/refactoring_guide.md` — and this record is the designated
   answer to "where did this go?". The record now covers five directories, with a
   table row and a dedicated section stating that it held nothing, has no
   successor, and why no git-based detector could ever have found it. Three
@@ -1516,7 +1516,7 @@
   fact only its readme was missing.
 
 - **The refactoring guide briefed the next agent to do work that is already
-  finished (tcinc1110).** `_copilot_guidelines/refactoring_guide.md` carried
+  finished (tcinc1110).** `_agent_guidelines/refactoring_guide.md` carried
   the **RCF2** follow-up — remove the legacy `forms/` module and migrate
   `tom_uam_client` onto `tom_flutter_ui` — as pending, and its per-module
   `forms/` entry said "scheduled for removal". Both halves have landed:
@@ -1529,7 +1529,7 @@
 
   The guide is a progress document, so being overtaken by events is its normal
   condition. It was worth fixing anyway because it is the package's own
-  `_copilot_guidelines/` file — the first thing an agent reads before touching
+  `_agent_guidelines/` file — the first thing an agent reads before touching
   this package.
 
 - **The guide's quality gate did not gate.** Steps 12 and 13 and the
@@ -1554,7 +1554,7 @@
 - **Two documents said the `preferences` module had been deleted; it is the
   destination the removal record redirects *to* (tcinc1109).** The status banner
   in `doc/review_findings.md` and the per-module marker in
-  `_copilot_guidelines/refactoring_guide.md` both recorded `preferences/` among
+  `_agent_guidelines/refactoring_guide.md` both recorded `preferences/` among
   the four placeholders removed in 1.1.0. Both were true when written — 1.1.0
   really did delete a `readme.md` of research links from that directory — and
   neither recorded that the real device-preferences module was built in the same
@@ -2394,7 +2394,7 @@
   `../../tom_core_kernel/doc/little_things/little_things.md`, which has a
   `### TomException` section and covers every one of the six terms. A sweep of
   all 48 repository-relative links in the package found this to be the only
-  wrong target and, in `_copilot_guidelines/index.md`, two dead ones — the
+  wrong target and, in `_agent_guidelines/index.md`, two dead ones — the
   sibling-package links `../tom_core_kernel/` and `../tom_core_server/` were
   one level short of the sibling directory and are now `../../`.
 
@@ -2689,7 +2689,7 @@
   introduced the forwarded kernel payload as "`parameters`, `stack`, and
   `autoLog`" and then passed only the first two — `autoLog` appeared exactly
   once in the file, in that sentence. It is now shown rather than described,
-  which is the branch the guidelines require (`_copilot_guidelines/dart/`
+  which is the branch the guidelines require (`_agent_guidelines/dart/`
   `examples.md` uses narrate-instead-of-demonstrate as its BAD specimen), and
   the only one of the three that *can* be shown: the other two are inert data,
   while `autoLog` has an observable side effect. A recording log output stands
@@ -2868,7 +2868,7 @@
 
 - **API reference (OT6).** Added a per-module API summary set under
   `doc/api_reference/` following
-  `_copilot_guidelines/dart/api_summary_creation.md` — one
+  `_agent_guidelines/dart/api_summary_creation.md` — one
   `api_summary_{module}.md` per module (`forms`, `little_things`, `observing`,
   `resources`, `runtime`, `security`) plus an `api_summary_index.md` with quick
   navigation, per-module type tables, and an alphabetical type index. Each

@@ -105,7 +105,7 @@ unambiguous. The sites that still match these patterns elsewhere are a different
 kind of sentence, and each is excluded for a reason that can be stated rather
 than listed: a CHANGELOG is a dated record, so its citations describe a tree
 that no longer exists and "repairing" one would falsify the entry;
-``_copilot_guidelines/`` is workspace tooling that ships with neither the
+``_agent_guidelines/`` is workspace tooling that ships with neither the
 package nor its pub.dev page, the same seam ``check_doc_links.py`` draws; and
 this repository's own ``README.md`` is where the suite explains its rules, which
 it cannot do without quoting the shapes it forbids. That last exclusion is what
@@ -186,7 +186,7 @@ silent on a pinned permalink that happens to end in ``.dart:807``, on a
 ``127.0.0.1:3307``, on ``a line 2 pixels wide``, on a file named without a line,
 and on a ``'audit.md:496'`` that is Dart *code* rather than a comment. The scope
 boundary is asserted where it lives, on [navigates] rather than on the matcher:
-the same planted fault in ``_copilot_guidelines/`` or in this repository's own
+the same planted fault in ``_agent_guidelines/`` or in this repository's own
 ``README.md`` never reaches the scan. That last case is the one worth keeping --
 it is the difference between this rule and the repo-wide version that would have
 made the suite unable to document itself.
@@ -226,7 +226,7 @@ SUFFIXES = (".dart", ".svg", ".md")
 # else that carries these shapes is prose *about* them.
 GUIDE_ROOT = REPO_ROOT / "tom_core_samples"
 DOC_DIR = "doc"
-GUIDELINES = "_copilot_guidelines"
+GUIDELINES = "_agent_guidelines"
 
 
 def navigates(path: Path) -> bool:
@@ -238,7 +238,7 @@ def navigates(path: Path) -> bool:
 
     Out, and each for its own reason. A ``CHANGELOG`` is a dated record, so its
     citations describe a tree that no longer exists and repairing them would
-    falsify the entry. ``_copilot_guidelines/`` is workspace tooling that ships
+    falsify the entry. ``_agent_guidelines/`` is workspace tooling that ships
     with neither the package nor its pub.dev page -- the same seam
     [check_doc_links] draws. And this repository's own ``README.md`` is where
     the suite explains its rules, which it cannot do without quoting the shapes

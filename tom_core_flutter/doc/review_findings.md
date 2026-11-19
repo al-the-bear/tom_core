@@ -73,7 +73,7 @@ Date: 10 January 2026
 5. **Clean up dead code**: Remove unused `_onChange` in `tom_fields.dart`
 6. **Clean up empty directories**: Remove `iding/` or add placeholder readme
 7. **Consider removing placeholder modules**: Camera, localstorage, preferences, qrcode are empty
-8. **Add local _copilot_guidelines**: If this package has specific patterns
+8. **Add local _agent_guidelines**: If this package has specific patterns
 
 ## Dependency Review
 

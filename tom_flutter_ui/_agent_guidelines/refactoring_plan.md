@@ -4,7 +4,7 @@ Project-specific workflow for refactoring, testing, documenting, and creating
 examples for **tom_flutter_ui**. The **reference target state** is
 `tom_core_kernel` (clean code, full dartdoc, per-module documentation,
 executable examples, comprehensive tests, generated `api.dart`). See
-`tom_core_kernel/_copilot_guidelines/refactor_test_example_document_all.md`.
+`tom_core_kernel/_agent_guidelines/refactor_test_example_document_all.md`.
 
 **Project type:** Flutter package / widget library (`publish_to: none`)
 **Source location:** `lib/src/`
