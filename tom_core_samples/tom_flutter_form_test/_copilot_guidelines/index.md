@@ -15,5 +15,5 @@
 | -------- | ------- |
 | [Clean Code](../../../../../_copilot_guidelines/dart/clean_code_principles.md) | DRY, abstractions, code smells |
 | [Coding Guidelines](../../../../../_copilot_guidelines/dart/coding_guidelines.md) | Naming, error handling, patterns |
-| [Documentation](../../../../../_copilot_guidelines/documentation_guidelines.md) | User docs vs development docs |
+| [Documentation](../../../../../../../../../_agent_guidelines/documentation_guidelines.md) | User docs vs development docs |
 | [Unit Tests](../../../../../_copilot_guidelines/dart/unit_tests.md) | Test structure, matchers, mocking |

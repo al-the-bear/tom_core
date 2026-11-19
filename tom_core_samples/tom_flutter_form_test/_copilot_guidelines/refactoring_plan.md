@@ -144,5 +144,5 @@ and `test/family_swap_test.dart`), which was re-cast from this demo.
 | --------- | -------- |
 | Clean Code | [`dart/clean_code_principles.md`](../../../../../_copilot_guidelines/dart/clean_code_principles.md) |
 | Coding Guidelines | [`dart/coding_guidelines.md`](../../../../../_copilot_guidelines/dart/coding_guidelines.md) |
-| Documentation | [`documentation_guidelines.md`](../../../../../_copilot_guidelines/documentation_guidelines.md) |
+| Documentation | [`documentation_guidelines.md`](../../../../../../../../../_agent_guidelines/documentation_guidelines.md) |
 | Unit Tests | [`dart/unit_tests.md`](../../../../../_copilot_guidelines/dart/unit_tests.md) |
