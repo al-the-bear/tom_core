@@ -5116,7 +5116,7 @@
 
   `tool/check_module_readme_shape.py` holds all 53 module readmes across four
   packages to the four elements, and
-  `_copilot_guidelines/component_module_readme_example.md` gains the level that
+  `_agent_guidelines/component_module_readme_example.md` gains the level that
   describes them. The heading is matched on its opening words: two kernel
   modules ship functions beside their types and head the table
   `## Key types & functions`, which is the same undertaking more accurately
@@ -14898,7 +14898,7 @@
 
 - **API reference (OT7).** Added a per-module API summary set under
   `doc/api_reference/` following
-  `_copilot_guidelines/dart/api_summary_creation.md` — one
+  `_agent_guidelines/dart/api_summary_creation.md` — one
   `api_summary_{module}.md` for each of the 13 real modules (`authentication`,
   `authorization`, `cache`, `cmdline`, `configuration`, `datasources`,
   `db_migration`, `endpoints`, `healthcheck`, `little_things`,

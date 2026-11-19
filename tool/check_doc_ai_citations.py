@@ -66,7 +66,7 @@ the reader of a test comment is as likely to hold the code without the mount as
 the reader of ``doc/``. Two neighbours are out of scope, because ``_ai/`` is
 reachable for their readers or because they do not ship:
 
-``_copilot_guidelines/``
+``_agent_guidelines/``
     Development documentation whose audience is the agent working in this
     workspace, where the ``_ai`` mount is present. Citing a quest todo file from
     a refactoring guideline is the correct thing to do.
@@ -123,7 +123,7 @@ DOCUMENT_NAME = re.compile(r"(?<![\w/.-])[\w.-]+\.(?:md|yaml)\b")
 
 #: Directories that never ship or are out of scope; see the module docstring.
 EXCLUDED_DIRS = {
-    "_copilot_guidelines",
+    "_agent_guidelines",
     "tool",
     ".dart_tool",
     "build",

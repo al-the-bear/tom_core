@@ -13,7 +13,7 @@
 #
 # Requirements: docker (+ compose v2), the Dart SDK and testkit on PATH — the
 # Tom binaries the workspace setup builds (`tom_binaries/tom/<platform>/`; see
-# _copilot_guidelines/tool_dependencies.md). Host port 5439
+# _agent_guidelines/tool_dependencies.md). Host port 5439
 # must be free. The database starts from a fresh volume each run, and every
 # suite file creates (and afterwards drops) a database of its own inside it.
 #
@@ -29,7 +29,7 @@ set -euo pipefail
 if ! command -v testkit >/dev/null 2>&1; then
   echo "testkit is not on PATH. It is one of the Tom binaries the workspace setup" >&2
   echo "builds and puts on PATH (tom_binaries/tom/<platform>/, see" >&2
-  echo "_copilot_guidelines/tool_dependencies.md); fix the setup rather than this script." >&2
+  echo "_agent_guidelines/tool_dependencies.md); fix the setup rather than this script." >&2
   echo "The same run by hand, from tom_core_server/:" >&2
   echo "  docker compose -f docker-compose.test.postgres.yaml up -d --wait && TOM_CORE_SERVER_TEST_DB_ENGINE=postgresql dart test --tags db" >&2
   exit 1

@@ -94,7 +94,7 @@ one sentence, which is exactly the shape a barrel produces.
 
 **Documents that are not making an as-is claim are out of scope.** Two paths
 are skipped, for one reason: a ``CHANGELOG.md`` describes a past revision, and
-``_copilot_guidelines/`` describes an intended one. Neither is a statement about
+``_agent_guidelines/`` describes an intended one. Neither is a statement about
 the tree as it stands, and neither can be repaired -- a changelog entry is not
 retro-edited, and a plan naming a type that does not exist yet is doing its job.
 Both were measured rather than assumed: including changelogs adds 46 judged
@@ -169,7 +169,7 @@ PART = re.compile(r"""^\s*part\s+['"]([^'"]+)['"]\s*;""", re.M)
 
 def is_as_is(md: Path) -> bool:
     """False for a document that describes a past or intended tree, not this one."""
-    return md.name != "CHANGELOG.md" and "_copilot_guidelines" not in md.parts
+    return md.name != "CHANGELOG.md" and "_agent_guidelines" not in md.parts
 
 
 def markdown_files(root: Path):

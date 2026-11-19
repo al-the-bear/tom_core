@@ -4,7 +4,7 @@ Project-specific workflow for refactoring, testing, documenting, and creating
 examples for **tom_core_flutter**. The **reference target state** is
 `tom_core_kernel` (clean code, full dartdoc, per-module documentation,
 executable examples, comprehensive tests, generated `api.dart`). See
-`tom_core_kernel/_copilot_guidelines/refactor_test_example_document_all.md`.
+`tom_core_kernel/_agent_guidelines/refactor_test_example_document_all.md`.
 
 **Project type:** Flutter library (`publish_to: none`)
 **Source location:** `lib/src/tomclient/`
@@ -201,7 +201,7 @@ private additions allowed):
 4. Quality check: no public API change; `flutter analyze` clean (see step 14 —
    `dart analyze` exits 0 on the `info`-severity lints this workspace enables).
 5. Create module documentation in `doc/{module}.md` per
-   [`documentation_guidelines.md`](../../../../_copilot_guidelines/documentation_guidelines.md).
+   [`documentation_guidelines.md`](../../../../../../../../_agent_guidelines/documentation_guidelines.md).
 6. Create **executable** examples per
    [`dart/examples.md`](../../../../_copilot_guidelines/dart/examples.md) — widget
    integration, observable state, platform considerations.
@@ -240,6 +240,6 @@ private additions allowed):
 | --------- | -------- |
 | Coding Guidelines | [`dart/coding_guidelines.md`](../../../../_copilot_guidelines/dart/coding_guidelines.md) |
 | Clean Code | [`dart/clean_code_principles.md`](../../../../_copilot_guidelines/dart/clean_code_principles.md) |
-| Documentation | [`documentation_guidelines.md`](../../../../_copilot_guidelines/documentation_guidelines.md) |
+| Documentation | [`documentation_guidelines.md`](../../../../../../../../_agent_guidelines/documentation_guidelines.md) |
 | Unit Tests | [`dart/unit_tests.md`](../../../../_copilot_guidelines/dart/unit_tests.md) |
 | Examples | [`dart/examples.md`](../../../../_copilot_guidelines/dart/examples.md) |

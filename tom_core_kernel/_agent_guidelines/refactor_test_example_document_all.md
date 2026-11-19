@@ -449,7 +449,7 @@ behavior; you may add private members/methods):
 4. Make examples and tests run. Add files to `build.yaml` for the reflection
    generator as needed; import and initialize reflection. Fix any bugs found.
 5. Create the module documentation file per
-   [`documentation_guidelines.md`](../../../../_copilot_guidelines/documentation_guidelines.md),
+   [`documentation_guidelines.md`](../../../../../../../../_agent_guidelines/documentation_guidelines.md),
    named after the folder (e.g. `doc/http_connection.md`). Length scales with
    complexity.
 6. Create / regenerate the module `api.dart` per the API file rules. Delete any
@@ -467,7 +467,7 @@ behavior; you may add private members/methods):
 | --------- | -------- | ----- |
 | Coding Guidelines | [`dart/coding_guidelines.md`](../../../../_copilot_guidelines/dart/coding_guidelines.md) | All Dart |
 | Clean Code | [`dart/clean_code_principles.md`](../../../../_copilot_guidelines/dart/clean_code_principles.md) | All Dart |
-| Documentation | [`documentation_guidelines.md`](../../../../_copilot_guidelines/documentation_guidelines.md) | All projects |
+| Documentation | [`documentation_guidelines.md`](../../../../../../../../_agent_guidelines/documentation_guidelines.md) | All projects |
 | Unit Tests | [`dart/unit_tests.md`](../../../../_copilot_guidelines/dart/unit_tests.md) | All projects |
 | Examples | [`dart/examples.md`](../../../../_copilot_guidelines/dart/examples.md) | All projects |
 | API Summary | [`dart/api_summary_creation.md`](../../../../_copilot_guidelines/dart/api_summary_creation.md) | All projects |

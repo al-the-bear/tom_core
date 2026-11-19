@@ -146,7 +146,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 #: analyzes into ``tool/ztmp/doc_dart_blocks/``, so a single ad-hoc run of that
 #: gate over an ungated package left ten copied ``§`` references sitting under
 #: ``tool/`` -- a shipped directory here -- and turned this gate red over files
-#: that are not in the repository. ``_copilot_guidelines`` is the other
+#: that are not in the repository. ``_agent_guidelines`` is the other
 #: direction: it is development documentation for this workspace, addressed to
 #: whoever changes the package rather than to whoever uses it, so a plan
 #: reference in it is correct writing.
@@ -158,7 +158,7 @@ SKIP_DIRS = {
     "__pycache__",
     "ztmp",
     ".venv",
-    "_copilot_guidelines",
+    "_agent_guidelines",
 }
 
 #: The directories whose Dart ships. Everything else in a package is

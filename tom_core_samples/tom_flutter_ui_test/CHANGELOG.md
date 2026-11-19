@@ -159,7 +159,7 @@
   giving their letter and title. A banner says *which* demo this is; the doc
   says *what it is for*. 59 of 59 now carry one.
 - **The local refactoring plan described a project that no longer exists, and
-  glossed ACL as access control.** `_copilot_guidelines/refactoring_plan.md` is
+  glossed ACL as access control.** `_agent_guidelines/refactoring_plan.md` is
   the only project-specific guideline this package has, so its errors are the
   first thing a new reader inherits.
 
