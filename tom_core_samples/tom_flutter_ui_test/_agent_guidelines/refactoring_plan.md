@@ -112,7 +112,7 @@ both commands, `dart analyze` exit 0, `flutter analyze` exit 1.
 
 | Guideline | Location |
 | --------- | -------- |
-| Clean Code | [`dart/clean_code_principles.md`](../../../../../_copilot_guidelines/dart/clean_code_principles.md) |
-| Coding Guidelines | [`dart/coding_guidelines.md`](../../../../../_copilot_guidelines/dart/coding_guidelines.md) |
+| Clean Code | [`dart/clean_code_principles.md`](../../../../../_agent_guidelines/dart/clean_code_principles.md) |
+| Coding Guidelines | [`dart/coding_guidelines.md`](../../../../../_agent_guidelines/dart/coding_guidelines.md) |
 | Documentation | [`documentation_guidelines.md`](../../../../../../../../../_agent_guidelines/documentation_guidelines.md) |
-| Unit Tests | [`dart/unit_tests.md`](../../../../../_copilot_guidelines/dart/unit_tests.md) |
+| Unit Tests | [`dart/unit_tests.md`](../../../../../_agent_guidelines/dart/unit_tests.md) |

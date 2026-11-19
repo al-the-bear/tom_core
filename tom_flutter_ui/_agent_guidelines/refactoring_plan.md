@@ -73,15 +73,15 @@ private additions allowed):
 
 1. Read all files in the module; identify the public widget/API surface.
 2. Refactor and document per
-   [`dart/coding_guidelines.md`](../../../../_copilot_guidelines/dart/coding_guidelines.md);
+   [`dart/coding_guidelines.md`](../../../../_agent_guidelines/dart/coding_guidelines.md);
    keep semantic layout separated from presentation.
 3. Quality check: no public API change; `flutter analyze` clean.
 4. Create / update module documentation in `doc/{module}.md` per
    [`documentation_guidelines.md`](../../../../../../../../_agent_guidelines/documentation_guidelines.md).
 5. Create **executable** examples (widget demos) per
-   [`dart/examples.md`](../../../../_copilot_guidelines/dart/examples.md).
+   [`dart/examples.md`](../../../../_agent_guidelines/dart/examples.md).
 6. Create / extend widget tests per
-   [`dart/unit_tests.md`](../../../../_copilot_guidelines/dart/unit_tests.md) using
+   [`dart/unit_tests.md`](../../../../_agent_guidelines/dart/unit_tests.md) using
    `flutter_test` / `WidgetTester`.
 7. Create / regenerate `api.dart` (or `doc/api/api_summary_{module}.md`) and
    verify it matches the code.
@@ -127,8 +127,8 @@ private additions allowed):
 
 | Guideline | Location |
 | --------- | -------- |
-| Coding Guidelines | [`dart/coding_guidelines.md`](../../../../_copilot_guidelines/dart/coding_guidelines.md) |
-| Clean Code | [`dart/clean_code_principles.md`](../../../../_copilot_guidelines/dart/clean_code_principles.md) |
+| Coding Guidelines | [`dart/coding_guidelines.md`](../../../../_agent_guidelines/dart/coding_guidelines.md) |
+| Clean Code | [`dart/clean_code_principles.md`](../../../../_agent_guidelines/dart/clean_code_principles.md) |
 | Documentation | [`documentation_guidelines.md`](../../../../../../../../_agent_guidelines/documentation_guidelines.md) |
-| Unit Tests | [`dart/unit_tests.md`](../../../../_copilot_guidelines/dart/unit_tests.md) |
-| Examples | [`dart/examples.md`](../../../../_copilot_guidelines/dart/examples.md) |
+| Unit Tests | [`dart/unit_tests.md`](../../../../_agent_guidelines/dart/unit_tests.md) |
+| Examples | [`dart/examples.md`](../../../../_agent_guidelines/dart/examples.md) |
