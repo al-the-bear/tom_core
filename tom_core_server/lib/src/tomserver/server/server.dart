@@ -622,7 +622,8 @@ Handler noopHandler(String id, int statusCode) {
 ///
 /// When the inner handler throws, the error and stack trace are logged and
 /// passed to [errorHandler]; a non-null result becomes the response, otherwise
-/// the error is rethrown to the next outer handler. [id] labels the layer for
+/// the error is rethrown to the next outer handler. A [HijackException] (an
+/// accepted WebSocket upgrade) passes through untouched, to shelf's adapter. [id] labels the layer for
 /// tracing. The pipeline installs two layers — an outer one (using the
 /// authentication error handler) and an inner one (using the main error
 /// handler) — see [TomServer.start].
@@ -640,6 +641,12 @@ Middleware _handleError(
         return response;
       },
       onError: (Object error, StackTrace stacktrace) {
+        // An accepted WebSocket upgrade (or any other hijack) is control
+        // flow for shelf's adapter, not an error: answering it would make
+        // shelf write a reply over the socket the handler took over.
+        if (error is HijackException) {
+          Error.throwWithStackTrace(error, stacktrace);
+        }
         tomLog.error("handleError $id caught error... $error");
         tomPrintStackTrace(stacktrace);
         Response? errorResult = errorHandler(request, error, stacktrace);

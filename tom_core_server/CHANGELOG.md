@@ -1,3 +1,13 @@
+## 1.5.1
+
+### Fixed
+
+- **A WebSocket endpoint works behind `TomServer.start()`.** The pipeline's
+  two error layers caught the `HijackException` an accepted upgrade throws
+  and answered it with a 500, so shelf reported "Got a response for hijacked
+  request" for every socket opened; a hijack now passes through them to
+  shelf's adapter.
+
 ## 1.5.0
 
 ### Changed

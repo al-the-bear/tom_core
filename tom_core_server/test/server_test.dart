@@ -6,6 +6,7 @@ import 'package:dart_jsonwebtoken/dart_jsonwebtoken.dart' as jwt;
 import 'package:shelf/shelf.dart';
 import 'package:tom_core_server/tom_core_server.dart';
 import 'package:test/test.dart';
+import 'package:web_socket_channel/web_socket_channel.dart';
 
 import 'fixtures/reflection_fixture.dart';
 import 'fixtures/reflection_fixture.reflection.dart';
@@ -1271,6 +1272,25 @@ void main() {
       final second = await TomServer(_BindableConfig(port: port)).start();
       addTearDown(() => second.close(force: true));
       expect(second.port, port);
+    });
+
+    test('a WebSocket endpoint is served through the whole pipeline', () async {
+      // An accepted upgrade ends in `Request.hijack`, which throws
+      // `HijackException` by contract. Both error layers of the pipeline sit
+      // between the endpoint and shelf's adapter, and a layer that turned the
+      // exception into a response made shelf report "Got a response for
+      // hijacked request" for every socket opened: an unhandled error per
+      // connection, which this test's zone reports as a failure. The
+      // endpoint-level socket tests build their own pipeline without those
+      // layers, so only a server started by `start()` shows it.
+      final server = await TomServer(_BindableConfig()).start();
+      addTearDown(() => server.close(force: true));
+      final socket = WebSocketChannel.connect(
+        Uri.parse('ws://127.0.0.1:${server.port}/fixture/socket'),
+      );
+      await socket.ready;
+      expect(await socket.stream.first, startsWith('zone:fixture/socket'));
+      await socket.sink.close();
     });
   });
 
