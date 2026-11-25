@@ -488,7 +488,7 @@ packages:
       path: "../../tom_core_kernel"
       relative: true
     source: path
-    version: "1.2.1"
+    version: "1.2.2"
   tom_crypto:
     dependency: transitive
     description:
