@@ -2452,7 +2452,7 @@ void main() {
         // collision arrived: the suite asserted each constant's value
         // separately and both assertions passed.
         final source = File(
-          'lib/src/tombase/http_connection/server_connection.dart',
+          'lib/src/tombase/http_connection/server_call_error.dart',
         ).readAsStringSync();
         final declaration = RegExp(
           r'^\s+static const (\w+)\s*=\s*(-?\d+);',

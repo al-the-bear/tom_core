@@ -20,7 +20,8 @@ converter singletons.
 
 ## Overview
 
-Source: `lib/src/tombase/reflection/reflection.dart`.
+Source: `lib/src/tombase/reflection/reflection.dart`,
+`lib/src/tombase/reflection/reflection_info.dart`.
 
 This is a stable module that wraps the `tom_reflection` package's `Reflection`
 type with the capability set the Tom framework needs, and layers a JSON

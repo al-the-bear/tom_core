@@ -1,3 +1,23 @@
+## 1.2.2
+
+### Changed
+
+- **What a user interface takes from the kernel no longer imports the HTTP
+  client or the token handling.** Nothing in the public API changes; two
+  internal imports are gone. `TomServerCallError` is in a file of its own
+  (`http_connection/server_call_error.dart`), so `TomException`, which carries
+  one, no longer imports the server connection and with it `package:http`
+  and `tom_crypto`. The JSON converter (`TomReflectionInfo`,
+  `TomReflectorException`, `tomReflectionInfo`) is in
+  `reflection/reflection_info.dart`; `reflection/reflection.dart` keeps the
+  reflector and the field annotations and imports `tom_reflection` only, so
+  a library that only annotates its classes does not import the converter.
+  The libraries of the observables, text resources, scopes, the
+  authorization model and the file-transfer contract now reach no
+  `tom_crypto`, no `package:http` and no `dart:io`, and a test holds that.
+  Generated `*.reflection.dart` files are unaffected: the library they name
+  for the reflector is the same.
+
 ## 1.2.1
 
 ### Fixed

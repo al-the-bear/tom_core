@@ -11,7 +11,9 @@ import 'tom_observable.dart';
 export 'tom_observable.dart';
 
 import '../reflection/reflection.dart';
+import '../reflection/reflection_info.dart';
 export '../reflection/reflection.dart';
+export '../reflection/reflection_info.dart';
 
 /// Exception thrown by observable objects when invalid operations are attempted.
 ///

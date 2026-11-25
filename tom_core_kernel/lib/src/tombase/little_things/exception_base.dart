@@ -32,7 +32,7 @@ library;
 import 'package:stack_trace/stack_trace.dart';
 import 'package:tom_basics/tom_basics.dart';
 
-import '../http_connection/server_connection.dart';
+import '../http_connection/server_call_error.dart';
 import 'little_things.dart';
 
 // =============================================================================
@@ -74,7 +74,7 @@ import 'little_things.dart';
 ///
 /// See also:
 /// - [TomBaseException] for the minimal base class
-/// - [TomServerConnectionException] for HTTP-related errors
+/// - `TomServerConnectionException` for HTTP-related errors
 /// - [TomLoggable] for the logging interface
 class TomException extends TomBaseException implements TomLoggable {
   /// Whether this exception logged itself when it was created.

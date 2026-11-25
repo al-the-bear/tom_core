@@ -88,6 +88,7 @@ Source: `lib/src/tombase/http_connection/auth_retry.dart`,
 `lib/src/tombase/http_connection/mimetypes.dart`,
 `lib/src/tombase/http_connection/remote_context.dart`,
 `lib/src/tombase/http_connection/resilience.dart`,
+`lib/src/tombase/http_connection/server_call_error.dart`,
 `lib/src/tombase/http_connection/server_connection.dart`.
 
 An API is described declaratively: a `TomApi` groups typed `TomApiEndpoint`s

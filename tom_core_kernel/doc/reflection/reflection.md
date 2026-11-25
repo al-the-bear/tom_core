@@ -1735,17 +1735,23 @@ searching for a type that cannot exist.
 
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
-| `dart:convert` | dart | every file | the `jsonEncode`/`jsonDecode` behind the string-level conversion entry points |
-| `tom_basics` | package | every file | `tomLog`, used at `trace` level throughout the conversion to report each declaration and value it resolves. This is verbose by design and is the first thing to turn up when a field fails to serialize |
+| `dart:convert` | dart | `reflection_info.dart` | the `jsonEncode`/`jsonDecode` behind the string-level conversion entry points |
+| `tom_basics` | package | `reflection_info.dart` | `tomLog`, used at `trace` level throughout the conversion to report each declaration and value it resolves. This is verbose by design and is the first thing to turn up when a field fails to serialize |
 | `tom_reflection` | package | every file | `Reflection`, the `ClassMirror` / `InstanceMirror` types and `NoSuchCapabilityError`. A Tom-framework package, but consumed by version constraint like any other hosted dependency — no path dependency and no override. Its mirror data is produced at build time by `tom_reflection_generator`, a dev dependency; see [Build Configuration](#build-configuration) |
-| [json](../json/json.md) | module | every file | `TomJsonSerializable` |
-| [little_things](../little_things/little_things.md) | module | every file | `TomException`, the base of `TomReflectorException` |
-| [observable](../observable/observable.md) | module | every file | `TomClass` and the observable field types, which the JSON conversion special-cases rather than treating as opaque objects |
-| [security](../security/security.md) | module | every file | `TomProtectedField` and `TomResourceKeyProtection`, which the field walk consults to leave out a field the caller may not see |
-| [timezoned](../timezoned/timezoned.md) | module | every file | the conversion knows these three types by name, which is why a zoned value survives a round trip that a general object graph would flatten |
+| [json](../json/json.md) | module | `reflection_info.dart` | `TomJsonSerializable` |
+| [little_things](../little_things/little_things.md) | module | `reflection_info.dart` | `TomException`, the base of `TomReflectorException` |
+| [observable](../observable/observable.md) | module | `reflection_info.dart` | `TomClass` and the observable field types, which the JSON conversion special-cases rather than treating as opaque objects |
+| [security](../security/security.md) | module | `reflection_info.dart` | `TomProtectedField` and `TomResourceKeyProtection`, which the field walk consults to leave out a field the caller may not see |
+| [timezoned](../timezoned/timezoned.md) | module | `reflection_info.dart` | the conversion knows these three types by name, which is why a zoned value survives a round trip that a general object graph would flatten |
 
-The whole module is one file, `reflection.dart`, so every row above applies to
-it.
+The module is two files. `reflection.dart` holds the reflector and the field
+annotations (`TomReflector`, `tomReflector`, `TomRequiredField`,
+`TomRecommendedField`) and imports `tom_reflection` only, so a library that
+only annotates its classes imports none of the rows above but that one. It is
+also the library a generated `*.reflection.dart` file names for the reflector.
+`reflection_info.dart` holds the converter (`TomReflectionInfo`,
+`TomReflectorException`, `tomReflectionInfo`) and everything else in the
+table.
 
 ### The observable edge is a cycle
 

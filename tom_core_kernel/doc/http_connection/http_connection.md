@@ -1507,7 +1507,7 @@ TomApiEndpoint<PublicData, void>(
 | ---------- | ---- | ----------- | --- |
 | `dart:async` | dart | `file_transfer.dart`, `http_file_transfer.dart`, `remote_context.dart`, `resilience.dart`, `server_connection.dart` | `Completer`, `Future`, `Stream`, `StreamTransformer`, `TimeoutException`, `unawaited` |
 | `dart:collection` | dart | `resilience.dart` | `Queue`, the bulkhead's waiting calls |
-| `dart:convert` | dart | `endpoints_apis.dart`, `file_transfer.dart`, `http_file_transfer.dart`, `server_connection.dart` | `Encoding`, `json`, `jsonDecode`, `jsonEncode` |
+| `dart:convert` | dart | `endpoints_apis.dart`, `file_transfer.dart`, `http_file_transfer.dart`, `server_call_error.dart`, `server_connection.dart` | `Encoding`, `json`, `jsonDecode`, `jsonEncode` |
 | `dart:math` | dart | `resilience.dart` | `Random` for the backoff jitter, `min` / `max` |
 | `dart:typed_data` | dart | `file_transfer.dart`, `resilience.dart`, `server_connection.dart` | `Uint8List` |
 | `http` | package | `http_file_transfer.dart`, `resilience.dart`, `server_connection.dart` | `Client`, `Request`, `Response`, `StreamedResponse` — the transport every call and file transfer goes over; `BaseClient` and `AbortableRequest` for `TomResilientClient` |
@@ -1515,7 +1515,7 @@ TomApiEndpoint<PublicData, void>(
 | `tom_basics` | package | `remote_context.dart`, `server_connection.dart` | `TomPlatformUtils.current.httpClient()`, which is how a channel obtains a platform-appropriate client |
 | [beanlocator](../beanlocator/beanlocator.md) | module | `auth_retry.dart` | `TomBean` for resolving the active `TomAuthRetryPolicy` |
 | [context](../context/context.md) | module | `resilience.dart` | `TomTraceContext`, whose child span every outgoing call carries, and `TomTracing` / `TomSpanKind`, the client span of each call |
-| [little_things](../little_things/little_things.md) | module | 7 of 10 files | `TomException`, the base class for error handling |
+| [little_things](../little_things/little_things.md) | module | 7 of 11 files | `TomException`, the base class for error handling |
 | [metrics](../metrics/metrics.md) | module | `resilience.dart` | `TomMetrics.registry`, which the `tom_http_client_*` series are recorded into |
 | [reflection](../reflection/reflection.md) | module | `server_connection.dart` | `createInstance`, `convertToJsonString` and `convertFromJsonString`, which *are* the send path. A DTO sent through this module needs generated reflection data; without it the send fails loudly — `reflector.reflect.not_reflectable` for a class with no generated data at all, `reflector.type.not_annotated` for one that reflects but carries no `@tomReflector` — rather than sending something empty |
 | [security](../security/security.md) | module | `endpoints_apis.dart`, `http_file_transfer.dart`, `server_connection.dart` | `TomBearerAuthentication`, for the token attached when `includeBearerAuthentication` is set, and `TomAccessControl` / `TomPublicAccess` / `TomAuthenticatedAccess` for the endpoint access policies |
@@ -1539,9 +1539,11 @@ visible:
 
 - **`http_connection` ↔ `little_things`.** Seven files here import
   `little_things/exception_base.dart` for `TomException`, and
-  `exception_base.dart` imports `http_connection/server_connection.dart` in
+  `exception_base.dart` imports `http_connection/server_call_error.dart` in
   return, because `TomException` carries a `TomServerCallError? serverCallError`
   — the framework's base exception type holds a transport-specific payload.
+  `server_call_error.dart` holds that one value type and imports only
+  `dart:convert`, so the exception base reaches none of the HTTP client.
 - **`http_connection` ↔ `security`.** `server_connection.dart` and
   `http_file_transfer.dart` need `bearer_authentication.dart` to attach a token,
   and `endpoints_apis.dart` needs `access_controls.dart` for the endpoint access

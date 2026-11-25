@@ -44,6 +44,7 @@ import 'package:tom_reflection/mirrors.dart';
 import '../little_things/exception_base.dart';
 import '../little_things/little_things.dart';
 import '../reflection/reflection.dart';
+import '../reflection/reflection_info.dart';
 
 // =============================================================================
 // Type Definitions

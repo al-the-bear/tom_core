@@ -697,19 +697,23 @@ import it — but it is not free of internal dependencies, and the one it has
 runs *both* ways:
 
 ```
-exception_base.dart ──> http_connection/server_connection.dart
+exception_base.dart ──> http_connection/server_call_error.dart
     for TomServerCallError
 
 http_connection/endpoints_apis.dart ──> little_things/exception_base.dart
     for TomEndpointException extends TomException
 ```
 
-Dart permits this — the two files form one library cycle, resolved through the
-package barrel that `server_connection.dart` imports — so it compiles and is
-not a defect to be fixed casually. It is worth knowing about before moving
-either type: `TomServerCallError` cannot be pushed *down* into this module
-without dragging the HTTP types with it, and `TomException` cannot be pushed
-*up* into `http_connection` because the exceptions of nearly every other module
+The cycle is between the two modules, not between these files:
+`server_call_error.dart` is a value type that imports `dart:convert` and
+nothing else, so `exception_base.dart` reaches no HTTP client, no token
+handling and no `dart:io` through it. That is deliberate, and the suite's
+layering test (`ui_surface_layering_test.dart` under `test/`) holds it.
+Every module that throws one of the framework's exceptions imports the
+exception base, so an import of the server connection there would put
+`package:http` and `tom_crypto` under every module. It is
+worth knowing before moving either type: `TomException` cannot be pushed *up*
+into `http_connection`, because the exceptions of nearly every other module
 extend it.
 
 ### Consumers are not listed here

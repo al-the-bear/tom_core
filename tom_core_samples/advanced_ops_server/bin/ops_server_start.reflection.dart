@@ -68,7 +68,7 @@ import 'package:tom_core_kernel/src/tombase/http_connection/httpmethods.dart'
     as prefix48;
 import 'package:tom_core_kernel/src/tombase/http_connection/mimetypes.dart'
     as prefix49;
-import 'package:tom_core_kernel/src/tombase/http_connection/server_connection.dart'
+import 'package:tom_core_kernel/src/tombase/http_connection/server_call_error.dart'
     as prefix50;
 import 'package:tom_core_kernel/src/tombase/isolate_pooling/tom_worker.dart'
     as prefix51;
@@ -135728,7 +135728,7 @@ final _data = <r.Reflection, r.ReflectorData>{
       r.LibraryMirrorImpl(
         r'',
         Uri.parse(
-          'package:tom_core_kernel/src/tombase/http_connection/server_connection.dart',
+          'package:tom_core_kernel/src/tombase/http_connection/server_call_error.dart',
         ),
         const prefix61.TomReflector(),
         const <int>[],
