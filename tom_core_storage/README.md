@@ -76,6 +76,7 @@ Dart SDK `^3.10.0`. No Flutter dependency.
 | `TomMediumFileStorage` | Single-file containers on a `TomBundleMedium`, one per locator under a prefix (`browser:settings.webwork.kdbx`); a head is the SHA-256 of the bytes and a commit is a compare-and-swap on it. What a root has whose device storage is a keyed medium rather than a file system — a browser's IndexedDB. |
 | `tomOpenBrowserMedium` | A medium over IndexedDB (`web.dart`). |
 | `TomAesGcmCacheCipher` | AES-256-GCM sealing of cache files (`cipher.dart`). |
+| `TomStorageFileSystem` | The files of one container as a `TomFileSystem` (`file_system.dart`), the storage an editor takes: read, write, create, rename and delete by URI over any tier. A revision is the content hash of the bytes read, and a write with an expected revision is refused with a `TomFileConflict` when the file moved; a commit that lost the container's compare-and-swap only to a change of another file is retried. Listing is as deep as the backend lists; watch answers null and trash false. |
 | `TomMemoryRemote`, `TomMemoryStorage`, `TomStaleHead` | Test support (`testing.dart`): an in-memory compare-and-swap remote shared by per-device storages whose reads, writes, quota, key and replica lag each fail on their own switch. |
 
 ## Entry points
@@ -88,6 +89,7 @@ Dart SDK `^3.10.0`. No Flutter dependency.
 | `package:tom_core_storage/git.dart` | `TomGitStorage`, `TomGitLocalRepository`, `tomGitMemoryClones` | all, the web included (over `tom_git` and `http`) |
 | `package:tom_core_storage/web.dart` | `tomOpenBrowserMedium`, `TomBrowserStorageException` | browser (a VM test gets an in-memory stand-in) |
 | `package:tom_core_storage/cipher.dart` | `TomAesGcmCacheCipher` | all |
+| `package:tom_core_storage/file_system.dart` | `TomStorageFileSystem` | all, the web included (over `tom_file_system`'s contract) |
 | `package:tom_core_storage/settings.dart` | device settings, the settings-key bootstrap, the key port, the secret-store port, identity, storage locations and forgetting one | all, the web included (no `dart:io`, no container format, no platform plugin) |
 | `package:tom_core_storage/testing.dart` | `TomMemoryRemote`, `TomMemoryStorage`, `TomStaleHead` — a test double; only a test imports it | all |
 
@@ -203,6 +205,41 @@ Future<void> main() async {
 - **No platform secret store.** The keychain implementation is the host's —
   a Flutter host binds the platform keychain behind `TomSecretStore`.
 
+## Editors on storage
+
+An editor that takes its storage as a `TomFileSystem` opens files from any
+tier through `TomStorageFileSystem`: a path of the file system is a member of
+the container.
+
+```dart
+import 'dart:convert';
+import 'dart:typed_data';
+
+import 'package:tom_core_storage/file_system.dart';
+import 'package:tom_core_storage/github.dart';
+import 'package:tom_file_system/tom_file_system.dart';
+
+Future<void> edit(TomGitHubStorage storage) async {
+  final fs = TomStorageFileSystem(storage, 'github:owner/repo/office');
+  final uri = fs.uriOf('report.docx');
+  final opened = await fs.read(uri);
+  try {
+    // Refused when somebody else changed report.docx since it was read.
+    await fs.write(
+      uri,
+      Uint8List.fromList(utf8.encode('edited')),
+      expected: opened.revision,
+    );
+  } on TomFileConflict catch (conflict) {
+    print('changed elsewhere: ${conflict.current}');
+  }
+}
+```
+
+Storage keeps no empty folder: `create(directory: true)` does nothing, and a
+folder exists once a file is written under it. A file's size is not known
+before it is read, so a listing answers it as 0.
+
 ## Limits
 
 - **Two remote backends.** GitHub, reached through its REST and git-data API,
@@ -231,6 +268,7 @@ Future<void> main() async {
 | `http` | runtime | the client the git backend's transport is given (`git.dart`) |
 | `web` | runtime | IndexedDB (`web.dart`) |
 | `pointycastle` | runtime | AES-256-GCM (`cipher.dart`) |
+| `tom_file_system` | runtime | the file-system contract `TomStorageFileSystem` implements (`file_system.dart`) |
 | `test`, `lints` | dev | the suite (with `tom_github_api`'s in-memory GitHub from `package:tom_github_api/testing.dart` and `tom_git`'s in-memory git server from `package:tom_git/testing.dart`) |
 | `tom_test_support` | dev | the live contract and the Gitea fixture, for the live git-backend suites |
 

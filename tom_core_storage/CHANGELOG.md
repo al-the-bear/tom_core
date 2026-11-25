@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- **`TomStorageFileSystem`** (`file_system.dart`): the files of one storage
+  container as a `TomFileSystem` (`tom_file_system`), for editors that take
+  their storage as a file system. Read, write, create, rename and delete by
+  URI over every tier; a revision is the content hash, a write against a moved
+  revision is refused with `TomFileConflict`, and a commit that lost the
+  container's compare-and-swap only to a change of another file is retried.
+  Watch and trash are not supported. New dependency `tom_file_system`; the
+  SDK floor rises to 3.10.8, `tom_file_system`'s.
+
 ## 0.1.3
 
 ### Added

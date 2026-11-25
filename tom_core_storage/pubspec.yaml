@@ -9,7 +9,7 @@ version: 0.1.3
 repository: https://github.com/al-the-bear/tom_core
 
 environment:
-  sdk: ^3.10.0
+  sdk: ^3.10.8
 
 dependencies:
   # ZIP: a bundle medium reads and writes its container as one archive.
@@ -28,6 +28,10 @@ dependencies:
   # Git in pure Dart, for the git backend (git.dart): no git binary needed.
   tom_git:
     path: ../../basics/tom_git
+  # The file-system contract the storage file system implements
+  # (file_system.dart).
+  tom_file_system:
+    path: ../../basics/tom_file_system
   # The GitHub REST and git-data API, for the GitHub backend (github.dart).
   tom_github_api:
     path: ../../basics/tom_github_api
