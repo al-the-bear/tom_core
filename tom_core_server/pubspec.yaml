@@ -1,6 +1,6 @@
 name: tom_core_server
 description: Server library for the TOM framework.
-version: 1.5.1
+version: 1.5.2
 repository: https://github.com/al-the-bear/tom_core
 
 # Private keys published on purpose, which pub's secret scan would otherwise

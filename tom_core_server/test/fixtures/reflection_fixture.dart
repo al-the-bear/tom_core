@@ -334,6 +334,18 @@ abstract class FixtureApiService {
   )
   Future<Map<String, Object>> pair(FixtureParseRequest first, String second);
 
+  /// A public endpoint taking the shelf [Request] and a path value: the shape
+  /// of a relay whose every request is anonymous. Binding either parameter
+  /// must not warn that the zone holds no principal or token, since none is
+  /// expected.
+  @TomPublicAccess()
+  @TomEndpoint(
+    methods: [TomHttpMethod.get],
+    uri: '/fixture/anonymous/{name}',
+    logRequests: false,
+  )
+  Future<Map<String, Object>> anonymous(Request request, String name);
+
   /// Three primitives that can fail to parse: one from the path and two from
   /// the query.
   ///
@@ -945,6 +957,10 @@ class FixtureApiServer implements FixtureApiService {
     FixtureParseRequest first,
     String second,
   ) async => <String, Object>{'label': first.label, 'second': second};
+
+  @override
+  Future<Map<String, Object>> anonymous(Request request, String name) async =>
+      <String, Object>{'name': name, 'method': request.method};
 
   @override
   Future<Map<String, Object>> typedPrimitives(

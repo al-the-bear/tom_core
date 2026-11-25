@@ -1,3 +1,17 @@
+## 1.5.2
+
+### Fixed
+
+- **An anonymous request to a public endpoint logs no warning.** Binding the
+  parameters of a request without a principal warned, for every parameter
+  whatever its type, that the zone held no `TomPrincipal` and no
+  `TomClientJwtToken`: two WARN lines per parameter per request on an
+  endpoint that expects anonymous requests. The warning is now given only for
+  a parameter declared as `TomPrincipal` or `TomClientJwtToken` when the zone
+  holds none.
+- Takes `tom_core_kernel` 1.2.1: a `Map` field of a server configuration
+  binds a section read from YAML.
+
 ## 1.5.1
 
 ### Fixed

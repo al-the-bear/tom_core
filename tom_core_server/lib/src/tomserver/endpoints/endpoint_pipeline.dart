@@ -691,26 +691,31 @@ class TomEndpointHandler {
         positionalArguments.add(file);
         continue;
       }
-      if (pm.type.reflectedType == TomPrincipal && authentication != null) {
-        tomLog.trace(
-          "$reqId-${req.url}: Setting parameter ${pm.simpleName} ${pm.type.reflectedType} to TomPrincipal",
-        );
-        positionalArguments.add(authentication);
-        continue;
-      } else if (authentication == null) {
+      // A missing principal or token is worth a warning only to a parameter
+      // that asks for one: an anonymous request is normal for a public
+      // endpoint, and its Request or path parameters say nothing about it.
+      if (pm.type.reflectedType == TomPrincipal) {
+        if (authentication != null) {
+          tomLog.trace(
+            "$reqId-${req.url}: Setting parameter ${pm.simpleName} ${pm.type.reflectedType} to TomPrincipal",
+          );
+          positionalArguments.add(authentication);
+          continue;
+        }
         tomLog.warn(
-          "$reqId-${req.url}: Found parameter of type ${pm.type.reflectedType} but no TomPrincipal in zone.",
+          "$reqId-${req.url}: Found parameter ${pm.simpleName} of type TomPrincipal but no TomPrincipal in zone.",
         );
       }
-      if (pm.type.reflectedType == TomClientJwtToken && token != null) {
-        tomLog.trace(
-          "$reqId-${req.url}: Setting parameter ${pm.simpleName} ${pm.type.reflectedType} to TomClientJwtToken",
-        );
-        positionalArguments.add(token);
-        continue;
-      } else if (token == null) {
+      if (pm.type.reflectedType == TomClientJwtToken) {
+        if (token != null) {
+          tomLog.trace(
+            "$reqId-${req.url}: Setting parameter ${pm.simpleName} ${pm.type.reflectedType} to TomClientJwtToken",
+          );
+          positionalArguments.add(token);
+          continue;
+        }
         tomLog.warn(
-          "$reqId-${req.url}: Found parameter of type ${pm.type.reflectedType} but no TomClientJwtToken in zone.",
+          "$reqId-${req.url}: Found parameter ${pm.simpleName} of type TomClientJwtToken but no TomClientJwtToken in zone.",
         );
       }
       if (req.runtimeType == pm.type.reflectedType) {

@@ -99,7 +99,7 @@ Add it from pub.dev:
 
 ```yaml
 dependencies:
-  tom_core_server: ^1.5.1
+  tom_core_server: ^1.5.2
 ```
 
 Then import the single barrel — it re-exports `tom_core_kernel`,
@@ -568,7 +568,7 @@ application that publishes or subscribes imports it itself. See the
 
 ## Status
 
-- **Version:** 1.5.1
+- **Version:** 1.5.2
 - **Tests:** run with `testkit :test` or `dart test`. Part of the suite is
   tagged `db` and skips unless a live database is reachable. The same suites
   run against both databases: `tool/run_db_tests.sh` brings up a throwaway

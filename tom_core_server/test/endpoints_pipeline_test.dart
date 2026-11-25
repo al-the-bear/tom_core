@@ -1428,6 +1428,61 @@ void main() {
     });
   });
 
+  group('an anonymous request to a public endpoint', () {
+    late Router router;
+
+    setUp(() {
+      TomBean.resetBeanContext();
+      TomBean.withType<FixtureApiServer>(FixtureApiServer());
+      TomBean.withType<TomHealthServer>(TomHealthServer());
+      TomBean.withType<FixtureAccessApiService>(FixtureAccessApiService());
+      router = TomEndpointRouting().initializeRouter();
+    });
+
+    tearDown(TomBean.resetBeanContext);
+
+    test('binds a Request and a path value without warning about the '
+        'missing principal or token', () async {
+      // An anonymous request is what a public endpoint is for; binding its
+      // parameters once warned twice per parameter, filling a production log
+      // with two lines per request.
+      final previousOutput = tomLog.logOutput;
+      final previousLevel = tomLog.logLevel;
+      final captured = _CapturingLogOutput();
+      addTearDown(() {
+        tomLog.logOutput = previousOutput;
+        tomLog.setLogLevel(previousLevel);
+      });
+      tomLog.logOutput = captured;
+      // Every level, so the binding's own trace lines reach the capture.
+      tomLog.setLogLevel(TomLogLevel.all);
+
+      final response = await router.call(_get('/fixture/anonymous/alice'));
+      expect(response.statusCode, 200);
+      expect(jsonDecode(await response.readAsString()), {
+        'name': 'alice',
+        'method': 'GET',
+      });
+      expect(
+        captured.lines.where(
+          (l) =>
+              l.contains('no TomPrincipal') ||
+              l.contains('no TomClientJwtToken'),
+        ),
+        isEmpty,
+      );
+      // The observation works: the binding logged for this request.
+      expect(
+        captured.lines.where(
+          (l) =>
+              l.contains('fixture/anonymous/alice') &&
+              l.contains('Setting parameter'),
+        ),
+        isNotEmpty,
+      );
+    });
+  });
+
   group('healthcheck GET /health route', () {
     late Router router;
 
