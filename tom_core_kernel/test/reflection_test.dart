@@ -107,6 +107,9 @@ class MapHolder {
   Map<String, double>? doubleMap;
   Map<String, bool>? boolMap;
   Map<String, dynamic>? dynamicMap;
+  Map<String, Object?>? objectMap;
+  Map<dynamic, dynamic>? anyMap;
+  Map<Object?, Object?>? anyObjectMap;
 
   MapHolder();
 }
@@ -1466,6 +1469,61 @@ void main() {
         'dynamicMap': {'str': 'hello', 'num': 42, 'flag': true},
       });
       expect(holder.dynamicMap, {'str': 'hello', 'num': 42, 'flag': true});
+    });
+
+    // A section read from YAML, or merged from several configuration files,
+    // arrives as a Map<dynamic, Object?> with nested maps of the same kind —
+    // the shape a server configuration's `setValues` is handed.
+    Map<dynamic, Object?> yamlSection() => <dynamic, Object?>{
+      'host': 'relay.example',
+      'limits': <dynamic, Object?>{'maxBytes': 1024, 'ttlMinutes': 30},
+      'mailboxes': <Object?>['a', 'b'],
+    };
+
+    test('MAPBIND-01: a nested YAML section binds to a Map<String, dynamic> '
+        'field as a map of that type', () {
+      final holder = MapHolder();
+      tomReflectionInfo.setValues(holder, {'dynamicMap': yamlSection()});
+      expect(holder.dynamicMap, isA<Map<String, dynamic>>());
+      expect(holder.dynamicMap!['host'], 'relay.example');
+      expect((holder.dynamicMap!['limits'] as Map)['ttlMinutes'], 30);
+      expect(holder.dynamicMap!['mailboxes'], ['a', 'b']);
+    });
+
+    test('MAPBIND-02: the same section binds to a Map<String, Object?> '
+        'field', () {
+      final holder = MapHolder();
+      tomReflectionInfo.setValues(holder, {'objectMap': yamlSection()});
+      expect(holder.objectMap, isA<Map<String, Object?>>());
+      expect(holder.objectMap, yamlSection());
+    });
+
+    test('MAPBIND-03: a Map<dynamic, dynamic> and a Map<Object?, Object?> '
+        'field take any map, non-string keys included', () {
+      final holder = MapHolder();
+      tomReflectionInfo.setValues(holder, {
+        'anyMap': yamlSection(),
+        'anyObjectMap': <dynamic, Object?>{1: 'one', 'two': 2},
+      });
+      expect(holder.anyMap, yamlSection());
+      expect(holder.anyObjectMap, {1: 'one', 'two': 2});
+    });
+
+    test('MAPBIND-04: a non-string key for a Map<String, dynamic> field is '
+        'refused, naming the field and the key', () {
+      final holder = MapHolder();
+      expect(
+        () => tomReflectionInfo.setValues(holder, {
+          'dynamicMap': <dynamic, Object?>{1: 'one'},
+        }),
+        throwsA(
+          isA<TomReflectorException>().having(
+            (e) => e.key,
+            'key',
+            'reflection.set.map_key_type_mismatch',
+          ),
+        ),
+      );
     });
   });
 

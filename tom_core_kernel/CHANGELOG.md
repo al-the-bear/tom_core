@@ -1,4 +1,18 @@
-## Unreleased
+## 1.2.1
+
+### Fixed
+
+- **A `Map` field of a configuration binds a section read from YAML.**
+  `TomReflectionInfo.setValues` passed the source map through unchanged to a
+  `Map<String, dynamic>` or `Map<String, Object?>` field, and a section read
+  from YAML or merged from several configuration files is a
+  `Map<dynamic, Object?>`, which such a field refuses (an unhandled type error
+  at a server's start). The map is now copied into the declared type, every
+  key checked to be a `String` (`reflection.set.map_key_type_mismatch`
+  otherwise). An empty `Map<dynamic, dynamic>` / `Map<Object?, Object?>`
+  field takes the map as its own type instead of refusing a
+  `Map<String, Object?>` (`reflection.set.map_field_assignment_failed`); one
+  that already holds a map is still filled in place.
 
 ### Changed
 

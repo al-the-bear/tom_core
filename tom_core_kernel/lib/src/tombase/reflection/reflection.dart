@@ -158,16 +158,29 @@ class TomReflectionInfo {
   /// Handlers for setting primitive Map types via reflection.
   ///
   /// Maps type signatures to functions that set the value correctly, building
-  /// a checked map for typed targets like `Map<String, int>`. The two
-  /// unconstrained targets pass the source map through unchanged — there is no
-  /// element type for them to violate.
+  /// a checked map for typed targets like `Map<String, int>`.
+  ///
+  /// The source map is copied for every target, the unconstrained ones
+  /// included: a map read from YAML or merged from several configuration
+  /// files is a `Map<dynamic, Object?>`, which a `Map<String, dynamic>`
+  /// field refuses as it stands. `Map<String, dynamic>` and
+  /// `Map<String, Object?>` get a copy with every key checked to be a
+  /// `String`. Nested maps are values of the copy and stay as they were read.
+  /// An untyped `Map` field is not here: one that already holds a map is
+  /// filled in place, and an empty one takes the map as its own type in
+  /// [_instantiateAndSetMapValue].
+  static const Type _dynamicMapType = Map<dynamic, dynamic>;
+  static const Type _objectMapType = Map<Object?, Object?>;
+
   static final Map<
     Type,
     void Function(InstanceMirror, MapEntry<String, dynamic>)
   >
   _primitiveMapTypeHandlers = {
-    Map<String, dynamic>: (im, e) => im.invokeSetter(e.key, e.value),
-    Map<String, Object?>: (im, e) => im.invokeSetter(e.key, e.value),
+    Map<String, dynamic>: (im, e) =>
+        im.invokeSetter(e.key, _checkedMap<dynamic>(e)),
+    Map<String, Object?>: (im, e) =>
+        im.invokeSetter(e.key, _checkedMap<Object?>(e)),
     Map<String, Object>: (im, e) =>
         im.invokeSetter(e.key, _checkedMap<Object>(e)),
     Map<String, String>: (im, e) =>
@@ -2040,6 +2053,22 @@ class TomReflectionInfo {
     // the end of [_setMapValue] instead of being left as it was.
     final returnType = cm.instanceMembers[entry.key]?.returnType;
     if (returnType is! ClassMirror) return false;
+
+    // An untyped map field takes the map as one of its own type. Built
+    // through the registry it would be a `Map<String, Object?>`, which a
+    // `Map<dynamic, dynamic>` field refuses, and its keys need not be strings.
+    final declared = cm.instanceMembers[entry.key]!.reflectedReturnType;
+    final value = entry.value;
+    if (value is Map &&
+        (declared == _dynamicMapType || declared == _objectMapType)) {
+      im.invokeSetter(
+        entry.key,
+        declared == _objectMapType
+            ? Map<Object?, Object?>.from(value)
+            : Map<dynamic, dynamic>.from(value),
+      );
+      return true;
+    }
 
     // Declining is over: a class was named and this strategy is going to try
     // to build it. What is left can still fail, and the failure is not one the
