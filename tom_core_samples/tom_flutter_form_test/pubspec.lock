@@ -37,10 +37,10 @@ packages:
     dependency: transitive
     description:
       name: asn1lib
-      sha256: cfb3cf6a53158918d52dda61bc26f0cc8612a0d3b9dc29e87eaa3423902ca636
+      sha256: ee77cac69a65f809e24c902f68c0e7c733312d301b367cc698cc3aed8b6c884a
       url: "https://pub.dev"
     source: hosted
-    version: "1.6.8"
+    version: "1.6.9"
   async:
     dependency: transitive
     description:
@@ -708,10 +708,10 @@ packages:
     dependency: "direct main"
     description:
       name: tom_basics
-      sha256: "643aa9402345c40d4ca7beba645c733b662c37288aa5048f71b4b116b248bec7"
+      sha256: a50f7dd1f2d5fea06fb909173ee8a8af7f7fa1638c6cc69ebfc86d006396327f
       url: "https://pub.dev"
     source: hosted
-    version: "3.3.0"
+    version: "3.4.0"
   tom_build_base:
     dependency: transitive
     description:
@@ -726,15 +726,15 @@ packages:
       path: "../../tom_core_kernel"
       relative: true
     source: path
-    version: "1.2.0"
+    version: "1.2.1"
   tom_crypto:
     dependency: transitive
     description:
       name: tom_crypto
-      sha256: "63e5f02374e0199773a45158ea9d261803b567527696696915344a6450f764ce"
+      sha256: "46e35500acab7a4eed7e19a9fdf31da88ba8ed544315607f0d35c796969a5d75"
       url: "https://pub.dev"
     source: hosted
-    version: "1.4.0"
+    version: "1.5.0"
   tom_dcli:
     dependency: transitive
     description:
@@ -762,10 +762,10 @@ packages:
     dependency: "direct dev"
     description:
       name: tom_reflection_generator
-      sha256: "831e58dd02c201e12e5e90165302a53d0fc6756c5939576be217afec61b7adcd"
+      sha256: e88d90c8ece5a5294fc0d7dd2458c9057818ef0ca5a79a6a2547dd9632849b83
       url: "https://pub.dev"
     source: hosted
-    version: "1.9.1"
+    version: "1.9.2"
   tom_undo:
     dependency: transitive
     description:
