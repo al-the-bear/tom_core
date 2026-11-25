@@ -1568,11 +1568,14 @@ Changing its `secrets` map simulates a rotation.
 
 ### The provider libraries
 
-The four stores are libraries of one package, `tom_core_secrets` in
+The three cloud stores are libraries of one package, `tom_core_secrets` in
 `tom_core_extensions`, so a deployment imports only the store it uses and no
-cloud SDK; each cloud store is reached over its HTTP API with `package:http`,
-the Tom Secrets Manager over its local client protocol with
-`tom_secrets_client`, and each provider builds itself from configuration with
+cloud SDK; each is reached over its HTTP API with `package:http`. The Tom
+Secrets Manager's provider is the product's own package,
+[`tom_secrets_provider`](https://pub.dev/packages/tom_secrets_provider), which
+reaches the secrets service over its local client protocol: tom_core depends
+on no Tom Secrets Manager package, so a server adds that package only when it
+registers the provider. Each provider builds itself from configuration with
 `fromConfiguration`.
 
 | Library | Provider | Reference | Authentication | Settings |
@@ -1580,7 +1583,7 @@ the Tom Secrets Manager over its local client protocol with
 | [`tom_core_secrets/vault.dart`](../../../core_extension/tom_core_secrets/README.md#hashicorp-vault-vaultdart) | `TomVaultSecretsProvider` | `secret:vault:secret/data/billing#jwt` — the API path after `/v1/`, KV version 1 or 2 | a token, or AppRole; Vault Enterprise namespaces | `secrets.vault`, `VAULT_*` |
 | [`tom_core_secrets/aws.dart`](../../../core_extension/tom_core_secrets/README.md#aws-secrets-manager-awsdart) | `TomAwsSecretsProvider` | `secret:aws:prod/billing#password` — a secret name or ARN | static keys, or a credentials source for a role; signed with `TomAwsV4Signer` | `secrets.aws`, `AWS_*` |
 | [`tom_core_secrets/azure.dart`](../../../core_extension/tom_core_secrets/README.md#azure-key-vault-azuredart) | `TomAzureKeyVaultSecretsProvider` | `secret:azure:db-password[/<version>]` | a service principal, the host's managed identity, or a static token | `secrets.azure`, `AZURE_*` |
-| [`tom_core_secrets/local.dart`](../../../core_extension/tom_core_secrets/README.md#the-tom-secrets-manager-localdart) | `TomLocalSecretsProvider` | `secret:local:[env:prod]db.main#UserName` — a Tom Secrets Manager reference, the field after the last `#` | the secrets service on the same machine identifies the process and keeps its approvals | `secrets.local`, `TSM_RUNTIME_DIR` |
+| [`tom_secrets_provider`](https://pub.dev/packages/tom_secrets_provider) | `TomLocalSecretsProvider` | `secret:local:[env:prod]db.main#UserName` — a Tom Secrets Manager reference, the field after the last `#` | the secrets service on the same machine identifies the process and keeps its approvals | `secrets.local`, `TSM_RUNTIME_DIR` |
 
 A provider's settings live under `secrets.<store>` in the configuration
 resources and are read as written — they are the credentials that open the
