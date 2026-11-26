@@ -82,11 +82,6 @@ abstract class TomFormStringField extends TomField<String> {
   /// Resolved description: explicit → resource → null.
   String? get descriptionText =>
       descriptionTextOverride ?? TomCtr.textOrNull(basePath, 'description');
-
-  /// Resolve an error message for the given error key.
-  String resolveErrorMessage(String errorKey) {
-    return TomCtr.textOrNull(basePath, 'error.$errorKey') ?? errorKey;
-  }
 }
 
 // ---------------------------------------------------------------------------

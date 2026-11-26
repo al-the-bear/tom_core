@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
+import '../support/recording_text_resource_provider.dart';
 import 'widget_census.dart';
 import 'widget_conformance_registry.dart';
 
@@ -32,47 +33,6 @@ import 'widget_conformance_registry.dart';
 // `doubleOrFail`, ...) from a backing map, as `widget_conformance_test.dart`
 // does, so every wrapper builds.
 
-/// Records each resource key asked for, and how.
-class _RecordingProvider extends TomTextResourceProvider {
-  _RecordingProvider(this._objects);
-
-  final TomTextResourceProvider _objects;
-  final Map<String, Set<String>> asked = {};
-
-  void _note(String key, String how) =>
-      asked.putIfAbsent(key, () => <String>{}).add(how);
-
-  @override
-  bool exists(String s) {
-    _note(s, 'exists');
-    return false;
-  }
-
-  @override
-  bool existsObject(String s) {
-    _note(s, 'existsObject');
-    return _objects.existsObject(s);
-  }
-
-  @override
-  String getText(String s) {
-    _note(s, 'getText');
-    return s;
-  }
-
-  @override
-  String? getTextOrNull(String s) {
-    _note(s, 'getTextOrNull');
-    return null;
-  }
-
-  @override
-  Object? getObjectOrNull(String s) {
-    _note(s, 'getObjectOrNull');
-    return _objects.getObjectOrNull(s);
-  }
-}
-
 /// The non-text values the wrappers demand, under the path [id].
 TomTextResourceProvider _objectValues(String id) {
   final leaf = <String, dynamic>{};
@@ -93,21 +53,17 @@ TomTextResourceProvider _objectValues(String id) {
 
 /// The text keys [build] reads at construction, under the path [id].
 Set<TomTextKey> _recorded(String id, TomWidgetFactory build) {
-  final provider = _RecordingProvider(_objectValues(id));
+  final provider = RecordingTextResourceProvider(_objectValues(id));
   TomTextResourceProvider.setAppResourceProvider(provider);
   build(id, null);
   return {
-    for (final entry in provider.asked.entries)
-      if (entry.key.startsWith('$id.') &&
-          !entry.value.contains('getObjectOrNull'))
-        TomTextKey(
-          entry.key.substring(id.length + 1),
-          // The kind is the catalogue's word; the recording knows the presence.
-          TomTextKeyKind.text,
-          entry.value.contains('exists') || entry.value.contains('getText')
-              ? TomTextKeyPresence.required
-              : TomTextKeyPresence.optional,
-        ),
+    for (final entry in provider.textKeysUnder(id).entries)
+      TomTextKey(
+        entry.key,
+        // The kind is the catalogue's word; the recording knows the presence.
+        TomTextKeyKind.text,
+        entry.value ? TomTextKeyPresence.required : TomTextKeyPresence.optional,
+      ),
   };
 }
 

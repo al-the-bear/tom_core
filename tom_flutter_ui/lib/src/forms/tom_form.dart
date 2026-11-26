@@ -1093,7 +1093,8 @@ abstract class TomField<T> extends TomObject<T> implements TomAuthorizable {
 /// Individual [InputDecoration] parameters (e.g. [labelText], [helperText],
 /// [prefixIcon]) follow the resource lookup pattern:
 ///   1. Explicit parameter value (highest priority)
-///   2. Resource lookup via scope path (`$scope.$tomId.$suffix`)
+///   2. Resource lookup under the field's path (`<basePath>.label`,
+///      `<basePath>.hint`, `<basePath>.helper`)
 ///   3. `null` / absent (lowest priority)
 ///
 /// This allows resources to provide default values while code can override
@@ -1257,11 +1258,9 @@ class TomTextFormFieldBase<T> extends TomField<T> {
   Widget get widget {
     // Parameter → resource → null
     final resolvedLabel =
-        labelText ?? TomCtr.textOrNull(scope, '$tomId.label') ?? tomId;
-    final resolvedHelper =
-        helperText ?? TomCtr.textOrNull(scope, '$tomId.helperText');
-    final resolvedHint =
-        hintText ?? TomCtr.textOrNull(scope, '$tomId.hintText');
+        labelText ?? TomCtr.textOrNull(basePath, 'label') ?? tomId;
+    final resolvedHelper = helperText ?? TomCtr.textOrNull(basePath, 'helper');
+    final resolvedHint = hintText ?? TomCtr.textOrNull(basePath, 'hint');
     final resolvedPrefixIcon = prefixIcon ?? _resolveIconOrNull('prefixIcon');
     final resolvedSuffixIcon = suffixIcon ?? _resolveIconOrNull('suffixIcon');
 

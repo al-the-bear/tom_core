@@ -45,6 +45,7 @@ discard, validation, and authorization.
 | `TomFormValidationError` | Cross-field validation result keyed by a resource error key |
 | `TomFormEvent` / `TomFormEventSource` / `TomFormEventListener` | The form event bus |
 | `TomListForm` / `TomMasterDetailListForm` | Collection / master-detail forms |
+| `tomFormFieldTextKeys` | The text keys each field, list form and toolbar reads under its path, as data (`doc/forms.md`, *Text keys per field*) |
 
 The field catalogue spans a parallel Material/Cupertino set — string
 (`TomFormStringInput`, `TomFormStringDropdown`, …), boolean, numeric, date/time,

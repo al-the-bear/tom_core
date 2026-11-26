@@ -66,11 +66,6 @@ void main() {
       );
       expect(field.descriptionText, 'Your full name');
     });
-
-    test('resolveErrorMessage falls back to errorKey', () {
-      final field = TomFormStringInput('name', '');
-      expect(field.resolveErrorMessage('required'), 'required');
-    });
   });
 
   // -------------------------------------------------------------------------

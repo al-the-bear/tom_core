@@ -28,6 +28,7 @@ Cupertino sibling changes the rendering without touching the model.
 - [Style and decoration](#style-and-decoration)
 - [The field catalogue and `TomFormFieldFamily`](#the-field-catalogue-and-tomformfieldfamily)
 - [Captions and wording](#captions-and-wording)
+- [Text keys per field](#text-keys-per-field)
 - [File fields](#file-fields)
 - [List and master-detail forms](#list-and-master-detail-forms)
 - [Dependencies](#dependencies)
@@ -379,6 +380,113 @@ the two is by vocabulary rather than by widget: a caption that only ever appears
 beside a file (`file.choose`, `file.uploading`) lives there, a caption any field
 might show (`form.cancel`, `form.done`) lives in `TomFormLabels`.
 
+## Text keys per field
+
+What each field, list form and list toolbar reads under its own resource path
+is data: `tomFormFieldTextKeys` (the forms' counterpart of the wrappers'
+`tomWrapperTextKeys`), a map from class name to `TomTextKey`s. A tool that
+checks a resource file reads it there, and
+`test/forms/form_text_keys_test.dart` holds it to the code.
+
+A field reads its keys at `<field path>.<suffix>`: the form's path and the
+field's `tomId` (`customer.name.label`). Every key is optional: an explicit
+value given in code wins, and without either the field shows no such text. A
+field key does not fall back to a global one: `customer.name.label` is the only
+key the label is read from, and a field without it shows its `tomId` where a
+label is needed (an error list). Only the shared captions above fall back
+(`<field path>.form.cancel`, then `form.cancel`, then the built-in English), and
+validation messages (`<field path>.error.required`, then `error.required`, then
+the key itself).
+
+A **text** is shown and translated; a **setting** is read through the text
+resources and never shown: `validators` (the resource-declared validators,
+`required,minLength:8`), a text input's date or time format, a list form's
+expansion policy. Every concrete field class is listed.
+
+| Class | Texts | Settings |
+| --- | --- | --- |
+| `TomCupertinoFormBoolSwitch` | `label`, `description` | `validators` |
+| `TomCupertinoFormBoolToggle` | `label`, `description`, `onLabel`, `offLabel` | `validators` |
+| `TomCupertinoFormCurrencyDoubleInput` | `label`, `hint`, `description` | `validators` |
+| `TomCupertinoFormDatePicker` | `label`, `description` | `validators` |
+| `TomCupertinoFormDateRangePicker` | `label`, `description` | `validators` |
+| `TomCupertinoFormDateTimePicker` | `label`, `description` | `validators` |
+| `TomCupertinoFormDoubleInput` | `label`, `hint`, `description` | `validators` |
+| `TomCupertinoFormDurationPicker` | `label`, `description` | `validators` |
+| `TomCupertinoFormEnumPicker` | `label`, `description` | `validators` |
+| `TomCupertinoFormEnumSegmented` | `label`, `description` | `validators` |
+| `TomCupertinoFormFileThumbnail` | `label`, `description` | `validators` |
+| `TomCupertinoFormFileUpload` | `label`, `description` | `validators` |
+| `TomCupertinoFormIntInput` | `label`, `hint`, `description` | `validators` |
+| `TomCupertinoFormIntPicker` | `label`, `hint`, `description` | `validators` |
+| `TomCupertinoFormLookupSheet` | `label`, `description` | `validators` |
+| `TomCupertinoFormNDateInput` | `label`, `hint`, `description`, `nullDisplay` | `validators` |
+| `TomCupertinoFormNDoubleInput` | `label`, `hint`, `description`, `nullDisplay` | `validators` |
+| `TomCupertinoFormNIntInput` | `label`, `hint`, `description`, `nullDisplay` | `validators` |
+| `TomCupertinoFormNStringInput` | `label`, `hint`, `description`, `nullDisplay` | `validators` |
+| `TomCupertinoFormNullableBoolToggle` | `label`, `description`, `onLabel`, `offLabel`, `nullLabel` | `validators` |
+| `TomCupertinoFormObjectPicker` | `label`, `description` | `validators` |
+| `TomCupertinoFormSearchInput` | `label`, `hint`, `description` | `validators` |
+| `TomCupertinoFormStringInput` | `label`, `hint`, `description` | `validators` |
+| `TomCupertinoFormStringListCheckedPicker` | `label`, `hint`, `description` | `validators` |
+| `TomCupertinoFormStringPicker` | `label`, `hint`, `description` | `validators` |
+| `TomCupertinoFormStringSearchInput` | `label`, `hint`, `description` | `validators` |
+| `TomCupertinoFormStringSegmented` | `label`, `hint`, `description` | `validators` |
+| `TomCupertinoFormTimePicker` | `label`, `description` | `validators` |
+| `TomExpandableListForm` | `empty` | `policy` |
+| `TomFormBoolCheckbox` | `label`, `description` | `validators` |
+| `TomFormBoolSwitch` | `label`, `description` | `validators` |
+| `TomFormBoolToggle` | `label`, `description`, `onLabel`, `offLabel` | `validators` |
+| `TomFormCurrencyDoubleInput` | `label`, `hint`, `description` | `validators` |
+| `TomFormDateCalendar` | `label`, `description` | `validators` |
+| `TomFormDatePicker` | `label`, `description` | `validators` |
+| `TomFormDateRangePicker` | `label`, `description` | `validators` |
+| `TomFormDateTextInput` | `label`, `description`, `dateHint` | `dateFormat`, `validators` |
+| `TomFormDateTimePicker` | `label`, `description` | `validators` |
+| `TomFormDateTimeTextInput` | `label`, `description`, `dateTimeHint` | `dateTimeFormat`, `validators` |
+| `TomFormDoubleInput` | `label`, `hint`, `description` | `validators` |
+| `TomFormDoubleRangeSlider` | `label`, `description` | `validators` |
+| `TomFormDoubleSlider` | `label`, `hint`, `description` | `validators` |
+| `TomFormDurationInput` | `label`, `description` | `validators` |
+| `TomFormEnumDropdown` | `label`, `description` | `validators` |
+| `TomFormEnumFilterChips` | `label`, `description` | `validators` |
+| `TomFormEnumRadioGroup` | `label`, `description` | `validators` |
+| `TomFormEnumSegmented` | `label`, `description` | `validators` |
+| `TomFormFileDropzone` | `label`, `description` | `validators` |
+| `TomFormFileThumbnail` | `label`, `description` | `validators` |
+| `TomFormFileUpload` | `label`, `description` | `validators` |
+| `TomFormIntFilterChips` | `label`, `description` | `validators` |
+| `TomFormIntInput` | `label`, `hint`, `description` | `validators` |
+| `TomFormIntRangeSlider` | `label`, `description` | `validators` |
+| `TomFormIntSlider` | `label`, `hint`, `description` | `validators` |
+| `TomFormIntStepper` | `label`, `hint`, `description` | `validators` |
+| `TomFormLookupDialog` | `label`, `description` | `validators` |
+| `TomFormNDateInput` | `label`, `hint`, `description`, `nullDisplay` | `validators` |
+| `TomFormNDoubleInput` | `label`, `hint`, `description`, `nullDisplay` | `validators` |
+| `TomFormNEnumDropdown` | `label`, `hint`, `description`, `nullDisplay` | `validators` |
+| `TomFormNIntInput` | `label`, `hint`, `description`, `nullDisplay` | `validators` |
+| `TomFormNStringInput` | `label`, `hint`, `description`, `nullDisplay` | `validators` |
+| `TomFormNullableBoolCheckbox` | `label`, `description` | `validators` |
+| `TomFormObjectDropdown` | `label`, `description` | `validators` |
+| `TomFormObjectFilterChips` | `label`, `description` | `validators` |
+| `TomFormPercentDoubleInput` | `label`, `hint`, `description` | `validators` |
+| `TomFormSearchInput` | `label`, `hint`, `description` | `validators` |
+| `TomFormStringChoiceChips` | `label`, `hint`, `description` | `validators` |
+| `TomFormStringDropdown` | `label`, `hint`, `description` | `validators` |
+| `TomFormStringFilterChips` | `label`, `description` | `validators` |
+| `TomFormStringInput` | `label`, `hint`, `description` | `validators` |
+| `TomFormStringMultiCheckbox` | `label`, `description` | `validators` |
+| `TomFormStringRadioGroup` | `label`, `hint`, `description` | `validators` |
+| `TomFormStringSegmented` | `label`, `hint`, `description` | `validators` |
+| `TomFormTimePicker` | `label`, `description` | `validators` |
+| `TomFormTimeTextInput` | `label`, `description`, `timeHint` | `timeFormat`, `validators` |
+| `TomInlineListForm` | `empty` | — |
+| `TomListFormToolbar` | `add.label`, `add.tooltip`, `moveDown.label`, `moveDown.tooltip`, `moveUp.label`, `moveUp.tooltip`, `remove.label`, `remove.tooltip` | — |
+| `TomListRowMoveButtons` | `moveDown.tooltip`, `moveUp.tooltip` | — |
+| `TomMasterDetailListForm` | `empty` | — |
+| `TomReorderHandle` | `tooltip` | — |
+| `TomTextFormFieldBase` | `label`, `hint`, `helper` | `validators` |
+
 ## File fields
 
 A file field is the one field whose value does not live in the form: it holds a
@@ -487,14 +595,14 @@ not solve.
 
 | Dependency | Kind | Imported by | For |
 | ---------- | ---- | ----------- | --- |
-| `dart:async` | dart | 18 of 74 files | `Future`, `FutureOr`, `Stream`, `StreamController`, `StreamSubscription`, `Timer` |
+| `dart:async` | dart | 18 of 75 files | `Future`, `FutureOr`, `Stream`, `StreamController`, `StreamSubscription`, `Timer` |
 | `dart:io` | dart | `files/file_opener_io.dart` | `File`, `FileSystemException` |
 | `dart:typed_data` | dart | `fields/tom_form_file_field.dart`, `files/tom_file_transfer_controller.dart`, `form_field_family.dart` | `Uint8List` |
-| `flutter` | package | 52 of 74 files | `widgets.dart`, `material.dart`, `cupertino.dart`, `services.dart` and `foundation.dart` — both design languages, plus the input formatters |
-| `tom_core_kernel` | package | 40 of 74 files | `TomClass`/reflection, `TomScope`, `TomObject`/observables, and the authorization types (`TomAuthState`, `TomAuthorizer`, `TomUIStateController`, …) |
+| `flutter` | package | 52 of 75 files | `widgets.dart`, `material.dart`, `cupertino.dart`, `services.dart` and `foundation.dart` — both design languages, plus the input formatters |
+| `tom_core_kernel` | package | 40 of 75 files | `TomClass`/reflection, `TomScope`, `TomObject`/observables, and the authorization types (`TomAuthState`, `TomAuthorizer`, `TomUIStateController`, …) |
 | [actions](actions.md) | module | `tom_form.dart` | `TomAction`, `TomActionController` |
 | [resource_auth](resource_auth.md) | module | `style/tom_form_style_scope.dart` | `TomUIColors` |
-| [widget_base](widget_base.md) | module | 35 of 74 files | `TomAuthLayers`, `TomContainerBase`, `TomCtr`, `TomImageBase`, `TomListBase`, `TomScopePath` |
+| [widget_base](widget_base.md) | module | 36 of 75 files | `TomAuthLayers`, `TomContainerBase`, `TomCtr`, `TomImageBase`, `TomListBase`, `TomScopePath` |
 | [widgets](widgets.md) | module | `fields/tom_form_file_field.dart` | `TomMessenger` |
 
 > The model, validation, selectable-source, event, and style-value surfaces are

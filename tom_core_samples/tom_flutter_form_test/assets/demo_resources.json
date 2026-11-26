@@ -486,7 +486,7 @@
       "notes": {
         "label": "Notes (Classic field)",
         "hint": "Free-form notes \u2014 Classic field, no async validation",
-        "helperText": "Legacy TomFormStringInputClassic alongside new fields."
+        "helper": "Legacy TomFormStringInputClassic alongside new fields."
       },
       "billing": {
         "street": {

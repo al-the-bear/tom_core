@@ -40,8 +40,9 @@ enum TomTextKeyPresence {
   optional,
 }
 
-/// One text key of a wrapper: the suffix after its resource path, what it
-/// holds and whether a resource file has to hold it.
+/// One text key of a wrapper or a form element: the suffix after its resource
+/// path, what it holds and whether a resource file has to hold it. The
+/// wrappers' keys are [tomWrapperTextKeys], the forms' `tomFormFieldTextKeys`.
 class TomTextKey {
   /// A key `<path>.[suffix]`.
   const TomTextKey(this.suffix, this.kind, this.presence);

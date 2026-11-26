@@ -1,3 +1,24 @@
+## 1.3.0
+
+### Text resources
+
+- **The text keys each form field reads are data.** `tomFormFieldTextKeys`
+  lists, for every concrete form field class, list form and list toolbar, the
+  suffixes it reads under its resource path (`label`, `hint`, `description`,
+  `onLabel`, `add.tooltip`, ...) and whether each is a shown text or a setting
+  (`validators`, a text input's date or time format, a list form's expansion
+  policy); every form key is optional. A test reads each class's keys from the
+  sources and records what the fields of both families ask for when built,
+  and holds the map to both; `doc/forms.md` carries it as a table.
+- **`TomTextFormFieldBase` reads `hint` and `helper`** under its path, as every
+  other field reads its hint; the `hintText` and `helperText` resource keys are
+  no longer read. It reads its texts under its `basePath`, so a field outside
+  any scope finds `<tomId>.label` (it asked for `.<tomId>.label`, which never
+  resolves).
+- **`TomFormStringField.resolveErrorMessage` is removed.** It read
+  `<path>.error.<key>`, a key nothing else uses; validation messages resolve
+  through `TomField.resolvedErrorMessage`.
+
 ## 1.2.0
 
 ### Text resources
