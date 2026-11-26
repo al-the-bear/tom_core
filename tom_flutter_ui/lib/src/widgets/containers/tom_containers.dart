@@ -441,11 +441,8 @@ class TomAppBar extends TomContainerBase implements PreferredSizeWidget {
 
   @override
   Widget buildContent(BuildContext context) {
-    final resolvedTitleText =
-        titleText ?? TomCtr.textOrNull(basePath, 'titleText');
     final resolvedTitle =
-        resolvedTitleText ??
-        (tomId != null ? TomCtr.text(basePath, 'label') : null);
+        titleText ?? (tomId != null ? TomCtr.text(basePath, 'label') : null);
     final effectiveTitle =
         title ?? (resolvedTitle != null ? Text(resolvedTitle) : null);
 

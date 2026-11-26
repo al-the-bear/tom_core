@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tom_core_kernel/tom_core_kernel.dart';
 import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 
 // What a Tom wrapper does when the text resource it asks for is not there.
@@ -29,6 +30,14 @@ import 'package:tom_flutter_ui/tom_flutter_ui.dart';
 //   (c) superseded   `x ?? TomCtr.textOrFail(basePath, k, supersededBy: w)`
 //                    a widget in the slot -> '' without any lookup
 //                    otherwise as (a)
+//   (d) if present   `x ?? TomCtr.textOrNull(basePath, k)`
+//                    tomId + no resource -> null, and no such text is shown
+//                    tomId + resource    -> the resource's text
+//
+// (d) is the composition of a text a widget can do without and that most
+// screens leave out: a text field's helper, prefix and suffix, a tile's
+// subtitle, a dropdown menu form field's helper. Under (b) every field with a
+// tomId would show `name.helper` until a resource was written for it.
 //
 // The tests run against the ambient resource provider with no resources
 // registered, which is the state a developer hits on the first run of a new
@@ -188,6 +197,193 @@ void main() {
         ),
       );
       expect(find.text('unread.label'), findsOneWidget);
+    });
+  });
+
+  group('tccd1: (d) an optional text is shown only when its resource '
+      'exists', () {
+    void install(Map<String, dynamic> resources) {
+      TomTextResourceProvider.setAppResourceProvider(
+        TomTextResourceProvider.from(resources),
+      );
+      addTearDown(
+        () => TomTextResourceProvider.setAppResourceProvider(
+          TomTextResourceProvider.from(const {}),
+        ),
+      );
+    }
+
+    InputDecoration decorationOf(WidgetTester tester) =>
+        tester.widget<TextField>(find.byType(TextField)).decoration!;
+
+    testWidgets('tccd1-17: TomTextField without helper, prefix or suffix '
+        'resources shows none of them', (tester) async {
+      install({
+        'name': {'label': 'Name', 'hint': 'Your name'},
+      });
+      await tester.pumpWidget(_host(TomTextField(tomId: 'name')));
+      final d = decorationOf(tester);
+      expect(d.helperText, isNull);
+      expect(d.prefixText, isNull);
+      expect(d.suffixText, isNull);
+      expect(find.text('name.helper'), findsNothing);
+    });
+
+    testWidgets('tccd1-18: TomTextField reads helper, prefix and suffix from '
+        'its resources', (tester) async {
+      install({
+        'price': {
+          'label': 'Price',
+          'hint': '0.00',
+          'helper': 'Including VAT',
+          'prefix': 'EUR',
+          'suffix': 'per month',
+        },
+      });
+      await tester.pumpWidget(_host(TomTextField(tomId: 'price')));
+      final d = decorationOf(tester);
+      expect(d.helperText, 'Including VAT');
+      expect(d.prefixText, 'EUR');
+      expect(d.suffixText, 'per month');
+    });
+
+    testWidgets('tccd1-19: TomTextFormField reads the helper from its '
+        'resources, and an explicit decoration wins', (tester) async {
+      install({
+        'mail': {'label': 'Mail', 'hint': 'you@example.com', 'helper': 'Work'},
+      });
+      await tester.pumpWidget(
+        _host(Form(child: TomTextFormField(tomId: 'mail'))),
+      );
+      expect(decorationOf(tester).helperText, 'Work');
+      await tester.pumpWidget(
+        _host(
+          Form(
+            child: TomTextFormField(
+              tomId: 'mail',
+              decoration: const InputDecoration(helperText: 'Private'),
+            ),
+          ),
+        ),
+      );
+      expect(decorationOf(tester).helperText, 'Private');
+    });
+
+    testWidgets('tccd1-20: a list tile shows a subtitle resource, and none '
+        'without one', (tester) async {
+      install({
+        'wifi': {'label': 'Wi-Fi', 'subtitle': 'Connected'},
+        'bt': {'label': 'Bluetooth'},
+      });
+      await tester.pumpWidget(
+        _host(
+          Column(
+            children: [
+              TomListTile(tomId: 'wifi'),
+              TomSwitchListTile(tomId: 'bt', value: true, onChanged: (_) {}),
+            ],
+          ),
+        ),
+      );
+      expect(find.text('Connected'), findsOneWidget);
+      expect(find.text('bt.subtitle'), findsNothing);
+    });
+
+    testWidgets('tccd1-21: a subtitle widget supersedes the resource', (
+      tester,
+    ) async {
+      install({
+        'wifi': {'label': 'Wi-Fi', 'subtitle': 'Connected'},
+      });
+      await tester.pumpWidget(
+        _host(TomListTile(tomId: 'wifi', subtitle: const Text('Off'))),
+      );
+      expect(find.text('Off'), findsOneWidget);
+      expect(find.text('Connected'), findsNothing);
+    });
+
+    testWidgets('tccd1-22: TomDropdownMenuFormField without a helper resource '
+        'shows no helper', (tester) async {
+      install({
+        'size': {'label': 'Size', 'hint': 'Pick one'},
+      });
+      await tester.pumpWidget(
+        _host(
+          TomDropdownMenuFormField<int>(
+            tomId: 'size',
+            dropdownMenuEntries: const [
+              DropdownMenuEntry(value: 1, label: 'One'),
+            ],
+          ),
+        ),
+      );
+      expect(find.text('size.helper'), findsNothing);
+    });
+  });
+
+  group('tccd1: one text, one key', () {
+    void install(Map<String, dynamic> resources) {
+      TomTextResourceProvider.setAppResourceProvider(
+        TomTextResourceProvider.from(resources),
+      );
+      addTearDown(
+        () => TomTextResourceProvider.setAppResourceProvider(
+          TomTextResourceProvider.from(const {}),
+        ),
+      );
+    }
+
+    testWidgets('tccd1-23: a tile and an app bar take their title from '
+        'label; a titleText resource is not read', (tester) async {
+      install({
+        'tile': {'label': 'Row', 'titleText': 'Old'},
+        'bar': {'label': 'Settings', 'titleText': 'Old title'},
+      });
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            appBar: TomAppBar(tomId: 'bar'),
+            body: TomCupertinoListTile(tomId: 'tile'),
+          ),
+        ),
+      );
+      expect(find.text('Settings'), findsOneWidget);
+      expect(find.text('Row'), findsOneWidget);
+      expect(find.text('Old'), findsNothing);
+      expect(find.text('Old title'), findsNothing);
+    });
+
+    testWidgets('tccd1-24: the dropdown menu reads hint, helper and error; '
+        'hintText, helperText and errorText resources are not read', (
+      tester,
+    ) async {
+      install({
+        'size': {
+          'label': 'Size',
+          'hint': 'Pick one',
+          'helper': 'Shoe size',
+          'error': 'Required',
+          'hintText': 'Old hint',
+          'helperText': 'Old helper',
+          'errorText': 'Old error',
+        },
+      });
+      await tester.pumpWidget(
+        _host(
+          TomDropdownMenu<int>(
+            tomId: 'size',
+            dropdownMenuEntries: const [
+              DropdownMenuEntry(value: 1, label: 'One'),
+            ],
+          ),
+        ),
+      );
+      final menu = tester.widget<DropdownMenu<int>>(
+        find.byType(DropdownMenu<int>),
+      );
+      expect(menu.hintText, 'Pick one');
+      expect(menu.helperText, 'Shoe size');
+      expect(menu.errorText, 'Required');
     });
   });
 

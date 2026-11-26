@@ -49,11 +49,15 @@ resource entries into Flutter values.
   - [TomCtr](#tomctr)
 - [Style resolution](#style-resolution)
   - [TomStyleResolvers](#tomstyleresolvers)
+- [Text keys of the wrappers](#text-keys-of-the-wrappers)
+  - [TomTextKey](#tomtextkey)
+  - [TomTextKeyKind](#tomtextkeykind)
+  - [TomTextKeyPresence](#tomtextkeypresence)
 - [Global Functions and Constants](#global-functions-and-constants)
 
 ## Overview
 
-Sources: `lib/src/widget_base/tom_auth_layers.dart`, `lib/src/widget_base/tom_construction_helpers.dart`, `lib/src/widget_base/tom_family_base.dart`, `lib/src/widget_base/tom_node_base.dart`, `lib/src/widget_base/tom_policy_node_base.dart`, `lib/src/widget_base/tom_scope_path.dart`, `lib/src/widget_base/tom_scope_widgets.dart`, `lib/src/widget_base/tom_screen_elements_provider.dart`, `lib/src/widget_base/tom_style_resolvers.dart`, `lib/src/widget_base/tom_widget_surface.dart`, `lib/src/widget_base/widget_base.dart`.
+Sources: `lib/src/widget_base/tom_auth_layers.dart`, `lib/src/widget_base/tom_construction_helpers.dart`, `lib/src/widget_base/tom_family_base.dart`, `lib/src/widget_base/tom_node_base.dart`, `lib/src/widget_base/tom_policy_node_base.dart`, `lib/src/widget_base/tom_scope_path.dart`, `lib/src/widget_base/tom_scope_widgets.dart`, `lib/src/widget_base/tom_screen_elements_provider.dart`, `lib/src/widget_base/tom_style_resolvers.dart`, `lib/src/widget_base/tom_widget_surface.dart`, `lib/src/widget_base/tom_wrapper_text_keys.dart`, `lib/src/widget_base/widget_base.dart`.
 
 The module `lib/src/widget_base/` is barrelled by `widget_base.dart`.
 
@@ -405,6 +409,36 @@ own resource path — each is read as part of a larger map: `parseEdgeInsets`
 (reached through `TomCtr.edgeInsets`) and `parseFontWeight` (reached through
 `parseTextStyle`).
 
+## Text keys of the wrappers
+
+The text keys every widget wrapper reads under its resource path, as data, so a
+tool that checks a resource file reads them instead of the constructors.
+`test/widgets/wrapper_text_keys_test.dart` builds every wrapper with a provider
+that records each key asked for and holds the map to it.
+
+### TomTextKey
+
+`class TomTextKey`. One key of a wrapper: `suffix` (after the wrapper's resource
+path: `label`, or `child.label` for the text a wrapper puts into a slot of its
+own), `kind` (a `TomTextKeyKind`) and `presence` (a `TomTextKeyPresence`).
+Value equality.
+
+### TomTextKeyKind
+
+`enum TomTextKeyKind { text, semantics, setting }`: a text shown to the user, a
+text read by assistive technology only, or a value read through the text
+resources and never shown (a restoration id, a curve name). The first two are
+translated, the third is not.
+
+### TomTextKeyPresence
+
+`enum TomTextKeyPresence { required, optional }`. A `required` key is read
+whenever the wrapper has a `tomId` and nothing explicit was given, and a missing
+resource shows the dotted key on screen; a widget passed for the same slot takes
+its place. An `optional` key is used only when the resource exists.
+
 ## Global Functions and Constants
 
-None — this module exports types only.
+`tomWrapperTextKeys` — `const Map<String, List<TomTextKey>>`: the text keys of
+every widget wrapper, by class name. Every wrapper is listed, an empty list
+meaning it reads no text; `TomDataColumn` is listed too.

@@ -345,6 +345,7 @@ class TomSwitchListTile extends TomToggleBase {
 
   // Pre-resolved resource values
   late final String _resolvedTitle;
+  late final String? _resolvedSubtitle;
   late final bool _resolvedIsThreeLine;
   late final bool? _resolvedDense;
   late final Color? _resolvedActiveColor;
@@ -391,9 +392,12 @@ class TomSwitchListTile extends TomToggleBase {
     this.hoverColor,
   }) : onChanged = ScopeCapture(scope: scope).wrap1n(onChanged) {
     _resolvedTitle =
-        titleText ??
-        TomCtr.textOrNull(basePath, 'titleText') ??
-        TomCtr.textOrFail(basePath, 'label', supersededBy: title);
+        titleText ?? TomCtr.textOrFail(basePath, 'label', supersededBy: title);
+    // Read only when no subtitle widget is given, and shown only when the
+    // resource exists: a tile has no subtitle unless one is asked for.
+    _resolvedSubtitle = subtitle != null
+        ? null
+        : TomCtr.textOrNull(basePath, 'subtitle');
     _resolvedIsThreeLine =
         TomCtr.boolVal(basePath, 'isThreeLine') ?? isThreeLine;
     _resolvedDense = dense ?? TomCtr.boolVal(basePath, 'dense');
@@ -426,7 +430,9 @@ class TomSwitchListTile extends TomToggleBase {
       value: value,
       onChanged: onChanged,
       title: effectiveTitle,
-      subtitle: subtitle,
+      subtitle:
+          subtitle ??
+          (_resolvedSubtitle != null ? Text(_resolvedSubtitle) : null),
       secondary: secondary,
       isThreeLine: _resolvedIsThreeLine,
       dense: _resolvedDense,
@@ -485,6 +491,7 @@ class TomCheckboxListTile extends TomToggleBase {
 
   // Pre-resolved resource values
   late final String _resolvedTitle;
+  late final String? _resolvedSubtitle;
   late final bool _resolvedIsThreeLine;
   late final bool? _resolvedDense;
   late final bool _resolvedTristate;
@@ -531,9 +538,12 @@ class TomCheckboxListTile extends TomToggleBase {
     this.checkboxShape,
   }) : onChanged = ScopeCapture(scope: scope).wrap1n(onChanged) {
     _resolvedTitle =
-        titleText ??
-        TomCtr.textOrNull(basePath, 'titleText') ??
-        TomCtr.textOrFail(basePath, 'label', supersededBy: title);
+        titleText ?? TomCtr.textOrFail(basePath, 'label', supersededBy: title);
+    // Read only when no subtitle widget is given, and shown only when the
+    // resource exists: a tile has no subtitle unless one is asked for.
+    _resolvedSubtitle = subtitle != null
+        ? null
+        : TomCtr.textOrNull(basePath, 'subtitle');
     _resolvedIsThreeLine =
         TomCtr.boolVal(basePath, 'isThreeLine') ?? isThreeLine;
     _resolvedDense = dense ?? TomCtr.boolVal(basePath, 'dense');
@@ -565,7 +575,9 @@ class TomCheckboxListTile extends TomToggleBase {
       value: value,
       onChanged: onChanged,
       title: effectiveTitle,
-      subtitle: subtitle,
+      subtitle:
+          subtitle ??
+          (_resolvedSubtitle != null ? Text(_resolvedSubtitle) : null),
       secondary: secondary,
       isThreeLine: _resolvedIsThreeLine,
       dense: _resolvedDense,
@@ -635,6 +647,7 @@ class TomRadioListTile<T> extends TomToggleBase {
 
   // Pre-resolved resource values
   late final String _resolvedTitle;
+  late final String? _resolvedSubtitle;
   late final Color? _resolvedActiveColor;
   late final Color? _resolvedTileColor;
   late final Color? _resolvedSelectedTileColor;
@@ -677,6 +690,11 @@ class TomRadioListTile<T> extends TomToggleBase {
   }) {
     _resolvedTitle =
         titleText ?? TomCtr.textOrFail(basePath, 'label', supersededBy: title);
+    // Read only when no subtitle widget is given, and shown only when the
+    // resource exists: a tile has no subtitle unless one is asked for.
+    _resolvedSubtitle = subtitle != null
+        ? null
+        : TomCtr.textOrNull(basePath, 'subtitle');
     _resolvedActiveColor = activeColor ?? TomCtr.color(basePath, 'activeColor');
     _resolvedTileColor = tileColor ?? TomCtr.color(basePath, 'tileColor');
     _resolvedSelectedTileColor =
@@ -703,7 +721,9 @@ class TomRadioListTile<T> extends TomToggleBase {
       value: value,
       enabled: _radioEnabled(enabled, effectiveAuthState),
       title: effectiveTitle,
-      subtitle: subtitle,
+      subtitle:
+          subtitle ??
+          (_resolvedSubtitle != null ? Text(_resolvedSubtitle) : null),
       secondary: secondary,
       isThreeLine: _resolvedIsThreeLine,
       dense: _resolvedDense,

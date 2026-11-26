@@ -564,6 +564,7 @@ class TomCupertinoListTile extends TomListBase {
 
   // Pre-resolved resource values
   late final String _resolvedTitle;
+  late final String? _resolvedSubtitle;
   late final Color? _resolvedBackgroundColor;
   late final EdgeInsetsGeometry? _resolvedPadding;
   late final double _resolvedLeadingSize;
@@ -589,9 +590,12 @@ class TomCupertinoListTile extends TomListBase {
     this.leadingToTitle,
   }) : onTap = ScopeCapture(scope: scope).wrap0n(onTap) {
     _resolvedTitle =
-        titleText ??
-        TomCtr.textOrNull(basePath, 'titleText') ??
-        TomCtr.textOrFail(basePath, 'label', supersededBy: title);
+        titleText ?? TomCtr.textOrFail(basePath, 'label', supersededBy: title);
+    // Read only when no subtitle widget is given, and shown only when the
+    // resource exists: a tile has no subtitle unless one is asked for.
+    _resolvedSubtitle = subtitle != null
+        ? null
+        : TomCtr.textOrNull(basePath, 'subtitle');
     _resolvedBackgroundColor =
         backgroundColor ?? TomCtr.color(basePath, 'backgroundColor');
     _resolvedPadding = padding ?? TomCtr.edgeInsets(basePath, 'padding');
@@ -605,7 +609,9 @@ class TomCupertinoListTile extends TomListBase {
   Widget buildContent(BuildContext context) {
     return CupertinoListTile(
       title: title ?? Text(_resolvedTitle),
-      subtitle: subtitle,
+      subtitle:
+          subtitle ??
+          (_resolvedSubtitle != null ? Text(_resolvedSubtitle) : null),
       additionalInfo: additionalInfo,
       leading: leading,
       trailing: trailing,

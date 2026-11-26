@@ -371,12 +371,10 @@ class TomDropdownMenu<T> extends TomSelectBase {
         TomCtr.textOrFail(basePath, 'label');
     _resolvedHint =
         hintText ??
-        TomCtr.textOrNull(basePath, 'hintText') ??
         TomCtr.textOrNull(basePath, 'hint') ??
         (tomId != null ? TomCtr.textOrFail(basePath, 'hint') : null);
-    _resolvedHelperText =
-        helperText ?? TomCtr.textOrNull(basePath, 'helperText');
-    _resolvedErrorText = errorText ?? TomCtr.textOrNull(basePath, 'errorText');
+    _resolvedHelperText = helperText ?? TomCtr.textOrNull(basePath, 'helper');
+    _resolvedErrorText = errorText ?? TomCtr.textOrNull(basePath, 'error');
     _resolvedEnabled = TomCtr.boolVal(basePath, 'enabled') ?? enabled;
     _resolvedWidth = width ?? TomCtr.doubleVal(basePath, 'width');
     _resolvedMenuHeight =

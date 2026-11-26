@@ -18,7 +18,8 @@
 ///
 /// Also here: [TomWidgetSurface], the interface naming those four
 /// contributions; [TomCtr], the single
-/// entry point for resource resolution; and [TomScreenElementsProvider], by
+/// entry point for resource resolution; [tomWrapperTextKeys], the text keys
+/// every widget wrapper reads, as data; and [TomScreenElementsProvider], by
 /// which a screen declares its widgets as typed fields.
 ///
 /// This orients rather than indexes: the unit exports more than thirty types,
@@ -40,3 +41,4 @@ export 'tom_scope_widgets.dart';
 export 'tom_screen_elements_provider.dart';
 export 'tom_style_resolvers.dart';
 export 'tom_widget_surface.dart';
+export 'tom_wrapper_text_keys.dart';

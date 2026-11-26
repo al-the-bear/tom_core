@@ -35,6 +35,12 @@ import '../../widget_base/tom_style_resolvers.dart';
 ///
 /// The hint has no requirement at all: it is optional in Flutter, so it is
 /// only looked up when the widget has a `tomId` to look under.
+///
+/// The helper, prefix and suffix texts are read from `<basePath>.helper`,
+/// `.prefix` and `.suffix` when the decoration does not carry them, and are
+/// shown only when the resource exists. The counter is not read: Flutter
+/// writes the character count there, and a fixed text would hide it. The error
+/// text is not read either: it is what validation reports.
 InputDecoration _resolveInputDecoration({
   required InputDecoration? decoration,
   required String? basePath,
@@ -57,6 +63,9 @@ InputDecoration _resolveInputDecoration({
         hintText: merged.hintText,
         helperText: merged.helperText,
         errorText: merged.errorText,
+        prefixText: merged.prefixText,
+        suffixText: merged.suffixText,
+        counterText: merged.counterText,
         prefixIcon: merged.prefixIcon,
         suffixIcon: merged.suffixIcon,
       );
@@ -70,6 +79,11 @@ InputDecoration _resolveInputDecoration({
         hint ??
         merged.hintText ??
         (tomId != null ? TomCtr.textOrFail(basePath, 'hint') : null),
+    // Shown only when the decoration carries one or the resource exists: a
+    // field has no helper, prefix or suffix text unless one is asked for.
+    helperText: merged.helperText ?? TomCtr.textOrNull(basePath, 'helper'),
+    prefixText: merged.prefixText ?? TomCtr.textOrNull(basePath, 'prefix'),
+    suffixText: merged.suffixText ?? TomCtr.textOrNull(basePath, 'suffix'),
   );
 }
 
@@ -1880,9 +1894,9 @@ class TomDropdownMenuFormField<T> extends TomInputBase {
     _resolvedHint =
         hintText ??
         (tomId != null ? TomCtr.textOrFail(basePath, 'hint') : null);
-    _resolvedHelper =
-        helperText ??
-        (tomId != null ? TomCtr.textOrFail(basePath, 'helper') : null);
+    // A helper text is shown only when one is given or its resource exists;
+    // a missing helper resource leaves the field without one.
+    _resolvedHelper = helperText ?? TomCtr.textOrNull(basePath, 'helper');
     _resolvedTextStyle = textStyle ?? _resolveTextStyle('textStyle');
     _resolvedWidth = width ?? TomCtr.doubleVal(basePath, 'width');
     _resolvedMenuHeight =

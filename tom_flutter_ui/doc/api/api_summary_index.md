@@ -426,6 +426,9 @@ Summary: [api_summary_widget_base.md](api_summary_widget_base.md)
 | `TomStatelessWidget` | abstract class | A [StatelessWidget] that captures the [TomScope] at construction time and re-enters it during [build]. |
 | `TomStyleResolvers` | class | Complex style resolution helpers for Tom UI widgets. |
 | `TomTableBase` | abstract class | Base for the Table family (data tables, paginated tables). |
+| `TomTextKey` | class | One text key of a wrapper: the suffix after its resource path, what it holds, and whether a resource file has to hold it. |
+| `TomTextKeyKind` | enum | What a text key holds: a shown text, a semantics text, or a setting that is never shown. |
+| `TomTextKeyPresence` | enum | Whether a resource file has to hold a text key. |
 | `TomToggleBase` | abstract class | Base for the Toggle family (switches, checkboxes, radios). |
 | `TomTreeBase` | abstract class | Base for the Tree family (tree views). |
 | `TomWidgetSurface` | abstract interface class | The surface every Tom widget adds on top of the Flutter widget it wraps. |

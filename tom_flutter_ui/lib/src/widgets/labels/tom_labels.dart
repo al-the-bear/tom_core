@@ -522,6 +522,7 @@ class TomListTile extends TomLabelBase {
 
   // Pre-resolved resource values
   late final String _resolvedTitle;
+  late final String? _resolvedSubtitle;
   late final bool _resolvedIsThreeLine;
   late final bool? _resolvedDense;
   late final bool _resolvedEnabled;
@@ -592,6 +593,11 @@ class TomListTile extends TomLabelBase {
        onLongPress = ScopeCapture(scope: scope).wrap0n(onLongPress) {
     _resolvedTitle =
         titleText ?? TomCtr.textOrFail(basePath, 'label', supersededBy: title);
+    // Read only when no subtitle widget is given, and shown only when the
+    // resource exists: a tile has no subtitle unless one is asked for.
+    _resolvedSubtitle = subtitle != null
+        ? null
+        : TomCtr.textOrNull(basePath, 'subtitle');
     _resolvedIsThreeLine =
         TomCtr.boolVal(basePath, 'isThreeLine') ?? isThreeLine;
     _resolvedDense = dense ?? TomCtr.boolVal(basePath, 'dense');
@@ -638,7 +644,9 @@ class TomListTile extends TomLabelBase {
 
     return ListTile(
       title: effectiveTitle,
-      subtitle: subtitle,
+      subtitle:
+          subtitle ??
+          (_resolvedSubtitle != null ? Text(_resolvedSubtitle) : null),
       leading: leading,
       trailing: trailing,
       isThreeLine: _resolvedIsThreeLine,

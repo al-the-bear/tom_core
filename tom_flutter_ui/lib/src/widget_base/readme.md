@@ -33,6 +33,7 @@ which the same test holds to the same barrel.
 | `TomScopePath` | Joins a scope path and a `tomId` into a canonical resource path — `TomScopePath.join`, `qualify`, `resolve` |
 | `TomCtr` | Resource resolvers (below) |
 | `TomStyleResolvers` | Style-map parsers (below) |
+| `TomTextKey` / `TomTextKeyKind` / `TomTextKeyPresence` / `tomWrapperTextKeys` | The text keys every widget wrapper reads under its resource path, as data: suffix, kind (text, semantics, setting), presence (required, optional) |
 
 ### The family bases
 

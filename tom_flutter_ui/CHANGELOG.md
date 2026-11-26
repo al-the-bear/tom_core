@@ -1,3 +1,33 @@
+## 1.2.0
+
+### Text resources
+
+- **The text keys each wrapper reads are data.** `tomWrapperTextKeys` (with
+  `TomTextKey`, `TomTextKeyKind` and `TomTextKeyPresence`) lists, for every
+  widget wrapper, the suffixes it reads under its resource path, what each
+  holds (a shown text, a semantics text, or a setting that is never shown) and
+  whether a resource file has to hold it. A test builds every wrapper with a
+  provider that records the keys it is asked for and holds the map to it;
+  `doc/widgets.md` carries it as a table.
+- **More texts come from resources.** `TomTextField` and `TomTextFormField`
+  read `helper`, `prefix` and `suffix`; `TomListTile`, `TomSwitchListTile`,
+  `TomCheckboxListTile`, `TomRadioListTile` and `TomCupertinoListTile` read
+  `subtitle` when no subtitle widget is given. Each is shown only when its
+  resource exists, so a screen without them looks as before. The counter and
+  the error text of a field are not read: Flutter writes the character count
+  there, and the error is what validation reports.
+- **`TomDropdownMenuFormField` shows no helper when its `helper` resource is
+  missing.** It used to show `<tomId>.helper` as helper text.
+- **One text, one key.** The tiles and `TomAppBar` take their title from
+  `label` only, `TomDropdownMenu` its hint from `hint` only; the `titleText`
+  and `hintText` resource keys are no longer read. `TomDropdownMenu` reads its
+  helper and error texts from `helper` and `error` (they were `helperText` and
+  `errorText`).
+- **An explicit decoration's prefix, suffix and counter text survive a
+  resource decoration.** `TomTextField` and `TomTextFormField` merged a
+  `<tomId>.decoration` resource over an explicit `decoration` and kept only
+  its label, hint, helper and error texts and icons.
+
 ## 1.1.1
 
 ### Undo

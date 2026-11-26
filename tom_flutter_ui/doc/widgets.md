@@ -39,6 +39,7 @@ the family table.
 - [Family catalogue](#family-catalogue)
 - [Navigation and messaging](#navigation-and-messaging)
 - [Resource-driven construction](#resource-driven-construction)
+- [Text keys per wrapper](#text-keys-per-wrapper)
 - [Authorization, groups, and scope](#authorization-groups-and-scope)
 - [Dependencies](#dependencies)
 
@@ -209,24 +210,147 @@ well as an absent `tomId`. The full matrix is in
 
 What a *widget* does with a missing text resource is not read off that matrix,
 though, because each call site composes the resolver, and the wrappers use
-three compositions. Which one a property gets follows from whether the
+four compositions. Which one a property gets follows from whether the
 underlying Flutter widget can do without it:
 
 | Composition | Used for | No `tomId` | `tomId`, no resource |
 | --- | --- | --- | --- |
 | `x ?? textOrFail(basePath, k)` | a value the widget cannot render without — `TomText.text`, a `TextField` label, `TomTooltip.message` | throws | renders `'<basePath>.<k>'` |
 | `x ?? (tomId != null ? textOrFail(basePath, k) : null)` | a value Flutter itself treats as optional — every hint/placeholder, semantic labels, dialog titles | `null`, no lookup | renders `'<basePath>.<k>'` |
-| `x ?? textOrFail(basePath, k, supersededBy: w)` | a string paired with a widget slot that renders instead of it — `TomElevatedButton.child` beside `label`, `TomListTile.title` beside `titleText` | `''` when `w` is non-null, else throws | `''` when `w` is non-null, else the key |
+| `x ?? textOrFail(basePath, k, supersededBy: w)` | a string paired with a widget slot that renders instead of it — `TomElevatedButton.child` beside `label`, `TomListTile.title` beside its `label` | `''` when `w` is non-null, else throws | `''` when `w` is non-null, else the key |
+| `x ?? textOrNull(basePath, k)` | a text most screens leave out — a text field's helper, prefix and suffix, a tile's subtitle | `null`, no lookup | `null`: no such text is shown |
 
 So the visible failure for a missing text resource is the key painted where the
 text belongs — never a blank, and never a crash once a `tomId` is present.
 `nope.label` renders at the right size in the right place and reads like a
 label, so it is easy to miss in review; treat a key on screen as the signal
 that a resource was never registered.
-`test/widgets/missing_text_resource_test.dart` pins all three compositions.
+`test/widgets/missing_text_resource_test.dart` pins all four compositions.
 
 Construction needs a resource provider installed
 (`TomTextResourceProvider.setAppResourceProvider`) but **no** `BuildContext`.
+
+## Text keys per wrapper
+
+The text keys each wrapper reads under its resource path, as the package states
+them in `tomWrapperTextKeys` (exported, in `widget_base`): a tool that checks a
+resource file reads that map rather than this table. A **required** key is read
+whenever the wrapper has a `tomId` and no explicit value, and a missing resource
+shows the dotted key on screen; a widget passed for the same slot takes its
+place. An **optional** key is used only when its resource exists. Keys marked
+*(semantics)* are read by assistive technology only; keys marked *(setting)* are
+values read through the text resources and never shown, so they are not
+translated. `child.` and `content.` keys belong to the `TomText` a wrapper puts
+into its slot when no child is given.
+
+Not read from resources, by design: a text field's counter (Flutter writes the
+character count there) and its error text (what validation reports).
+
+A wrapper not listed reads no text. Form fields (`forms/`) read their own
+keys — `label`, `description`, `hint`, `tooltip` — through `TomFormLabels` and
+the field anatomy, and are not part of this table.
+
+| Wrapper | Required | Optional |
+| --- | --- | --- |
+| `TomAboutDialog` | `applicationLegalese`, `applicationName`, `applicationVersion` | — |
+| `TomAboutListTile` | — | `applicationLegalese`, `applicationName`, `applicationVersion` |
+| `TomActionChip` | `label` | `tooltip` |
+| `TomAlertDialog` | `title` | `semanticLabel` (semantics) |
+| `TomAnimatedIcon` | — | `semanticLabel` (semantics) |
+| `TomAnimatedPositioned` | `child.label` | `child.semanticsLabel` (semantics) |
+| `TomAnimatedPositionedDirectional` | `child.label` | `child.semanticsLabel` (semantics) |
+| `TomAppBar` | `label` | — |
+| `TomAssetImage` | `semanticLabel` (semantics) | — |
+| `TomBackdropFilter` | — | `blendMode` (setting) |
+| `TomBadge` | `label` | — |
+| `TomBanner` | `message` | — |
+| `TomCheckboxListTile` | `label` | `subtitle` |
+| `TomCheckboxMenuButton` | `label` | — |
+| `TomChip` | `label` | — |
+| `TomChoiceChip` | `label` | — |
+| `TomCircularProgressIndicator` | `label` (semantics) | `semanticsLabel` (semantics), `semanticsValue` (semantics) |
+| `TomCupertinoActionSheet` | `title` | — |
+| `TomCupertinoAlertDialog` | `title` | — |
+| `TomCupertinoButton` | `label` | — |
+| `TomCupertinoCheckbox` | — | `semanticLabel` (semantics) |
+| `TomCupertinoExpansionTile` | `label` | — |
+| `TomCupertinoListTile` | `label` | `subtitle` |
+| `TomCupertinoNavigationBar` | — | `previousPageTitle` |
+| `TomCupertinoNavigationBarBackButton` | — | `previousPageTitle` |
+| `TomCupertinoSearchTextField` | `hint` | — |
+| `TomCupertinoSliverNavigationBar` | — | `previousPageTitle` |
+| `TomCupertinoTextField` | `hint` | — |
+| `TomCupertinoTextFormFieldRow` | `hint` | — |
+| `TomDataColumn` | — | `tooltip` |
+| `TomDatePickerDialog` | — | `cancel`, `confirm`, `errorFormat`, `errorInvalid`, `fieldHint`, `fieldLabel`, `help`, `keyboardType` (setting) |
+| `TomDateRangePickerDialog` | — | `cancel`, `confirm`, `errorFormat`, `errorInvalid`, `errorInvalidRange`, `fieldEndHint`, `fieldEndLabel`, `fieldStartHint`, `fieldStartLabel`, `help`, `keyboardType` (setting), `save` |
+| `TomDragTarget` | — | `hitTestBehavior` (setting) |
+| `TomDrawer` | `label` (semantics) | `semanticLabel` (semantics) |
+| `TomDropdownButton` | `hint` | — |
+| `TomDropdownButtonFormField` | `label` | — |
+| `TomDropdownMenu` | `hint`, `label` | `error`, `helper` |
+| `TomDropdownMenuEntry` | `label` | — |
+| `TomDropdownMenuFormField` | `hint`, `label` | `helper` |
+| `TomElevatedButton` | `label` | — |
+| `TomExpanded` | `child.label` | `child.semanticsLabel` (semantics) |
+| `TomExpansionTile` | `label` | — |
+| `TomFadeInImage` | `alt` (semantics) | — |
+| `TomFileImage` | `semanticLabel` (semantics) | — |
+| `TomFilledButton` | `label` | — |
+| `TomFilterChip` | `label` | `deleteButtonTooltipMessage` |
+| `TomFlexible` | `child.label` | `child.semanticsLabel` (semantics) |
+| `TomFloatingActionButton` | — | `label`, `tooltip` |
+| `TomGridView` | — | `restorationId` (setting) |
+| `TomIcon` | `alt` (semantics) | — |
+| `TomIconButton` | — | `tooltip` |
+| `TomImage` | `alt` (semantics) | — |
+| `TomImageIcon` | `semanticLabel` (semantics) | — |
+| `TomInputChip` | `label` | `deleteButtonTooltipMessage`, `tooltip` |
+| `TomInputDatePickerFormField` | `errorFormat`, `errorInvalid`, `hint`, `label` | — |
+| `TomLicensePage` | — | `applicationLegalese`, `applicationName`, `applicationVersion` |
+| `TomLinearProgressIndicator` | `label` (semantics) | `semanticsLabel` (semantics), `semanticsValue` (semantics) |
+| `TomListTile` | `label` | `subtitle` |
+| `TomListView` | — | `restorationId` (setting) |
+| `TomListWheelScrollView` | — | `restorationId` (setting) |
+| `TomMenuAcceleratorLabel` | `label` | — |
+| `TomMenuItemButton` | `label` | — |
+| `TomMouseRegion` | — | `hitTestBehavior` (setting) |
+| `TomNestedScrollView` | — | `restorationId` (setting) |
+| `TomNetworkImage` | `semanticLabel` (semantics) | `src` (setting) |
+| `TomOutlinedButton` | `label` | — |
+| `TomPopupMenuButton` | — | `tooltip` |
+| `TomRadioListTile` | `label` | `subtitle` |
+| `TomRadioMenuButton` | `label` | — |
+| `TomRawChip` | `label` | `deleteButtonTooltipMessage`, `tooltip` |
+| `TomRefreshIndicator` | `label` (semantics) | `semanticsLabel` (semantics), `semanticsValue` (semantics) |
+| `TomRefreshProgressIndicator` | — | `semanticsLabel` (semantics), `semanticsValue` (semantics) |
+| `TomReorderableListView` | — | `restorationId` (setting) |
+| `TomScaffold` | — | `restorationId` (setting) |
+| `TomSearchAnchor` | `hint` | — |
+| `TomSearchBar` | `hint` | — |
+| `TomSelectableText` | `label` | `semanticsLabel` (semantics) |
+| `TomSensitiveContent` | — | `sensitivity` (setting) |
+| `TomShaderMask` | — | `blendMode` (setting) |
+| `TomSimpleDialog` | `title` | `semanticLabel` (semantics) |
+| `TomSingleChildScrollView` | — | `restorationId` (setting) |
+| `TomSlider` | — | `label` |
+| `TomSliverAppBar` | `label` | — |
+| `TomSnackBar` | `content.label` | `content.semanticsLabel` (semantics) |
+| `TomSnackBarAction` | `label` | — |
+| `TomSubmenuButton` | `label` | — |
+| `TomSwitchListTile` | `label` | `subtitle` |
+| `TomTableCell` | `child.label` | `child.semanticsLabel` (semantics) |
+| `TomText` | `label` | `semanticsLabel` (semantics) |
+| `TomTextButton` | `label` | — |
+| `TomTextField` | `hint`, `label` | `helper`, `obscuringCharacter` (setting), `prefix`, `restorationId` (setting), `suffix` |
+| `TomTextFormField` | `hint`, `label` | `helper`, `initialValue`, `prefix`, `suffix` |
+| `TomTimePickerDialog` | — | `cancel`, `confirm`, `errorInvalid`, `help`, `hourLabel`, `minuteLabel` |
+| `TomTooltip` | `tooltip` | — |
+| `TomTweenAnimationBuilder` | — | `curve` (setting) |
+
+`test/widgets/wrapper_text_keys_test.dart` holds `tomWrapperTextKeys` to the
+wrappers, by building each with a resource provider that records the keys it is
+asked for, and holds this table to the map.
 
 ## Authorization, groups, and scope
 
