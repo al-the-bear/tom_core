@@ -1,0 +1,12 @@
+# Include shared workspace analysis options
+include: ../analysis_options.yaml
+
+analyzer:
+  # The fixtures are sample packages the coverage check reads as text; their
+  # Dart files import packages this package does not depend on.
+  exclude:
+    - test/fixtures/**
+  errors:
+    # This package takes workspace packages by relative path, the workspace's
+    # development mode (`_agent_guidelines/dart/project_republishing.md`).
+    invalid_dependency: ignore

@@ -1,0 +1,18 @@
+{
+  "broken_demo": {
+    "files": {
+      "openButton": { "label": "Open" },
+      "nameField": { "label": "Name", "hint": "A name", "color": "red" },
+      "titleText": { "semanticsLabel": "Title" },
+      "orphanButton": { "label": "Never used" },
+      "caption": { "label": "Caption" },
+      "dottedButton": { "label": "Dotted", "x.y": "z" },
+      "nullButton": { "label": null },
+      "listButton": { "label": ["a"] }
+    },
+    "save": {
+      "failedMessage": { "text": "Saving {file} failed: {reason}" },
+      "countMessage": { "one": "1 file", "many": "{count} files" }
+    }
+  }
+}

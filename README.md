@@ -99,6 +99,12 @@ for all entries is this repository root.
 | --- | --- |
 | [`tom_core_storage`](tom_core_storage/README.md) | Storage for Tom applications: a compare-and-swap storage port, keyed file media, a device-local cache and a durable offline commit journal, with the local filesystem, a GitHub repository, any git server over smart HTTP, the browser and the cache cipher behind entry points of their own; and, in `settings.dart`, device settings, the key and secret-store ports, identity and storage locations. It builds on `tom_basics`, `tom_git` and `tom_github_api`, not on the kernel. |
 
+### Testing
+
+| Package | What it is |
+| --- | --- |
+| [`tom_text_testing`](tom_text_testing/README.md) | Test support for internationalised packages: a package's `lib/resources/<package-name>_<language>.json` loaded and installed as the kernel's text resources under the package's scope or any scope an application mounts it under, and the coverage check that holds the resource files and the code to each other (ids, unused entries, element suffixes and keys, placeholders, user-visible literals, other languages). Pure Dart on the kernel only; a dev dependency of Flutter and pure-Dart packages alike. |
+
 ### Demo & test apps
 
 These are runnable harnesses (`publish_to: none`), not libraries — they exercise
@@ -162,6 +168,7 @@ tom_core_flutter/      Flutter integration layer (re-exports the kernel)      (r
 tom_flutter_ui/        Flutter widget library: widgets, forms, ACL engine     (UI)
 tom_core_message_bus/  broker-neutral message bus, in-memory bus, conformance (messaging)
 tom_core_storage/      storage port, media, cache, journal; settings          (storage)
+tom_text_testing/      test support: package texts under a scope, coverage    (testing)
 tom_core_samples/      the sample applications, and the two demo apps:        (samples)
   tom_flutter_form_test/  runnable demo: the form framework                   (demo app)
   tom_flutter_ui_test/    runnable demo/smoke-test: the whole widget library  (demo app)

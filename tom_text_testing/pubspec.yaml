@@ -1,0 +1,27 @@
+name: tom_text_testing
+description: >-
+  Test support for internationalised Tom packages: a package's texts loaded
+  from lib/resources/<package-name>_<language>.json and installed as Tom
+  Core's text resources under the package's scope or any scope an
+  application mounts it under, and the coverage check that holds the
+  resource files and the code to each other (ids, unused entries, element
+  suffixes and keys, placeholders, user-visible literals, other languages).
+version: 0.1.0
+repository: https://github.com/al-the-bear/tom_core
+
+environment:
+  sdk: ^3.10.0
+
+dependencies:
+  # The text resources (TomTextResourceProvider) a test installs and the
+  # scopes (TomScope) a component is constructed in. By path, as every
+  # package of tom_core takes its siblings. Nothing else: the package is a
+  # dev dependency of Flutter and pure-Dart packages alike, so it takes no
+  # test framework (a failed check throws, which fails any test) and no
+  # analyzer (the sources are read lexically).
+  tom_core_kernel:
+    path: ../tom_core_kernel
+
+dev_dependencies:
+  test: ^1.28.0
+  lints: ^6.0.0

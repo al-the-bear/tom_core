@@ -1,0 +1,36 @@
+{
+  "files": {
+    "rename": {
+      "renameDialog": { "title": "Rename file" },
+      "nameText": { "label": "New name" },
+      "nameField": {
+        "label": "Name",
+        "hint": "e.g. notes.txt",
+        "error": {
+          "empty": "Enter a name.",
+          "taken": "\"{name}\" exists already."
+        }
+      },
+      "cancelButton": { "label": "Cancel" },
+      "renameButton": { "label": "Rename" }
+    }
+  },
+  "workbench": {
+    "explorer": {
+      "rename": {
+        "renameDialog": { "title": "Rename file" },
+        "nameText": { "label": "New name" },
+        "nameField": {
+          "label": "Name",
+          "hint": "e.g. notes.txt",
+          "error": {
+            "empty": "Enter a name.",
+            "taken": "\"{name}\" exists already."
+          }
+        },
+        "cancelButton": { "label": "Cancel" },
+        "renameButton": { "label": "Rename" }
+      }
+    }
+  }
+}
