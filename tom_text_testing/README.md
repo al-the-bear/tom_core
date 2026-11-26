@@ -119,3 +119,5 @@ passes the check; `test/fixtures/broken_demo` breaks every rule once.
 ---
 
 Part of [Tom Core](../README.md).
+
+<!-- markdownlint-disable-file MD013 MD028 -->
